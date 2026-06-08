@@ -50,7 +50,7 @@
           <div
             class="flex flex-col items-center cursor-pointer relative"
             :class="[podium.cardClass, podium.rank === 1 ? 'p-8 min-h-[260px]' : 'p-6 min-h-[220px]']"
-            @click="podium.expanded = !podium.expanded"
+            @click="toggleExpand(podium.rank)"
           >
             <div class="absolute top-3 right-3 flex flex-col items-end gap-2">
               <span v-if="podium.isSelf" class="bg-primary text-white text-[10px] px-2 py-0.5 rounded-full font-bold">当前单位</span>
@@ -128,7 +128,7 @@
           class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all"
           :class="{ 'expanded': item.expanded }"
         >
-          <div class="p-5 flex items-center gap-6 cursor-pointer" @click="item.expanded = !item.expanded">
+          <div class="p-5 flex items-center gap-6 cursor-pointer" @click="toggleExpand(item.rank)">
             <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-surface-container rounded-full text-on-surface-variant font-bold">{{ item.rank }}</div>
             <div class="flex-grow">
               <h4 class="text-lg font-bold text-on-surface hover:text-primary transition-colors">{{ item.name }}</h4>
@@ -202,52 +202,130 @@
 </template>
 
 <script>
+const RANK_COLORS = [
+  { rankBg: 'bg-rank-gold', cardClass: 'rank-card-1', orderClass: 'order-1 md:order-2' },
+  { rankBg: 'bg-rank-silver', cardClass: 'rank-card-2', orderClass: 'order-2 md:order-1' },
+  { rankBg: 'bg-rank-bronze', cardClass: 'rank-card-3', orderClass: 'order-3' },
+]
+
 export default {
   name: 'StitchPoints',
   data() {
     return {
       activeTab: 'month',
       currentPage: 1,
-      podiumData: [
-        { rank: 2, name: '国网四川内江市区供电中心', score: 9, posts: 3, replies: 0, isSelf: true, expanded: false, orderClass: 'order-2 md:order-1', cardClass: 'rank-card-2', rankBg: 'bg-rank-silver', children: [] },
-        { rank: 1, name: '国网四川内江供电公司', score: 11, posts: 3, replies: 2, isSelf: false, expanded: false, orderClass: 'order-1 md:order-2', cardClass: 'rank-card-1', rankBg: 'bg-rank-gold', children: [] },
-        { rank: 3, name: '国网四川内江东兴供电公司', score: 5, posts: 1, replies: 2, isSelf: false, expanded: false, orderClass: 'order-3', cardClass: 'rank-card-3', rankBg: 'bg-rank-bronze', children: [
-          { name: '国网四川内江东兴高梁供电所', score: 0, totalScore: 0, posts: 0, totalPosts: 0, replies: 0, totalReplies: 0 },
-          { name: '国网四川内江东兴白合供电所', score: 0, totalScore: 0, posts: 0, totalPosts: 0, replies: 0, totalReplies: 0 },
-          { name: '国网四川内江东兴双才供电所', score: 0, totalScore: 0, posts: 0, totalPosts: 0, replies: 0, totalReplies: 0 },
-        ] },
-      ],
-      restRankData: [
-        { rank: 4, name: '国网四川威远县供电公司', score: 0, posts: 0, replies: 0, expanded: false, children: [{ name: '连界供电所', score: 0, totalScore: 0, posts: 0, totalPosts: 0, replies: 0, totalReplies: 0 }] },
-        { rank: 5, name: '国网四川资中县供电公司', score: 0, posts: 0, replies: 0, expanded: false, children: [{ name: '归德供电所', score: 0, totalScore: 0, posts: 0, totalPosts: 0, replies: 0, totalReplies: 0 }] },
-        { rank: 6, name: '国网四川隆昌市供电公司', score: 0, posts: 0, replies: 0, expanded: false, children: [] },
-      ],
+      loading: false,
+      // Display-ready data, mutated in place by toggle expand
+      displayItems: [],
     }
   },
   computed: {
+    rankedItems() {
+      return [...this.displayItems].sort((a, b) => a.rank - b.rank)
+    },
     topThree() {
-      return this.podiumData
+      return this.rankedItems.slice(0, 3).map((item, i) => ({
+        ...item,
+        ...(RANK_COLORS[i] || RANK_COLORS[0]),
+      }))
     },
     expandedPodiums() {
-      return this.podiumData.filter(p => p.expanded)
+      return this.topThree.filter(p => p.expanded)
     },
     restRanks() {
-      return this.restRankData
+      return this.rankedItems.slice(3).map(item => ({
+        rank: item.rank,
+        name: item.name,
+        score: item.score,
+        posts: item.posts,
+        replies: item.replies,
+        isSelf: item.isSelf,
+        orgNo: item.orgNo,
+        expanded: item.expanded,
+        children: item.children,
+      }))
     },
     totalCount() {
-      return this.podiumData.length + this.restRankData.length
+      return this.displayItems.length
     },
     totalPages() {
-      return 1
+      return Math.max(1, Math.ceil(this.totalCount / 10))
     },
+  },
+  mounted() {
+    this.fetchRank()
   },
   methods: {
     switchTab(tab) {
       this.activeTab = tab
+      this.currentPage = 1
+      this.fetchRank()
     },
     toggleAll(expand) {
-      const allCards = [...this.podiumData, ...this.restRankData]
-      allCards.forEach(card => { card.expanded = expand })
+      this.displayItems.forEach(item => {
+        item.expanded = expand
+        if (expand && item.isSelf && item.orgNo && !item.children.length) {
+          this.fetchChildren(item)
+        }
+      })
+    },
+    toggleExpand(rank) {
+      const item = this.displayItems.find(i => i.rank === rank)
+      if (!item) return
+      item.expanded = !item.expanded
+      if (item.expanded && item.isSelf && item.orgNo && !item.children.length) {
+        this.fetchChildren(item)
+      }
+    },
+    fetchRank() {
+      this.loading = true
+      this.postRequest('/common/pointsRank', {
+        rankType: this.activeTab === 'month' ? '01' : '02',
+        orgNo: '',
+      }).then(resp => {
+        this.loading = false
+        const list = (resp && resp.obj && Array.isArray(resp.obj)) ? resp.obj
+          : (resp && resp.list && Array.isArray(resp.list)) ? resp.list
+          : (resp && resp.data && Array.isArray(resp.data)) ? resp.data
+          : Array.isArray(resp) ? resp : []
+        this.displayItems = list.map(item => ({
+          rank: item.rankNum || 0,
+          name: item.orgName || '',
+          score: item.points || 0,
+          posts: item.posts || 0,
+          replies: item.replies || 0,
+          isSelf: item.isSelf === 1,
+          orgNo: item.orgNo || '',
+          expanded: false,
+          children: [],
+        }))
+      }).catch(() => {
+        this.loading = false
+        this.displayItems = []
+      })
+    },
+    fetchChildren(item) {
+      if (!item.orgNo) return
+      this.postRequest('/common/pointsRank', {
+        rankType: this.activeTab === 'month' ? '01' : '02',
+        orgNo: item.orgNo,
+      }).then(resp => {
+        const list = (resp && resp.obj && Array.isArray(resp.obj)) ? resp.obj
+          : (resp && resp.list && Array.isArray(resp.list)) ? resp.list
+          : (resp && resp.data && Array.isArray(resp.data)) ? resp.data
+          : Array.isArray(resp) ? resp : []
+        item.children = list.map(child => ({
+          name: child.orgName || '',
+          posts: child.posts || 0,
+          totalPosts: child.posts || 0,
+          replies: child.replies || 0,
+          totalReplies: child.replies || 0,
+          score: child.points || 0,
+          totalScore: child.points || 0,
+        }))
+      }).catch(() => {
+        item.children = []
+      })
     },
   },
 }

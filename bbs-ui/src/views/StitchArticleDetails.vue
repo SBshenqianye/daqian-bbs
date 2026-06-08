@@ -16,7 +16,7 @@
               </span>
               <div class="flex items-center gap-2">
                 <span>文章标签:</span>
-                <span class="px-2 py-0.5 bg-surface-container-low text-primary-container rounded border border-outline-variant font-medium">{{ article.tag }}</span>
+                <span class="px-2 py-0.5 bg-surface-container-low text-primary-container rounded border border-outline-variant font-medium">{{ articleTagName || '--' }}</span>
               </div>
             </div>
             <div class="flex items-center gap-3 py-1 px-3 bg-surface-container-lowest border border-border rounded-lg">
@@ -32,15 +32,12 @@
         </header>
         <hr class="border-border mb-8">
 
-        <!-- Article Content (Markdown Mock) -->
-        <section class="markdown-body font-body-lg text-body-lg text-on-surface">
-          <p>{{ article.contentIntro }}</p>
-          <img
-            v-if="article.contentImage"
-            class="w-full h-auto object-cover rounded-lg border border-border"
-            :src="article.contentImage"
-          >
-          <p v-for="(para, i) in article.contentParagraphs" :key="i">{{ para }}</p>
+        <!-- Article Content -->
+        <section class="markdown-body font-body-lg text-body-lg text-on-surface" v-if="article.contentHtml">
+          <div v-html="article.contentHtml"></div>
+        </section>
+        <section class="markdown-body font-body-lg text-body-lg text-on-surface" v-else>
+          <p class="text-on-surface-variant">暂无内容</p>
         </section>
       </div>
     </article>
@@ -61,7 +58,7 @@
             <span class="material-symbols-outlined text-outline group-hover:text-primary-container">description</span>
             <span class="font-body-md text-body-md text-on-surface">{{ att.name }}</span>
           </div>
-          <button class="flex items-center gap-2 bg-primary-container text-white px-4 py-1.5 rounded text-label-md font-label-md hover:bg-primary transition-primary">
+          <button class="flex items-center gap-2 bg-primary-container text-white px-4 py-1.5 rounded text-label-md font-label-md hover:bg-primary transition-primary" @click="downloadFile(att.filePath, att.name)">
             <span class="material-symbols-outlined text-[18px]">download</span>
             下载
           </button>
@@ -81,7 +78,7 @@
         <!-- Comment Input -->
         <div class="flex gap-4 mb-10">
           <div class="w-10 h-10 rounded-full bg-surface-variant flex-shrink-0 overflow-hidden border border-outline-variant">
-            <img alt="Current User" :src="currentUserAvatar">
+            <img alt="Current User" :src="currentUserAvatar || require('@/assets/portrait.png')">
           </div>
           <div class="flex-grow space-y-3">
             <textarea
@@ -116,6 +113,9 @@
 
 <script>
 import CommentItem from '@/components/CommentItem.vue'
+import { getArticleById, getUserinfoById, getArticleFileByArticleId } from '@/api/article'
+import { getCommentReply } from '@/api/comment'
+import { Message } from 'element-ui'
 
 export default {
   name: 'StitchArticleDetails',
@@ -123,46 +123,32 @@ export default {
   data() {
     return {
       newComment: '',
-      currentUserAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCP52mnmWZOxBsd7pKUcKH0XYcVU0EL15cm5iXqKW0w2oJgWiJMZnGlRDva84A3aPUnIm0XJVsAGvxeUDVdogPb2RB6HAvdW0vBk2D1FgVxsWjtgGPCBEDfnO_jI0yERHdbsy_8b9zL3e9LvyJTPMP9mVuhOqiwL-E9T8iV427rBqAPG2MlYQmN2f_khm74nH30oggg5H2jnk-YjDQB33lzP-NVdKM_i6YBljINKMnekK8u4Cpt-moRjcVD6_YNJ_fBpmHnKCoTb9k',
+      articleId: this.$route.params.articleId,
+      loading: true,
+      apiBase: process.env.VUE_APP_BBS_API || '',
+      fileBase: process.env.VUE_APP_BBS_BASE_FILE || '',
+      // Current user
+      currentUser: null,
+      currentUserAvatar: '',
+      // Article data
       article: {
-        title: '技术交流：大千智荟平台的前端架构演进与性能优化实践',
-        publishTime: '2024-05-12 12:01:31',
-        tag: '技术交流',
-        author: '国网四川内江供电公司-qupeng',
-        authorTitle: '高级工程师',
-        authorAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAY_w8EMmZtJ1uTt7Om3wjhcj3gWqOf5bkE6Tcqdvj5vlqQSDDdKrEBFSO67nMOEC2jS-1bL-fngMS9sHNEKQqx49Az9s9HOF9wgQ3X_WJJ5nlEukIarjq-2Ctgy7dDFSf14fhxWl65I_zciumW0zX5cGWjm0Hp1PTm1mSNdR7To5rylPmzRyn8ujYyDC_ra72BChi0EDHttZROxnT53FydjkQZNL52rzAx_SD3nOUyoiopkq_xUEm3GGRk6wZ9-gvWC3wBgSVLKRw',
-        contentIntro: '在本篇文章中，我们将深入探讨大千智荟交流论坛在近期进行的前端架构升级。作为企业级知识交流平台，其核心挑战在于如何在保持严谨、专业视觉风格的同时，提供极致的内容加载速度与交互流畅度。',
-        contentImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBA-s1YyF6pfbdiGqhVb6Y0flR46E17B-ez9DYLENrkjuctaTv4zSUknEO7Sc2Su3cFg73LrZZXVgO9kHtjc4lThZbKFbm3IzRYpYlP3KUKW4M2T-ciNFOOVFVwFcqsa1pheQBGoW7sUyVEM_pEs7vte9JzojSbFG1fUvSiRGpVkZgKpst_Pw6YxXVOulycBWRSrKpJaX55muzUSy-ynCdSZTQQ6Khlhj1ofSwbwUpaMkeHIC9m-a1tMB7A2abwHgGFLyaACpxW9Ec',
-        contentParagraphs: [
-          '我们采用了基于组件化的设计系统，通过严格的 Visual Tokens 管理，确保了 UI 的一致性。此外，对于长篇文章中的大量附件与评论数据，我们实施了懒加载与虚拟滚动技术。',
-          '"技术是工具，交流是灵魂。" 这句话贯穿了我们的整个开发周期。在后续的内容中，我们将展示具体的代码实现方案与性能测试结果，希望能对大家在类似平台的开发中有所启发。',
-        ],
-        attachments: [
-          { name: '国网四川省电力公司常见漏洞检测与处置手册 (2022版) 编制...' },
-        ],
+        title: '',
+        publishTime: '',
+        tag: '',
+        author: '',
+        authorTitle: '',
+        authorAvatar: '',
+        contentHtml: '',
+        articleImage: '',
+        contentParagraphs: [],
+        attachments: [],
       },
-      comments: [
-        {
-          id: 1,
-          author: '国网四川内江东兴双才供电所-曹煊洲',
-          avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDi4uTc1WAQi2W-npQ1RZFgceqnIbyW43D-zJkvrcQC65uh21wBgaWT2IcsFmjIQImtFxKRoDUSDjDDfHxYODN82UcSaR3a4KzI4ZjL1OV6oG3emPZpWglnjk1QJ2_2wGtO3xh54JcykysXRc3ZaJ79fpiGtjjMDfb2GxJgzDLqxcc9CH8SfEwK8fMmP2CyMbb4OW9Xyz-6T0Msd6ckL8jeQawwKdp-cVX1JV5D_EnK7ufHeI8WJVs7GT2lwJ8bE2UnDVPvYSkivPI',
-          time: '2026-03-19 09:04:31',
-          content: '很好的一篇文章，对我们的日常工作很有启发，特别是在前端性能指标的监控方面。',
-          canDelete: false,
-          children: [
-            {
-              id: 2,
-              author: '国网四川内江市区域邻供电所-罗金鑫',
-              avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCpKuDSASBfD02P_85fXNjus1uaQKaUd87lm0dOX2AFA6vJpKBBl5s8N3hhx_rv7x8_Pr6r6jaBGFFQbvEft7ly1n-V2am_SfNpfMscF6GYXF0CSVlpYpXqr3NmsyQWG6pjFNQuFycTqTE7hUqx96sYNU0eC2aB8znL0bRhDVZfFUUyjo-ZHFs6IKDLrGlckKFIGtCkTRCM1NA3oVuLofHnTsrtrH1oucMAtKRap2cLskVMUNi-Dzbh7ltcSuh3FIiy_nGBzsHwsXA',
-              time: '刚刚',
-              content: '测试一下嵌套回复，感谢曹工的支持！',
-              replyTo: '国网四川内江东兴双才供电所-曹煊洲',
-              canDelete: true,
-              children: [],
-            },
-          ],
-        },
-      ],
+      // Label map
+      labelList: [],
+      // User info cache
+      authorInfo: {},
+      // Comment & reply
+      comments: [],
     }
   },
   computed: {
@@ -177,33 +163,179 @@ export default {
       }
       return countChildren(this.comments)
     },
+    articleTagName() {
+      if (!this.article.tagId || !this.labelList.length) return ''
+      const label = this.labelList.find(l => String(l.labelId) === String(this.article.tagId))
+      return label ? label.labelName : ''
+    },
+  },
+  mounted() {
+    this.initCurrentUser()
+    this.loadLabels()
+    if (this.articleId) {
+      this.loadArticle(this.articleId)
+      this.loadComments(this.articleId)
+      this.loadArticleFiles(this.articleId)
+    }
   },
   methods: {
+    initCurrentUser() {
+      try {
+        const u = window.sessionStorage.getItem('user')
+        if (u) {
+          this.currentUser = JSON.parse(u)
+          if (this.currentUser.portrait) {
+            this.currentUserAvatar = this.apiBase + this.currentUser.portrait
+          }
+        }
+      } catch (e) { /* ignore */ }
+    },
+    loadLabels() {
+      this.getRequest('/common/getArticleLabel').then(resp => {
+        if (resp && Array.isArray(resp)) {
+          this.labelList = resp
+        }
+      }).catch(() => {})
+    },
+    loadArticle(id) {
+      this.loading = true
+      getArticleById(id).then(resp => {
+        this.loading = false
+        if (resp) {
+          this.article.title = resp.articleTitle || ''
+          this.article.publishTime = resp.createTime || ''
+          this.article.tagId = resp.articleLabelId
+          this.article.author = resp.articleAuthor || ''
+          this.article.contentHtml = resp.articleContentHtml || resp.articleContent || ''
+          this.article.articleImage = resp.articleImage ? this.fileBase + resp.articleImage : ''
+          // Fetch author info
+          if (resp.userId) {
+            this.loadAuthorInfo(resp.userId)
+          }
+        }
+      }).catch(() => {
+        this.loading = false
+      })
+    },
+    loadAuthorInfo(userId) {
+      getUserinfoById(userId).then(resp => {
+        if (resp) {
+          this.authorInfo = resp
+          if (resp.portrait) {
+            this.article.authorAvatar = this.apiBase + resp.portrait
+          }
+          this.article.authorTitle = resp.title || ''
+        }
+      }).catch(() => {})
+    },
+    loadComments(articleId) {
+      getCommentReply(articleId).then(resp => {
+        if (resp && Array.isArray(resp)) {
+          this.comments = resp.map(c => this.mapComment(c))
+        } else {
+          this.comments = []
+        }
+      }).catch(() => {
+        this.comments = []
+      })
+    },
+    // Map API comment to CommentItem props format
+    mapComment(c) {
+      const myId = this.currentUser ? this.currentUser.id : null
+      return {
+        id: c.commentId || c.id,
+        author: c.nickname || '',
+        avatar: c.portrait ? this.apiBase + c.portrait : '',
+        time: c.commentTime || '',
+        content: c.commentContent || '',
+        canDelete: myId != null && String(c.userId) === String(myId),
+        children: (c.reply || []).map(r => ({
+          id: r.replyId || r.id,
+          author: r.nickname || '',
+          avatar: r.portrait ? this.apiBase + r.portrait : '',
+          time: r.replyTime || '',
+          content: r.replyContent || '',
+          replyTo: r.replyToNickname || '',
+          canDelete: myId != null && String(r.replyUserId || r.userId) === String(myId),
+          children: [],
+        })),
+      }
+    },
+    loadArticleFiles(articleId) {
+      getArticleFileByArticleId(articleId).then(resp => {
+        if (resp) {
+          const list = Array.isArray(resp) ? resp : (resp.data || [])
+          this.article.attachments = list.map(f => ({
+            name: f.fileName || f.name || '附件',
+            filePath: f.filePath || '',
+            fileId: f.fileId || f.id,
+          }))
+        }
+      }).catch(() => {
+        this.article.attachments = []
+      })
+    },
     submitComment() {
       if (!this.newComment.trim()) return
-      this.comments.push({
-        id: Date.now(),
-        author: '当前用户',
-        avatar: this.currentUserAvatar,
-        time: '刚刚',
-        content: this.newComment,
-        canDelete: true,
-        children: [],
+      if (!this.currentUser) {
+        this.$router.push('/stitch-login')
+        return
+      }
+      const tempData = {
+        commentContent: this.newComment,
+        commentUserId: this.currentUser.id,
+        commentArticleId: this.articleId,
+      }
+      this.putRequest('/comment/userComment', tempData).then(resp => {
+        if (resp) {
+          this.newComment = ''
+          this.loadComments(this.articleId)
+        }
+      }).catch(() => {
+        Message({ type: 'error', message: '评论失败', offset: 54 })
       })
-      this.newComment = ''
     },
     handleDeleteComment(commentId) {
-      const removeFromList = (list) => {
-        for (let i = 0; i < list.length; i++) {
-          if (list[i].id === commentId) {
-            list.splice(i, 1)
-            return true
+      this.$confirm('确定删除该评论？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }).then(() => {
+        // Try as comment first, then as reply
+        this.postRequest('/comment/deleteCommentById', { commentId }).then(resp => {
+          if (resp) {
+            this.loadComments(this.articleId)
           }
-          if (list[i].children && removeFromList(list[i].children)) return true
-        }
-        return false
-      }
-      removeFromList(this.comments)
+        }).catch(() => {
+          // Try as reply
+          this.postRequest('/reply/deleteReplyById', { replyId: commentId }).then(r => {
+            if (r) this.loadComments(this.articleId)
+          })
+        })
+      }).catch(() => {})
+    },
+    downloadFile(filePath, fileName) {
+      if (!filePath) return
+      const url = this.fileBase + (filePath.startsWith('/') ? filePath : '/' + filePath)
+      fetch(url, { method: 'GET', credentials: 'include' })
+        .then(resp => {
+          if (!resp.ok) throw new Error('下载失败')
+          return resp.blob()
+        })
+        .then(blob => {
+          const blobUrl = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = blobUrl
+          link.setAttribute('download', fileName || 'download')
+          link.style.display = 'none'
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(blobUrl)
+        })
+        .catch(() => {
+          Message({ message: '下载失败，请稍后重试', type: 'warning', showClose: true, offset: 54 })
+        })
     },
   },
 }

@@ -197,7 +197,7 @@
                       v-for="sub in child.children"
                       :key="sub.name"
                       class="flex items-center gap-2 px-2 py-1.5 hover:bg-surface-container rounded cursor-pointer"
-                      @click="selectOrg(sub.name)"
+                      @click="selectOrg(sub.name, sub.id)"
                     >
                       <input v-model="sub.checked" class="w-4 h-4 text-primary border-outline-variant rounded" type="checkbox" @click.stop>
                       <span class="text-body-md text-on-surface-variant">{{ sub.name }}</span>
@@ -218,6 +218,8 @@
 </template>
 
 <script>
+import { Message } from 'element-ui'
+
 export default {
   name: 'StitchLogin',
   data() {
@@ -226,6 +228,8 @@ export default {
       showLoginPassword: false,
       showOrgModal: false,
       orgFilter: '',
+      loginLoading: false,
+      signupLoading: false,
       loginForm: {
         username: '',
         password: '',
@@ -238,54 +242,129 @@ export default {
         name: '',
         phone: '',
         org: '',
+        orgNo: '',
       },
-      orgTree: [
-        {
-          name: '国网四川内江供电公司',
-          expanded: true,
-          checked: false,
-          children: [
-            {
-              name: '国网四川内江市区供电中心',
-              expanded: true,
-              checked: true,
-              children: [
-                { name: '国网四川内江市区凌家供电所', checked: false },
-                { name: '国网四川内江市区白马供电所', checked: false },
-                { name: '国网四川内江市区殖民供电所', checked: false },
-              ],
-            },
-          ],
-        },
-        {
-          name: '国网四川内江东兴供电公司',
-          expanded: false,
-          checked: false,
-          children: [],
-        },
-        {
-          name: '国网四川威远县供电公司',
-          expanded: false,
-          checked: false,
-          children: [],
-        },
-      ],
+      orgTree: [],
+      orgTreeLoading: false,
     }
+  },
+  computed: {
+    filteredOrgTree() {
+      if (!this.orgFilter) return this.orgTree
+      const filter = (nodes) => {
+        return nodes.map(n => {
+          const match = n.name.toLowerCase().includes(this.orgFilter.toLowerCase())
+          const children = n.children ? filter(n.children) : []
+          if (match || children.length > 0) {
+            return { ...n, expanded: true, children }
+          }
+          return null
+        }).filter(Boolean)
+      }
+      return filter(this.orgTree)
+    },
+  },
+  mounted() {
+    this.loadOrgTree()
   },
   methods: {
     switchTab(tab) {
       this.activeTab = tab
     },
-    selectOrg(name) {
+    selectOrg(name, id) {
       this.signupForm.org = name
+      this.signupForm.orgNo = id
+    },
+    loadOrgTree() {
+      this.orgTreeLoading = true
+      this.getRequest('/common/saOrgTree').then(resp => {
+        this.orgTreeLoading = false
+        const data = resp && resp.obj ? resp.obj : (Array.isArray(resp) ? resp : [])
+        this.orgTree = this.transformOrgTree(data)
+      }).catch(() => {
+        this.orgTreeLoading = false
+        this.orgTree = []
+      })
+    },
+    transformOrgTree(nodes) {
+      return nodes.map(n => ({
+        name: n.orgName || n.name || '',
+        id: n.id || n.orgNo || '',
+        expanded: false,
+        checked: false,
+        children: n.children && n.children.length > 0 ? this.transformOrgTree(n.children) : [],
+      }))
     },
     handleLogin() {
-      // TODO: integrate with existing auth API
-      console.log('Login:', this.loginForm)
+      if (!this.loginForm.username || !this.loginForm.password) {
+        Message({ type: 'error', message: '账号或密码不能为空！', offset: 54 })
+        return
+      }
+      this.loginLoading = true
+      this.postRequest('/common/login', { ...this.loginForm, channel: '01' }).then(resp => {
+        this.loginLoading = false
+        if (resp) {
+          const tokenStr = resp.obj.tokenHead + resp.obj.token
+          window.sessionStorage.setItem('tokenStr', tokenStr)
+          this.$bus.$emit('isLogin', true)
+          // Fetch user info
+          this.getRequest('/common/user/info').then(userResp => {
+            if (userResp) {
+              window.sessionStorage.setItem('user', JSON.stringify(userResp))
+            }
+          })
+          this.$router.replace('/stitch-index')
+          setTimeout(() => { location.reload() }, 600)
+        }
+      }).catch(() => {
+        this.loginLoading = false
+      })
     },
     handleSignup() {
-      // TODO: integrate with existing auth API
-      console.log('Signup:', this.signupForm)
+      const phoneRegex = /^1[3-9]\d{9}$/
+      if (!this.signupForm.username || !this.signupForm.password) {
+        Message({ type: 'error', message: '账号或密码不能为空！', offset: 54 })
+        return
+      }
+      if (this.signupForm.confirmPassword !== this.signupForm.password) {
+        Message({ type: 'error', message: '两次输入的密码不一致！', offset: 54 })
+        return
+      }
+      if (!this.signupForm.name) {
+        Message({ type: 'error', message: '姓名不能为空！', offset: 54 })
+        return
+      }
+      if (!this.signupForm.phone) {
+        Message({ type: 'error', message: '电话不能为空！', offset: 54 })
+        return
+      }
+      if (!phoneRegex.test(this.signupForm.phone)) {
+        Message({ type: 'error', message: '请输入正确的手机号！', offset: 54 })
+        return
+      }
+      if (!this.signupForm.orgNo) {
+        Message({ type: 'error', message: '单位不能为空，请选择单位！', offset: 54 })
+        return
+      }
+      this.signupLoading = true
+      const nickname = `${this.signupForm.org}-${this.signupForm.name.trim()}`
+      this.postRequest('/common/register', {
+        username: this.signupForm.username,
+        password: this.signupForm.password,
+        phone: this.signupForm.phone,
+        orgNo: this.signupForm.orgNo,
+        nickname,
+      }).then(resp => {
+        this.signupLoading = false
+        if (resp) {
+          Message({ type: 'success', message: '注册成功，请登录！', offset: 54 })
+          this.loginForm.username = this.signupForm.username
+          this.loginForm.password = this.signupForm.password
+          this.switchTab('login')
+        }
+      }).catch(() => {
+        this.signupLoading = false
+      })
     },
   },
 }

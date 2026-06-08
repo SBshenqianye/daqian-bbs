@@ -116,59 +116,59 @@ export default {
   name: 'StitchIndex',
   data() {
     return {
+      loading: false,
       categories: [
         { name: '技术交流', icon: 'thumb_up', active: true },
         { name: '求助问答', icon: 'help', active: false },
         { name: '资源共享', icon: 'folder_open', active: false },
       ],
-      articles: [
-        {
-          title: '看下图片',
-          summary: '看下图片内容描述，这里展示了关于该主题的详细内容预览...',
-          author: '国网四川内江供电公司-qupeng',
-          time: '9天前',
-          views: 3,
-          comments: 0,
-          likes: 0,
-          cover: null,
-        },
-        {
-          title: '能看到图片吗',
-          summary: '能看到图片吗？这是一个测试贴，用于验证平台图片渲染与布局的兼容性。',
-          author: '国网四川内江供电公司-qupeng',
-          time: '9天前',
-          views: 2,
-          comments: 0,
-          likes: 0,
-          cover: null,
-        },
-        {
-          title: '看看封面图',
-          summary: '没有摘要。本文主要探讨了配电网自动化系统在极端天气下的稳定性保障方案，以及新型传感器在故障定位中的应用。',
-          author: '国网四川内江市东城郊供电所-罗金鑫',
-          time: '16天前',
-          views: 7,
-          comments: 0,
-          likes: 0,
-          cover: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAPuyX5KB5T1A_d7TcCU5Bvq29ztDs4O7y0EWU1yJ8DUPDMJoje4LYCsTOTc2K_giaVouKJq24euFZI43gijycui8rHIsDbYZ_HrTfuw_vne9Ceox8VE9LPR8BgD3betUqrl9wgMRU_SMNqAD5e9YyIDJXv89By5_la3hq6fp0gXqqPrPL0aZMSG69yeP9scoSdBDSPKDimhBjj5xBNC4MIkgqx6SJKX0oJpvCheZhfKWRmFH5T0M6SUxIkDZBDi_r1PsGOMSAGJ34',
-        },
-      ],
-      hotTopics: [
-        '智能巡检机器人最新应用',
-        '电力系统碳中和技术路线图',
-        '关于数字化班组建设的思考',
-        '配网不停电作业技术规范',
-        '测试图片发布规范',
-      ],
+      articles: [],
+      hotTopics: [],
+      imageBase: process.env.VUE_APP_BBS_BASE_FILE || '',
     }
   },
+  mounted() {
+    this.fetchArticles()
+    this.fetchHotTopics()
+  },
   methods: {
+    fetchArticles(keywords = '') {
+      this.loading = true
+      this.getRequest(`/common/article/getArticle?keywords=${encodeURIComponent(keywords)}`).then(resp => {
+        this.loading = false
+        const list = Array.isArray(resp) ? resp : (resp && resp.data && Array.isArray(resp.data) ? resp.data : [])
+        this.articles = list.map(a => ({
+          articleId: a.articleId,
+          title: a.articleTitle || '',
+          summary: a.articleSummary || '',
+          author: a.articleAuthor || '',
+          time: a.createTime || a.articleCreateTime || '',
+          views: a.articleViewNum || 0,
+          comments: a.articleCommentNum || a.commentNum || 0,
+          likes: a.articleGoodNum || 0,
+          cover: a.articleImage ? this.imageBase + a.articleImage : null,
+        }))
+      }).catch(() => {
+        this.loading = false
+        this.articles = []
+      })
+    },
+    fetchHotTopics() {
+      this.getRequest('/common/article/getHot').then(resp => {
+        const list = Array.isArray(resp) ? resp : (resp && resp.data && Array.isArray(resp.data) ? resp.data : [])
+        this.hotTopics = list.map(h => h.articleTitle || h)
+      }).catch(() => {
+        this.hotTopics = []
+      })
+    },
     selectCategory(cat) {
       this.categories.forEach(c => { c.active = false })
       cat.active = true
     },
     goToArticle(article) {
-      this.$router.push({ name: 'stitchArticleDetails', params: { articleId: 1 } })
+      if (article.articleId) {
+        this.$router.push({ name: 'stitchArticleDetails', params: { articleId: article.articleId } })
+      }
     },
     getRankClass(rank) {
       if (rank === 1) return 'rank-1'

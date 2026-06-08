@@ -22,7 +22,8 @@
           <div class="flex items-center flex-wrap gap-4 font-label-md text-label-md text-on-surface-variant">
             <div class="flex items-center gap-2">
               <div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center overflow-hidden">
-                <img alt="Avatar" class="w-full h-full object-cover" :src="article.authorAvatar">
+                <img v-if="article.authorAvatar" alt="Avatar" class="w-full h-full object-cover" :src="article.authorAvatar">
+                <span v-else class="material-symbols-outlined text-[14px]">person</span>
               </div>
               <span>{{ article.author }}</span>
             </div>
@@ -68,55 +69,69 @@
 </template>
 
 <script>
+import { Message } from 'element-ui'
+
 export default {
   name: 'StitchStat',
   data() {
     return {
-      articles: [
-        {
-          title: '看看封面图',
-          summary: '没有摘要',
-          author: '国网四川内江市区城郊供电所-罗金鑫',
-          authorAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBK9iWgfpcTL24GAPDgyicQFxMgvIwJGPz3fTP_tdkm-DjcZJRaQGYZURwVykt9pdG_eENnsV5uaF4hpkFUSejzwGKBirgjo13A4MuvQorvxQ36DOiQJ2hnE0DNvpODX4jHUdMYFseWLCvqlolJjIZxOL7Qun1Ed3-amz_msbJE7Uo_b9w_rdnes6g-1_yMT8d3dgWHVPjerLjSr3SC_4hS_JX0j8NAFKjxkw2CNZyYVzp280SXNhDfax_vuaYAlLpz2cVx_vDPsKA',
-          time: '16天前',
-          views: 7,
-          comments: 0,
-          likes: 0,
-          cover: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDws5U0deUxe72ULVAK_bBqeVzFHI-IpLvMVWlqYrvgnBhiduttIrneMACuhguCJUPDke7mgnZvkJU9mG_djEZ7bvfcJVBFan_w-enbghMER_LcdweBp4EKmVe4pnfnC8BhPmj4D_OBfxo8l_EuveQNvYzCqeXuT6m4VQZKVjnsNF95RH91YWXGC-8hPulce9yGgPiLDez2sUsPJO3wDDsiP4aLnj8-EgW_cR-JqAeoDG9qY0JFtEdCxxX052VX1IPQbGclylMghCw',
-        },
-        {
-          title: '反馈图片3张',
-          summary: '全是图片',
-          author: '国网四川内江市区城郊供电所-罗金鑫',
-          authorAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCq-9FyhxYdjbRpbMJ3VP_w6SQddO0I9xuY-Fku9QsQLXJS0ZJulF0Z0D5ZYDRqfR-r6rA-LRW7D4UzpjFeBAWTq5wk7EOBLH9OsqNe1X6_3H4t9C0HkVPyz3yq7hwT7X0D2GVTf11OunGrBIIwIftBlnnDQitXSN_NZifuI99EDPVnQua8bhepvAGca1FTrusbXYcs4f871eASglNk_BlDev0smARHFm11NgyDs_GbGoV9J5QsjiR8eP00QCDpMCilO3yQScplpRk',
-          time: '16天前',
-          views: 4,
-          comments: 0,
-          likes: 0,
-          cover: null,
-        },
-        {
-          title: '测试图片发布',
-          summary: '这是文章摘要，用于测试在卡片布局中的显示效果。通常包含核心内容的简要概括。',
-          author: '国网四川内江市区城郊供电所-罗金鑫',
-          authorAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAxyTrsiQE5O_-h79vT_G9ZLtIw8Sd_96A-_CPRWJFYT90TZyHtt73hdEEDacRaMbZ3d-RvkNqSHv8CAdSJj3oLS-8L7SF66TU43YjxqzhW-zZMLukQ1yMGgruzXx9UTV9O-6k-ODf3BvI7SsUn_o5lPpqwZT6DmahYTRWZCgNHnEnKPL7K2JFGfVEi8XyL7ieb7ZF7ZXH9jBR8rIU_5foI_MDmisCfucJdnK90qVm6K7K0racWi5N8FVjArUvepCIv7vpKIbvA9XM',
-          time: '16天前',
-          views: 7,
-          comments: 0,
-          likes: 0,
-          cover: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC-J0PNzVHHqbtERifF5r4HIFHYLuz_zbbr8Yki_uIK2qSSQ7PYyBXy8YxF08BClE04ijmDXffl4wIM7TvgYtrvyrIkKPVVOVeHy4WB6hXkPONfLsTwpz49tHz7NGDIjHftmgj4McStSObe-4YrtWhvuaL5BQMN5XNe05-AOgEIBzrJwxDSsHw136Q6372Jo3qAHr5nvwaqqvOH8h8ibXiJVMLe6qUP-CAZ915xw9AAuPVO7Omv3z3EJIOAH72SO2hgO9S9eNBiydk',
-        },
-      ],
+      loading: false,
+      articles: [],
+      imageBase: process.env.VUE_APP_BBS_BASE_FILE || '',
     }
   },
+  mounted() {
+    this.fetchMyArticles()
+  },
   methods: {
-    handleDelete(index) {
-      if (confirm('确定要删除这篇文章吗？')) {
-        this.articles.splice(index, 1)
+    fetchMyArticles() {
+      const userStr = window.sessionStorage.getItem('user')
+      if (!userStr) {
+        this.articles = []
+        return
       }
+      const userId = JSON.parse(userStr).id
+      this.loading = true
+      this.getRequest(`/article/getArticleByUserId?userId=${userId}`).then(resp => {
+        this.loading = false
+        const list = Array.isArray(resp) ? resp : (resp && resp.data && Array.isArray(resp.data) ? resp.data : [])
+        this.articles = list.map(a => ({
+          articleId: a.articleId,
+          title: a.articleTitle || '',
+          summary: a.articleSummary || '',
+          author: a.articleAuthor || '',
+          authorAvatar: '',
+          time: a.createTime || a.articleCreateTime || '',
+          views: a.articleViewNum || 0,
+          comments: a.articleCommentNum || 0,
+          likes: a.articleGoodNum || 0,
+          cover: a.articleImage ? this.imageBase + a.articleImage : null,
+        }))
+      }).catch(() => {
+        this.loading = false
+        this.articles = []
+      })
+    },
+    handleDelete(index) {
+      const article = this.articles[index]
+      if (!article || !article.articleId) return
+      this.$confirm('确定删除该文章？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }).then(() => {
+        this.postRequest('/article/deleteArticleByArticleId', { articleId: article.articleId }).then(resp => {
+          if (resp) {
+            Message({ type: 'success', message: '删除成功', offset: 54 })
+            this.fetchMyArticles()
+          }
+        })
+      }).catch(() => {})
     },
     handleEdit(article) {
-      this.$router.push({ name: 'stitchWrite', query: { id: article.title } })
+      if (article.articleId) {
+        this.$router.push({ name: 'stitchWrite', query: { articleId: article.articleId } })
+      }
     },
   },
 }

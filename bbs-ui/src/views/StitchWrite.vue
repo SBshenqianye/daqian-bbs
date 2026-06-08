@@ -57,7 +57,7 @@
               <span class="material-symbols-outlined">description</span>
             </div>
             <div class="flex-grow min-w-0">
-              <p class="text-sm font-medium text-gray-700 truncate">{{ file.name }}</p>
+              <p class="text-sm font-medium text-gray-700 truncate">{{ file.fileName || file.name }}</p>
               <p class="text-xs text-gray-400">{{ file.size }}</p>
             </div>
             <button class="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" @click="removeAttachment(index)">
@@ -124,13 +124,13 @@
             <label class="block text-sm font-medium text-gray-700 mb-3">选择标签</label>
             <div class="flex flex-wrap gap-2">
               <button
-                v-for="tag in tags"
-                :key="tag"
+                v-for="label in labelList"
+                :key="label.labelId"
                 class="px-4 py-1.5 rounded-full border text-sm transition-colors"
-                :class="selectedTag === tag ? 'border-primary bg-blue-50 text-primary' : 'border-gray-200 text-gray-600 hover:border-primary hover:text-primary hover:bg-blue-50'"
-                @click="selectedTag = tag"
+                :class="String(selectedLabelId) === String(label.labelId) ? 'border-primary bg-blue-50 text-primary' : 'border-gray-200 text-gray-600 hover:border-primary hover:text-primary hover:bg-blue-50'"
+                @click="selectedLabelId = label.labelId"
               >
-                {{ tag }}
+                {{ label.labelName }}
               </button>
             </div>
           </div>
@@ -148,22 +148,27 @@
 <script>
 import { mavonEditor } from 'mavon-editor'
 import 'mavon-editor/dist/css/index.css'
+import { Message, Loading } from 'element-ui'
+import { getArticleById, getArticleFileByArticleId } from '@/api/article'
 
 export default {
   name: 'StitchWrite',
   components: { mavonEditor },
   data() {
     return {
-      articleTitle: '反馈图片3张',
-      markdownContent: '![反馈详情.jpg](http://24.62.0.65:18848/bbs-server/files/User/id_33/article/2026-05-06/1778032171866_.jpg)',
+      articleId: this.$route.query.articleId || null,
+      articleTitle: '',
+      markdownContent: '',
+      markdownHtml: '',
       articleSummary: '',
       showPublishModal: false,
       coverPreview: null,
-      selectedTag: '求助问答',
-      tags: ['技术交流', '求助问答', '资源分享', '社区活动'],
-      attachments: [
-        { name: '反馈详情.jpg', size: '1.2 MB' },
-      ],
+      coverFile: null,
+      selectedLabelId: null,
+      labelList: [],
+      // Attachments: { fileId, fileName } after server upload
+      attachments: [],
+      uploading: false,
       toolbars: {
         bold: true,
         italic: true,
@@ -194,6 +199,18 @@ export default {
       },
     }
   },
+  computed: {
+    selectedLabelName() {
+      const found = this.labelList.find(l => String(l.labelId) === String(this.selectedLabelId))
+      return found ? found.labelName : ''
+    },
+  },
+  mounted() {
+    this.loadLabels()
+    if (this.articleId) {
+      this.loadArticleForEdit(this.articleId)
+    }
+  },
   methods: {
     autoResizeTitle() {
       const el = this.$refs.titleInput
@@ -202,14 +219,62 @@ export default {
         el.style.height = el.scrollHeight + 'px'
       }
     },
+    loadLabels() {
+      this.getRequest('/common/getArticleLabel').then(resp => {
+        if (resp && Array.isArray(resp)) {
+          this.labelList = resp
+          if (resp.length > 0) {
+            this.selectedLabelId = resp[0].labelId
+          }
+        }
+      }).catch(() => {
+        this.labelList = []
+      })
+    },
+    loadArticleForEdit(id) {
+      getArticleById(id).then(resp => {
+        if (resp) {
+          this.articleTitle = resp.articleTitle || ''
+          this.markdownContent = resp.articleContent || ''
+          this.markdownHtml = resp.articleContentHtml || ''
+          this.articleSummary = resp.articleSummary || ''
+          this.selectedLabelId = resp.articleLabelId
+          if (resp.articleImage) {
+            this.coverPreview = resp.articleImage
+          }
+          // Load attachment files
+          this.loadArticleFiles(id)
+        }
+      }).catch(() => {
+        Message({ message: '加载文章失败', type: 'error', showClose: true, offset: 54 })
+      })
+    },
+    loadArticleFiles(id) {
+      getArticleFileByArticleId(id).then(resp => {
+        if (resp) {
+          const list = Array.isArray(resp) ? resp : (resp.data || [])
+          this.attachments = list.map(item => ({
+            fileId: item.fileId != null ? item.fileId : item.id,
+            fileName: item.fileName || item.name || '附件',
+            size: '',
+          }))
+        }
+      }).catch(() => {
+        this.attachments = []
+      })
+    },
     handleImgAdd(pos, file) {
-      // Use existing project pattern for image upload
       const formData = new FormData()
       formData.append('file', file)
       this.postRequest('/common/upload', formData).then(res => {
-        this.$refs.mdEditor.$img2Url(pos, res.url || res)
+        if (res && res.url) {
+          this.$refs.mdEditor.$img2Url(pos, res.url)
+        } else if (res && typeof res === 'string') {
+          this.$refs.mdEditor.$img2Url(pos, res)
+        } else {
+          this.$refs.mdEditor.$img2Url(pos, URL.createObjectURL(file))
+        }
       }).catch(() => {
-        // Fallback: use local blob URL
         const url = URL.createObjectURL(file)
         this.$refs.mdEditor.$img2Url(pos, url)
       })
@@ -219,14 +284,32 @@ export default {
     },
     handleAttachmentAdd(e) {
       const files = e.target.files
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        const ext = file.name.split('.').pop().toLowerCase()
-        if (['exe', 'bat', 'sh'].includes(ext)) continue
-        if (this.attachments.length >= 5) break
-        const sizeMB = (file.size / (1024 * 1024)).toFixed(1)
-        this.attachments.push({ name: file.name, size: sizeMB + ' MB' })
+      const userStr = window.sessionStorage.getItem('user')
+      if (!userStr) {
+        Message({ message: '请先登录', type: 'warning', showClose: true, offset: 54 })
+        return
       }
+      const userId = JSON.parse(userStr).id
+      const allowed = Array.from(files).filter(f => {
+        const ext = f.name.split('.').pop().toLowerCase()
+        return !['exe', 'bat', 'sh', 'cmd', 'com', 'scr', 'msi', 'vbs', 'ps1'].includes(ext)
+      })
+      const remaining = 5 - this.attachments.length
+      const toUpload = allowed.slice(0, remaining)
+      toUpload.forEach(file => {
+        const formData = new FormData()
+        formData.append('userId', userId)
+        formData.append('file', file)
+        this.postRequest('/articleFile/upload', formData).then(resp => {
+          if (resp && resp.code === 200 && resp.obj && resp.obj.fileId != null) {
+            this.attachments.push({ fileId: resp.obj.fileId, fileName: file.name, size: (file.size / (1024 * 1024)).toFixed(1) + ' MB' })
+          } else {
+            Message({ message: (resp && resp.message) || '上传失败', type: 'error', showClose: true, offset: 54 })
+          }
+        }).catch(() => {
+          Message({ message: '上传失败', type: 'error', showClose: true, offset: 54 })
+        })
+      })
       this.$refs.attachmentInput.value = ''
     },
     removeAttachment(index) {
@@ -238,23 +321,86 @@ export default {
     handleCoverChange(e) {
       const file = e.target.files[0]
       if (file) {
+        this.coverFile = file
         const reader = new FileReader()
         reader.onload = (ev) => { this.coverPreview = ev.target.result }
         reader.readAsDataURL(file)
       }
     },
     handlePublish() {
-      // TODO: integrate with API
-      console.log('Publishing:', {
-        title: this.articleTitle,
-        content: this.markdownContent,
-        summary: this.articleSummary,
-        tag: this.selectedTag,
-        attachments: this.attachments,
-      })
+      if (!this.articleTitle.trim()) {
+        Message({ message: '标题不能为空', type: 'warning', showClose: true, offset: 54 })
+        return
+      }
+      if (this.articleTitle.length > 30) {
+        Message({ message: '标题最多30个字', type: 'warning', showClose: true, offset: 54 })
+        return
+      }
+      if (!this.markdownContent.trim()) {
+        Message({ message: '内容不能为空', type: 'warning', showClose: true, offset: 54 })
+        return
+      }
+      if (!this.articleSummary.trim()) {
+        Message({ message: '摘要不能为空', type: 'warning', showClose: true, offset: 54 })
+        return
+      }
+
+      const userStr = window.sessionStorage.getItem('user')
+      if (!userStr) {
+        Message({ message: '请先登录', type: 'warning', showClose: true, offset: 54 })
+        return
+      }
+      const user = JSON.parse(userStr)
+
+      const article = {
+        articleTitle: this.articleTitle,
+        articleContent: this.markdownContent,
+        articleContentHtml: this.markdownHtml || this.markdownContent,
+        articleSummary: this.articleSummary,
+        articleTypeId: 0,
+        articleCommunityId: 0,
+        articleLabelId: isNaN(parseInt(this.selectedLabelId)) ? 0 : parseInt(this.selectedLabelId),
+        userId: user.id,
+        articleAuthor: user.nickname,
+        articleImage: '',
+        files: this.attachments.map(a => a.fileId),
+      }
+
+      if (this.articleId) {
+        article.articleId = this.articleId
+      }
+
       this.showPublishModal = false
-      this.$message?.success('发布成功！')
-      this.$router.push('/stitch-stat')
+      const loading = Loading.service({ lock: true, text: '发布中，请稍后...' })
+
+      const doPublish = (imageUrl) => {
+        if (imageUrl) article.articleImage = imageUrl
+        const endpoint = this.articleId ? '/article/editArticle' : '/article/publish'
+        this.postRequest(endpoint, article).then(resp => {
+          loading.close()
+          if (resp) {
+            Message({ message: this.articleId ? '修改成功！' : '发布成功！', type: 'success', showClose: true, offset: 54 })
+            this.$router.push('/stitch-stat')
+          }
+        }).catch(() => {
+          loading.close()
+          Message({ message: '发布失败', type: 'error', showClose: true, offset: 54 })
+        })
+      }
+
+      // Upload cover if exists
+      if (this.coverFile) {
+        const formData = new FormData()
+        formData.append('userId', user.id)
+        formData.append('image', this.coverFile)
+        this.postRequest('/article/coverImg', formData).then(resp => {
+          doPublish(resp && typeof resp === 'string' ? resp : (resp && resp.url || ''))
+        }).catch(() => {
+          doPublish('')
+        })
+      } else {
+        doPublish(this.coverPreview && typeof this.coverPreview === 'string' && !this.coverPreview.startsWith('data:') ? this.coverPreview : '')
+      }
     },
   },
 }

@@ -34,7 +34,7 @@
               <img
                 alt="用户头像"
                 class="w-24 h-24 rounded-full border-4 border-surface-container-high object-cover transition-opacity group-hover:opacity-80"
-                :src="userInfo.avatar"
+                :src="avatarSrc || require('@/assets/portrait.png')"
               >
               <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <span class="material-symbols-outlined text-white text-3xl">upload</span>
@@ -42,7 +42,8 @@
             </div>
             <div>
               <h1 class="font-headline-lg text-headline-lg text-on-surface">{{ userInfo.nickname }}</h1>
-              <p class="font-body-md text-body-md text-on-surface-variant mt-1">{{ userInfo.role }} • {{ userInfo.dept }}</p>
+              <p v-if="userInfo.role || userInfo.dept" class="font-body-md text-body-md text-on-surface-variant mt-1">{{ userInfo.role || '' }}{{ userInfo.role && userInfo.dept ? ' • ' : '' }}{{ userInfo.dept || '' }}</p>
+              <p v-else-if="userInfo.username" class="font-body-md text-body-md text-on-surface-variant mt-1">{{ userInfo.username }}</p>
             </div>
           </div>
 
@@ -104,7 +105,7 @@
                 class="w-full px-4 py-3 rounded-lg border border-outline-variant bg-surface-container-low text-on-surface-variant font-body-md"
                 disabled
                 type="text"
-                :value="userInfo.phone"
+                :value="userInfo.username || userInfo.phone"
               >
             </div>
             <div class="space-y-2">
@@ -172,7 +173,7 @@
         </div>
         <div class="px-6 py-4 bg-surface-container-low flex justify-end gap-3">
           <button class="px-4 py-2 text-label-md font-medium text-on-surface-variant hover:bg-surface-container rounded-lg" @click="showAvatarDialog = false">取消</button>
-          <button class="px-6 py-2 text-label-md font-medium bg-primary text-white rounded-lg hover:bg-primary-container shadow-sm" @click="showAvatarDialog = false">开始上传</button>
+          <button class="px-6 py-2 text-label-md font-medium bg-primary text-white rounded-lg hover:bg-primary-container shadow-sm" @click="uploadAvatar">开始上传</button>
         </div>
       </div>
     </div>
@@ -180,6 +181,8 @@
 </template>
 
 <script>
+import { Message } from 'element-ui'
+
 export default {
   name: 'StitchUserinfo',
   data() {
@@ -189,23 +192,62 @@ export default {
       editingPhone: false,
       showAvatarDialog: false,
       avatarPreview: null,
+      avatarFile: null,
+      apiBase: process.env.VUE_APP_BBS_API || '',
       userInfo: {
-        nickname: '国网四川内江市区域郊供电所-罗金鑫',
-        userId: '33',
-        phone: '18482103768',
-        role: '企业高级会员',
-        dept: '数字化转型部',
-        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuADs7igVFY9-RVhKz7YANqTsy3BB1Xx6nclNMBs5PdiPeOGBH6RPjnnrC9VMohHSx7YNLrvSqRVISsL_w1HmZuIE8dQxV_0m3SQMqrrXSzef0fwUVWURdz3go_NbrSuyGGmWF7wnSlD9GKKk3Oh9MCbgs0gWqAT7N6YnM8eIA_folua99RRvgxPQ6y9XSgjEzar72HxthEydASnF7QCYMnetHMkl7vOWk1rDwQDq2o9LnQFiZXSl-APdFCt1yC3faQVP275pHU0_3o',
+        nickname: '',
+        userId: '',
+        phone: '',
+        username: '',
+        portrait: '',
+        // For display if available
+        role: '',
+        dept: '',
       },
       passwordForm: {
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       },
-      originalPhone: '18482103768',
+      originalPhone: '',
     }
   },
+  computed: {
+    avatarSrc() {
+      if (this.avatarPreview) return this.avatarPreview
+      if (this.userInfo.portrait) return this.apiBase + this.userInfo.portrait
+      return ''
+    },
+  },
+  mounted() {
+    this.loadUserInfo()
+  },
   methods: {
+    loadUserInfo() {
+      // First try from sessionStorage
+      const cached = window.sessionStorage.getItem('user')
+      if (cached) {
+        try {
+          const u = JSON.parse(cached)
+          this.applyUserInfo(u)
+        } catch (e) { /* ignore */ }
+      }
+      // Then fetch fresh info from API
+      this.getRequest('/common/user/info').then(resp => {
+        if (resp) {
+          this.applyUserInfo(resp)
+          window.sessionStorage.setItem('user', JSON.stringify(resp))
+        }
+      }).catch(() => { /* use cached */ })
+    },
+    applyUserInfo(u) {
+      this.userInfo.nickname = u.nickname || this.userInfo.nickname
+      this.userInfo.userId = String(u.id || u.userId || '')
+      this.userInfo.phone = u.phone || ''
+      this.userInfo.username = u.username || ''
+      this.userInfo.portrait = u.portrait || ''
+      this.originalPhone = u.phone || ''
+    },
     togglePhoneEdit() {
       this.editingPhone = !this.editingPhone
       if (this.editingPhone) {
@@ -215,8 +257,30 @@ export default {
       }
     },
     saveChanges() {
-      this.editingPhone = false
-      this.showSaveNotification = false
+      const phone = (this.userInfo.phone || '').trim()
+      const reg = /^1[3-9]\d{9}$/
+      if (!reg.test(phone)) {
+        Message({ type: 'warning', message: '请输入正确的手机号格式（11位，1开头）', offset: 54 })
+        return
+      }
+      const obj = {
+        id: parseInt(this.userInfo.userId),
+        phone: phone,
+      }
+      this.putRequest('/user/updateUserinfo', obj).then(resp => {
+        if (resp) {
+          this.editingPhone = false
+          this.showSaveNotification = false
+          this.userInfo.phone = phone
+          this.originalPhone = phone
+          // Refresh user info cache
+          this.getRequest('/common/user/info').then(r => {
+            if (r) window.sessionStorage.setItem('user', JSON.stringify(r))
+          })
+        }
+      }).catch(() => {
+        Message({ type: 'error', message: '保存失败', offset: 54 })
+      })
     },
     cancelChanges() {
       this.userInfo.phone = this.originalPhone
@@ -224,7 +288,42 @@ export default {
       this.showSaveNotification = false
     },
     handlePasswordChange() {
-      console.log('Password change:', this.passwordForm)
+      const { currentPassword, newPassword, confirmPassword } = this.passwordForm
+      if (!currentPassword || !currentPassword.trim()) {
+        Message({ type: 'warning', message: '原密码不能为空！', offset: 54 })
+        return
+      }
+      if (!newPassword || !newPassword.trim()) {
+        Message({ type: 'warning', message: '新密码不能为空！', offset: 54 })
+        return
+      }
+      if (!confirmPassword || !confirmPassword.trim()) {
+        Message({ type: 'warning', message: '重复新密码不能为空！', offset: 54 })
+        return
+      }
+      if (currentPassword.trim() === newPassword.trim()) {
+        Message({ type: 'warning', message: '新密码不能与原密码相同！', offset: 54 })
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        Message({ type: 'warning', message: '新密码与重复新密码不一致！', offset: 54 })
+        return
+      }
+      this.postRequest('/user/modPwd', {
+        id: parseInt(this.userInfo.userId),
+        password: currentPassword.trim(),
+        newPassword: newPassword.trim(),
+      }).then(resp => {
+        if (resp) {
+          Message({ type: 'success', message: '密码修改成功，请重新登录！', offset: 54 })
+          window.sessionStorage.clear()
+          this.$bus.$emit('isLogin', false)
+          this.$router.replace('/stitch-login')
+          setTimeout(() => { location.reload() }, 600)
+        }
+      }).catch(() => {
+        Message({ type: 'error', message: '密码修改失败', offset: 54 })
+      })
     },
     resetPasswordForm() {
       this.passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' }
@@ -235,10 +334,36 @@ export default {
     handleAvatarChange(e) {
       const file = e.target.files[0]
       if (file) {
+        this.avatarFile = file
         const reader = new FileReader()
         reader.onload = (ev) => { this.avatarPreview = ev.target.result }
         reader.readAsDataURL(file)
       }
+    },
+    uploadAvatar() {
+      if (!this.avatarFile) {
+        this.showAvatarDialog = false
+        return
+      }
+      const formData = new FormData()
+      formData.append('userId', parseInt(this.userInfo.userId))
+      formData.append('file', this.avatarFile)
+      this.putRequest('/user/updatePortrait', formData).then(resp => {
+        if (resp) {
+          this.showAvatarDialog = false
+          this.avatarPreview = null
+          this.avatarFile = null
+          // Refresh user info
+          this.getRequest('/common/user/info').then(r => {
+            if (r) {
+              window.sessionStorage.setItem('user', JSON.stringify(r))
+              this.applyUserInfo(r)
+            }
+          })
+        }
+      }).catch(() => {
+        Message({ type: 'error', message: '头像上传失败', offset: 54 })
+      })
     },
   },
 }
