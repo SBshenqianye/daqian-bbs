@@ -33,8 +33,13 @@
         <hr class="border-border mb-8">
 
         <!-- Article Content -->
-        <section class="markdown-body font-body-lg text-body-lg text-on-surface" v-if="article.contentHtml">
-          <div v-html="article.contentHtml"></div>
+        <section class="markdown-body" v-if="mdContent">
+          <mavon-editor
+            ref="previewMd"
+            v-model="mdContent"
+            v-bind="previewEditor"
+            class="me-preview-editor"
+          />
         </section>
         <section class="markdown-body font-body-lg text-body-lg text-on-surface" v-else>
           <p class="text-on-surface-variant">暂无内容</p>
@@ -114,13 +119,15 @@
 
 <script>
 import CommentItem from '@/components/CommentItem.vue'
+import { mavonEditor } from 'mavon-editor'
+import 'mavon-editor/dist/css/index.css'
 import { getArticleById, getUserinfoById, getArticleFileByArticleId } from '@/api/article'
 import { getCommentReply } from '@/api/comment'
 import { Message } from 'element-ui'
 
 export default {
   name: 'StitchArticleDetails',
-  components: { CommentItem },
+  components: { CommentItem, mavonEditor },
   data() {
     return {
       newComment: '',
@@ -150,6 +157,18 @@ export default {
       authorInfo: {},
       // Comment & reply
       comments: [],
+      // Markdown content for preview
+      mdContent: '',
+      // Markdown editor preview config
+      previewEditor: {
+        toolbarsFlag: false,
+        subfield: false,
+        defaultOpen: 'preview',
+        editable: false,
+        scrollStyle: true,
+        boxShadow: false,
+        ishljs: true,
+      },
     }
   },
   computed: {
@@ -208,6 +227,7 @@ export default {
           this.article.tagId = resp.articleLabelId
           this.article.author = resp.articleAuthor || ''
           this.article.contentHtml = resp.articleContentHtml || resp.articleContent || ''
+          this.mdContent = resp.articleContentHtml || resp.articleContent || ''
           this.article.articleImage = resp.articleImage ? this.fileBase + resp.articleImage : ''
           // Fetch author info
           if (resp.userId) {
@@ -372,3 +392,23 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.me-preview-editor {
+  min-height: 100px !important;
+  z-index: 1 !important;
+}
+.me-preview-editor .v-note-op {
+  display: none !important;
+}
+.me-preview-editor .v-note-panel {
+  border: none !important;
+  box-shadow: none !important;
+}
+.me-preview-editor .v-note-wrapper {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  z-index: 1;
+}
+</style>
