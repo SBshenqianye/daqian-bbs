@@ -35,7 +35,7 @@
 
     <main class="max-w-7xl mx-auto px-page-margin-desktop py-8">
       <!-- Top 3 Podium Section -->
-      <div class="flex flex-col md:flex-row items-stretch md:items-end gap-6 mb-8">
+      <div class="flex flex-col md:flex-row items-stretch md:items-end gap-6 mb-4">
         <!-- Rank 2 -->
         <div
           v-for="podium in topThree"
@@ -77,34 +77,45 @@
               </div>
             </div>
           </div>
-          <!-- Expanded Area -->
-          <div class="expand-content bg-surface-container-low border-t border-outline-variant">
-            <div v-if="podium.children && podium.children.length > 0" class="p-6">
-              <table class="w-full text-left border-separate border-spacing-y-2">
-                <thead>
-                  <tr class="text-on-surface-variant text-[11px] uppercase font-bold">
-                    <th class="pb-2 px-4">单位/科室</th>
-                    <th class="pb-2 px-4">{{ activeTab === 'month' ? '发帖数/累计发帖数' : '累计发帖数' }}</th>
-                    <th class="pb-2 px-4">{{ activeTab === 'month' ? '当月回帖数/累计回帖数' : '累计回帖数' }}</th>
-                    <th class="pb-2 px-4">{{ activeTab === 'month' ? '当月活跃度积分/累计活跃度积分' : '累计活跃度积分' }}</th>
-                    <th class="pb-2 px-4 text-right">排名</th>
-                  </tr>
-                </thead>
-                <tbody class="text-sm">
-                  <tr v-for="(child, ci) in podium.children" :key="ci" class="bg-surface-container-lowest rounded-md shadow-sm">
-                    <td class="py-3 px-4 rounded-l-md font-medium">{{ child.name }}</td>
-                    <td class="py-3 px-4">{{ child.posts }}/{{ child.totalPosts }}</td>
-                    <td class="py-3 px-4">{{ child.replies }}/{{ child.totalReplies }}</td>
-                    <td class="py-3 px-4 text-primary font-bold">{{ child.score }}/{{ child.totalScore }}</td>
-                    <td class="py-3 px-4 text-right rounded-r-md">{{ ci + 1 }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div v-else class="p-8 text-center text-on-surface-variant flex flex-col items-center gap-2">
-              <span class="material-symbols-outlined text-4xl opacity-20">inventory_2</span>
-              <p class="text-sm">暂无下属单位数据</p>
-            </div>
+        </div>
+      </div>
+
+      <!-- Expanded Podium Content (between podium and main list) -->
+      <div v-if="expandedPodiums.length" class="space-y-4 mb-8">
+        <div v-for="podium in expandedPodiums" :key="'exp-'+podium.rank"
+          class="bg-surface-container-low border border-outline-variant rounded-lg overflow-hidden shadow-sm"
+        >
+          <div class="px-6 py-3 border-b border-outline-variant flex items-center gap-3 text-sm font-medium text-on-surface">
+            <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" :class="podium.rankBg">
+              {{ podium.rank }}
+            </span>
+            {{ podium.name }} - 下属单位
+          </div>
+          <div v-if="podium.children && podium.children.length > 0" class="p-6">
+            <table class="w-full text-left border-separate border-spacing-y-2">
+              <thead>
+                <tr class="text-on-surface-variant text-[11px] uppercase font-bold">
+                  <th class="pb-2 px-4">单位/科室</th>
+                  <th class="pb-2 px-4">{{ activeTab === 'month' ? '发帖数/累计发帖数' : '累计发帖数' }}</th>
+                  <th class="pb-2 px-4">{{ activeTab === 'month' ? '当月回帖数/累计回帖数' : '累计回帖数' }}</th>
+                  <th class="pb-2 px-4">{{ activeTab === 'month' ? '当月活跃度积分/累计活跃度积分' : '累计活跃度积分' }}</th>
+                  <th class="pb-2 px-4 text-right">排名</th>
+                </tr>
+              </thead>
+              <tbody class="text-sm">
+                <tr v-for="(child, ci) in podium.children" :key="ci" class="bg-surface-container-lowest rounded-md shadow-sm">
+                  <td class="py-3 px-4 rounded-l-md font-medium">{{ child.name }}</td>
+                  <td class="py-3 px-4">{{ child.posts }}/{{ child.totalPosts }}</td>
+                  <td class="py-3 px-4">{{ child.replies }}/{{ child.totalReplies }}</td>
+                  <td class="py-3 px-4 text-primary font-bold">{{ child.score }}/{{ child.totalScore }}</td>
+                  <td class="py-3 px-4 text-right rounded-r-md">{{ ci + 1 }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="p-8 text-center text-on-surface-variant flex flex-col items-center gap-2">
+            <span class="material-symbols-outlined text-4xl opacity-20">inventory_2</span>
+            <p class="text-sm">暂无下属单位数据</p>
           </div>
         </div>
       </div>
@@ -216,6 +227,9 @@ export default {
   computed: {
     topThree() {
       return this.podiumData
+    },
+    expandedPodiums() {
+      return this.podiumData.filter(p => p.expanded)
     },
     restRanks() {
       return this.restRankData
