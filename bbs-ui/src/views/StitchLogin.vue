@@ -313,7 +313,8 @@ export default {
               window.sessionStorage.setItem('user', JSON.stringify(userResp))
             }
           })
-          this.$router.replace('/stitch-index')
+          const redirect = this.$route.query.redirect || '/stitch-index'
+          this.$router.replace(redirect)
           setTimeout(() => { location.reload() }, 600)
         }
       }).catch(() => {

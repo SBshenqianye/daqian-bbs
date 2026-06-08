@@ -104,6 +104,7 @@
             :key="comment.id"
             :comment="comment"
             @delete="handleDeleteComment"
+            @reply="handleReply"
           />
         </div>
       </div>
@@ -242,8 +243,11 @@ export default {
     // Map API comment to CommentItem props format
     mapComment(c) {
       const myId = this.currentUser ? this.currentUser.id : null
-      return {
-        id: c.commentId || c.id,
+      const commentId = c.commentId || c.id
+      const mapped = {
+        id: commentId,
+        commentRootId: commentId,
+        userId: c.userId,
         author: c.nickname || '',
         avatar: c.portrait ? this.apiBase + c.portrait : '',
         time: c.commentTime || '',
@@ -251,6 +255,9 @@ export default {
         canDelete: myId != null && String(c.userId) === String(myId),
         children: (c.reply || []).map(r => ({
           id: r.replyId || r.id,
+          commentRootId: commentId,
+          userId: r.replyUserId || r.userId,
+          replyTargetUserId: r.replyToUserId,
           author: r.nickname || '',
           avatar: r.portrait ? this.apiBase + r.portrait : '',
           time: r.replyTime || '',
@@ -260,6 +267,10 @@ export default {
           children: [],
         })),
       }
+      if (mapped.userId == null) {
+        console.warn('[mapComment] comment without userId:', JSON.parse(JSON.stringify(c)))
+      }
+      return mapped
     },
     loadArticleFiles(articleId) {
       getArticleFileByArticleId(articleId).then(resp => {
@@ -278,7 +289,7 @@ export default {
     submitComment() {
       if (!this.newComment.trim()) return
       if (!this.currentUser) {
-        this.$router.push('/stitch-login')
+        this.$router.push({ path: '/stitch-login', query: { redirect: this.$route.fullPath } })
         return
       }
       const tempData = {
@@ -293,6 +304,27 @@ export default {
         }
       }).catch(() => {
         Message({ type: 'error', message: '评论失败', offset: 54 })
+      })
+    },
+    handleReply({ commentId, replyContent, replyToUserId }) {
+      if (!this.currentUser) return
+      const params = {
+        replyUserId: this.currentUser.id,
+        replyContent,
+        commentId,
+      }
+      if (replyToUserId != null) {
+        params.replyToUserId = replyToUserId
+      }
+      this.putRequest('/reply/userReply', params).then(resp => {
+        if (resp) {
+          Message({ type: 'success', message: '回复成功', offset: 54 })
+          this.loadComments(this.articleId)
+        } else {
+          Message({ type: 'error', message: '回复失败', offset: 54 })
+        }
+      }).catch(() => {
+        Message({ type: 'error', message: '回复失败', offset: 54 })
       })
     },
     handleDeleteComment(commentId) {

@@ -50,7 +50,7 @@
           <div
             class="flex flex-col items-center cursor-pointer relative"
             :class="[podium.cardClass, podium.rank === 1 ? 'p-8 min-h-[260px]' : 'p-6 min-h-[220px]']"
-            @click="toggleExpand(podium.rank)"
+            @click="toggleExpand(podium.orgNo)"
           >
             <div class="absolute top-3 right-3 flex flex-col items-end gap-2">
               <span v-if="podium.isSelf" class="bg-primary text-white text-[10px] px-2 py-0.5 rounded-full font-bold">当前单位</span>
@@ -128,7 +128,7 @@
           class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all"
           :class="{ 'expanded': item.expanded }"
         >
-          <div class="p-5 flex items-center gap-6 cursor-pointer" @click="toggleExpand(item.rank)">
+          <div class="p-5 flex items-center gap-6 cursor-pointer" @click="toggleExpand(item.orgNo)">
             <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-surface-container rounded-full text-on-surface-variant font-bold">{{ item.rank }}</div>
             <div class="flex-grow">
               <h4 class="text-lg font-bold text-on-surface hover:text-primary transition-colors">{{ item.name }}</h4>
@@ -269,8 +269,8 @@ export default {
         }
       })
     },
-    toggleExpand(rank) {
-      const item = this.displayItems.find(i => i.rank === rank)
+    toggleExpand(orgNo) {
+      const item = this.displayItems.find(i => i.orgNo === orgNo)
       if (!item) return
       item.expanded = !item.expanded
       if (item.expanded && item.isSelf && item.orgNo && !item.children.length) {

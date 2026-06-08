@@ -28,6 +28,7 @@
           :key="child.id"
           :comment="child"
           @delete="$emit('delete', $event)"
+          @reply="$emit('reply', $event)"
         />
       </div>
 
@@ -69,18 +70,18 @@ export default {
   methods: {
     submitReply() {
       if (!this.replyText.trim()) return
-      if (!this.comment.children) {
-        this.$set(this.comment, 'children', [])
+      const replyToUserId = this.comment.userId != null
+        ? this.comment.userId
+        : this.comment.replyTargetUserId != null
+          ? this.comment.replyTargetUserId
+          : undefined
+      if (replyToUserId == null) {
+        console.warn('[CommentItem] replyToUserId is missing, comment data:', JSON.parse(JSON.stringify(this.comment)))
       }
-      this.comment.children.push({
-        id: Date.now(),
-        author: '当前用户',
-        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCP52mnmWZOxBsd7pKUcKH0XYcVU0EL15cm5iXqKW0w2oJgWiJMZnGlRDva84A3aPUnIm0XJVsAGvxeUDVdogPb2RB6HAvdW0vBk2D1FgVxsWjtgGPCBEDfnO_jI0yERHdbsy_8b9zL3e9LvyJTPMP9mVuhOqiwL-E9T8iV427rBqAPG2MlYQmN2f_khm74nH30oggg5H2jnk-YjDQB33lzP-NVdKM_i6YBljINKMnekK8u4Cpt-moRjcVD6_YNJ_fBpmHnKCoTb9k',
-        time: '刚刚',
-        content: this.replyText,
-        replyTo: this.comment.author,
-        canDelete: true,
-        children: [],
+      this.$emit('reply', {
+        commentId: this.comment.commentRootId,
+        replyContent: this.replyText,
+        replyToUserId,
       })
       this.replyText = ''
       this.showReplyInput = false

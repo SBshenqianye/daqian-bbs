@@ -119,7 +119,7 @@ const needAuth = (path) => authPaths.some(p => path === p || path.startsWith(p +
 router.beforeEach(((to, from, next) => {
     const hasToken = window.sessionStorage.getItem('tokenStr');
     if (needAuth(to.path) && !hasToken) {
-        next('/stitch-login');
+        next({ path: '/stitch-login', query: { redirect: to.fullPath } });
         return;
     }
     if(hasToken){
