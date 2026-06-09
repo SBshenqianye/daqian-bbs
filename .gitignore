@@ -25,3 +25,5 @@ pnpm-debug.log*
 Thumbs.db
 .mcp.json
 bbs-ui/stitch_bbs_forum_design_system/
+
+.claude/
