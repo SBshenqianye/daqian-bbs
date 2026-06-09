@@ -81,10 +81,12 @@
       </div>
 
       <!-- Article Detail Dialog -->
-      <div v-if="detailVisible" class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[5vh]" @click.self="closeDetail">
-        <div class="fixed inset-0 bg-black/30"></div>
-        <div class="relative bg-container w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-          <div class="flex items-center justify-between p-5 border-b border-outline-variant shrink-0">
+      <!-- Backdrop (fixed, stays in place) -->
+      <div v-if="detailVisible" class="fixed inset-0 bg-black/30 z-40" @click="closeDetail"></div>
+      <!-- Dialog wrapper (scrollable, like el-dialog) -->
+      <div v-if="detailVisible" class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="bg-container w-full max-w-4xl mx-auto my-[5vh] rounded-xl shadow-2xl">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
             <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">article</span>
               帖子详情
@@ -93,11 +95,11 @@
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
-          <div class="flex-1 overflow-y-auto p-5" v-loading="detailLoading">
+          <div class="p-5" v-loading="detailLoading">
             <div v-if="detailTitle" class="mb-4">
               <h2 class="font-headline-md text-headline-md text-on-surface">标题：《{{ detailTitle }}》</h2>
             </div>
-            <mavon-editor v-if="detailVisible" ref="detailMd" v-model="detailEditor.value" v-bind="detailEditor" />
+            <div class="markdown-body detail-content" v-html="renderedContent"></div>
             <div v-if="detailFileList && detailFileList.length > 0" class="mt-6 bg-surface-container-low rounded-lg p-4">
               <h4 class="font-headline-sm text-headline-sm text-on-surface mb-3 flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary text-[20px]">attach_file</span>
@@ -152,7 +154,7 @@
               </div>
             </div>
           </div>
-          <div class="flex justify-end p-5 border-t border-outline-variant bg-surface-container-lowest shrink-0">
+          <div class="flex justify-end p-5 border-t border-outline-variant bg-surface-container-lowest">
             <button class="px-6 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="closeDetail">关 闭</button>
           </div>
         </div>
@@ -162,12 +164,11 @@
 </template>
 
 <script>
-import { mavonEditor } from 'mavon-editor'
-import 'mavon-editor/dist/css/index.css'
+import MarkdownIt from 'markdown-it/dist/markdown-it'
+import 'mavon-editor/dist/markdown/github-markdown.min.css'
 
 export default {
   name: 'StitchArticle',
-  components: { mavonEditor },
   data() {
     return {
       activeTab: 'done',
@@ -177,12 +178,7 @@ export default {
       detailLoading: false,
       detailArticleId: null,
       detailTitle: '',
-      detailEditor: {
-        value: '',
-        toolbarsFlag: false,
-        subfield: false,
-        defaultOpen: 'preview'
-      },
+      detailContent: '',
       detailComments: [],
       detailFileList: [],
       avatarBase: process.env.VUE_APP_BBS_API || ''
@@ -194,6 +190,10 @@ export default {
       return this.detailComments.reduce((sum, item) => {
         return sum + 1 + (item.reply && item.reply.length ? item.reply.length : 0)
       }, 0)
+    },
+    renderedContent() {
+      if (!this.detailContent) return ''
+      return this._renderMarkdown(this.detailContent)
     }
   },
   mounted() {
@@ -217,7 +217,7 @@ export default {
       this.detailVisible = false
       this.detailArticleId = null
       this.detailTitle = ''
-      this.detailEditor.value = ''
+      this.detailContent = ''
       this.detailComments = []
       this.detailFileList = []
     },
@@ -226,7 +226,7 @@ export default {
       this.getRequest('/admin/getArticleByArticleId', articleId).then(resp => {
         this.detailLoading = false
         if (resp) {
-          this.detailEditor.value = resp.obj.articleContent
+          this.detailContent = resp.obj.articleContent
           this.detailTitle = resp.obj.articleTitle
           this.getArticleFileByArticleId(articleId)
           this.getCommentByArticleId(articleId)
@@ -258,6 +258,18 @@ export default {
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
+    },
+    _renderMarkdown(content) {
+      if (!this._md) {
+        this._md = new MarkdownIt({
+          html: true,
+          xhtmlOut: true,
+          breaks: true,
+          linkify: false,
+          typographer: true
+        })
+      }
+      return this._md.render(content)
     },
     handleDel(articleId) {
       this.$confirm('删除文章会连评论一并删除，确定要删除该文章吗？', '提示', { type: 'warning' }).then(() => {
@@ -314,10 +326,22 @@ export default {
 </script>
 
 <style>
-.article-detail-dialog .v-note-wrapper {
-  min-height: 200px;
+/* 弹窗内渲染的 Markdown 内容样式 */
+.detail-content {
+  padding: 8px 0;
+  background: transparent !important;
 }
-.article-detail-dialog .v-note-show .v-show-content {
-  min-height: 180px;
+.detail-content h1,
+.detail-content h2,
+.detail-content h3,
+.detail-content h4,
+.detail-content h5,
+.detail-content h6 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+.detail-content p {
+  margin-bottom: 8px;
+  line-height: 1.7;
 }
 </style>
