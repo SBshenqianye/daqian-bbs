@@ -29,13 +29,13 @@
       <!-- Dict Table -->
       <div class="bg-container border border-border rounded-xl overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full">
+          <table class="w-full whitespace-nowrap">
             <thead>
               <tr class="bg-surface-container-low border-b border-border">
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">中文描述</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">值</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">备注说明</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">操作</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[120px]">中文描述</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[120px]">值</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[150px]">备注说明</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[140px]">操作</th>
               </tr>
             </thead>
             <tbody>

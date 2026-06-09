@@ -25,13 +25,13 @@
       <!-- Slideshow Table -->
       <div class="bg-container border border-border rounded-xl overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full">
+          <table class="w-full whitespace-nowrap">
             <thead>
               <tr class="bg-surface-container-low border-b border-border">
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">ID</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[60px]">ID</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">优先级</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">预览</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">创建时间</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[170px]">创建时间</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">修改优先级</th>
               </tr>
             </thead>

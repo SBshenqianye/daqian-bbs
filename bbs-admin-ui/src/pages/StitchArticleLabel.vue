@@ -39,16 +39,16 @@
       <!-- Labels Table -->
       <div class="bg-container border border-border rounded-xl overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full">
+          <table class="w-full whitespace-nowrap">
             <thead>
               <tr class="bg-surface-container-low border-b border-border">
                 <th class="p-4 text-left w-12">
                   <input type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded" :checked="isAllSelected" @change="selectAll">
                 </th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">标签ID</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">标签名称</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[120px]">标签名称</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">是否禁用</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">操作</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[140px]">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -57,7 +57,7 @@
                   <input type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded" :checked="isSelected(label)" @change="toggleSelect(label)">
                 </td>
                 <td class="p-4 font-body-md text-on-surface">{{ label.labelId }}</td>
-                <td class="p-4 font-body-md text-on-surface font-medium">{{ label.labelName }}</td>
+                <td class="p-4 font-body-md text-on-surface font-medium max-w-[200px] truncate" :title="label.labelName">{{ label.labelName }}</td>
                 <td class="p-4">
                   <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="label.isDisable === 1 ? 'bg-error-container text-error' : 'bg-green-50 text-green-700'">
                     <span class="w-1.5 h-1.5 rounded-full" :class="label.isDisable === 1 ? 'bg-error' : 'bg-green-500'"></span>

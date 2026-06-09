@@ -31,24 +31,24 @@
       <!-- Communities Table -->
       <div class="bg-container border border-border rounded-xl overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full">
+          <table class="w-full whitespace-nowrap">
             <thead>
               <tr class="bg-surface-container-low border-b border-border">
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">ID</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">社区名称</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">社区介绍</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[60px]">ID</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[120px]">社区名称</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[150px]">社区介绍</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">社区人数</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">封面</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">状态</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">添加时间</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">操作</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[170px]">添加时间</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[160px]">操作</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(item, index) in communities" :key="item.communityId || index" class="border-b border-border hover:bg-surface-container-low/50 transition-colors">
                 <td class="p-4 font-body-md text-on-surface">{{ item.communityId }}</td>
-                <td class="p-4 font-body-md text-on-surface font-medium">{{ item.communityName }}</td>
-                <td class="p-4 font-body-md text-on-surface-variant max-w-[250px] truncate" :title="item.communityIntroduce">{{ item.communityIntroduce || '-' }}</td>
+                <td class="p-4 font-body-md text-on-surface font-medium max-w-[200px] truncate" :title="item.communityName">{{ item.communityName }}</td>
+                <td class="p-4 font-body-md text-on-surface-variant max-w-[200px] truncate" :title="item.communityIntroduce">{{ item.communityIntroduce || '-' }}</td>
                 <td class="p-4 font-body-md text-on-surface">{{ item.communityUserNum || 0 }}</td>
                 <td class="p-4">
                   <img v-if="item.communityImage" class="w-12 h-12 rounded-lg object-cover border border-outline-variant" :src="item.communityImage" alt="">

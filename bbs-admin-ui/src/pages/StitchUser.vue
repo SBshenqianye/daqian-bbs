@@ -35,20 +35,20 @@
       <!-- Users Table -->
       <div class="bg-container border border-border rounded-xl overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full">
+          <table class="w-full whitespace-nowrap">
             <thead>
               <tr class="bg-surface-container-low border-b border-border">
                 <th class="p-4 text-left">
                   <input type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded" :checked="isAllSelected" @change="selectAll">
                 </th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">ID</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">用户名</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">姓名</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">手机号</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[60px]">ID</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[100px]">用户名</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[100px]">姓名</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[130px]">手机号</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">角色</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">状态</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">注册时间</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">操作</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[170px]">注册时间</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[260px]">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -57,8 +57,8 @@
                   <input type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded" :checked="isSelected(user)" :disabled="!canCheck(user)" @change="toggleSelect(user)">
                 </td>
                 <td class="p-4 font-body-md text-on-surface">{{ user.id }}</td>
-                <td class="p-4 font-body-md text-on-surface">{{ user.username }}</td>
-                <td class="p-4 font-body-md text-on-surface">{{ user.nickname }}</td>
+                <td class="p-4 font-body-md text-on-surface max-w-[160px] truncate" :title="user.username">{{ user.username }}</td>
+                <td class="p-4 font-body-md text-on-surface max-w-[160px] truncate" :title="user.nickname">{{ user.nickname }}</td>
                 <td class="p-4 font-body-md text-on-surface-variant">{{ user.phone }}</td>
                 <td class="p-4">
                   <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="roleClass(user.userType)">{{ roleLabel(user.userType) }}</span>
