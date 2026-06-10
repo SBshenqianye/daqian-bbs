@@ -123,6 +123,7 @@ import { mavonEditor } from 'mavon-editor'
 import 'mavon-editor/dist/css/index.css'
 import { getArticleById, getUserinfoById, getArticleFileByArticleId } from '@/api/article'
 import { getCommentReply } from '@/api/comment'
+import { normalizeUrls } from '@/utils/utils'
 import { Message } from 'element-ui'
 
 export default {
@@ -227,8 +228,9 @@ export default {
           this.article.publishTime = resp.createTime || ''
           this.article.tagId = resp.articleLabelId
           this.article.author = resp.articleAuthor || ''
-          this.article.contentHtml = resp.articleContentHtml || resp.articleContent || ''
-          this.mdContent = resp.articleContentHtml || resp.articleContent || ''
+          const rawContent = resp.articleContentHtml || resp.articleContent || ''
+          this.article.contentHtml = normalizeUrls(rawContent)
+          this.mdContent = normalizeUrls(rawContent)
           this.article.articleImage = resp.articleImage ? this.fileBase + resp.articleImage : ''
           // Fetch author info
           if (resp.userId) {

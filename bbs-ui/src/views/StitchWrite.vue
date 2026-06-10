@@ -150,6 +150,7 @@ import { mavonEditor } from 'mavon-editor'
 import 'mavon-editor/dist/css/index.css'
 import { Message, Loading } from 'element-ui'
 import { getArticleById, getArticleFileByArticleId } from '@/api/article'
+import { normalizeUrls } from '@/utils/utils'
 
 export default {
   name: 'StitchWrite',
@@ -235,8 +236,8 @@ export default {
       getArticleById(id).then(resp => {
         if (resp) {
           this.articleTitle = resp.articleTitle || ''
-          this.markdownContent = resp.articleContent || ''
-          this.markdownHtml = resp.articleContentHtml || ''
+          this.markdownContent = normalizeUrls(resp.articleContent || '')
+          this.markdownHtml = normalizeUrls(resp.articleContentHtml || '')
           this.articleSummary = resp.articleSummary || ''
           this.selectedLabelId = resp.articleLabelId
           if (resp.articleImage) {

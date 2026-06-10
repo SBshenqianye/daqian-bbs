@@ -125,10 +125,32 @@ export default {
       const path = portrait.startsWith('/') ? portrait : `/${portrait}`
       return `${this.avatarBase}${path}`
     },
+    normalizeUrls(content) {
+      if (!content) return content
+      // 处理 markdown 链接: [text](url) 中 url 没有协议的情况
+      content = content.replace(
+        /\[([^\]]*)\]\(((?!https?:\/\/|ftp:\/\/|\/\/|data:|mailto:|tel:|#|\/)[^\s\)]+)\)/g,
+        (match, text, url) => {
+          if (url.startsWith('./') || url.startsWith('../')) return match
+          if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(url)) return match
+          return `[${text}](http://${url})`
+        }
+      )
+      // 处理 HTML 链接: href="url" 中 url 没有协议的情况
+      content = content.replace(
+        /href="((?!https?:\/\/|ftp:\/\/|\/\/|data:|mailto:|tel:|#|\/)[^"]+)"/g,
+        (match, url) => {
+          if (url.startsWith('./') || url.startsWith('../')) return match
+          if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(url)) return match
+          return `href="http://${url}"`
+        }
+      )
+      return content
+    },
     getArticleByArticleId(articleId) {
       this.getRequest('/admin/getArticleByArticleId', articleId).then(resp => {
         if (resp) {
-          this.editor.value = resp.obj.articleContent
+          this.editor.value = this.normalizeUrls(resp.obj.articleContent)
           this.articleTitle = resp.obj.articleTitle
           this.getArticleFileByArticleId(articleId)
           this.getCommentByArticleId(articleId)
