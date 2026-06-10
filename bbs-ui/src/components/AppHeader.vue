@@ -34,7 +34,7 @@
       <div class="flex-grow max-w-2xl hidden md:block">
         <div class="relative group">
           <span
-            class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline transition-colors"
+            class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline transition-colors"
             :class="{ 'text-brand-blue': searchFocused }"
           >search</span>
           <input

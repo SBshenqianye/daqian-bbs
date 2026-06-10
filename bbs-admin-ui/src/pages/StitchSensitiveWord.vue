@@ -17,7 +17,7 @@
         <!-- Add Row -->
         <div class="flex items-center gap-3 mb-6">
           <div class="flex-1 relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">add_circle</span>
+            <span class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline text-[18px]">add_circle</span>
             <input v-model="keyword" class="w-full pl-9 pr-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md" placeholder="输入敏感词，按回车添加" @keyup.enter="handleAdd">
           </div>
           <button class="inline-flex items-center gap-1.5 px-5 py-2.5 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md disabled:opacity-60" :disabled="adding" @click="handleAdd">

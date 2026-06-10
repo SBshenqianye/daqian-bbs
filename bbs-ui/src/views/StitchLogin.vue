@@ -31,7 +31,7 @@
               <div class="space-y-1.5">
                 <label class="font-label-md text-label-md text-secondary ml-0.5">账号</label>
                 <div class="relative">
-                  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">person</span>
+                  <span class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline text-[20px]">person</span>
                   <input
                     v-model="loginForm.username"
                     class="w-full pl-10 pr-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
@@ -43,7 +43,7 @@
               <div class="space-y-1.5">
                 <label class="font-label-md text-label-md text-secondary ml-0.5">密码</label>
                 <div class="relative">
-                  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">lock</span>
+                  <span class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline text-[20px]">lock</span>
                   <input
                     v-model="loginForm.password"
                     class="w-full pl-10 pr-10 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"

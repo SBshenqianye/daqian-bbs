@@ -13,7 +13,7 @@
           <div class="space-y-1.5">
             <label class="font-label-md text-label-md text-secondary ml-0.5">用户名</label>
             <div class="relative">
-              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">person</span>
+              <span class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline text-[20px]">person</span>
               <input
                 v-model="param.username"
                 class="w-full pl-10 pr-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
@@ -26,7 +26,7 @@
           <div class="space-y-1.5">
             <label class="font-label-md text-label-md text-secondary ml-0.5">密码</label>
             <div class="relative">
-              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">lock</span>
+              <span class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline text-[20px]">lock</span>
               <input
                 v-model="param.password"
                 class="w-full pl-10 pr-10 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
@@ -34,7 +34,7 @@
                 :type="showPassword ? 'text' : 'password'"
                 @keyup.enter="submitForm"
               >
-              <button class="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-primary" type="button" @click="showPassword = !showPassword">
+              <button class="absolute right-3 inset-y-0 flex items-center text-outline hover:text-primary" type="button" @click="showPassword = !showPassword">
                 <span class="material-symbols-outlined text-[20px]">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
               </button>
             </div>

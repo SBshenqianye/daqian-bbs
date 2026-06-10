@@ -22,7 +22,7 @@
                 <option value="">请选择单位</option>
                 <option v-for="org in flatOrgTree" :key="org.id" :value="org.id">{{ org.label }}</option>
               </select>
-              <span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">unfold_more</span>
+              <span class="material-symbols-outlined absolute right-2 inset-y-0 flex items-center text-outline text-[18px] pointer-events-none">unfold_more</span>
             </div>
           </div>
           <div class="flex items-center gap-2">
