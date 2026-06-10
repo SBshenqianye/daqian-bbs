@@ -41,11 +41,11 @@
               @click="toggleSubmenu(item)"
             >
               <span class="material-symbols-outlined text-[22px] flex-shrink-0">{{ item.icon }}</span>
-              <span v-show="!collapse" class="truncate flex-1 text-left">{{ item.label }}</span>
-              <span v-show="!collapse" class="material-symbols-outlined text-[16px] transition-transform duration-200" :class="{ 'rotate-180': item._open }">expand_more</span>
+              <span v-show="showLabels" class="truncate flex-1 text-left">{{ item.label }}</span>
+              <span v-show="showLabels" class="material-symbols-outlined text-[16px] transition-transform duration-200" :class="{ 'rotate-180': item._open }">expand_more</span>
             </button>
             <transition name="submenu">
-              <div v-show="item._open && !collapse" class="ml-8 mt-0.5 space-y-0.5 border-l-2 border-outline-variant/30 pl-2">
+              <div v-show="item._open && showLabels" class="ml-8 mt-0.5 space-y-0.5 border-l-2 border-outline-variant/30 pl-2">
                 <router-link
                   v-for="child in item.children"
                   :key="child.label"
@@ -70,7 +70,7 @@
             ]"
           >
             <span class="material-symbols-outlined text-[22px] flex-shrink-0 transition-colors" :class="isActive(item.path) ? 'text-primary' : 'text-outline group-hover:text-on-surface-variant'">{{ item.icon }}</span>
-            <span v-show="!collapse" class="truncate">{{ item.label }}</span>
+            <span v-show="showLabels" class="truncate">{{ item.label }}</span>
             <!-- Active indicator dot -->
             <span v-if="isActive(item.path) && collapse" class="absolute right-1 w-1.5 h-1.5 rounded-full bg-primary"></span>
           </router-link>
@@ -85,7 +85,7 @@
         @click="toggleSidebar"
       >
         <span class="material-symbols-outlined text-[20px] transition-all duration-300">{{ collapse ? 'chevron_right' : 'chevron_left' }}</span>
-        <span v-show="!collapse">收起侧栏</span>
+        <span v-show="showLabels">收起侧栏</span>
       </button>
     </div>
   </aside>
@@ -101,6 +101,7 @@ export default {
   data() {
     return {
       collapse: false,
+      showLabels: true,
       dragIndex: null,
       dragOverIndex: null,
       menuItems: [
@@ -156,8 +157,17 @@ export default {
       item._open = !item._open
     },
     toggleSidebar() {
-      this.collapse = !this.collapse
+      const willCollapse = !this.collapse
+      if (willCollapse) {
+        // Collapsing: hide text immediately, then shrink sidebar
+        this.showLabels = false
+      }
+      this.collapse = willCollapse
       bus.$emit('collapse', this.collapse)
+      if (!willCollapse) {
+        // Expanding: sidebar has 300ms transition, show text after it finishes
+        setTimeout(() => { this.showLabels = true }, 310)
+      }
     },
 
     // --- Drag and Drop ---
