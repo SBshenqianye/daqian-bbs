@@ -1,6 +1,35 @@
 <template>
   <div v-if="tagsList.length > 0" class="stitch-tags bg-surface-container-low border-b border-outline-variant">
     <div class="flex items-stretch">
+      <!-- Dropdown actions (left side) -->
+      <div class="flex-shrink-0 flex items-center relative z-50">
+        <button
+          class="flex items-center gap-1 px-3 py-1.5 m-1.5 rounded-lg text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors text-xs font-label-md"
+          @click="showMenu = !showMenu"
+        >
+          <span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
+          <span class="hidden sm:inline">标签选项</span>
+        </button>
+
+        <!-- Dropdown -->
+        <transition name="fade-down">
+          <div v-if="showMenu" class="absolute top-full left-0 mt-1.5 w-44 bg-container border border-outline-variant rounded-xl shadow-lg z-50 py-1.5 overflow-hidden">
+            <button class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors" @click="closeOther">
+              <span class="material-symbols-outlined text-[18px] text-outline">filter_alt</span>
+              关闭其他
+            </button>
+            <div class="mx-3 border-t border-outline-variant/15"></div>
+            <button class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors" @click="closeAll">
+              <span class="material-symbols-outlined text-[18px] text-outline">close</span>
+              关闭所有
+            </button>
+          </div>
+        </transition>
+
+        <!-- Menu backdrop -->
+        <div v-if="showMenu" class="fixed inset-0 z-40" @click="showMenu = false"></div>
+      </div>
+
       <!-- Tags scroll area -->
       <div class="flex-1 flex overflow-x-auto scrollbar-none gap-px px-1 pt-2.5" ref="tagsWrapper">
         <div
@@ -25,34 +54,6 @@
         </div>
       </div>
 
-      <!-- Dropdown actions -->
-      <div class="flex-shrink-0 flex items-center relative z-50">
-        <button
-          class="flex items-center gap-1 px-3 py-1.5 m-1.5 rounded-lg text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors text-xs font-label-md"
-          @click="showMenu = !showMenu"
-        >
-          <span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
-          <span class="hidden sm:inline">标签选项</span>
-        </button>
-
-        <!-- Dropdown -->
-        <transition name="fade-down">
-          <div v-if="showMenu" class="absolute top-full right-0 mt-1.5 w-44 bg-container border border-outline-variant rounded-xl shadow-lg z-50 py-1.5 overflow-hidden">
-            <button class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors" @click="closeOther">
-              <span class="material-symbols-outlined text-[18px] text-outline">filter_alt</span>
-              关闭其他
-            </button>
-            <div class="mx-3 border-t border-outline-variant/15"></div>
-            <button class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors" @click="closeAll">
-              <span class="material-symbols-outlined text-[18px] text-outline">close</span>
-              关闭所有
-            </button>
-          </div>
-        </transition>
-
-        <!-- Menu backdrop -->
-        <div v-if="showMenu" class="fixed inset-0 z-40" @click="showMenu = false"></div>
-      </div>
     </div>
   </div>
 </template>
