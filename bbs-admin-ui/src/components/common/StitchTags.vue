@@ -1,5 +1,5 @@
 <template>
-  <div v-if="tagsList.length > 0" class="stitch-tags h-9 bg-surface-container-low border-b border-outline-variant flex items-stretch overflow-hidden">
+  <div v-if="tagsList.length > 0" class="stitch-tags h-9 bg-surface-container-low border-b border-outline-variant flex items-stretch">
     <!-- Tags scroll area -->
     <div class="flex-1 flex items-stretch overflow-x-auto scrollbar-none" ref="tagsWrapper">
       <div
@@ -25,7 +25,7 @@
     </div>
 
     <!-- Dropdown actions -->
-    <div class="flex-shrink-0 flex items-center border-l border-outline-variant/50 bg-surface-container-low relative">
+    <div class="flex-shrink-0 flex items-center border-l border-outline-variant/50 bg-surface-container-low relative z-50">
       <button
         class="px-3 h-full flex items-center gap-1 text-on-surface-variant hover:bg-surface-container transition-colors text-[13px] font-label-md"
         @click="showMenu = !showMenu"
@@ -42,7 +42,7 @@
             关闭其他
           </button>
           <button class="w-full flex items-center gap-2 px-4 py-2.5 text-on-surface hover:bg-surface-container-low transition-colors font-body-md text-body-md" @click="closeAll">
-            <span class="material-symbols-outlined text-[18px] text-outline">close_all</span>
+            <span class="material-symbols-outlined text-[18px] text-outline">close</span>
             关闭所有
           </button>
         </div>
