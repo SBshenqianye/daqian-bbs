@@ -29,12 +29,12 @@ Vue.use(ElementUI, {
 router.beforeEach((to, from, next) => {
     document.title = `大千智荟创新创意交流论坛`;
     const role = window.sessionStorage.getItem('admin');
-    const publicPaths = ['/login', '/stitch-login'];
+    const publicPaths = ['/stitch-login'];
     if (!role && !publicPaths.includes(to.path)) {
         next('/stitch-login');
     } else if (to.meta.permission) {
         // 如果是管理员权限则可进入
-        role === 'admin' ? next() : next('/403');
+        role === 'admin' ? next() : next('/stitch-403');
     } else {
         next();
     }

@@ -1,9 +1,7 @@
 <template>
     <div id="app-root">
-        <!-- Use new design header for stitch pages, original header for existing pages -->
-        <StitchHeader v-if="isStitchRoute" />
-        <BBSHeader v-else />
-        <div :class="{ 'pt-16': isStitchRoute }">
+        <StitchHeader />
+        <div class="pt-16">
             <router-view />
         </div>
     </div>
@@ -11,16 +9,10 @@
 
 <script>
     import './assets/iconfont/iconfont.js'
-    import BBSHeader from "@/components/BBSHeader";
     import StitchHeader from "@/components/StitchHeader";
     export default {
         name: 'App',
-        components: { BBSHeader, StitchHeader },
-        computed: {
-            isStitchRoute() {
-                return this.$route.path.startsWith('/stitch-')
-            },
-        },
+        components: { StitchHeader },
     }
 </script>
 
