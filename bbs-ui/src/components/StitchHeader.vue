@@ -7,16 +7,16 @@
       <!-- Left: Brand & Main Nav -->
       <div class="flex items-center gap-8 flex-shrink-0">
         <router-link
-          to="/stitch-index"
+          to="/stitch-forum"
           class="text-headline-lg font-semibold text-brand-blue tracking-tight no-underline"
         >
           大千智荟交流论坛
         </router-link>
         <nav class="hidden md:flex items-center gap-6">
           <router-link
-            to="/stitch-index"
+            to="/stitch-forum"
             class="font-label-md text-label-md pb-1 border-b-2 transition-colors"
-            :class="isActive('/stitch-index') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
+            :class="isActive('/stitch-forum') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
           >
             论坛
           </router-link>
@@ -215,7 +215,7 @@ export default {
       return this.$route.path === path
     },
     isForumPage() {
-      return this.$route.path === '/stitch-index'
+      return this.$route.path === '/stitch-forum'
     },
   },
 }

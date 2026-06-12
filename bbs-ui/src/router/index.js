@@ -144,9 +144,9 @@ const router = new VueRouter({
 
         // ===== Stitch Design System Pages (lazy-loaded) =====
         {
-            name: 'stitchIndex',
-            path: '/stitch-index',
-            component: () => import('@/views/StitchIndex.vue'),
+            name: 'stitchForum',
+            path: '/stitch-forum',
+            component: () => import('@/views/StitchForum.vue'),
             meta: { auth: false }
         },
         {

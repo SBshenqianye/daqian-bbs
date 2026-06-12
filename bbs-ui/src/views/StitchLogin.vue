@@ -313,7 +313,7 @@ export default {
               window.sessionStorage.setItem('user', JSON.stringify(userResp))
             }
           })
-          const redirect = this.$route.query.redirect || '/stitch-index'
+          const redirect = this.$route.query.redirect || '/stitch-forum'
           this.$router.replace(redirect)
           setTimeout(() => { location.reload() }, 600)
         }

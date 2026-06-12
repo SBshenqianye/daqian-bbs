@@ -111,7 +111,7 @@
 
 <script>
 export default {
-  name: 'StitchIndex',
+  name: 'StitchForum',
   data() {
     return {
       loading: false,
