@@ -30,15 +30,15 @@
         </nav>
       </div>
 
-      <!-- Middle: Search Bar -->
-      <div class="flex-grow max-w-2xl hidden md:block">
+      <!-- Middle: Search Bar (only show on forum page) -->
+      <div v-if="isForumPage" class="flex-grow max-w-2xl hidden md:block">
         <div class="relative group">
           <span
             class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline transition-colors"
             :class="{ 'text-brand-blue': searchFocused }"
           >search</span>
           <input
-            v-model="searchQuery"
+            v-model="keywords"
             class="w-full h-10 pl-10 pr-4 bg-surface-container-low rounded-lg border border-transparent focus:border-brand-blue focus:bg-container focus:ring-0 transition-all font-body-md text-body-md outline-none"
             placeholder="搜索讨论、创意或人员..."
             type="text"
@@ -137,12 +137,12 @@
 
 <script>
 export default {
-  name: 'AppHeader',
+  name: 'StitchHeader',
   data() {
     return {
       scrolled: false,
       searchFocused: false,
-      searchQuery: '',
+      keywords: '',
       userMenuOpen: false,
       isLogin: false,
       user: null,
@@ -165,9 +165,20 @@ export default {
   mounted() {
     window.addEventListener('scroll', this.handleScroll)
     this.checkLoginState()
+    // Restore last search keywords
+    const lastKeywords = window.localStorage.getItem('bbs_search_keywords')
+    if (lastKeywords) {
+      this.keywords = lastKeywords
+    }
+    // Listen for login state changes
+    this.$bus && this.$bus.$on('isLogin', (data) => {
+      this.isLogin = data
+      this.checkLoginState()
+    })
   },
   beforeDestroy() {
     window.removeEventListener('scroll', this.handleScroll)
+    this.$bus && this.$bus.$off('isLogin')
   },
   methods: {
     checkLoginState() {
@@ -183,9 +194,15 @@ export default {
       this.scrolled = window.scrollY > 10
     },
     handleSearch() {
-      if (this.searchQuery.trim()) {
-        this.$router.push('/search/keywords/' + encodeURIComponent(this.searchQuery.trim()))
+      const keywords = (this.keywords || '').trim()
+      window.localStorage.setItem('bbs_search_keywords', keywords)
+
+      if (!window.sessionStorage.getItem('tokenStr')) {
+        this.$router.push('/stitch-login')
+        return
       }
+
+      this.$bus && this.$bus.$emit('forumSearch', keywords)
     },
     handleLogout() {
       window.sessionStorage.removeItem('tokenStr')
@@ -196,6 +213,9 @@ export default {
     },
     isActive(path) {
       return this.$route.path === path
+    },
+    isForumPage() {
+      return this.$route.path === '/stitch-index'
     },
   },
 }

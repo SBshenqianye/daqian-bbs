@@ -104,7 +104,7 @@
 
         <!-- Comments List -->
         <div class="space-y-8">
-          <CommentItem
+          <StitchCommentItem
             v-for="comment in comments"
             :key="comment.id"
             :comment="comment"
@@ -118,7 +118,7 @@
 </template>
 
 <script>
-import CommentItem from '@/components/CommentItem.vue'
+import StitchCommentItem from '@/components/StitchCommentItem.vue'
 import { mavonEditor } from 'mavon-editor'
 import 'mavon-editor/dist/css/index.css'
 import { getArticleById, getUserinfoById, getArticleFileByArticleId } from '@/api/article'
@@ -128,7 +128,7 @@ import { Message } from 'element-ui'
 
 export default {
   name: 'StitchArticleDetails',
-  components: { CommentItem, mavonEditor },
+  components: { StitchCommentItem, mavonEditor },
   data() {
     return {
       newComment: '',
@@ -263,7 +263,7 @@ export default {
         this.comments = []
       })
     },
-    // Map API comment to CommentItem props format
+    // Map API comment to StitchCommentItem props format
     mapComment(c) {
       const myId = this.currentUser ? this.currentUser.id : null
       const commentId = c.commentId || c.id

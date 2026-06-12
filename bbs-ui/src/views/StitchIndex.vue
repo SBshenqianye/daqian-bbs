@@ -126,6 +126,10 @@ export default {
     this.fetchArticles()
     this.fetchHotTopics()
     this.loadLabels()
+    this.$bus && this.$bus.$on('forumSearch', this.handleForumSearch)
+  },
+  beforeDestroy() {
+    this.$bus && this.$bus.$off('forumSearch', this.handleForumSearch)
   },
   computed: {
     filteredArticles() {
@@ -210,6 +214,9 @@ export default {
       if (topic.articleId) {
         this.$router.push({ name: 'stitchArticleDetails', params: { articleId: topic.articleId } })
       }
+    },
+    handleForumSearch(keywords) {
+      this.fetchArticles(keywords || '')
     },
     getRankClass(rank) {
       if (rank === 1) return 'rank-1'
