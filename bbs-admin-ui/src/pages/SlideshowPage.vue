@@ -107,7 +107,7 @@
 
 <script>
 export default {
-  name: 'StitchSlideshow',
+  name: 'SlideshowPage',
   data() {
     return {
       slideshows: [],

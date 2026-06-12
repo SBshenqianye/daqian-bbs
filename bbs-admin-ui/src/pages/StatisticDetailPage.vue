@@ -29,7 +29,7 @@
 
 <script>
 export default {
-  name: 'StitchStatisticDetail',
+  name: 'StatisticDetailPage',
   props: {
     orgNo: { type: String, default: '' },
     startTime: { type: String, default: '' },

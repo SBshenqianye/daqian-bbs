@@ -97,7 +97,7 @@ import bus from './bus'
 const STORAGE_KEY = 'bbs-admin-sidebar-order'
 
 export default {
-  name: 'StitchSidebar',
+  name: 'Sidebar',
   data() {
     return {
       collapse: false,
@@ -105,17 +105,17 @@ export default {
       dragIndex: null,
       dragOverIndex: null,
       menuItems: [
-        { icon: 'dashboard', label: '系统首页', path: '/stitch-dashboard' },
-        { icon: 'group', label: '用户管理', path: '/stitch-user' },
-        { icon: 'article', label: '帖子管理', path: '/stitch-article' },
-        { icon: 'label', label: '标签管理', path: '/stitch-article-label' },
-        { icon: 'tune', label: '配置管理', path: '/stitch-dict' },
-        { icon: 'emoji_events', label: '积分排名', path: '/stitch-points' },
-        { icon: 'business', label: '单位管理', path: '/stitch-unit-manage' },
-        { icon: 'block', label: '敏感词管理', path: '/stitch-sensitive-word' },
-        // { icon: 'view_carousel', label: '轮播图管理', path: '/stitch-slideshow' },
-        // { icon: 'bar_chart', label: '文章统计', path: '/stitch-statistic' },
-        // { icon: 'edit_note', label: '写文章', path: '/stitch-write' },
+        { icon: 'dashboard', label: '系统首页', path: '/dashboard' },
+        { icon: 'group', label: '用户管理', path: '/user' },
+        { icon: 'article', label: '帖子管理', path: '/article' },
+        { icon: 'label', label: '标签管理', path: '/articleLable' },
+        { icon: 'tune', label: '配置管理', path: '/dict' },
+        { icon: 'emoji_events', label: '积分排名', path: '/points' },
+        { icon: 'business', label: '单位管理', path: '/unitManage' },
+        { icon: 'block', label: '敏感词管理', path: '/sensitiveWord' },
+        // { icon: 'view_carousel', label: '轮播图管理', path: '/slideshow' },
+        // { icon: 'bar_chart', label: '文章统计', path: '/statistic' },
+        // { icon: 'edit_note', label: '写文章', path: '/write' },
       ].map(item => ({ ...item, _open: false })),
     }
   },

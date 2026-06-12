@@ -104,7 +104,7 @@
 
         <!-- Comments List -->
         <div class="space-y-8">
-          <StitchCommentItem
+          <BBSCommentItem
             v-for="comment in comments"
             :key="comment.id"
             :comment="comment"
@@ -118,7 +118,7 @@
 </template>
 
 <script>
-import StitchCommentItem from '@/components/StitchCommentItem.vue'
+import BBSCommentItem from '@/components/BBSCommentItem.vue'
 import { mavonEditor } from 'mavon-editor'
 import 'mavon-editor/dist/css/index.css'
 import { getArticleById, getUserinfoById, getArticleFileByArticleId } from '@/api/article'
@@ -127,8 +127,8 @@ import { normalizeUrls } from '@/utils/utils'
 import { Message } from 'element-ui'
 
 export default {
-  name: 'StitchArticleDetails',
-  components: { StitchCommentItem, mavonEditor },
+  name: 'BBSArticleDetails',
+  components: { BBSCommentItem, mavonEditor },
   data() {
     return {
       newComment: '',
@@ -263,7 +263,7 @@ export default {
         this.comments = []
       })
     },
-    // Map API comment to StitchCommentItem props format
+    // Map API comment to BBSCommentItem props format
     mapComment(c) {
       const myId = this.currentUser ? this.currentUser.id : null
       const commentId = c.commentId || c.id
@@ -312,7 +312,7 @@ export default {
     submitComment() {
       if (!this.newComment.trim()) return
       if (!this.currentUser) {
-        this.$router.push({ path: '/stitch-login', query: { redirect: this.$route.fullPath } })
+        this.$router.push({ path: '/login', query: { redirect: this.$route.fullPath } })
         return
       }
       const tempData = {

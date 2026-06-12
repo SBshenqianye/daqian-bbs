@@ -221,7 +221,7 @@
 import { Message } from 'element-ui'
 
 export default {
-  name: 'StitchLogin',
+  name: 'BBSLogin',
   data() {
     return {
       activeTab: 'login',
@@ -313,7 +313,7 @@ export default {
               window.sessionStorage.setItem('user', JSON.stringify(userResp))
             }
           })
-          const redirect = this.$route.query.redirect || '/stitch-forum'
+          const redirect = this.$route.query.redirect || '/forum'
           this.$router.replace(redirect)
           setTimeout(() => { location.reload() }, 600)
         }

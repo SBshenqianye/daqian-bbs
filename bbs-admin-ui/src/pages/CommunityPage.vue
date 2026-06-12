@@ -92,7 +92,7 @@
 
 <script>
 export default {
-  name: 'StitchCommunity',
+  name: 'CommunityPage',
   data() {
     return { searchInfo: '', communities: [] }
   },

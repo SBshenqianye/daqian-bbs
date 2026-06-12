@@ -9,90 +9,90 @@ export default new Router({
     routes: [
         {
             path: '/',
-            redirect: '/stitch-dashboard'
+            redirect: '/dashboard'
         },
         {
             path: '/',
-            component: () => import('../components/common/StitchHome.vue'),
+            component: () => import('../components/common/Home.vue'),
             meta: {
                 title: '自述文件'
             },
             children: [
                 {
-                    path: '/stitch-dashboard',
-                    component: () => import('../pages/StitchDashboard.vue'),
+                    path: '/dashboard',
+                    component: () => import('../pages/Dashboard.vue'),
                     meta: { title: '系统首页' }
                 },
                 {
-                    path: '/stitch-user',
-                    component: () => import('../pages/StitchUser.vue'),
+                    path: '/user',
+                    component: () => import('../pages/UserPage.vue'),
                     meta: { title: '用户管理' }
                 },
                 {
-                    path: '/stitch-article',
-                    component: () => import('../pages/StitchArticle.vue'),
+                    path: '/article',
+                    component: () => import('../pages/ArticlePage.vue'),
                     meta: { title: '帖子管理' },
                 },
                 {
-                    path: '/stitch-article-label',
-                    component: () => import('../pages/StitchArticleLabel.vue'),
+                    path: '/articleLable',
+                    component: () => import('../pages/ArticleLablePage.vue'),
                     meta: { title: '标签管理' }
                 },
                 {
-                    path: '/stitch-dict',
-                    component: () => import('../pages/StitchDict.vue'),
+                    path: '/dict',
+                    component: () => import('../pages/DictPage.vue'),
                     meta: { title: '配置管理' }
                 },
                 {
-                    path: '/stitch-article-details',
-                    component: () => import('../pages/StitchArticleDetails.vue'),
+                    path: '/article/id',
+                    component: () => import('../pages/ArticleDetailsPage.vue'),
                     meta: { title: '文章详情', noCache: false },
                 },
                 {
-                    path: '/stitch-community',
-                    component: () => import('../pages/StitchCommunity.vue'),
+                    path: '/community',
+                    component: () => import('../pages/CommunityPage.vue'),
                     meta: { title: '社区管理' }
                 },
                 {
-                    path: '/stitch-points',
-                    component: () => import('../pages/StitchPoints.vue'),
+                    path: '/points',
+                    component: () => import('../pages/BBSPoints.vue'),
                     meta: { title: '积分排名' }
                 },
                 {
-                    path: '/stitch-points-detail',
-                    component: () => import('../pages/StitchPointsDetail.vue'),
+                    path: '/points/detail',
+                    component: () => import('../pages/BBSPointsDetail.vue'),
                     meta: { title: '积分排名详情' }
                 },
                 {
-                    path: '/stitch-unit-manage',
-                    component: () => import('../pages/StitchUnitManage.vue'),
+                    path: '/unitManage',
+                    component: () => import('../pages/BBSUnitManage.vue'),
                     meta: { title: '单位管理' }
                 },
                 {
-                    path: '/stitch-sensitive-word',
-                    component: () => import('../pages/StitchSensitiveWord.vue'),
+                    path: '/sensitiveWord',
+                    component: () => import('../pages/BBSSensitiveWord.vue'),
                     meta: { title: '敏感词管理' }
                 },
                 {
-                    path: '/stitch-404',
-                    component: () => import('../pages/Stitch404.vue'),
+                    path: '/404',
+                    component: () => import('../pages/404.vue'),
                     meta: { title: '404' }
                 },
                 {
-                    path: '/stitch-403',
-                    component: () => import('../pages/Stitch403.vue'),
+                    path: '/403',
+                    component: () => import('../pages/403.vue'),
                     meta: { title: '403' }
                 },
             ]
         },
         {
-            path: '/stitch-login',
-            component: () => import('../pages/StitchLogin.vue'),
+            path: '/login',
+            component: () => import('../pages/Login.vue'),
             meta: { title: '管理员登录', auth: false }
         },
         {
             path: '*',
-            redirect: '/stitch-404'
+            redirect: '/404'
         }
     ]
 });

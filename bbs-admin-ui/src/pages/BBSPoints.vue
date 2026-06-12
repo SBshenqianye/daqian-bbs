@@ -115,7 +115,7 @@
 
 <script>
 export default {
-  name: 'StitchPoints',
+  name: 'BBSPoints',
   data() {
     return {
       activeTab: '01',

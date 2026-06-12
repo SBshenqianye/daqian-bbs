@@ -69,7 +69,7 @@
 import bus from './bus'
 
 export default {
-  name: 'StitchHeader',
+  name: 'Header',
   data() {
     return {
       localCollapse: false,
@@ -112,7 +112,7 @@ export default {
     handleLogout() {
       this.showDropdown = false
       window.sessionStorage.removeItem('admin')
-      this.$router.push('/stitch-login')
+      this.$router.push('/login')
     },
   },
 }

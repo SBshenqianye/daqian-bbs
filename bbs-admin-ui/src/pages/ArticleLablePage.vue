@@ -189,7 +189,7 @@
 
 <script>
 export default {
-  name: 'StitchArticleLabel',
+  name: 'ArticleLablePage',
   data() {
     return {
       searchLabelName: '',

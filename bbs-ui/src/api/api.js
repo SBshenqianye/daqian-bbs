@@ -32,7 +32,7 @@ axios.interceptors.response.use(success=>{
         }
         if(success.data.code === 401){
             const currentPath = router.currentRoute.fullPath
-            router.replace(currentPath !== '/stitch-login' ? `/stitch-login?redirect=${encodeURIComponent(currentPath)}` : '/stitch-login');
+            router.replace(currentPath !== '/login' ? `/login?redirect=${encodeURIComponent(currentPath)}` : '/login');
             return;
         }
         if(success.data.message){
@@ -68,7 +68,7 @@ axios.interceptors.response.use(success=>{
 
     }else if(status === 401){
         const currentPath = router.currentRoute.fullPath
-        router.replace(currentPath !== '/stitch-login' ? `/stitch-login?redirect=${encodeURIComponent(currentPath)}` : '/stitch-login');
+        router.replace(currentPath !== '/login' ? `/login?redirect=${encodeURIComponent(currentPath)}` : '/login');
     }else{
         if(error.response.data.message){
             Message({

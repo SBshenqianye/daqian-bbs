@@ -111,7 +111,7 @@
 
 <script>
 export default {
-  name: 'StitchForum',
+  name: 'BBSForum',
   data() {
     return {
       loading: false,
@@ -207,12 +207,12 @@ export default {
     },
     goToArticle(article) {
       if (article.articleId) {
-        this.$router.push({ name: 'stitchArticleDetails', params: { articleId: article.articleId } })
+        this.$router.push({ name: 'BBSArticleDetails', params: { articleId: article.articleId } })
       }
     },
     goToHotTopic(topic) {
       if (topic.articleId) {
-        this.$router.push({ name: 'stitchArticleDetails', params: { articleId: topic.articleId } })
+        this.$router.push({ name: 'BBSArticleDetails', params: { articleId: topic.articleId } })
       }
     },
     handleForumSearch(keywords) {

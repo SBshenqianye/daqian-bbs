@@ -63,7 +63,7 @@
 
 <script>
 export default {
-  name: 'StitchLogin',
+  name: 'Login',
   data() {
     return {
       param: {

@@ -54,7 +54,7 @@
 
 <script>
 export default {
-  name: 'StitchCommentItem',
+  name: 'BBSCommentItem',
   props: {
     comment: {
       type: Object,

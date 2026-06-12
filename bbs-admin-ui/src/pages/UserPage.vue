@@ -181,7 +181,7 @@
 
 <script>
 export default {
-  name: 'StitchUser',
+  name: 'UserPage',
   data() {
     return {
       searchInfo: '',

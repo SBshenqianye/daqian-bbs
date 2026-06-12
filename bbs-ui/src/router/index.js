@@ -16,47 +16,47 @@ const router = new VueRouter({
         {
             name:'index',
             path:'/',
-            redirect: '/stitch-forum'
+            redirect: '/forum'
         },
 
-        // ===== Stitch Design System Pages (lazy-loaded) =====
+        // ===== BBS Forum Pages =====
         {
-            name: 'stitchForum',
-            path: '/stitch-forum',
-            component: () => import('@/views/StitchForum.vue'),
+            name: 'BBSForum',
+            path: '/forum',
+            component: () => import('@/views/BBSForum.vue'),
             meta: { auth: false }
         },
         {
-            name: 'stitchLogin',
-            path: '/stitch-login',
-            component: () => import('@/views/StitchLogin.vue'),
+            name: 'BBSLogin',
+            path: '/login',
+            component: () => import('@/views/BBSLogin.vue'),
             meta: { auth: false }
         },
         {
-            name: 'stitchPoints',
-            path: '/stitch-points',
-            component: () => import('@/views/StitchPoints.vue'),
+            name: 'BBSPoints',
+            path: '/points',
+            component: () => import('@/views/BBSPoints.vue'),
             meta: { auth: false }
         },
         {
-            name: 'stitchWrite',
-            path: '/stitch-write',
-            component: () => import('@/views/StitchWrite.vue'),
+            name: 'BBSArticleWrite',
+            path: '/write',
+            component: () => import('@/views/BBSArticleWrite.vue'),
         },
         {
-            name: 'stitchUserinfo',
-            path: '/stitch-userinfo',
-            component: () => import('@/views/StitchUserinfo.vue'),
+            name: 'BBSUserinfo',
+            path: '/userinfo',
+            component: () => import('@/views/BBSUserinfo.vue'),
         },
         {
-            name: 'stitchStat',
-            path: '/stitch-stat',
-            component: () => import('@/views/StitchStat.vue'),
+            name: 'BBSStat',
+            path: '/stat',
+            component: () => import('@/views/BBSStat.vue'),
         },
         {
-            name: 'stitchArticleDetails',
-            path: '/stitch-article-details/articleId/:articleId',
-            component: () => import('@/views/StitchArticleDetails.vue'),
+            name: 'BBSArticleDetails',
+            path: '/articleDetails/articleId/:articleId',
+            component: () => import('@/views/BBSArticleDetails.vue'),
             meta: { auth: false }
         },
 

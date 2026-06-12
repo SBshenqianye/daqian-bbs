@@ -168,7 +168,7 @@ import MarkdownIt from 'markdown-it/dist/markdown-it'
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
 
 export default {
-  name: 'StitchArticle',
+  name: 'ArticlePage',
   data() {
     return {
       activeTab: 'done',

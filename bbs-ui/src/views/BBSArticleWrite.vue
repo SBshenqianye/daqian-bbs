@@ -153,7 +153,7 @@ import { getArticleById, getArticleFileByArticleId } from '@/api/article'
 import { normalizeUrls } from '@/utils/utils'
 
 export default {
-  name: 'StitchWrite',
+  name: 'BBSArticleWrite',
   components: { mavonEditor },
   data() {
     return {
@@ -381,7 +381,7 @@ export default {
           loading.close()
           if (resp) {
             Message({ message: this.articleId ? '修改成功！' : '发布成功！', type: 'success', showClose: true, offset: 54 })
-            this.$router.push('/stitch-stat')
+            this.$router.push('/stat')
           }
         }).catch(() => {
           loading.close()

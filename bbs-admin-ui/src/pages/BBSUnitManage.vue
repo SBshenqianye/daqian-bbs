@@ -138,7 +138,7 @@ function walkTree(nodes, fn) {
 }
 
 export default {
-  name: 'StitchUnitManage',
+  name: 'BBSUnitManage',
   data() {
     return {
       loading: false,

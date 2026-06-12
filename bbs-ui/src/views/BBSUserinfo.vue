@@ -184,7 +184,7 @@
 import { Message } from 'element-ui'
 
 export default {
-  name: 'StitchUserinfo',
+  name: 'BBSUserinfo',
   data() {
     return {
       activeTab: 'info',
@@ -324,7 +324,7 @@ export default {
           Message({ type: 'success', message: '密码修改成功，请重新登录！', offset: 54 })
           window.sessionStorage.clear()
           this.$bus.$emit('isLogin', false)
-          this.$router.replace('/stitch-login')
+          this.$router.replace('/login')
           setTimeout(() => { location.reload() }, 600)
         }
       }).catch(() => {

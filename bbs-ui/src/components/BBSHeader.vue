@@ -7,23 +7,23 @@
       <!-- Left: Brand & Main Nav -->
       <div class="flex items-center gap-8 flex-shrink-0">
         <router-link
-          to="/stitch-forum"
+          to="/forum"
           class="text-headline-lg font-semibold text-brand-blue tracking-tight no-underline"
         >
           大千智荟交流论坛
         </router-link>
         <nav class="hidden md:flex items-center gap-6">
           <router-link
-            to="/stitch-forum"
+            to="/forum"
             class="font-label-md text-label-md pb-1 border-b-2 transition-colors"
-            :class="isActive('/stitch-forum') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
+            :class="isActive('/forum') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
           >
             论坛
           </router-link>
           <router-link
-            to="/stitch-points"
+            to="/points"
             class="font-label-md text-label-md pb-1 border-b-2 transition-colors"
-            :class="isActive('/stitch-points') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
+            :class="isActive('/points') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
           >
             排行榜
           </router-link>
@@ -52,7 +52,7 @@
       <!-- Right: Actions & Profile -->
       <div class="flex items-center gap-6 flex-shrink-0">
         <router-link
-          to="/stitch-write"
+          to="/write"
           class="flex items-center gap-2 bg-brand-blue text-on-primary px-5 py-2 rounded-lg font-label-md text-label-md hover:bg-primary-container transition-all active:scale-95 no-underline"
         >
           <span class="material-symbols-outlined text-[20px]">add</span>
@@ -96,14 +96,14 @@
               <!-- Action List -->
               <div class="flex flex-col gap-1">
                 <router-link
-                  to="/stitch-userinfo"
+                  to="/userinfo"
                   class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
                 >
                   <span class="material-symbols-outlined text-[20px]">person</span>
                   个人中心
                 </router-link>
                 <router-link
-                  to="/stitch-stat"
+                  to="/stat"
                   class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
                 >
                   <span class="material-symbols-outlined text-[20px]">edit_square</span>
@@ -125,7 +125,7 @@
         <!-- Login button (not logged in) -->
         <router-link
           v-else
-          to="/stitch-login"
+          to="/login"
           class="flex items-center gap-2 bg-surface-container-low text-on-surface-variant px-5 py-2 rounded-lg font-label-md text-label-md hover:bg-outline-variant transition-all active:scale-95 no-underline"
         >
           登录/注册
@@ -137,7 +137,7 @@
 
 <script>
 export default {
-  name: 'StitchHeader',
+  name: 'BBSHeader',
   data() {
     return {
       scrolled: false,
@@ -198,7 +198,7 @@ export default {
       window.localStorage.setItem('bbs_search_keywords', keywords)
 
       if (!window.sessionStorage.getItem('tokenStr')) {
-        this.$router.push('/stitch-login')
+        this.$router.push('/login')
         return
       }
 
@@ -209,13 +209,13 @@ export default {
       window.sessionStorage.removeItem('user')
       this.user = null
       this.isLogin = false
-      this.$router.push('/stitch-login')
+      this.$router.push('/login')
     },
     isActive(path) {
       return this.$route.path === path
     },
     isForumPage() {
-      return this.$route.path === '/stitch-forum'
+      return this.$route.path === '/forum'
     },
   },
 }

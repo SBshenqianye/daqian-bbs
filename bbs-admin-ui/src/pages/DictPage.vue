@@ -155,7 +155,7 @@
 
 <script>
 export default {
-  name: 'StitchDict',
+  name: 'DictPage',
   data() {
     return {
       dictList: [],

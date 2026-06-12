@@ -1,19 +1,19 @@
 <template>
   <div class="stitch-wrapper h-full w-full flex flex-col bg-background overflow-hidden">
     <!-- Fixed Header -->
-    <StitchHeader />
+    <Header />
 
     <!-- Body: Sidebar + Content -->
     <div class="flex flex-1 overflow-hidden relative">
       <!-- Sidebar -->
-      <StitchSidebar />
+      <Sidebar />
 
       <!-- Main Content Area (flex sibling after sidebar, no extra margin needed) -->
       <div
         class="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
       >
         <!-- Tags Bar -->
-        <StitchTags />
+        <Tags />
 
         <!-- Page Content -->
         <div class="flex-1 overflow-y-auto bg-background" ref="contentWrapper">
@@ -40,14 +40,14 @@
 </template>
 
 <script>
-import StitchHeader from './StitchHeader.vue'
-import StitchSidebar from './StitchSidebar.vue'
-import StitchTags from './StitchTags.vue'
+import Header from './Header.vue'
+import Sidebar from './Sidebar.vue'
+import Tags from './Tags.vue'
 import bus from './bus'
 
 export default {
-  name: 'StitchHome',
-  components: { StitchHeader, StitchSidebar, StitchTags },
+  name: 'Home',
+  components: { Header, Sidebar, Tags },
   data() {
     return {
       collapse: false,

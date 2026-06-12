@@ -62,7 +62,7 @@
 import bus from './bus'
 
 export default {
-  name: 'StitchTags',
+  name: 'Tags',
   data() {
     return {
       tagsList: [],
@@ -89,7 +89,7 @@ export default {
           if (next) {
             this.$router.push(next.path)
           } else {
-            this.$router.push('/stitch-dashboard')
+            this.$router.push('/dashboard')
           }
           this.tagsList.splice(i, 1)
           break
@@ -120,7 +120,7 @@ export default {
     closeTags(index) {
       const delItem = this.tagsList.splice(index, 1)[0]
       if (this.tagsList.length === 0) {
-        this.$router.push('/stitch-dashboard')
+        this.$router.push('/dashboard')
         return
       }
       const item = this.tagsList[index] || this.tagsList[index - 1]
@@ -131,7 +131,7 @@ export default {
     closeAll() {
       this.tagsList = []
       this.showMenu = false
-      this.$router.push('/stitch-dashboard')
+      this.$router.push('/dashboard')
     },
     closeOther() {
       const curItem = this.tagsList.filter(item => item.path === this.$route.fullPath)

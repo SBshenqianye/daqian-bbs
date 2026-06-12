@@ -86,7 +86,7 @@
             </button>
           </div>
           <div class="flex-1 overflow-y-auto p-5">
-            <StitchStatisticDetail v-if="detailVisible" :org-no="detailOrgNo" :start-time="detailStartTime" :end-time="detailEndTime" @drillDown="onDetailDrillDown" />
+            <StatisticDetailPage v-if="detailVisible" :org-no="detailOrgNo" :start-time="detailStartTime" :end-time="detailEndTime" @drillDown="onDetailDrillDown" />
           </div>
         </div>
       </div>
@@ -95,11 +95,11 @@
 </template>
 
 <script>
-import StitchStatisticDetail from './StitchStatisticDetail.vue'
+import StatisticDetailPage from './StatisticDetailPage.vue'
 
 export default {
-  name: 'StitchStatistic',
-  components: { StitchStatisticDetail },
+  name: 'StatisticPage',
+  components: { StatisticDetailPage },
   data() {
     return {
       orgTreeData: [],

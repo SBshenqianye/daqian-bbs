@@ -62,7 +62,7 @@
 
 <script>
 export default {
-  name: 'StitchPointsDetail',
+  name: 'BBSPointsDetail',
   data() {
     return {
       activeTab: '01',
@@ -85,7 +85,7 @@ export default {
   },
   methods: {
     goBack() {
-      this.$router.push('/stitch-points')
+      this.$router.push('/points')
     },
     switchTab(tab) {
       this.activeTab = tab
@@ -105,7 +105,7 @@ export default {
     onRowClick(row) {
       if (row.isSelf === 1 && row.orgNo) {
         this.$router.push({
-          path: '/stitch-points-detail',
+          path: '/points-detail',
           query: { orgNo: row.orgNo, rankType: this.activeTab }
         })
       }

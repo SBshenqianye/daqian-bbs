@@ -73,7 +73,7 @@
 import { Message } from 'element-ui'
 
 export default {
-  name: 'StitchStat',
+  name: 'BBSStat',
   data() {
     return {
       loading: false,
@@ -115,7 +115,7 @@ export default {
     },
     goToArticle(article) {
       if (article.articleId) {
-        this.$router.push({ name: 'stitchArticleDetails', params: { articleId: article.articleId } })
+        this.$router.push({ name: 'BBSArticleDetails', params: { articleId: article.articleId } })
       }
     },
     handleDelete(index) {
@@ -136,7 +136,7 @@ export default {
     },
     handleEdit(article) {
       if (article.articleId) {
-        this.$router.push({ name: 'stitchWrite', query: { articleId: article.articleId } })
+        this.$router.push({ name: 'BBSArticleWrite', query: { articleId: article.articleId } })
       }
     },
   },

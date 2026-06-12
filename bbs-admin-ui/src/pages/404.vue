@@ -9,7 +9,7 @@
       <h1 class="font-headline-lg text-headline-lg text-on-surface mb-3">页面未找到</h1>
       <p class="text-body-lg text-secondary mb-8">啊哦~ 你所访问的页面不存在</p>
       <div class="flex items-center justify-center gap-4">
-        <router-link to="/stitch-dashboard" class="px-6 py-2.5 bg-primary text-on-primary font-headline-sm text-headline-sm rounded hover:opacity-90 transition-all shadow-sm inline-flex items-center gap-2">
+        <router-link to="/dashboard" class="px-6 py-2.5 bg-primary text-on-primary font-headline-sm text-headline-sm rounded hover:opacity-90 transition-all shadow-sm inline-flex items-center gap-2">
           <span class="material-symbols-outlined text-[18px]">home</span>
           返回首页
         </router-link>
@@ -24,7 +24,7 @@
 
 <script>
 export default {
-  name: 'Stitch404',
+  name: '404',
   methods: {
     goBack() {
       this.$router.go(-1)

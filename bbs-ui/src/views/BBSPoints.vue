@@ -209,7 +209,7 @@ const RANK_COLORS = [
 ]
 
 export default {
-  name: 'StitchPoints',
+  name: 'BBSPoints',
   data() {
     return {
       activeTab: 'month',

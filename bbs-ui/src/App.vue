@@ -1,6 +1,6 @@
 <template>
     <div id="app-root">
-        <StitchHeader />
+        <BBSHeader />
         <div class="pt-16">
             <router-view />
         </div>
@@ -9,10 +9,10 @@
 
 <script>
     import './assets/iconfont/iconfont.js'
-    import StitchHeader from "@/components/StitchHeader";
+    import BBSHeader from "@/components/BBSHeader";
     export default {
         name: 'App',
-        components: { StitchHeader },
+        components: { BBSHeader },
     }
 </script>
 

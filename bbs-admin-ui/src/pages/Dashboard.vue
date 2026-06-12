@@ -56,15 +56,15 @@
           快捷操作
         </h2>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <router-link to="/stitch-user" class="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors border border-outline-variant/50 group">
+          <router-link to="/user" class="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors border border-outline-variant/50 group">
             <span class="material-symbols-outlined text-primary text-[24px]">manage_accounts</span>
             <span class="font-body-md text-on-surface group-hover:text-primary transition-colors">用户管理</span>
           </router-link>
-          <router-link to="/stitch-article" class="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors border border-outline-variant/50 group">
+          <router-link to="/article" class="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors border border-outline-variant/50 group">
             <span class="material-symbols-outlined text-tertiary-container text-[24px]">rate_review</span>
             <span class="font-body-md text-on-surface group-hover:text-primary transition-colors">帖子管理</span>
           </router-link>
-          <router-link to="/stitch-points" class="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors border border-outline-variant/50 group">
+          <router-link to="/points" class="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors border border-outline-variant/50 group">
             <span class="material-symbols-outlined text-rank-gold text-[24px]">leaderboard</span>
             <span class="font-body-md text-on-surface group-hover:text-primary transition-colors">积分排名</span>
           </router-link>
@@ -76,6 +76,6 @@
 
 <script>
 export default {
-  name: 'StitchDashboard'
+  name: 'Dashboard'
 }
 </script>

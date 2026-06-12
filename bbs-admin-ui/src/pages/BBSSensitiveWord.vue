@@ -54,7 +54,7 @@
 
 <script>
 export default {
-  name: 'StitchSensitiveWord',
+  name: 'BBSSensitiveWord',
   data() {
     return {
       loading: false,
