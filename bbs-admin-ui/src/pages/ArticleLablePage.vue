@@ -172,8 +172,8 @@
             </div>
             <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">是否禁用</label>
-              <button class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors" :class="editForm.enabled ? 'bg-error' : 'bg-surface-variant'" @click="editForm.enabled = editForm.enabled ? 0 : 1">
-                <span class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm" :class="editForm.enabled ? 'translate-x-6' : 'translate-x-0.5'"></span>
+              <button class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors" :class="editForm.enabled ? 'bg-surface-variant' : 'bg-error'" @click="editForm.enabled = editForm.enabled ? 0 : 1">
+                <span class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm" :class="editForm.enabled ? 'translate-x-0.5' : 'translate-x-6'"></span>
               </button>
             </div>
           </div>
@@ -245,7 +245,7 @@ export default {
             return Object.assign({}, item, {
               labelId: item.labelId || item.id,
               labelName: item.labelName || item.name || '',
-              isDisable: Number(typeof item.isDisable !== 'undefined' ? item.isDisable : (item.disable || 0))
+              isDisable: Number(typeof item.enabled !== 'undefined' ? (item.enabled === 0 ? 1 : 0) : 0)
             })
           })
         }
@@ -260,7 +260,7 @@ export default {
     submitAdd() {
       const labelName = (this.addForm.labelName || '').trim()
       if (!labelName) { this.$message.warning('标签名称不能为空'); return }
-      this.postRequest('/admin/addArticleLabel', { labelName, enabled: this.addForm.isDisable }).then(resp => {
+      this.postRequest('/admin/addArticleLabel', { labelName, enabled: this.addForm.isDisable === 1 ? 0 : 1 }).then(resp => {
         if (resp) {
           this.$message.success('添加成功')
           this.addVisible = false

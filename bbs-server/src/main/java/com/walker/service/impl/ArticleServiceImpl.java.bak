@@ -7,7 +7,6 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.ArticleMapper;
 import com.walker.pojo.*;
 import com.walker.service.*;
-import com.walker.service.ArticleLabelService;
 import com.walker.utils.ConstantUtil;
 import com.walker.utils.SensitiveWordUtil;
 import com.walker.vo.InformationVO;
@@ -55,9 +54,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Autowired
     private ArticleFileService articleFileService;
 
-    @Autowired
-    private ArticleLabelService articleLabelService;
-
 
     /**
      * 发布文章
@@ -67,23 +63,12 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Override
     public ResultBean publish(ArticleParam articleParam) {
 
-        // 校验标签是否存在且未被禁用
-        Integer labelId = articleParam.getArticleLabelId();
-        if (labelId != null && labelId > 0) {
-            ArticleLabel label = articleLabelService.getById(labelId);
-            if (label == null) {
-                return ResultBean.error("所选标签不存在");
-            }
-            if (label.getEnabled() == null || label.getEnabled() != 1) {
-                return ResultBean.error("所选标签已被禁用，请重新选择");
-            }
-        }
         Date date = new Date();
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String day = format.format(date);
 
         Article article = new Article();
-        article.setArticleLabelId(labelId);
+        article.setArticleLabelId(articleParam.getArticleLabelId());
         article.setArticleAuthor(articleParam.getArticleAuthor());
         article.setArticleTitle(articleParam.getArticleTitle());
         article.setArticleSummary(articleParam.getArticleSummary());

@@ -34,7 +34,10 @@ public class ArticleLabelServiceImpl extends ServiceImpl<ArticleLabelMapper, Art
     @Override
     public List<ArticleLabel> queryAllArticleLabel() {
 
-        return articleLabelMapper.selectList(null);
+        return articleLabelMapper.selectList(
+                new LambdaQueryWrapper<ArticleLabel>()
+                        .eq(ArticleLabel::getEnabled, 1)
+        );
 
     }
 

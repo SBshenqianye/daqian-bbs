@@ -26,7 +26,7 @@
           :placeholder="'从这里开始你的创作...'"
           :box-shadow="false"
           :ishljs="true"
-          style="min-height: 500px;"
+          style="min-height: 500px; position: relative; z-index: 1;"
           @imgAdd="handleImgAdd"
         />
       </div>
