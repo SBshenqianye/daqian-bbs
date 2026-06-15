@@ -196,16 +196,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             return articleMapper.selectList(new LambdaQueryWrapper<Article>()
                     .eq(Article::getEnable,1)
                     .orderByDesc(Article::getCreateTime)
-                    .select(Article::getArticleId,
-                            Article::getArticleAuthor,
-                            Article::getArticleTitle,
-                            Article::getArticleSummary,
-                            Article::getArticleGoodNum,
-                            Article::getArticleViewNum,
-                            Article::getArticleImage,
-                            Article::getCreateTime,
-                            Article::getArticleLabelId
-                    )
             );
         } else {
             // 先模糊查询附件名称，查询出附件名称能匹配的文章Id
@@ -225,16 +215,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                         .or()
                         .in(Article::getArticleId, distinctArticleIds)
                         .orderByDesc(Article::getCreateTime)
-                        .select(Article::getArticleId,
-                                Article::getArticleAuthor,
-                                Article::getArticleTitle,
-                                Article::getArticleSummary,
-                                Article::getArticleGoodNum,
-                                Article::getArticleViewNum,
-                                Article::getArticleImage,
-                                Article::getCreateTime,
-                                Article::getArticleLabelId
-                        )
                 );
             }
 
@@ -244,16 +224,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     .or()
                     .like(Article::getArticleTitle, keywords)
                     .orderByDesc(Article::getCreateTime)
-                    .select(Article::getArticleId,
-                            Article::getArticleAuthor,
-                            Article::getArticleTitle,
-                            Article::getArticleSummary,
-                            Article::getArticleGoodNum,
-                            Article::getArticleViewNum,
-                            Article::getArticleImage,
-                            Article::getCreateTime,
-                            Article::getArticleLabelId
-                    )
             );
         }
 
