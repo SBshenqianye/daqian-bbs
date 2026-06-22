@@ -6,7 +6,9 @@ import router from "@/router";
 //import store from "@/store";
 
 import GoEasy from "goeasy";
-import orgTree from "@/components/orgSelect/tree.vue";
+
+// 引入 Tailwind CSS 全局样式
+import './assets/tailwind.css'
 
 //按需引入element-ui
 import {
@@ -88,7 +90,6 @@ Vue.component(TabPane.name,TabPane)
 Vue.component(Table.name,Table)
 Vue.component(TableColumn.name,TableColumn)
 Vue.component(Tree.name,Tree)
-Vue.component("orgTree", orgTree);
 
 
 Vue.prototype.$confirm = MessageBox.confirm;
@@ -110,13 +111,13 @@ Vue.prototype.GoEasy = GoEasy;
 Vue.prototype.goEasy = goEasy;
 
 // 需要登录才能访问的路径（未登录时直接跳转登录页）
-const authPaths = ['/write', '/stat', '/collection', '/userinfo', '/tabs', '/fans', '/message', '/points/detail', '/information'];
+const authPaths = ['/write', '/userinfo', '/stat'];
 const needAuth = (path) => authPaths.some(p => path === p || path.startsWith(p + '/'));
 
 router.beforeEach(((to, from, next) => {
     const hasToken = window.sessionStorage.getItem('tokenStr');
     if (needAuth(to.path) && !hasToken) {
-        next('/login');
+        next({ path: '/login', query: { redirect: to.fullPath } });
         return;
     }
     if(hasToken){

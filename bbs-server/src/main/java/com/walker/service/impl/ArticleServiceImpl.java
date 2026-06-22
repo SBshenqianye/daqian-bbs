@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.ArticleMapper;
 import com.walker.pojo.*;
 import com.walker.service.*;
+import com.walker.service.ArticleLabelService;
 import com.walker.utils.ConstantUtil;
 import com.walker.utils.SensitiveWordUtil;
 import com.walker.vo.InformationVO;
@@ -54,6 +55,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Autowired
     private ArticleFileService articleFileService;
 
+    @Autowired
+    private ArticleLabelService articleLabelService;
+
 
     /**
      * 发布文章
@@ -63,12 +67,23 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Override
     public ResultBean publish(ArticleParam articleParam) {
 
+        // 校验标签是否存在且未被禁用
+        Integer labelId = articleParam.getArticleLabelId();
+        if (labelId != null && labelId > 0) {
+            ArticleLabel label = articleLabelService.getById(labelId);
+            if (label == null) {
+                return ResultBean.error("所选标签不存在");
+            }
+            if (label.getEnabled() == null || label.getEnabled() != 1) {
+                return ResultBean.error("所选标签已被禁用，请重新选择");
+            }
+        }
         Date date = new Date();
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String day = format.format(date);
 
         Article article = new Article();
-        article.setArticleLabelId(articleParam.getArticleLabelId());
+        article.setArticleLabelId(labelId);
         article.setArticleAuthor(articleParam.getArticleAuthor());
         article.setArticleTitle(articleParam.getArticleTitle());
         article.setArticleSummary(articleParam.getArticleSummary());
@@ -196,15 +211,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             return articleMapper.selectList(new LambdaQueryWrapper<Article>()
                     .eq(Article::getEnable,1)
                     .orderByDesc(Article::getCreateTime)
-                    .select(Article::getArticleId,
-                            Article::getArticleAuthor,
-                            Article::getArticleTitle,
-                            Article::getArticleSummary,
-                            Article::getArticleGoodNum,
-                            Article::getArticleViewNum,
-                            Article::getArticleImage,
-                            Article::getCreateTime
-                    )
             );
         } else {
             // 先模糊查询附件名称，查询出附件名称能匹配的文章Id
@@ -224,15 +230,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                         .or()
                         .in(Article::getArticleId, distinctArticleIds)
                         .orderByDesc(Article::getCreateTime)
-                        .select(Article::getArticleId,
-                                Article::getArticleAuthor,
-                                Article::getArticleTitle,
-                                Article::getArticleSummary,
-                                Article::getArticleGoodNum,
-                                Article::getArticleViewNum,
-                                Article::getArticleImage,
-                                Article::getCreateTime
-                        )
                 );
             }
 
@@ -242,15 +239,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     .or()
                     .like(Article::getArticleTitle, keywords)
                     .orderByDesc(Article::getCreateTime)
-                    .select(Article::getArticleId,
-                            Article::getArticleAuthor,
-                            Article::getArticleTitle,
-                            Article::getArticleSummary,
-                            Article::getArticleGoodNum,
-                            Article::getArticleViewNum,
-                            Article::getArticleImage,
-                            Article::getCreateTime
-                    )
             );
         }
 

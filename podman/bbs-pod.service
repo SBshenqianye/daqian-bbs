@@ -1,0 +1,26 @@
+[Unit]
+Description=BBS Podman Pod (PostgreSQL + App + Nginx)
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+Environment=POD_NAME=bbs-pod
+
+# 等待网络就绪
+ExecStartPre=/bin/bash -c 'while ! ping -c 1 8.8.8.8 &>/dev/null; do sleep 1; done; echo "Network ready"'
+
+# 启动 Pod（如果 pod 不存在，用 create-pod.sh 创建）
+ExecStart=/usr/bin/podman pod start %n
+ExecStop=/usr/bin/podman pod stop %n
+ExecStopPost=/usr/bin/podman pod rm -f %n
+
+Restart=on-failure
+RestartSec=30
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

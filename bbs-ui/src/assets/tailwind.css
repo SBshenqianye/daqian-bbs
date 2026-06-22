@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Global Design System Styles ===== */
+
+/* Material Symbols Outlined base style */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  font-size: 20px;
+}
+
+/* Filled icon variant */
+.material-symbols-outlined.filled-icon {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Body defaults */
+body {
+  font-family: 'Manrope', sans-serif;
+  background-color: #f8f9fb;
+  color: #181c23;
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d9dadc;
+  border-radius: 3px;
+}
+
+/* User popover - used in header */
+.user-popover {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  padding-top: 12px;
+  z-index: 50;
+}
+.user-trigger:hover .user-popover,
+.user-trigger.active .user-popover {
+  display: block;
+}
+
+/* Tab active style */
+.tab-active {
+  color: #0052d9;
+  background-color: #f1f3ff;
+}
+
+/* Rank badge colors */
+.rank-1 { background-color: #ef4444; color: white; }
+.rank-2 { background-color: #f97316; color: white; }
+.rank-3 { background-color: #fbbf24; color: white; }
+.rank-other { background-color: #dfe2ed; color: #434654; }
+
+/* Hero gradient */
+.hero-gradient {
+  background: linear-gradient(135deg, #0052d9 0%, #003da6 100%);
+}
+
+/* Rank cards */
+.rank-card-1 {
+  background: linear-gradient(135deg, #ffffff 0%, #fffdf0 100%);
+  border: 2px solid #ffd700;
+}
+.rank-card-2 {
+  background: linear-gradient(135deg, #ffffff 0%, #f5f7f9 100%);
+  border: 1px solid #c0c0c0;
+}
+.rank-card-3 {
+  background: linear-gradient(135deg, #ffffff 0%, #fff8f4 100%);
+  border: 1px solid #cd7f32;
+}
+
+/* Self row highlight */
+.self-row {
+  background-color: #f1f3ff;
+  border-left: 4px solid #0052d9;
+}
+
+/* Expand/collapse for ranking cards */
+.expand-content {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+.expanded .expand-content {
+  display: block;
+  opacity: 1;
+}
+.expanded .expand-icon {
+  transform: rotate(180deg);
+}
+
+/* Sticky header with blur */
+.sticky-header {
+  background: rgba(248, 249, 251, 0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #dfe2ed;
+}
+
+/* Modal overlay */
+.modal-overlay {
+  background-color: rgba(24, 28, 35, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+/* Dialog overlay */
+.dialog-overlay {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+/* Form slider transition */
+.form-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.forms-slider {
+  display: flex;
+  width: 200%;
+  transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.form-section {
+  width: 50%;
+  flex-shrink: 0;
+}
+.login-box {
+  width: 440px;
+}
+
+/* Editor toolbar button */
+.editor-toolbar-btn {
+  padding: 0.375rem;
+  border-radius: 0.25rem;
+  transition: colors 0.15s;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.editor-toolbar-btn:hover {
+  background-color: #f3f4f6;
+}
+
+/* Bottom bar shadow */
+.bottom-bar {
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Markdown body styles */
+.markdown-body img {
+  border-radius: 8px;
+  margin: 1.5rem 0;
+  max-width: 100%;
+  height: auto;
+}
+.markdown-body p {
+  margin-bottom: 1rem;
+  color: #434654;
+  line-height: 1.8;
+}
+
+/* Card shadow */
+.card-shadow {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Transition utility */
+.transition-primary {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tab active for profile sidebar */
+.sidebar-tab-active {
+  color: #0052d9;
+  background-color: #f1f3ff;
+  border-right: 3px solid #0052d9;
+}
+
+/* Tooltip */
+.tooltip {
+  position: relative;
+}
+.tooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 50;
+}

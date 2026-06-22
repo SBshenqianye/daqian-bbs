@@ -1,3 +1,6 @@
+202605-RPA小助手归档模板/
+归档/
+
 # Dependencies
 node_modules/
 
@@ -23,3 +26,8 @@ pnpm-debug.log*
 .vscode/
 .DS_Store
 Thumbs.db
+.mcp.json
+bbs-ui/stitch_bbs_forum_design_system/
+bbs-admin-ui/stitch_bbs_forum_design_system/
+
+.claude/

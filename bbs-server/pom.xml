@@ -7,7 +7,7 @@
     <groupId>com.tjx</groupId>
     <artifactId>bbs-server</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <packaging>war</packaging>
+    <packaging>jar</packaging>
 
     <name>BBS</name>
     <description>beyesheji-BBS</description>
@@ -29,30 +29,18 @@
     </parent>
 
     <dependencies>
-        <!--web 依赖-->
+        <!--web 依赖（内嵌 Tomcat，JAR 方式运行）-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
             <version>2.5.5</version>
-            <!-- 打 war 包部署到外部 Tomcat 时，排除内嵌 Tomcat，由外部提供 -->
-            <exclusions>
-                <exclusion>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-tomcat</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <!-- 打 war 时使用 provided：部署到 Tomcat 时由容器提供 -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-tomcat</artifactId>
-            <scope>provided</scope>
         </dependency>
 
-        <!--mysql 依赖 (MySQL 5.6 使用 5.1.x 驱动)-->
+        <!--PostgreSQL 驱动（Spring Boot BOM 管理版本）-->
         <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- 阿里开源数据源 -->
@@ -154,6 +142,18 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.walker.BBSApplication</mainClass>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>com.walker.BBSApplication</mainClass>
+                    <cleanupDaemonThreads>false</cleanupDaemonThreads>
+                </configuration>
             </plugin>
         </plugins>
     </build>

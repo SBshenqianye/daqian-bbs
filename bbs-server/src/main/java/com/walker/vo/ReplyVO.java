@@ -19,6 +19,9 @@ public class ReplyVO {
     @ApiModelProperty("回复人的昵称")
     private String nickname;
 
+    @ApiModelProperty("回复人的用户ID")
+    private Integer replyUserId;
+
     @ApiModelProperty("回复的时间")
     private String replyTime;
 

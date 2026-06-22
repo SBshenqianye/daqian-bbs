@@ -1,201 +1,131 @@
 <template>
-    <div class="header">
-        <!-- 折叠按钮 -->
-        <div class="collapse-btn" @click="collapseChage">
-            <i v-if="!collapse" class="el-icon-s-fold"></i>
-            <i v-else class="el-icon-s-unfold"></i>
-        </div>
-        <div class="logo">大千智荟创新创意交流论坛</div>
-        <div class="header-right">
-            <div class="header-user-con">
-                <!-- 全屏显示 -->
-                <!--<div class="btn-fullscreen" @click="handleFullScreen">
-                    <el-tooltip effect="dark" :content="fullscreen?`取消全屏`:`全屏`" placement="bottom">
-                        <i class="el-icon-rank"></i>
-                    </el-tooltip>
-                </div>-->
-                <!-- 消息中心 -->
-                <!--<div class="btn-bell">
-                    <el-tooltip
-                        effect="dark"
-                        :content="message?`有${message}条未读消息`:`消息中心`"
-                        placement="bottom"
-                    >
-                        <router-link to="/tabs">
-                            <i class="el-icon-bell"></i>
-                        </router-link>
-                    </el-tooltip>
-                    <span class="btn-bell-badge" v-if="message"></span>
-                </div>-->
-                <!-- 用户头像 -->
-                <div class="user-avator">
-                    <img :src="avatarUrl" />
-                </div>
-                <!-- 用户名下拉菜单 -->
-                <el-dropdown class="user-name" trigger="click" @command="handleCommand">
-                    <span class="el-dropdown-link">
-                        {{username}}
-                        <i class="el-icon-caret-bottom"></i>
-                    </span>
-                    <el-dropdown-menu slot="dropdown">
-                        <a :href="userClientHref" target="_blank">
-                            <el-dropdown-item>用户界面</el-dropdown-item>
-                        </a>
-                        <el-dropdown-item divided command="loginout">退出登录</el-dropdown-item>
-                    </el-dropdown-menu>
-                </el-dropdown>
-            </div>
-        </div>
+  <header class="stitch-header h-16 bg-container border-b border-outline-variant flex items-center justify-between px-4 sticky top-0 z-30 shadow-sm">
+    <!-- Left: collapse button + logo -->
+    <div class="flex items-center gap-3">
+      <button
+        class="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-surface-container-low transition-colors text-on-surface-variant"
+        @click="toggleCollapse"
+      >
+        <span class="material-symbols-outlined text-[22px]">{{ localCollapse ? 'menu_open' : 'menu' }}</span>
+      </button>
+      <div class="flex items-center gap-2 select-none">
+        <span class="material-symbols-outlined text-primary text-[26px]">forum</span>
+        <span class="font-headline-sm text-headline-sm text-on-surface hidden sm:inline">大千智荟创新创意交流论坛</span>
+      </div>
     </div>
+
+    <!-- Right: user info -->
+    <div class="relative" ref="userMenu">
+      <!-- Trigger -->
+      <div
+        class="flex items-center gap-3 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-surface-container-low transition-colors select-none"
+        @click="showDropdown = !showDropdown"
+      >
+        <div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center overflow-hidden border-2 border-surface-container-high ring-2 ring-white">
+          <img v-if="avatarUrl" :src="avatarUrl" class="w-full h-full object-cover" alt="avatar" />
+          <span v-else class="material-symbols-outlined text-[18px] text-primary">person</span>
+        </div>
+        <span class="font-label-md text-label-md text-on-surface hidden sm:inline">{{ username }}</span>
+        <span class="material-symbols-outlined text-[16px] text-outline transition-transform duration-200" :class="{ 'rotate-180': showDropdown }">expand_more</span>
+      </div>
+
+      <!-- Dropdown Menu -->
+      <transition name="fade-down">
+        <div
+          v-if="showDropdown"
+          class="absolute top-full right-0 mt-2 w-52 bg-container border border-outline-variant rounded-xl shadow-lg overflow-hidden z-50 py-1"
+        >
+          <div class="px-4 py-3 border-b border-outline-variant/60">
+            <p class="font-label-md text-label-md text-on-surface">{{ username }}</p>
+            <p class="text-[11px] text-outline mt-0.5">管理员</p>
+          </div>
+          <a
+            :href="userClientHref"
+            target="_blank"
+            class="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-container-low transition-colors text-on-surface"
+            @click="showDropdown = false"
+          >
+            <span class="material-symbols-outlined text-[20px] text-outline">open_in_new</span>
+            <span class="font-body-md">前往用户界面</span>
+          </a>
+          <div class="border-t border-outline-variant/60 mx-3"></div>
+          <button
+            class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-container-low transition-colors text-on-surface"
+            @click="handleLogout"
+          >
+            <span class="material-symbols-outlined text-[20px] text-error">logout</span>
+            <span class="font-body-md text-error">退出登录</span>
+          </button>
+        </div>
+      </transition>
+
+      <!-- Dropdown backdrop -->
+      <div v-if="showDropdown" class="fixed inset-0 z-40" @click="showDropdown = false"></div>
+    </div>
+  </header>
 </template>
+
 <script>
-import bus from '../common/bus';
+import bus from './bus'
+
 export default {
-    data() {
-        return {
-            userClientHref:process.env.VUE_APP_BBS_USER_API,
-            userinfo:JSON.parse(window.sessionStorage.getItem("admin")),
-            collapse: false,
-            /*fullscreen: false,
-            message: 2*/
-        };
-    },
-    computed: {
-        username() {
-            const userinfo = this.userinfo;
-            const username = userinfo && userinfo.username;
-            return username ? username : '管理员';
-        },
-        avatarUrl() {
-            const baseApi = process.env.VUE_APP_BBS_BASE_API || '';
-            const portrait = this.userinfo && this.userinfo.portrait;
-            if (!portrait) return require('../../assets/img/img.jpeg');
-            const path = portrait.startsWith('/') ? portrait : '/' + portrait;
-            return baseApi + path;
-        }
-    },
-    methods: {
-        // 用户名下拉菜单选择事件
-        handleCommand(command) {
-            if (command == 'loginout') {
-                window.sessionStorage.removeItem('admin');
-                this.$router.push('/login');
-            }
-        },
-        // 侧边栏折叠
-        collapseChage() {
-            this.collapse = !this.collapse;
-            bus.$emit('collapse', this.collapse);
-        },
-        // 全屏事件
-        handleFullScreen() {
-            let element = document.documentElement;
-            if (this.fullscreen) {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.webkitCancelFullScreen) {
-                    document.webkitCancelFullScreen();
-                } else if (document.mozCancelFullScreen) {
-                    document.mozCancelFullScreen();
-                } else if (document.msExitFullscreen) {
-                    document.msExitFullscreen();
-                }
-            } else {
-                if (element.requestFullscreen) {
-                    element.requestFullscreen();
-                } else if (element.webkitRequestFullScreen) {
-                    element.webkitRequestFullScreen();
-                } else if (element.mozRequestFullScreen) {
-                    element.mozRequestFullScreen();
-                } else if (element.msRequestFullscreen) {
-                    // IE11
-                    element.msRequestFullscreen();
-                }
-            }
-            this.fullscreen = !this.fullscreen;
-        }
-    },
-    mounted() {
-        console.log(process.env,111111)
-        if (document.body.clientWidth < 1500) {
-            this.collapseChage();
-        }
+  name: 'Header',
+  data() {
+    return {
+      localCollapse: false,
+      showDropdown: false,
+      adminInfo: null,
+      userClientHref: process.env.VUE_APP_BBS_USER_API || '',
     }
-};
+  },
+  computed: {
+    username() {
+      return (this.adminInfo && this.adminInfo.username) || '管理员'
+    },
+    avatarUrl() {
+      const baseApi = process.env.VUE_APP_BBS_BASE_API || ''
+      const portrait = this.adminInfo && this.adminInfo.portrait
+      if (!portrait) return ''
+      const path = portrait.startsWith('/') ? portrait : '/' + portrait
+      return baseApi + path
+    },
+  },
+  created() {
+    this.loadAdminInfo()
+    bus.$on('collapse', (msg) => {
+      this.localCollapse = msg
+    })
+  },
+  methods: {
+    loadAdminInfo() {
+      try {
+        const raw = window.sessionStorage.getItem('admin')
+        this.adminInfo = raw ? JSON.parse(raw) : null
+      } catch (e) {
+        this.adminInfo = null
+      }
+    },
+    toggleCollapse() {
+      this.localCollapse = !this.localCollapse
+      bus.$emit('collapse', this.localCollapse)
+    },
+    handleLogout() {
+      this.showDropdown = false
+      window.sessionStorage.removeItem('admin')
+      this.$router.push('/login')
+    },
+  },
+}
 </script>
+
 <style scoped>
-.header {
-    position: relative;
-    box-sizing: border-box;
-    width: 100%;
-    height: 70px;
-    font-size: 22px;
-    color: #fff;
+.fade-down-enter-active,
+.fade-down-leave-active {
+  transition: all 0.2s ease;
 }
-.collapse-btn {
-    float: left;
-    padding: 0 21px;
-    cursor: pointer;
-    line-height: 70px;
-}
-.header .logo {
-    float: left;
-    width: 250px;
-    line-height: 70px;
-}
-.header-right {
-    float: right;
-    padding-right: 50px;
-}
-.header-user-con {
-    display: flex;
-    height: 70px;
-    align-items: center;
-}
-.btn-fullscreen {
-    transform: rotate(45deg);
-    margin-right: 5px;
-    font-size: 24px;
-}
-.btn-bell,
-.btn-fullscreen {
-    position: relative;
-    width: 30px;
-    height: 30px;
-    text-align: center;
-    border-radius: 15px;
-    cursor: pointer;
-}
-.btn-bell-badge {
-    position: absolute;
-    right: 0;
-    top: -2px;
-    width: 8px;
-    height: 8px;
-    border-radius: 4px;
-    background: #f56c6c;
-    color: #fff;
-}
-.btn-bell .el-icon-bell {
-    color: #fff;
-}
-.user-name {
-    margin-left: 10px;
-}
-.user-avator {
-    margin-left: 20px;
-}
-.user-avator img {
-    display: block;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-}
-.el-dropdown-link {
-    color: #fff;
-    cursor: pointer;
-}
-.el-dropdown-menu__item {
-    text-align: center;
+.fade-down-enter,
+.fade-down-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 </style>

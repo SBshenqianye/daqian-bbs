@@ -18,7 +18,7 @@ module.exports = {
         port: 8081,
         proxy: {
             [process.env.VUE_APP_BBS_API]: {
-                target: process.env.VUE_APP_BBS_BASE_FILE,
+                target: process.env.VUE_APP_BBS_BASE_FILE + '/bbs-server',
                 changeOrigin: true,
                 pathRewrite: {
                     ['^' + process.env.VUE_APP_BBS_API]: ''

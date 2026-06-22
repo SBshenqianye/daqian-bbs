@@ -100,6 +100,7 @@ public class CommentController {
                         Integer fromUserId = reply.getReplyUserId();
                         User userVO1 = userService.queryUserinfoById(fromUserId);
 
+                        replyVO.setReplyUserId(fromUserId);
                         replyVO.setPortrait(userVO1.getPortrait());
                         replyVO.setNickname(userVO1.getNickname());
 
