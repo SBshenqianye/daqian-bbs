@@ -2,6 +2,8 @@
 server:
   # 端口号设置
   port: 8083
+  servlet:
+    context-path: /bbs-server
 spring:
   #加载配置文件
   profiles:

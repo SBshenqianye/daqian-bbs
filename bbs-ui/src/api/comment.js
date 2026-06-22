@@ -1,9 +1,5 @@
-// 引入 axios
-import axios from "axios";
+import { postRequest } from './api'
 
 export const getCommentReply =(articleId)=>{
-    return axios({
-        method:'post',
-        url:`${process.env.VUE_APP_BBS_API}/common/comment/getCommentReply/${articleId}`,
-    })
+    return postRequest(`/common/comment/getCommentReply/${articleId}`)
 }

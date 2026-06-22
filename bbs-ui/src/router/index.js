@@ -1,24 +1,4 @@
 import VueRouter from 'vue-router';
-import BBSCommunity from "@/pages/BBSCommunity";
-import BBSLogin from "@/pages/BBSLogin";
-import BBSArticleWrite from "@/pages/BBSArticleWrite";
-import BBSUserinfo from "@/components/BBSUserinfo";
-import BBSForum from "@/pages/BBSForum";
-import BBSIndex from "@/pages/BBSIndex";
-import BBSArticleDetails from "@/pages/BBSArticleDetails";
-import BBSTabs from "@/pages/BBSTabs";
-import BBSCollection from "@/pages/BBSCollection";
-import BBSCommunityDetails from "@/pages/BBSCommunityDetails";
-import BBSInventory from "@/pages/BBSInventory";
-import BBSInventoryDetails from "@/pages/BBSInventoryDetails";
-import BBSSearchPage from "@/pages/BBSSearchPage";
-import BBSStat from "@/pages/BBSStat";
-import BBSInformation from "@/pages/BBSInformation";
-import BBSMessage from '@/pages/BBSMessage';
-import BBSChat from '@/components/BBSChat'
-import BBSFans from '@/pages/BBSFans';
-import BBSPoints from '@/pages/BBSPoints';
-import BBSPointsDetail from '@/pages/BBSPointsDetail';
 
 
 //解决vue路由重复导航错误
@@ -36,111 +16,49 @@ const router = new VueRouter({
         {
             name:'index',
             path:'/',
-            component:BBSIndex,
             redirect: '/forum'
         },
 
+        // ===== BBS Forum Pages =====
         {
-            name: 'login',
-            path: '/login',
-            component: BBSLogin,
-            meta:{auth:false}
-        },
-        {
-            name:'collection',
-            path:"/collection",
-            component:BBSCollection,
-        },
-        {
-            name:'forum',
+            name: 'BBSForum',
             path: '/forum',
-            component: BBSForum,
-            meta:{auth:false}
+            component: () => import('@/views/BBSForum.vue'),
+            meta: { auth: false }
         },
         {
-            name:'community',
-            path: '/community',
-            component:BBSCommunity,
-            meta:{auth:false}
+            name: 'BBSLogin',
+            path: '/login',
+            component: () => import('@/views/BBSLogin.vue'),
+            meta: { auth: false }
         },
         {
-            name:'inventory',
-            path: '/inventory',
-            component:BBSInventory,
-            meta:{auth:false}
+            name: 'BBSPoints',
+            path: '/points',
+            component: () => import('@/views/BBSPoints.vue'),
+            meta: { auth: false }
         },
         {
-            name:'write',
-            path:'/write',
-            component:BBSArticleWrite
+            name: 'BBSArticleWrite',
+            path: '/write',
+            component: () => import('@/views/BBSArticleWrite.vue'),
         },
         {
-            name:'userinfo',
-            path:'/userinfo',
-            component:BBSUserinfo
+            name: 'BBSUserinfo',
+            path: '/userinfo',
+            component: () => import('@/views/BBSUserinfo.vue'),
         },
         {
-            name:'articleDetails',
-            path:'/articleDetails/articleId/:articleId',
-            component: BBSArticleDetails
+            name: 'BBSStat',
+            path: '/stat',
+            component: () => import('@/views/BBSStat.vue'),
         },
         {
-            name:'tabs',
-            path:'/tabs/:index',
-            component:BBSTabs,
+            name: 'BBSArticleDetails',
+            path: '/articleDetails/articleId/:articleId',
+            component: () => import('@/views/BBSArticleDetails.vue'),
+            meta: { auth: false }
         },
-        {
-            name:'communityDetails',
-            path:'/communityDetails/communityId/:communityId',
-            component:BBSCommunityDetails,
-        },
-        {
-            name:'inventoryDetails',
-            path:'/inventoryDetails/inventoryId/:inventoryId',
-            component:BBSInventoryDetails,
-        },
-        {
-            name:'searchDetails',
-            path:'/search/keywords/:keywords',
-            component:BBSSearchPage,
-        },
-        {
-            name:'stat',
-            path:'/stat',
-            component:BBSStat,
-        },
-        // 弃用
-        {
-            name:'information',
-            path:'/information',
-            component:BBSInformation,
-        },
-        {
-            name:'message',
-            path:'/message',
-            component:BBSMessage,
-            children: [
-                {
-                    path:'chat/:id',
-                    component:BBSChat,
-                }
-            ]
-        },
-        {
-            name:'fans',
-            path:'/fans',
-            component:BBSFans,
-        },
-        {
-            name:'points',
-            path:'/points',
-            component:BBSPoints,
-        },
-        {
-            name:'pointsDetail',
-            path:'/points/detail',
-            component:BBSPointsDetail,
-        }
 
     ]
 })

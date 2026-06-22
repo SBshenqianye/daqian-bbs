@@ -6,6 +6,7 @@ import 'element-ui/lib/theme-chalk/index.css'; // 默认主题
 // import './assets/css/theme-green/index.css'; // 浅绿色主题
 import './assets/css/icon.css';
 import 'babel-polyfill';
+import './assets/tailwind.css';
 import {postRequest,putRequest,getRequest,getRequestUrl,deleteRequest} from "@/api/api";
 import * as echarts from 'echarts'
 
@@ -28,7 +29,8 @@ Vue.use(ElementUI, {
 router.beforeEach((to, from, next) => {
     document.title = `大千智荟创新创意交流论坛`;
     const role = window.sessionStorage.getItem('admin');
-    if (!role && to.path !== '/login') {
+    const publicPaths = ['/login'];
+    if (!role && !publicPaths.includes(to.path)) {
         next('/login');
     } else if (to.meta.permission) {
         // 如果是管理员权限则可进入

@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+    url: jdbc:postgresql://localhost:5432/bbs
+    username: bbs_user
+    password: ${BBS_DB_PASSWORD}
+    druid:
+      initial-size: 1
+      min-idle: 1
+      max-active: 20
+      test-on-borrow: true
+      validation-query: SELECT 1
+      stat-view-servlet:
+        allow: true
+
+# 文件存储路径（保持与原来一致）
+storage:
+  path: /home/asiayak/bbsUpload/

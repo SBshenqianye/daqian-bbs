@@ -34,51 +34,60 @@
         from bbs_article t
         join bbs_user u on t.user_id = u.id
         join bbs_sa_org s on u.org_no = s.org_no
-        where t.is_delete = 0 and t.`enable` = 1
+        where t.is_delete = 0 and t.enable = 1
         <if test="orgNo != null and orgNo != ''">
             and s.org_no like concat(#{orgNo},'%')
         </if>
         <if test="startTime != null and startTime != ''">
-            and t.create_time >= str_to_date(#{startTime},'%Y-%m-%d')
+            and t.create_time >= to_date(#{startTime},'YYYY-MM-DD')
         </if>
         <if test="endTime != null and endTime != ''">
-            AND T.create_time <![CDATA[<]]> DATE_ADD(str_to_date(#{endTime},'%Y-%m-%d'),INTERVAL 1 DAY)
+            AND t.create_time <![CDATA[<]]> to_date(#{endTime},'YYYY-MM-DD') + interval '1 day'
         </if>
         group by substr(s.org_no,1,${orgLength}),s.org_name
     </select>
 
     <!--获取积分排名-->
     <select id="pointsRank" parameterType="com.walker.vo.param.PointsRankParam" resultType="com.walker.vo.PointsRankVO">
-        SELECT t.*,
-        -- 相同值序号不变，不同则+1
-        @rank := IF(@prev_score = t.points, @rank, @rank + 1) AS rankNum,
-        @prev_score := t.points -- 更新前一个分数为当前分数
+        SELECT t.orgNo, t.orgName, t.posts, t.replies, t.points,
+               rank() OVER (ORDER BY t.points DESC, t.orgNo) AS rankNum
         FROM (
-        select * from (
-        select t1.org_no orgNo,t1.org_name,ifnull(t2.posts,0) posts, ifnull(t3.replies,0) replies, (ifnull(t2.posts,0)*#{post}+ifnull(t3.replies,0)*#{reply})  points
-        from  (
-        select s.org_no,s.org_name
-        from bbs_sa_org s where s.is_delete = 0 and s.org_no like concat(#{orgNo},'%') and length(s.org_no) <![CDATA[<=]]> ${orgLength}) t1
-        left join (
-        select substr(u.org_no,1,${orgLength}) org_no, count(1) posts
-        from bbs_article t
-        join bbs_user u on t.user_id = u.id
-        where t.is_delete = 0 and t.`enable` = 1
-        and u.org_no like concat(#{orgNo},'%')
-        and t.create_time >= str_to_date(#{startTime},'%Y-%m-%d')
-        AND t.create_time <![CDATA[<]]> DATE_ADD(str_to_date(#{endTime},'%Y-%m-%d'),INTERVAL 1 DAY)
-        group by substr(u.org_no,1,${orgLength})) t2 on t1.org_no = t2.org_no
-        left join (
-        select substr(u.org_no,1,${orgLength}) org_no, count(1) replies
-        from bbs_comment t
-        join bbs_user u on t.comment_user_id = u.id
-        where t.is_delete = 0 and t.`enable` = 1
-        and u.org_no like concat(#{orgNo},'%')
-        and t.comment_time >= str_to_date(#{startTime},'%Y-%m-%d')
-        AND t.comment_time <![CDATA[<]]> DATE_ADD(str_to_date(#{endTime},'%Y-%m-%d'),INTERVAL 1 DAY)
-        group by substr(u.org_no,1,${orgLength})) t3 on t1.org_no = t3.org_no ) p order by p.points desc,p.orgNo
-        ) t,
-        -- 初始化变量：@rank 初始为0，@prev_score 初始为一个不存在的值（避免首行判断错误）
-        (SELECT @rank := 0, @prev_score := NULL) AS init_var
+            SELECT t1.org_no AS orgNo, t1.org_name AS orgName,
+                   coalesce(t2.posts, 0) AS posts,
+                   coalesce(t3.replies, 0) AS replies,
+                   (coalesce(t2.posts, 0) * #{post} + coalesce(t3.replies, 0) * #{reply}) AS points
+            FROM (
+                SELECT s.org_no, s.org_name
+                FROM bbs_sa_org s
+                WHERE s.is_delete = 0
+                  AND s.org_no LIKE concat(#{orgNo}, '%')
+                  AND length(s.org_no) <![CDATA[<=]]> ${orgLength}
+            ) t1
+            LEFT JOIN (
+                SELECT substr(u.org_no, 1, ${orgLength}) AS org_no,
+                       count(1) AS posts
+                FROM bbs_article t
+                JOIN bbs_user u ON t.user_id = u.id
+                WHERE t.is_delete = 0
+                  AND t.enable = 1
+                  AND u.org_no LIKE concat(#{orgNo}, '%')
+                  AND t.create_time >= to_date(#{startTime}, 'YYYY-MM-DD')
+                  AND t.create_time <![CDATA[<]]> to_date(#{endTime}, 'YYYY-MM-DD') + interval '1 day'
+                GROUP BY substr(u.org_no, 1, ${orgLength})
+            ) t2 ON t1.org_no = t2.org_no
+            LEFT JOIN (
+                SELECT substr(u.org_no, 1, ${orgLength}) AS org_no,
+                       count(1) AS replies
+                FROM bbs_comment t
+                JOIN bbs_user u ON t.comment_user_id = u.id
+                WHERE t.is_delete = 0
+                  AND t.enable = 1
+                  AND u.org_no LIKE concat(#{orgNo}, '%')
+                  AND t.comment_time >= to_date(#{startTime}, 'YYYY-MM-DD')
+                  AND t.comment_time <![CDATA[<]]> to_date(#{endTime}, 'YYYY-MM-DD') + interval '1 day'
+                GROUP BY substr(u.org_no, 1, ${orgLength})
+            ) t3 ON t1.org_no = t3.org_no
+        ) t
+        ORDER BY t.points DESC, t.orgNo
     </select>
 </mapper>

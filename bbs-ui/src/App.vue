@@ -1,7 +1,9 @@
 <template>
-    <div>
-        <BBSHeader/>
-        <!--<BBSLogin/>-->
+    <div id="app-root">
+        <BBSHeader />
+        <div class="pt-16">
+            <router-view />
+        </div>
     </div>
 </template>
 
@@ -10,7 +12,7 @@
     import BBSHeader from "@/components/BBSHeader";
     export default {
         name: 'App',
-        components: {BBSHeader},
+        components: { BBSHeader },
     }
 </script>
 
@@ -27,5 +29,4 @@
     .el-cascader-panel{
         height: 200px;
     }
-
 </style>

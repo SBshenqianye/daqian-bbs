@@ -17,6 +17,39 @@ export function formatDate(t) {
 };
 
 /**
+ * 修复 markdown / HTML 链接中缺少协议前缀的 URL，自动补上 http://
+ * 例如 [百度](www.4399.com) → [百度](http://www.4399.com)
+ * 例如 <a href="www.4399.com"> → <a href="http://www.4399.com">
+ * @param {string} content  markdown 或 HTML 内容
+ * @returns {string}
+ */
+export function normalizeUrls(content) {
+  if (!content) return content
+
+  // 处理 markdown 链接: [text](url) 中 url 没有协议的情况
+  content = content.replace(
+    /\[([^\]]*)\]\(((?!https?:\/\/|ftp:\/\/|\/\/|data:|mailto:|tel:|#|\/)[^\s\)]+)\)/g,
+    (match, text, url) => {
+      if (url.startsWith('./') || url.startsWith('../')) return match
+      if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(url)) return match
+      return `[${text}](http://${url})`
+    }
+  )
+
+  // 处理 HTML 链接: href="url" 中 url 没有协议的情况
+  content = content.replace(
+    /href="((?!https?:\/\/|ftp:\/\/|\/\/|data:|mailto:|tel:|#|\/)[^"]+)"/g,
+    (match, url) => {
+      if (url.startsWith('./') || url.startsWith('../')) return match
+      if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(url)) return match
+      return `href="http://${url}"`
+    }
+  )
+
+  return content
+}
+
+/**
  * 距当前时间点的时长
  * @prama time 13位时间戳
  * @return str x秒 / x分钟 / x小时
