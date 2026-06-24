@@ -32,29 +32,59 @@
 
       <!-- Org Tree -->
       <div v-else class="bg-container border border-border rounded-xl p-6">
-        <div v-if="!orgTree.length" class="text-center py-12 text-on-surface-variant">
-          <span class="material-symbols-outlined opacity-20" style="font-size:48px">account_tree</span>
-          <p class="text-body-md mt-2">暂无可配置的单位数据</p>
+        <!-- Search -->
+        <div class="mb-4 relative">
+          <span class="material-symbols-outlined absolute text-outline flex items-center" style="font-size:18px;left:12px;top:50%;transform:translateY(-50%);line-height:1">search</span>
+          <input
+            v-model="filterText"
+            class="w-full h-10 pl-9 pr-4 bg-surface rounded-lg border border-outline-variant text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-all"
+            placeholder="搜索单位名称..."
+          />
+          <button
+            v-if="filterText"
+            class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded text-outline hover:text-on-surface hover:bg-surface-variant transition-all"
+            @click="filterText = ''"
+          >
+            <span class="material-symbols-outlined" style="font-size:14px">close</span>
+          </button>
         </div>
-        <OrgTree
-          v-else
-          ref="orgTree"
-          :nodes="orgTree"
-          :loading="false"
-        >
-          <template #node-actions="{ node }">
-            <button
-              class="w-7 h-7 flex items-center justify-center rounded hover:bg-primary/10 transition-colors"
-              :class="node.isRankingSelected ? 'text-primary' : 'text-outline'"
-              :title="node.isRankingSelected ? '取消参与排名' : '参与排名'"
-              @click.stop="toggleOrg(node)"
-            >
-              <span class="material-symbols-outlined" style="font-size:18px">
-                {{ node.isRankingSelected ? 'toggle_on' : 'toggle_off' }}
-              </span>
-            </button>
-          </template>
-        </OrgTree>
+
+        <template v-if="!orgTree.length">
+          <div class="text-center py-12 text-on-surface-variant">
+            <span class="material-symbols-outlined opacity-20" style="font-size:48px">account_tree</span>
+            <p class="text-body-md mt-2">暂无可配置的单位数据</p>
+          </div>
+        </template>
+        <template v-else>
+          <!-- Selected summary -->
+          <div v-if="selectedCount > 0" class="mb-4 p-3 bg-primary/5 border border-primary/15 rounded-lg flex items-center gap-2 text-body-md text-primary">
+            <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
+            已勾选 <strong>{{ selectedCount }}</strong> 个单位参与排名
+          </div>
+
+          <OrgTree
+            ref="orgTree"
+            :nodes="orgTree"
+            :filter-text="filterText"
+            :default-expanded="false"
+            :loading="false"
+          >
+            <template #node-actions="{ node }">
+              <!-- Switch toggle -->
+              <button
+                class="relative w-10 h-5 rounded-full transition-all duration-200 flex-shrink-0"
+                :class="node.isRankingSelected ? 'bg-primary' : 'bg-gray-300'"
+                :title="node.isRankingSelected ? '取消参与排名' : '参与排名'"
+                @click.stop="toggleOrg(node)"
+              >
+                <span
+                  class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-200"
+                  :style="node.isRankingSelected ? 'left:22px' : 'left:2px'"
+                ></span>
+              </button>
+            </template>
+          </OrgTree>
+        </template>
       </div>
     </div>
   </div>
@@ -79,6 +109,7 @@ export default {
       loading: false,
       saving: false,
       loadError: '',
+      filterText: '',
       orgTree: [],
       /** orgNo -> boolean, 用于保存 */
       rankingMap: {},
@@ -88,6 +119,11 @@ export default {
   },
   mounted() {
     this.loadData()
+  },
+  computed: {
+    selectedCount() {
+      return Object.values(this.rankingMap).filter(Boolean).length
+    },
   },
   methods: {
     async loadData() {
