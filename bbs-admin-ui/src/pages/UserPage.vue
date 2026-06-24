@@ -46,6 +46,7 @@
                 <th class="p-4 text-left">
                   <input type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded" :checked="isAllSelected" @change="selectAll">
                 </th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[60px]">操作</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[60px]">ID</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[100px]">用户名</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[100px]">姓名</th>
@@ -53,13 +54,20 @@
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">角色</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">状态</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[170px]">注册时间</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[260px]">操作</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(user, index) in users" :key="user.id" class="border-b border-border hover:bg-surface-container-low/50 transition-colors">
                 <td class="p-4">
                   <input type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded" :checked="isSelected(user)" :disabled="!canCheck(user)" @change="toggleSelect(user)">
+                </td>
+                <td class="p-4">
+                  <div v-if="canShowOperation(user)">
+                    <button class="inline-flex items-center justify-center w-8 h-8 rounded-full text-info bg-info/5 hover:bg-info/15 hover:text-info transition-colors" title="编辑" @click="handleOpenEditDialog(user)">
+                      <span class="material-symbols-outlined text-[18px]">edit</span>
+                    </button>
+                  </div>
+                  <span v-else class="text-on-surface-variant text-body-md">-</span>
                 </td>
                 <td class="p-4 font-body-md text-on-surface">{{ user.id }}</td>
                 <td class="p-4 font-body-md text-on-surface max-w-[160px] truncate" :title="user.username">{{ user.username }}</td>
@@ -75,31 +83,6 @@
                   </span>
                 </td>
                 <td class="p-4 font-body-md text-on-surface-variant">{{ user.createTime }}</td>
-                <td class="p-4">
-                  <div class="flex items-center gap-2" v-if="canShowOperation(user)">
-                    <button v-if="currentUserType === 3 && (user.userType == 1 || user.userType == 2)" class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-primary bg-primary/5 rounded hover:bg-primary/10 transition-colors" @click="handleUpdateUserRole(user)">
-                      <span class="material-symbols-outlined text-[14px]">swap_horiz</span>
-                      {{ user.userType == 1 ? '转管理员' : '转用户' }}
-                    </button>
-                    <button class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-warning bg-warning/5 rounded hover:bg-warning/10 transition-colors" @click="handleUpdateAlive(index, user.id)">
-                      <span class="material-symbols-outlined text-[14px]">toggle_on</span>
-                      状态
-                    </button>
-                    <button class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-info bg-info/5 rounded hover:bg-info/10 transition-colors" @click="handleOpenEditDialog(user)">
-                      <span class="material-symbols-outlined text-[14px]">edit</span>
-                      编辑
-                    </button>
-                    <button v-if="user.userType != 3" class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-secondary bg-secondary/5 rounded hover:bg-secondary/10 transition-colors" @click="handleOpenOrgDialog(user)">
-                      <span class="material-symbols-outlined text-[14px]">corporate_fare</span>
-                      单位
-                    </button>
-                    <button class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors" @click="handleDelete(index, user.id)">
-                      <span class="material-symbols-outlined text-[14px]">delete</span>
-                      删除
-                    </button>
-                  </div>
-                  <span v-else class="text-on-surface-variant text-body-md">-</span>
-                </td>
               </tr>
               <tr v-if="users.length === 0">
                 <td colspan="9" class="p-12 text-center">
@@ -188,7 +171,7 @@
       <!-- Edit User Dialog -->
       <div v-if="editDialogVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="editDialogVisible = false">
         <div class="fixed inset-0 bg-black/30"></div>
-        <div class="relative bg-container w-full max-w-lg rounded-xl shadow-2xl overflow-hidden">
+        <div class="relative bg-container w-full max-w-lg rounded-xl shadow-2xl">
           <div class="flex items-center justify-between p-5 border-b border-outline-variant">
             <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">edit</span>
@@ -226,10 +209,35 @@
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">所属单位</label>
-                <button class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md text-left flex items-center justify-between hover:border-primary transition-colors" @click="editOrgDialogVisible = true">
-                  <span>{{ editForm.orgName || '请选择单位' }}</span>
-                  <span class="material-symbols-outlined text-[18px] text-outline">corporate_fare</span>
-                </button>
+                <div class="relative">
+                  <button class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md text-left flex items-center justify-between hover:border-primary transition-colors" @click="editOrgTreeExpanded = !editOrgTreeExpanded" type="button">
+                    <span>{{ editForm.orgName || '请选择单位' }}</span>
+                    <span class="material-symbols-outlined text-[18px] text-outline">{{ editOrgTreeExpanded ? 'expand_less' : 'expand_more' }}</span>
+                  </button>
+                  <div v-if="editOrgTreeExpanded" class="absolute z-10 mt-1 w-full bg-container border border-outline-variant rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div v-if="editOrgTree.length === 0" class="p-4 text-center text-on-surface-variant text-body-md">加载中...</div>
+                    <div v-else class="p-2">
+                      <div v-for="org in editOrgTree" :key="org.id" class="mb-1">
+                        <div class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-primary/5" :class="editForm.orgNo === org.id ? 'bg-primary/10 text-primary font-semibold' : ''" @click="selectEditOrg(org.id, org.label)">
+                          <span class="material-symbols-outlined text-[18px] text-outline">folder</span>
+                          <span class="text-body-md">{{ org.label }}</span>
+                        </div>
+                        <div v-if="org.children && org.children.length" class="ml-5 border-l border-outline-variant/30">
+                          <div v-for="child in org.children" :key="child.id" class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-primary/5 ml-2" :class="editForm.orgNo === child.id ? 'bg-primary/10 text-primary font-semibold' : ''" @click="selectEditOrg(child.id, child.label)">
+                            <span class="material-symbols-outlined text-[18px] text-outline">folder_open</span>
+                            <span class="text-body-md">{{ child.label }}</span>
+                          </div>
+                          <div v-if="child.children && child.children.length" class="ml-5 border-l border-outline-variant/20">
+                            <div v-for="sub in child.children" :key="sub.id" class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-primary/5 ml-2" :class="editForm.orgNo === sub.id ? 'bg-primary/10 text-primary font-semibold' : ''" @click="selectEditOrg(sub.id, sub.label)">
+                              <span class="material-symbols-outlined text-[18px] text-outline">corporate_fare</span>
+                              <span class="text-body-md">{{ sub.label }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="flex items-center gap-6">
@@ -255,47 +263,21 @@
               </div>
             </div>
           </div>
-          <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
-            <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="editDialogVisible = false">取消</button>
-            <button class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" :disabled="editSaving" @click="handleSaveEdit">
-              {{ editSaving ? '保存中...' : '保存' }}
+          <div class="flex justify-between gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
+            <button class="inline-flex items-center gap-1 px-4 py-2 border border-error text-error rounded hover:bg-error/5 transition-all font-label-md text-label-md" @click="handleDeleteFromEdit">
+              <span class="material-symbols-outlined text-[16px]">delete</span>
+              删除用户
             </button>
+            <div class="flex gap-3">
+              <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="editDialogVisible = false">取消</button>
+              <button class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" :disabled="editSaving" @click="handleSaveEdit">
+                {{ editSaving ? '保存中...' : '保存' }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Edit Org Picker Dialog (for edit dialog) -->
-      <div v-if="editOrgDialogVisible" class="fixed inset-0 z-[60] flex items-center justify-center p-4" @click.self="editOrgDialogVisible = false">
-        <div class="fixed inset-0 bg-black/30"></div>
-        <div class="relative bg-container w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
-          <div class="flex items-center justify-between p-4 border-b border-outline-variant">
-            <h3 class="font-headline-sm text-headline-sm text-on-surface">选择单位</h3>
-            <button class="text-outline hover:text-error" @click="editOrgDialogVisible = false">
-              <span class="material-symbols-outlined">close</span>
-            </button>
-          </div>
-          <div class="p-4 max-h-72 overflow-y-auto">
-            <div v-if="editOrgTree.length === 0" class="text-center py-8 text-on-surface-variant">加载中...</div>
-            <div v-else>
-              <div v-for="org in editOrgTree" :key="org.id" class="mb-1">
-                <div class="flex items-center gap-2 px-3 py-2 rounded cursor-pointer hover:bg-surface-container-low" :class="editForm.orgNo === org.id ? 'bg-primary/5 text-primary font-semibold' : ''" @click="selectEditOrg(org.id, org.label)">
-                  <span class="material-symbols-outlined text-[18px]">{{ editForm.orgNo === org.id ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
-                  <span>{{ org.label }}</span>
-                </div>
-                <div v-if="org.children && org.children.length" class="ml-6 border-l border-outline-variant/20">
-                  <div v-for="child in org.children" :key="child.id" class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-surface-container-low" :class="editForm.orgNo === child.id ? 'bg-primary/5 text-primary font-semibold' : ''" @click="selectEditOrg(child.id, child.label)">
-                    <span class="material-symbols-outlined text-[18px]">{{ editForm.orgNo === child.id ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
-                    <span>{{ child.label }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="flex justify-end p-4 border-t border-outline-variant">
-            <button class="px-5 py-2 bg-primary text-on-primary rounded text-label-md" @click="editOrgDialogVisible = false">确定</button>
-          </div>
-        </div>
-      </div>
       <!-- Import Preview Dialog -->
       <div v-if="importPreviewVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="importPreviewVisible = false">
         <div class="fixed inset-0 bg-black/30"></div>
@@ -409,8 +391,11 @@
           </div>
         </div>
       </div>
+
     </div>
   </div>
+
+</div>
 </template>
 
 <script>
@@ -436,7 +421,6 @@ export default {
       importFile: null,
       // 编辑用户
       editDialogVisible: false,
-      editOrgDialogVisible: false,
       editSaving: false,
       editUser: {},
       editForm: {
@@ -447,7 +431,8 @@ export default {
         userType: '1',
         isAlive: 0,
       },
-      editOrgTree: []
+      editOrgTree: [],
+      editOrgTreeExpanded: false
     }
   },
   computed: {
@@ -709,38 +694,23 @@ export default {
         nickname: user.nickname || '',
         phone: user.phone || '',
         orgNo: user.orgNo || '',
-        orgName: user.orgName || '请选择单位',
+        orgName: user.orgName || '',
         userType: user.userType || '1',
         isAlive: user.isAlive != null ? user.isAlive : 0,
       }
+      this.editOrgTreeExpanded = false
+      // 加载单位树
       if (this.editOrgTree.length === 0) {
         this.getRequestUrl('/common/saOrgTree').then(resp => {
           this.editOrgTree = resp && resp.obj ? this.normalizeOrgTree(resp.obj) : []
-          this.matchOrgName()
         }).catch(() => { this.editOrgTree = [] })
-      } else {
-        this.matchOrgName()
       }
       this.editDialogVisible = true
-    },
-    matchOrgName() {
-      const findName = (nodes, targetOrgNo) => {
-        for (const n of nodes) {
-          if (n.id === targetOrgNo) return n.label
-          if (n.children) {
-            const found = findName(n.children, targetOrgNo)
-            if (found) return found
-          }
-        }
-        return null
-      }
-      const name = findName(this.editOrgTree, this.editForm.orgNo)
-      if (name) this.editForm.orgName = name
     },
     selectEditOrg(orgNo, orgName) {
       this.editForm.orgNo = orgNo
       this.editForm.orgName = orgName
-      this.editOrgDialogVisible = false
+      this.editOrgTreeExpanded = false
     },
     handleResetPassword() {
       this.$confirm('确定要重置该用户的密码为默认密码(1234@abcD)吗？', '重置密码', { type: 'warning' }).then(() => {
@@ -778,6 +748,19 @@ export default {
       }).catch(() => {
         this.editSaving = false
       })
+    },
+    handleDeleteFromEdit() {
+      var userId = this.editUser.id
+      if (!userId) { this.$message.error('用户信息有误'); return }
+      this.$confirm('确定要删除该用户吗？此操作不可恢复。', '删除确认', { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' }).then(() => {
+        this.postRequest('/admin/deleteUserByUserId', { userId }).then(resp => {
+          if (resp) {
+            this.$message.success('删除成功')
+            this.editDialogVisible = false
+            this.getAllUserPage()
+          }
+        })
+      }).catch(() => {})
     },
   }
 }
