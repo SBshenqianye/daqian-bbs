@@ -39,10 +39,16 @@
             and s.org_no like concat(#{orgNo},'%')
         </if>
         <if test="startTime != null and startTime != ''">
-            and t.create_time >= to_date(#{startTime},'YYYY-MM-DD')
+            and t.create_time <choose>
+                <when test="_databaseId == 'mysql'">>= STR_TO_DATE(#{startTime}, '%Y-%m-%d')</when>
+                <otherwise>>= to_date(#{startTime}, 'YYYY-MM-DD')</otherwise>
+            </choose>
         </if>
         <if test="endTime != null and endTime != ''">
-            AND t.create_time <![CDATA[<]]> to_date(#{endTime},'YYYY-MM-DD') + interval '1 day'
+            AND t.create_time <![CDATA[<]]> <choose>
+                <when test="_databaseId == 'mysql'">STR_TO_DATE(#{endTime}, '%Y-%m-%d') + INTERVAL 1 DAY</when>
+                <otherwise>to_date(#{endTime}, 'YYYY-MM-DD') + interval '1 day'</otherwise>
+            </choose>
         </if>
         group by substr(s.org_no,1,${orgLength}),s.org_name
     </select>
@@ -71,8 +77,14 @@
                 WHERE t.is_delete = 0
                   AND t.enable = 1
                   AND u.org_no LIKE concat(#{orgNo}, '%')
-                  AND t.create_time >= to_date(#{startTime}, 'YYYY-MM-DD')
-                  AND t.create_time <![CDATA[<]]> to_date(#{endTime}, 'YYYY-MM-DD') + interval '1 day'
+                  AND t.create_time <choose>
+                        <when test="_databaseId == 'mysql'">>= STR_TO_DATE(#{startTime}, '%Y-%m-%d')</when>
+                        <otherwise>>= to_date(#{startTime}, 'YYYY-MM-DD')</otherwise>
+                    </choose>
+                  AND t.create_time <![CDATA[<]]> <choose>
+                        <when test="_databaseId == 'mysql'">STR_TO_DATE(#{endTime}, '%Y-%m-%d') + INTERVAL 1 DAY</when>
+                        <otherwise>to_date(#{endTime}, 'YYYY-MM-DD') + interval '1 day'</otherwise>
+                    </choose>
                 GROUP BY substr(u.org_no, 1, ${orgLength})
             ) t2 ON t1.org_no = t2.org_no
             LEFT JOIN (
@@ -83,8 +95,14 @@
                 WHERE t.is_delete = 0
                   AND t.enable = 1
                   AND u.org_no LIKE concat(#{orgNo}, '%')
-                  AND t.comment_time >= to_date(#{startTime}, 'YYYY-MM-DD')
-                  AND t.comment_time <![CDATA[<]]> to_date(#{endTime}, 'YYYY-MM-DD') + interval '1 day'
+                  AND t.comment_time <choose>
+                        <when test="_databaseId == 'mysql'">>= STR_TO_DATE(#{startTime}, '%Y-%m-%d')</when>
+                        <otherwise>>= to_date(#{startTime}, 'YYYY-MM-DD')</otherwise>
+                    </choose>
+                  AND t.comment_time <![CDATA[<]]> <choose>
+                        <when test="_databaseId == 'mysql'">STR_TO_DATE(#{endTime}, '%Y-%m-%d') + INTERVAL 1 DAY</when>
+                        <otherwise>to_date(#{endTime}, 'YYYY-MM-DD') + interval '1 day'</otherwise>
+                    </choose>
                 GROUP BY substr(u.org_no, 1, ${orgLength})
             ) t3 ON t1.org_no = t3.org_no
         ) t
