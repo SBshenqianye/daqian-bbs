@@ -122,57 +122,13 @@
         </div>
       </div>
 
-      <!-- Org Dialog -->
-      <div v-if="orgDialogVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="orgDialogVisible = false">
-        <div class="fixed inset-0 bg-black/30"></div>
-        <div class="relative bg-container w-full max-w-lg rounded-xl shadow-2xl overflow-hidden">
-          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
-            <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary">corporate_fare</span>
-              修改单位
-            </h3>
-            <button class="text-outline hover:text-error transition-colors" @click="orgDialogVisible = false">
-              <span class="material-symbols-outlined">close</span>
-            </button>
-          </div>
-          <div class="p-5">
-            <div class="relative mb-4">
-              <span class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline text-[18px]">filter_list</span>
-              <input v-model="orgFilterText" class="w-full pl-9 pr-4 py-2 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md" placeholder="输入关键字筛选单位">
-            </div>
-            <div class="max-h-80 overflow-y-auto border border-outline-variant rounded-lg bg-surface">
-              <div v-if="orgTreeData.length === 0" class="p-8 text-center text-on-surface-variant flex flex-col items-center gap-2">
-                <span class="material-symbols-outlined text-[36px] opacity-30">account_tree</span>
-                <p class="text-body-md">暂无组织数据</p>
-              </div>
-              <div v-else class="p-2">
-                <div v-for="org in filteredOrgTree" :key="org.id">
-                  <div class="flex items-center gap-2 px-3 py-2 rounded cursor-pointer hover:bg-surface-container-low" :class="{ 'bg-primary/5 border border-primary/20': orgCheckValue.id === org.id }" @click="orgCheckValue = { id: org.id, label: org.label }">
-                    <span class="material-symbols-outlined text-outline text-[18px]">folder</span>
-                    <span class="font-body-md" :class="orgCheckValue.id === org.id ? 'text-primary font-semibold' : 'text-on-surface'">{{ org.label }}</span>
-                  </div>
-                  <div v-if="org.children && org.children.length" class="ml-6 border-l border-outline-variant/30 pl-2">
-                    <div v-for="child in org.children" :key="child.id" class="flex items-center gap-2 px-3 py-2 rounded cursor-pointer hover:bg-surface-container-low" :class="{ 'bg-primary/5 border border-primary/20': orgCheckValue.id === child.id }" @click="orgCheckValue = { id: child.id, label: child.label }">
-                      <span class="material-symbols-outlined text-outline text-[18px]">folder_open</span>
-                      <span class="font-body-md" :class="orgCheckValue.id === child.id ? 'text-primary font-semibold' : 'text-on-surface'">{{ child.label }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
-            <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="orgDialogVisible = false">取消</button>
-            <button class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" @click="handleConfirmUpdateOrg">确定</button>
-          </div>
-        </div>
-      </div>
 
-      <!-- Edit User Dialog -->
-      <div v-if="editDialogVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="editDialogVisible = false">
-        <div class="fixed inset-0 bg-black/30"></div>
-        <div class="relative bg-container w-full max-w-lg rounded-xl shadow-2xl">
-          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+
+      <!-- Edit User Dialog (含内嵌单位树) -->
+      <div v-show="editDialogVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/30" @click="editDialogVisible = false"></div>
+        <div ref="dialogEdit" class="relative bg-container w-full max-w-lg rounded-xl shadow-2xl flex flex-col max-h-[85vh]">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant" @mousedown.prevent="startDrag($event, 'edit')" style="cursor:grab;user-select:none">
             <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">edit</span>
               编辑用户
@@ -181,7 +137,7 @@
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
-          <div class="p-5 space-y-4">
+          <div class="p-5 space-y-4 overflow-y-auto flex-1">
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">人员编号</label>
@@ -209,35 +165,10 @@
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">所属单位</label>
-                <div class="relative">
-                  <button class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md text-left flex items-center justify-between hover:border-primary transition-colors" @click="editOrgTreeExpanded = !editOrgTreeExpanded" type="button">
-                    <span>{{ editForm.orgName || '请选择单位' }}</span>
-                    <span class="material-symbols-outlined text-[18px] text-outline">{{ editOrgTreeExpanded ? 'expand_less' : 'expand_more' }}</span>
-                  </button>
-                  <div v-if="editOrgTreeExpanded" class="absolute z-10 mt-1 w-full bg-container border border-outline-variant rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    <div v-if="editOrgTree.length === 0" class="p-4 text-center text-on-surface-variant text-body-md">加载中...</div>
-                    <div v-else class="p-2">
-                      <div v-for="org in editOrgTree" :key="org.id" class="mb-1">
-                        <div class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-primary/5" :class="editForm.orgNo === org.id ? 'bg-primary/10 text-primary font-semibold' : ''" @click="selectEditOrg(org.id, org.label)">
-                          <span class="material-symbols-outlined text-[18px] text-outline">folder</span>
-                          <span class="text-body-md">{{ org.label }}</span>
-                        </div>
-                        <div v-if="org.children && org.children.length" class="ml-5 border-l border-outline-variant/30">
-                          <div v-for="child in org.children" :key="child.id" class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-primary/5 ml-2" :class="editForm.orgNo === child.id ? 'bg-primary/10 text-primary font-semibold' : ''" @click="selectEditOrg(child.id, child.label)">
-                            <span class="material-symbols-outlined text-[18px] text-outline">folder_open</span>
-                            <span class="text-body-md">{{ child.label }}</span>
-                          </div>
-                          <div v-if="child.children && child.children.length" class="ml-5 border-l border-outline-variant/20">
-                            <div v-for="sub in child.children" :key="sub.id" class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-primary/5 ml-2" :class="editForm.orgNo === sub.id ? 'bg-primary/10 text-primary font-semibold' : ''" @click="selectEditOrg(sub.id, sub.label)">
-                              <span class="material-symbols-outlined text-[18px] text-outline">corporate_fare</span>
-                              <span class="text-body-md">{{ sub.label }}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <button class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md text-left flex items-center justify-between hover:border-primary transition-colors" @click="orgPickerVisible = true" type="button">
+                  <span :class="editForm.orgName ? 'text-on-surface' : 'text-on-surface-variant'">{{ editForm.orgName || '请选择单位' }}</span>
+                  <span class="material-symbols-outlined text-[18px] text-outline">search</span>
+                </button>
               </div>
             </div>
             <div class="flex items-center gap-6">
@@ -278,11 +209,20 @@
         </div>
       </div>
 
+      <!-- Org Tree Picker Component -->
+      <OrgTreePicker
+        :visible="orgPickerVisible"
+        :selected-id="editForm.orgNo"
+        :selected-label="editForm.orgName"
+        @select="onOrgPickerSelect"
+        @close="orgPickerVisible = false"
+      />
+
       <!-- Import Preview Dialog -->
-      <div v-if="importPreviewVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="importPreviewVisible = false">
+      <div v-show="importPreviewVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="importPreviewVisible = false">
         <div class="fixed inset-0 bg-black/30"></div>
-        <div class="relative bg-container w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden">
-          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+        <div ref="dialogPreview" class="relative bg-container w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant" @mousedown.prevent="startDrag($event, 'preview')" style="cursor:grab;user-select:none">
             <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">preview</span>
               导入预览
@@ -331,10 +271,10 @@
       </div>
 
       <!-- Import Result Dialog -->
-      <div v-if="importResultVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="importResultVisible = false">
+      <div v-show="importResultVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="importResultVisible = false">
         <div class="fixed inset-0 bg-black/30"></div>
-        <div class="relative bg-container w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden">
-          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+        <div ref="dialogResult" class="relative bg-container w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant" @mousedown.prevent="startDrag($event, 'result')" style="cursor:grab;user-select:none">
             <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">assignment_turned_in</span>
               导入结果
@@ -399,8 +339,10 @@
 </template>
 
 <script>
+import OrgTreePicker from '@/components/OrgTreePicker.vue'
 export default {
   name: 'UserPage',
+  components: { OrgTreePicker },
   data() {
     return {
       searchInfo: '',
@@ -408,11 +350,7 @@ export default {
       multipleSelection: [],
       pageParams: { pageIndex: 1, pageSize: 15 },
       total: 0,
-      orgDialogVisible: false,
-      orgTreeData: [],
-      orgCheckValue: { label: '请选择单位', id: '' },
-      currentEditUserId: null,
-      orgFilterText: '',
+      orgPickerVisible: false,
       importPreviewVisible: false,
       importResultVisible: false,
       importLoading: false,
@@ -431,8 +369,14 @@ export default {
         userType: '1',
         isAlive: 0,
       },
-      editOrgTree: [],
-      editOrgTreeExpanded: false
+      // 编辑用户 - end
+      // 弹窗拖动
+      dialogPos: {
+        edit: { x: 0, y: 0 },
+        preview: { x: 0, y: 0 },
+        result: { x: 0, y: 0 }
+      },
+      dialogDrag: null, // { name, startX, startY, origX, origY }
     }
   },
   computed: {
@@ -450,26 +394,13 @@ export default {
       const checkable = this.users.filter(u => this.canCheck(u))
       return checkable.length > 0 && checkable.every(u => this.isSelected(u))
     },
-    filteredOrgTree() {
-      if (!this.orgFilterText) return this.orgTreeData
-      const filter = (nodes) => {
-        return nodes.map(n => {
-          const match = n.label.toLowerCase().includes(this.orgFilterText.toLowerCase())
-          const children = n.children ? filter(n.children) : []
-          if (match || children.length > 0) return { ...n, children }
-          return null
-        }).filter(Boolean)
-      }
-      return filter(this.orgTreeData)
-    }
-  },
-  watch: {
-    orgFilterText() {
-      // Filter is computed, no need for $nextTick
-    }
   },
   mounted() {
     this.getAllUserPage()
+  },
+  beforeDestroy() {
+    document.removeEventListener('mousemove', this.onDrag)
+    document.removeEventListener('mouseup', this.stopDrag)
   },
   methods: {
     canCheck(row) {
@@ -530,49 +461,6 @@ export default {
     handleSizeChange() {
       this.pageParams.pageIndex = 1
       this.getAllUserPage()
-    },
-    loadOrgTree() {
-      if (!this.orgTreeData.length) {
-        return this.getRequestUrl('/common/saOrgTree').then(resp => {
-          this.orgTreeData = resp && resp.obj ? this.normalizeOrgTree(resp.obj) : []
-        }).catch(() => { this.orgTreeData = [] })
-      }
-      return Promise.resolve()
-    },
-    normalizeOrgTree(nodes) {
-      if (!nodes || !Array.isArray(nodes)) return []
-      return nodes.map(node => ({
-        id: node.orgNo != null ? node.orgNo : node.id,
-        label: node.orgName != null ? node.orgName : node.label,
-        children: node.children && node.children.length ? this.normalizeOrgTree(node.children) : undefined
-      }))
-    },
-    handleOpenOrgDialog(row) {
-      this.currentEditUserId = row.id
-      this.orgCheckValue = { id: row.orgNo || '', label: row.orgName || '请选择单位' }
-      this.orgFilterText = ''
-      this.loadOrgTree()
-      this.orgDialogVisible = true
-    },
-    handleConfirmUpdateOrg() {
-      if (!this.currentEditUserId) {
-        this.$message.error('用户信息有误，请刷新后重试')
-        return
-      }
-      if (!this.orgCheckValue || !this.orgCheckValue.id) {
-        this.$message.warning('请选择单位')
-        return
-      }
-      this.$confirm('确定要修改该用户单位吗？', '提示', { type: 'warning' }).then(() => {
-        this.postRequest('/user/modOrgNo', { id: this.currentEditUserId, orgNo: this.orgCheckValue.id }).then(resp => {
-          if (resp) {
-            this.$message.success('修改单位成功')
-            this.orgDialogVisible = false
-            this.currentEditUserId = null
-            this.getAllUserPage()
-          }
-        })
-      }).catch(() => {})
     },
     handleDelete(index, userId) {
       this.$confirm('确定要删除吗？', '提示', { type: 'warning' }).then(() => {
@@ -698,19 +586,14 @@ export default {
         userType: user.userType || '1',
         isAlive: user.isAlive != null ? user.isAlive : 0,
       }
-      this.editOrgTreeExpanded = false
-      // 加载单位树
-      if (this.editOrgTree.length === 0) {
-        this.getRequestUrl('/common/saOrgTree').then(resp => {
-          this.editOrgTree = resp && resp.obj ? this.normalizeOrgTree(resp.obj) : []
-        }).catch(() => { this.editOrgTree = [] })
-      }
       this.editDialogVisible = true
     },
-    selectEditOrg(orgNo, orgName) {
-      this.editForm.orgNo = orgNo
-      this.editForm.orgName = orgName
-      this.editOrgTreeExpanded = false
+    onOrgPickerSelect(org) {
+      if (org && org.id) {
+        this.editForm.orgNo = org.id
+        this.editForm.orgName = org.label
+      }
+      this.orgPickerVisible = false
     },
     handleResetPassword() {
       this.$confirm('确定要重置该用户的密码为默认密码(1234@abcD)吗？', '重置密码', { type: 'warning' }).then(() => {
@@ -761,6 +644,52 @@ export default {
           }
         })
       }).catch(() => {})
+    },
+    // ====== 弹窗拖动（直接DOM操作） ======
+    startDrag(e, name) {
+      e.preventDefault()
+      const refMap = { edit: 'dialogEdit', preview: 'dialogPreview', result: 'dialogResult' }
+      const el = this.$refs[refMap[name]]
+      if (!el) return
+      const pos = this.dialogPos[name]
+      // 恢复上次位置
+      if (pos && (pos.x || pos.y)) {
+        el.style.transform = 'translate(' + pos.x + 'px, ' + pos.y + 'px)'
+      }
+      this.dialogDrag = {
+        name, el,
+        startX: e.clientX,
+        startY: e.clientY,
+        origX: pos ? pos.x : 0,
+        origY: pos ? pos.y : 0
+      }
+      document.body.style.userSelect = 'none'
+      document.body.style.cursor = 'grabbing'
+      document.addEventListener('mousemove', this.onDrag)
+      document.addEventListener('mouseup', this.stopDrag)
+    },
+    onDrag(e) {
+      if (!this.dialogDrag || !this.dialogDrag.el) return
+      const d = this.dialogDrag
+      d.el.style.transform = 'translate(' + (d.origX + e.clientX - d.startX) + 'px,' + (d.origY + e.clientY - d.startY) + 'px)'
+    },
+    stopDrag() {
+      if (!this.dialogDrag) return
+      const d = this.dialogDrag
+      if (d.el) {
+        const s = d.el.style.transform
+        const m = s && s.match(/translate\(([-\d.]+)px,?\s*([-\d.]+)px\)/)
+        if (m) {
+          this.dialogPos[d.name].x = parseFloat(m[1])
+          this.dialogPos[d.name].y = parseFloat(m[2])
+        }
+      }
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+      d.el = null
+      this.dialogDrag = null
+      document.removeEventListener('mousemove', this.onDrag)
+      document.removeEventListener('mouseup', this.stopDrag)
     },
   }
 }
