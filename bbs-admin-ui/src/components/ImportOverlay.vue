@@ -20,42 +20,42 @@
       v-if="store.status === 'importing'"
       :edge="dockEdge"
       :expanded="dockExpanded"
-      :panel-size="280"
+      :panel-size="282"
       @update:edge="dockEdge = $event"
       @update:expanded="dockExpanded = $event"
     >
       <template #tab>
-        <div class="flex flex-col items-center justify-center w-full h-full gap-0.5" title="导入进度">
-          <span class="material-symbols-outlined" style="font-size: 16px;">cloud_upload</span>
-          <span class="text-[10px] font-bold leading-none">{{ progressPercent }}%</span>
+        <div class="flex flex-col items-center justify-center w-full h-full gap-0.5 text-primary" title="导入进度">
+          <span class="material-symbols-outlined" style="font-size: 18px;">cloud_upload</span>
+          <span class="text-xs font-bold leading-none">{{ progressPercent }}%</span>
         </div>
       </template>
 
-      <div class="h-full flex flex-col p-4 bg-container border-l border-outline-variant" style="width: 280px;">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-primary animate-spin" style="font-size: 16px;">sync</span>
-            正在导入
-          </h3>
-          <button
-            class="text-outline hover:text-error transition-colors"
-            @click="minimize"
-            title="关闭"
-          >
-            <span class="material-symbols-outlined" style="font-size: 16px;">close</span>
+      <div class="flex flex-col p-5" style="width: 280px; height: 140px;">
+        <!-- 头部 -->
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary animate-spin" style="font-size: 16px;">sync</span>
+            </div>
+            <span class="text-sm font-semibold text-gray-800">导入数据</span>
+          </div>
+          <button class="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" @click="minimize" title="关闭">
+            <span class="material-symbols-outlined" style="font-size: 14px;">close</span>
           </button>
         </div>
 
-        <div class="flex-1 flex flex-col justify-center gap-3">
-          <div class="bg-surface-variant rounded-full h-3 overflow-hidden">
+        <!-- 进度条 -->
+        <div class="flex-1 flex flex-col justify-center gap-2.5">
+          <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
             <div
               class="h-full bg-primary rounded-full transition-all duration-300 ease-out"
               :style="{ width: progressPercent + '%' }"
             ></div>
           </div>
-          <div class="flex items-center justify-between text-body-md">
-            <span class="text-on-surface font-medium">{{ store.progress }} / {{ store.total }}</span>
-            <span class="text-on-surface-variant">{{ progressPercent }}%</span>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium text-gray-700">{{ store.progress }} / {{ store.total }} 条</span>
+            <span class="text-xs text-gray-400">{{ progressPercent }}%</span>
           </div>
         </div>
       </div>
