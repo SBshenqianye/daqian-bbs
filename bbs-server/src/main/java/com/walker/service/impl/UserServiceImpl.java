@@ -48,6 +48,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
@@ -78,6 +81,36 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Autowired
     private OrgImportService orgImportService;
 
+    // ========== 异步导入任务跟踪 ==========
+    private final Map<String, ImportTask> importTasks = new ConcurrentHashMap<>();
+    private final ExecutorService importExecutor = Executors.newSingleThreadExecutor();
+
+    public static class ImportTask {
+        private final String taskId;
+        private volatile String status;
+        private volatile int progress;
+        private volatile int total;
+        private ImportResultVO result;
+        private String error;
+
+        public ImportTask(String taskId, int total) {
+            this.taskId = taskId;
+            this.total = total;
+            this.status = "processing";
+            this.progress = 0;
+        }
+        public String getTaskId() { return taskId; }
+        public String getStatus() { return status; }
+        public void setStatus(String s) { status = s; }
+        public int getProgress() { return progress; }
+        public void setProgress(int p) { progress = p; }
+        public int getTotal() { return total; }
+        public void setTotal(int t) { total = t; }
+        public ImportResultVO getResult() { return result; }
+        public void setResult(ImportResultVO r) { result = r; }
+        public String getError() { return error; }
+        public void setError(String e) { error = e; }
+    }
 
     /**
      * 登录之后返回token
@@ -476,7 +509,39 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public ImportResultVO importUsersFromExcel(MultipartFile file, Map<Integer, String> adjustments) {
+    public String importUsersFromExcelAsync(MultipartFile file, Map<Integer, String> adjustments) {
+        String taskId = UUID.randomUUID().toString();
+        ImportTask task = new ImportTask(taskId, 0);
+        importTasks.put(taskId, task);
+
+        importExecutor.submit(() -> {
+            try {
+                runImport(task, file, adjustments);
+            } catch (Exception e) {
+                task.setStatus("error");
+                task.setError(e.getMessage());
+                e.printStackTrace();
+            }
+        });
+
+        return taskId;
+    }
+
+    @Override
+    public Map<String, Object> getImportTaskProgress(String taskId) {
+        ImportTask task = importTasks.get(taskId);
+        if (task == null) return null;
+        Map<String, Object> map = new HashMap<>();
+        map.put("status", task.getStatus());
+        map.put("progress", task.getProgress());
+        map.put("total", task.getTotal());
+        map.put("result", task.getResult());
+        map.put("error", task.getError());
+        return map;
+    }
+
+    /** 在后台线程中执行实际导入 */
+    private void runImport(ImportTask task, MultipartFile file, Map<Integer, String> adjustments) {
         ImportResultVO result = new ImportResultVO();
         List<ImportResultVO.RowResult> details = new ArrayList<>();
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -487,13 +552,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     .sheet()
                     .doReadSync();
 
-            result.setTotalCount(rows.size());
+            int total = rows.size();
+            task.total = total;
+            result.setTotalCount(total);
 
             // 1. 先导入组织
             OrgImportService.OrgImportResult orgResult = orgImportService.importOrgs(rows);
             result.setOrgCreatedCount(orgResult.createdCount);
 
-            int newCount = 0, updateCount = 0, failCount = 0;
+            int newCount = 0, updateCount = 0, skipCount = 0, failCount = 0;
 
             // 2. 逐行导入人员
             for (int i = 0; i < rows.size(); i++) {
@@ -503,6 +570,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 detail.setNickname(row.getNickname());
                 detail.setPersonnelId(row.getPersonnelId());
                 detail.setOrgName(row.getOrgName());
+
+                // 检查必要键值：personnelId 和 idCard 至少有一个
+                boolean hasPersonnelId = row.getPersonnelId() != null && !row.getPersonnelId().trim().isEmpty();
+                boolean hasIdCard = row.getIdCard() != null && !row.getIdCard().trim().isEmpty();
+                if (!hasPersonnelId && !hasIdCard) {
+                    detail.setUsername("");
+                    detail.setAction("跳过");
+                    detail.setSuccess(false);
+                    detail.setMessage("缺少人员编号和身份证号");
+                    skipCount++;
+                    details.add(detail);
+                    task.setProgress(i + 1);
+                    continue;
+                }
 
                 try {
                     // 生成账号（支持管理员手动修正）
@@ -544,17 +625,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                         existingUser.setOrgNo(orgNo);
 
                         if (!passwordChanged) {
-                            // 未改密 → 重置为默认密码
                             existingUser.setPassword(new BCryptPasswordEncoder().encode("1234@abcD"));
                             existingUser.setIsFirstLogin(1);
                         }
-                        // 如果已改密，保留原密码和 isFirstLogin
 
                         userMapper.updateById(existingUser);
                         detail.setAction("覆盖");
                         updateCount++;
                     } else {
-                        // 新增用户 —— 保证 username 唯一后插入
                         String finalUsername = ensureUniqueUsername(username);
                         detail.setUsername(finalUsername);
 
@@ -587,17 +665,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     failCount++;
                 }
                 details.add(detail);
+                task.setProgress(i + 1);
             }
 
             result.setUserNewCount(newCount);
             result.setUserUpdatedCount(updateCount);
+            result.setUserFailCount(failCount + skipCount);
             result.setUserSuccessCount(newCount + updateCount);
-            result.setUserFailCount(failCount);
             result.setDetails(details);
+            task.setResult(result);
+            task.setStatus("done");
         } catch (Exception e) {
+            task.setStatus("error");
+            task.setError(e.getMessage());
             e.printStackTrace();
         }
-        return result;
     }
 
     /** 保证 username 唯一，重复时追加 _1, _2 ... */

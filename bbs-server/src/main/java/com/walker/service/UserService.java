@@ -172,12 +172,19 @@ public interface UserService extends IService<User> {
     ImportPreviewVO previewImport(MultipartFile file);
 
     /**
-     * 执行导入：解析Excel并将组织和用户写入数据库
+     * 异步导入：解析Excel并写入数据库，立即返回 taskId
      * @param file 上传的Excel文件
      * @param adjustments 管理员手动修正的账号映射（rowNum → 修正后的username），可为空
-     * @return 导入结果
+     * @return 任务ID
      */
-    ImportResultVO importUsersFromExcel(MultipartFile file, Map<Integer, String> adjustments);
+    String importUsersFromExcelAsync(MultipartFile file, Map<Integer, String> adjustments);
+
+    /**
+     * 获取导入任务进度
+     * @param taskId 任务ID
+     * @return { status, progress, total, result, error }
+     */
+    Map<String, Object> getImportTaskProgress(String taskId);
 
     /**
      * 管理员更新用户详细信息

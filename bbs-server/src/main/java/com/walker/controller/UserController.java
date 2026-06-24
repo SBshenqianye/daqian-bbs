@@ -245,9 +245,9 @@ public class UserController {
         return userService.previewImport(file);
     }
 
-    @ApiOperation(value = "执行导入：解析Excel并写入数据库")
+    @ApiOperation(value = "执行导入（异步）：解析Excel并写入数据库，返回 taskId")
     @PostMapping("/admin/importUsers")
-    public ImportResultVO importUsers(
+    public ResultBean importUsers(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "adjustments", required = false) String adjustmentsJson) {
         Map<Integer, String> adjustments = null;
@@ -258,7 +258,18 @@ public class UserController {
                 adjustments.put(Integer.parseInt(key), adjObj.getString(key));
             }
         }
-        return userService.importUsersFromExcel(file, adjustments);
+        String taskId = userService.importUsersFromExcelAsync(file, adjustments);
+        Map<String, Object> map = new HashMap<>();
+        map.put("taskId", taskId);
+        return ResultBean.success("导入任务已创建", map);
+    }
+
+    @ApiOperation(value = "查询导入任务进度")
+    @GetMapping("/admin/importProgress/{taskId}")
+    public ResultBean getImportProgress(@PathVariable String taskId) {
+        Map<String, Object> progress = userService.getImportTaskProgress(taskId);
+        if (progress == null) return ResultBean.error("任务不存在");
+        return ResultBean.success(progress);
     }
 
     @ApiOperation(value = "管理员更新用户详细信息")

@@ -221,7 +221,7 @@
       <!-- Import Preview Dialog -->
       <div v-show="importPreviewVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="importPreviewVisible = false">
         <div class="fixed inset-0 bg-black/30"></div>
-        <div ref="dialogPreview" class="relative bg-container w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden">
+        <div ref="dialogPreview" class="relative bg-container w-full max-w-5xl rounded-xl shadow-2xl overflow-hidden">
           <div class="flex items-center justify-between p-5 border-b border-outline-variant" @mousedown.prevent="startDrag($event, 'preview')" style="cursor:grab;user-select:none">
             <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">preview</span>
@@ -233,27 +233,42 @@
           </div>
           <div class="p-5 max-h-96 overflow-y-auto">
             <p class="text-body-md text-on-surface-variant mb-4">共 {{ importPreviewData.totalCount }} 条数据，请确认以下账号信息，多音字可手动修正：</p>
-            <table class="w-full text-left border-collapse" v-if="importPreviewData.users && importPreviewData.users.length">
+
+            <!-- missing keys warning -->
+            <div v-if="missingKeyRows.length" class="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+              <span class="material-symbols-outlined text-amber-600" style="font-size: 20px;">warning</span>
+              <div>
+                <p class="text-body-md text-amber-800 font-medium">以下 {{ missingKeyRows.length }} 行缺少人员编号和身份证号</p>
+                <p class="text-body-md text-amber-600">行号：{{ missingKeyRows.join(', ') }}</p>
+                <p class="text-body-md text-amber-600">导入时这些行将被跳过，不阻碍其他数据导入</p>
+              </div>
+            </div>
+
+            <table class="w-full text-left border-collapse whitespace-nowrap" v-if="importPreviewData.users && importPreviewData.users.length">
               <thead>
                 <tr class="bg-surface-container-low border-b border-border">
-                  <th class="p-2 text-label-md text-on-surface-variant">姓名</th>
-                  <th class="p-2 text-label-md text-on-surface-variant">身份证号</th>
+                  <th class="p-2 text-label-md text-on-surface-variant w-14">姓名</th>
+                  <th class="p-2 text-label-md text-on-surface-variant w-20">人员编号</th>
+                  <th class="p-2 text-label-md text-on-surface-variant w-24">身份证号</th>
                   <th class="p-2 text-label-md text-on-surface-variant">账号（可编辑）</th>
-                  <th class="p-2 text-label-md text-on-surface-variant">单位</th>
-                  <th class="p-2 text-label-md text-on-surface-variant">操作</th>
+                  <th class="p-2 text-label-md text-on-surface-variant min-w-[120px]">单位</th>
+                  <th class="p-2 text-label-md text-on-surface-variant w-14">操作</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="user in importPreviewData.users" :key="user.rowNum" class="border-b border-border">
+                <tr v-for="user in importPreviewData.users" :key="user.rowNum" class="border-b border-border"
+                  :class="{ 'bg-amber-50/50': !user.personnelId && !user.idCard }">
                   <td class="p-2 font-body-md">{{ user.nickname }}</td>
-                  <td class="p-2 font-body-md text-on-surface-variant">{{ user.idCard }}</td>
+                  <td class="p-2 font-body-md text-on-surface-variant">{{ user.personnelId || '-' }}</td>
+                  <td class="p-2 font-body-md text-on-surface-variant">{{ user.idCard || '-' }}</td>
                   <td class="p-2">
-                    <input v-model="user.username" class="w-full px-2 py-1 border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" :class="{ 'bg-warning/10 border-warning': getDefaultUsername(user) !== user.username }">
+                    <input v-model="user.username" class="w-full px-2 py-1 border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" :class="{ 'bg-warning/10 border-warning': getDefaultUsername(user) !== user.username }" :disabled="!user.personnelId && !user.idCard">
                   </td>
-                  <td class="p-2 font-body-md text-on-surface-variant">{{ user.orgName }}</td>
+                  <td class="p-2 font-body-md text-on-surface-variant max-w-[180px] truncate" :title="orgTitle(user)">{{ user.orgName }}</td>
                   <td class="p-2">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium" :class="user.action === 'new' ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'">
-                      {{ user.action === 'new' ? '新增' : '覆盖' }}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium whitespace-nowrap"
+                      :class="!user.personnelId && !user.idCard ? 'bg-amber-50 text-amber-700' : (user.action === 'new' ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700')">
+                      {{ !user.personnelId && !user.idCard ? '跳过' : (user.action === 'new' ? '新增' : '覆盖') }}
                     </span>
                   </td>
                 </tr>
@@ -263,74 +278,12 @@
           </div>
           <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
             <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="importPreviewVisible = false">取消</button>
-            <button class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" :disabled="importLoading" @click="confirmImport">
-              {{ importLoading ? '导入中...' : '确认导入' }}
-            </button>
+            <button class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" @click="confirmImport">确认导入</button>
           </div>
         </div>
       </div>
 
-      <!-- Import Result Dialog -->
-      <div v-show="importResultVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="importResultVisible = false">
-        <div class="fixed inset-0 bg-black/30"></div>
-        <div ref="dialogResult" class="relative bg-container w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden">
-          <div class="flex items-center justify-between p-5 border-b border-outline-variant" @mousedown.prevent="startDrag($event, 'result')" style="cursor:grab;user-select:none">
-            <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary">assignment_turned_in</span>
-              导入结果
-            </h3>
-            <button class="text-outline hover:text-error transition-colors" @click="importResultVisible = false">
-              <span class="material-symbols-outlined">close</span>
-            </button>
-          </div>
-          <div class="p-5" v-if="importResultData">
-            <div class="flex gap-6 mb-4">
-              <div class="flex-1 bg-green-50 rounded-lg p-4 text-center">
-                <p class="text-2xl font-bold text-green-700">{{ importResultData.userSuccessCount || 0 }}</p>
-                <p class="text-sm text-green-600">导入成功</p>
-              </div>
-              <div class="flex-1 bg-red-50 rounded-lg p-4 text-center">
-                <p class="text-2xl font-bold text-red-700">{{ importResultData.userFailCount || 0 }}</p>
-                <p class="text-sm text-red-600">导入失败</p>
-              </div>
-              <div class="flex-1 bg-blue-50 rounded-lg p-4 text-center">
-                <p class="text-2xl font-bold text-blue-700">{{ importResultData.orgCreatedCount || 0 }}</p>
-                <p class="text-sm text-blue-600">新建组织</p>
-              </div>
-            </div>
-            <div class="max-h-64 overflow-y-auto" v-if="importResultData.details && importResultData.details.length">
-              <table class="w-full text-left border-collapse">
-                <thead>
-                  <tr class="bg-surface-container-low border-b border-border">
-                    <th class="p-2 text-label-md text-on-surface-variant">行号</th>
-                    <th class="p-2 text-label-md text-on-surface-variant">姓名</th>
-                    <th class="p-2 text-label-md text-on-surface-variant">账号</th>
-                    <th class="p-2 text-label-md text-on-surface-variant">操作</th>
-                    <th class="p-2 text-label-md text-on-surface-variant">结果</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="d in importResultData.details" :key="d.rowNum" class="border-b border-border" :class="d.success ? '' : 'bg-error/5'">
-                    <td class="p-2 font-body-md">{{ d.rowNum }}</td>
-                    <td class="p-2 font-body-md">{{ d.nickname }}</td>
-                    <td class="p-2 font-body-md">{{ d.username }}</td>
-                    <td class="p-2 font-body-md">{{ d.action }}</td>
-                    <td class="p-2">
-                      <span class="inline-flex items-center gap-1" :class="d.success ? 'text-green-600' : 'text-red-600'">
-                        <span class="material-symbols-outlined text-[16px]">{{ d.success ? 'check_circle' : 'error' }}</span>
-                        {{ d.message }}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
-            <button class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" @click="importResultVisible = false; getAllUserPage()">确定</button>
-          </div>
-        </div>
-      </div>
+      <!-- no separate import result dialog — handled by ImportOverlay -->
 
     </div>
   </div>
@@ -340,6 +293,8 @@
 
 <script>
 import OrgTreePicker from '@/components/OrgTreePicker.vue'
+import { importStore, resetImport } from '@/utils/importStore'
+
 export default {
   name: 'UserPage',
   components: { OrgTreePicker },
@@ -352,10 +307,7 @@ export default {
       total: 0,
       orgPickerVisible: false,
       importPreviewVisible: false,
-      importResultVisible: false,
-      importLoading: false,
       importPreviewData: { users: [], totalCount: 0 },
-      importResultData: null,
       importFile: null,
       // 编辑用户
       editDialogVisible: false,
@@ -374,7 +326,6 @@ export default {
       dialogPos: {
         edit: { x: 0, y: 0 },
         preview: { x: 0, y: 0 },
-        result: { x: 0, y: 0 }
       },
       dialogDrag: null, // { name, startX, startY, origX, origY }
     }
@@ -390,13 +341,28 @@ export default {
     totalPages() {
       return Math.max(1, Math.ceil(this.total / this.pageParams.pageSize))
     },
+    importStore() { return importStore },
     isAllSelected() {
       const checkable = this.users.filter(u => this.canCheck(u))
       return checkable.length > 0 && checkable.every(u => this.isSelected(u))
     },
+    missingKeyRows() {
+      if (!this.importPreviewData.users) return []
+      return this.importPreviewData.users
+        .filter(u => !u.personnelId && !u.idCard)
+        .map(u => u.rowNum)
+    },
   },
   mounted() {
     this.getAllUserPage()
+  },
+  watch: {
+    'importStore.status'(val) {
+      // 导入完成后刷新用户列表
+      if (val === 'done' && this.importStore.result) {
+        this.getAllUserPage()
+      }
+    },
   },
   beforeDestroy() {
     document.removeEventListener('mousemove', this.onDrag)
@@ -519,28 +485,44 @@ export default {
       if (!file) return
       this.importFile = file
 
+      resetImport()
+      importStore.status = 'previewing'
+      importStore.previewLoading = true
+
       const formData = new FormData()
       formData.append('file', file)
-      this.importLoading = true
       this.uploadFile('/admin/previewImport', formData).then(resp => {
-        this.importLoading = false
+        importStore.previewLoading = false
         if (resp) {
           const defaults = {}
           if (resp.users) resp.users.forEach(u => { defaults[u.rowNum] = u.username })
           resp.__defaults = defaults
           this.importPreviewData = resp
           this.importPreviewVisible = true
+          importStore.status = 'previewDone'
+          importStore.previewData = resp
+
+          // 标记缺失键的行
+          importStore.rowsWithMissingKeys = (resp.users || [])
+            .filter(u => !u.personnelId && !u.idCard)
+            .map(u => u.rowNum)
         } else {
           this.$message.error('预览失败，请检查文件格式')
+          resetImport()
         }
       }).catch(() => {
-        this.importLoading = false
+        resetImport()
         this.$message.error('预览失败，请检查文件格式')
       })
       event.target.value = ''
     },
     getDefaultUsername(user) {
       return (this.importPreviewData.__defaults || {})[user.rowNum] || user.username
+    },
+    orgTitle(user) {
+      let t = user.orgName || ''
+      if (user.deptName) t += '\n部门：' + user.deptName
+      return t
     },
     confirmImport() {
       const adjustments = {}
@@ -559,20 +541,24 @@ export default {
         formData.append('adjustments', JSON.stringify(adjustments))
       }
 
-      this.importLoading = true
+      // 关闭预览弹窗，切换到异步导入进度
+      this.importPreviewVisible = false
+      resetImport()
+      importStore.status = 'importing'
+      importStore.progress = 0
+      importStore.total = 0
+
       this.uploadFile('/admin/importUsers', formData).then(resp => {
-        this.importLoading = false
-        this.importPreviewVisible = false
-        if (resp) {
-          this.importResultData = resp
-          this.importResultVisible = true
+        if (resp && resp.code === 200 && resp.obj && resp.obj.taskId) {
+          importStore.taskId = resp.obj.taskId
+          // ImportOverlay 会自动轮询进度
         } else {
-          this.$message.error('导入失败')
+          importStore.status = 'error'
+          importStore.error = (resp && resp.message) || '导入任务创建失败'
         }
       }).catch(() => {
-        this.importLoading = false
-        this.importPreviewVisible = false
-        this.$message.error('导入失败，请检查文件格式和数据')
+        importStore.status = 'error'
+        importStore.error = '导入请求失败，请检查网络'
       })
     },
     // ====== 编辑用户 ======
@@ -648,7 +634,7 @@ export default {
     // ====== 弹窗拖动（直接DOM操作） ======
     startDrag(e, name) {
       e.preventDefault()
-      const refMap = { edit: 'dialogEdit', preview: 'dialogPreview', result: 'dialogResult' }
+      const refMap = { edit: 'dialogEdit', preview: 'dialogPreview' }
       const el = this.$refs[refMap[name]]
       if (!el) return
       const pos = this.dialogPos[name]
