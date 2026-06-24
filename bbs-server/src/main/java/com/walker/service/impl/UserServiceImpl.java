@@ -206,15 +206,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public PageInfo<User> getAllUserByPageAndSearch(int pageIndex, int pageSize, String searchInfo) {
-        PageHelper.startPage(pageIndex,pageSize);
-        // List<User> users = userMapper.selectList(null);
-        List<User> users = userMapper.selectList(
-                new LambdaQueryWrapper<User>()
-                        .like(User::getUsername,searchInfo)
-                        .or()
-                        .like(User::getNickname,searchInfo)
-        );
-
+        PageHelper.startPage(pageIndex, pageSize);
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.isNoneBlank(searchInfo)) {
+            wrapper.like(User::getUsername, searchInfo)
+                    .or()
+                    .like(User::getNickname, searchInfo);
+        }
+        // 不传 searchInfo 时不做 LIKE 查询，避免全表扫描
+        List<User> users = userMapper.selectList(wrapper);
         return new PageInfo<>(users);
     }
 
