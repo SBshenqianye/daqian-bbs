@@ -8,6 +8,13 @@ import com.walker.vo.param.UserInfoUpdateParam;
 import com.walker.vo.param.UserModOrgNoParam;
 import com.walker.vo.param.UserModPwdParam;
 
+import com.walker.vo.excel.ImportPreviewVO;
+import com.walker.vo.excel.ImportResultVO;
+import com.walker.vo.param.AdminUserUpdateParam;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
+
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
@@ -156,4 +163,26 @@ public interface UserService extends IService<User> {
      * @return ResultBean
      */
     ResultBean modOrgNo(UserModOrgNoParam userModOrgNoParam);
+
+    /**
+     * 导入预览：解析Excel但不存库
+     * @param file 上传的Excel文件
+     * @return 预览结果
+     */
+    ImportPreviewVO previewImport(MultipartFile file);
+
+    /**
+     * 执行导入：解析Excel并将组织和用户写入数据库
+     * @param file 上传的Excel文件
+     * @param adjustments 管理员手动修正的账号映射（rowNum → 修正后的username），可为空
+     * @return 导入结果
+     */
+    ImportResultVO importUsersFromExcel(MultipartFile file, Map<Integer, String> adjustments);
+
+    /**
+     * 管理员更新用户详细信息
+     * @param param 用户更新参数（昵称、手机号、单位、角色、状态等）
+     * @return 操作结果
+     */
+    ResultBean adminUpdateUserDetail(AdminUserUpdateParam param);
 }

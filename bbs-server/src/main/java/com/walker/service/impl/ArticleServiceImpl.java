@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.ArticleMapper;
+import com.walker.mapper.SaOrgMapper;
 import com.walker.pojo.*;
 import com.walker.service.*;
 import com.walker.service.ArticleLabelService;
@@ -57,6 +58,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Autowired
     private ArticleLabelService articleLabelService;
+
+    @Autowired
+    private SaOrgMapper saOrgMapper;
 
 
     /**
@@ -521,6 +525,26 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 }
             });
         }
+
+        // 排名单位过滤：如果 bbs_sa_org 中有勾选了参与排名的单位，只显示这些单位
+        if (!CollectionUtils.isEmpty(resultList)) {
+            List<SaOrg> rankingOrgs = saOrgMapper.selectList(
+                    new LambdaQueryWrapper<SaOrg>()
+                            .eq(SaOrg::getIsRankingSelected, 1)
+                            .eq(SaOrg::getIsDelete, 0)
+            );
+            if (!CollectionUtils.isEmpty(rankingOrgs)) {
+                List<String> allowedOrgNos = rankingOrgs.stream()
+                        .map(SaOrg::getOrgNo)
+                        .collect(Collectors.toList());
+                resultList = resultList.stream()
+                        .filter(item -> allowedOrgNos.contains(item.getOrgNo()))
+                        .collect(Collectors.toList());
+                int[] rank = {1};
+                resultList.forEach(item -> item.setRankNum(rank[0]++));
+            }
+        }
+
         return ResultBean.success("查询成功", resultList);
     }
 
