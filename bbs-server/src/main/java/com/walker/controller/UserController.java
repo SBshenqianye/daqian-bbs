@@ -131,14 +131,12 @@ public class UserController {
     }
 
     @ApiOperation(value = "获取所有用户(搜索 + 分页)")
-    @GetMapping("/getAllUser/{params}")
-    public ResultBean getAllUser(@PathVariable String params){
-        if (StringUtils.isNoneBlank(params)){
-            JSONObject jsonObject = JSONObject.parseObject(params);
-            int pageIndex = jsonObject.getIntValue("pageIndex");
-            int pageSize = jsonObject.getIntValue("pageSize");
-            String searchInfo = jsonObject.getString("searchInfo");
-
+    @PostMapping("/getAllUser")
+    public ResultBean getAllUser(@RequestBody JSONObject params){
+        if (params != null && !params.isEmpty()){
+            int pageIndex = params.getIntValue("pageIndex");
+            int pageSize = params.getIntValue("pageSize");
+            String searchInfo = params.getString("searchInfo");
 
             PageInfo<User> pageInfo = userService.getAllUserByPageAndSearch(pageIndex,pageSize,searchInfo);
             return ResultBean.success("成功获取！",pageInfo);

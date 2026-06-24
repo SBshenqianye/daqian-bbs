@@ -6,7 +6,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.github.pagehelper.PageHelper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.pagehelper.PageInfo;
 import com.walker.config.security.JwtTokenUtil;
 import com.walker.mapper.SaOrgMapper;
@@ -206,16 +206,23 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public PageInfo<User> getAllUserByPageAndSearch(int pageIndex, int pageSize, String searchInfo) {
-        PageHelper.startPage(pageIndex, pageSize);
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        // 使用 MyBatis-Plus 原生分页
+        Page<User> mpPage = new Page<>(pageIndex, pageSize);
+        LambdaQueryWrapper<User> wrapper = Wrappers.lambdaQuery();
+        wrapper.eq(User::getIsDelete, 0);
         if (StringUtils.isNoneBlank(searchInfo)) {
-            wrapper.like(User::getUsername, searchInfo)
+            wrapper.and(w -> w.like(User::getUsername, searchInfo)
                     .or()
-                    .like(User::getNickname, searchInfo);
+                    .like(User::getNickname, searchInfo));
         }
-        // 不传 searchInfo 时不做 LIKE 查询，避免全表扫描
-        List<User> users = userMapper.selectList(wrapper);
-        return new PageInfo<>(users);
+        Page<User> result = userMapper.selectPage(mpPage, wrapper);
+        // 转为 PageInfo 兼容前端
+        PageInfo<User> pageInfo = new PageInfo<>(result.getRecords());
+        pageInfo.setTotal(result.getTotal());
+        pageInfo.setPageNum((int) result.getCurrent());
+        pageInfo.setPageSize((int) result.getSize());
+        pageInfo.setPages((int) result.getPages());
+        return pageInfo;
     }
 
     @Override

@@ -516,7 +516,7 @@ export default {
         pageSize: this.pageParams.pageSize,
         searchInfo: this.searchInfo
       }
-      this.getRequest('/getAllUser', JSON.stringify(params)).then(resp => {
+      this.postRequest('/getAllUser', params).then(resp => {
         if (resp) {
           this.total = resp.obj.total
           this.users = resp.obj.list
