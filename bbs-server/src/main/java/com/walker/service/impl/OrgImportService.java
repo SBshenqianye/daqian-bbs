@@ -183,8 +183,9 @@ public class OrgImportService {
                 .filter(no -> no.length() == targetLength)
                 .mapToLong(Long::parseLong)
                 .max()
-                .orElse(0);
-        return String.valueOf(maxNo + 1);
+                .orElse(0L);
+        if (maxNo > 0L) return String.valueOf(maxNo + 1L);
+        return parentOrgNo + "01";
     }
 
     /** 获取下一个可用的 id */

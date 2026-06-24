@@ -515,9 +515,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     }
                     detail.setUsername(username);
 
-                    // 确保 username 唯一（重名时追加序号）
-                    username = ensureUniqueUsername(username);
-
                     // 匹配组织
                     String orgNo = orgImportService.findBestOrgNo(row,
                             orgResult.orgNoMap, orgResult.deptNoMap);
@@ -537,7 +534,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     }
 
                     if (existingUser != null) {
-                        // 白名单覆盖
+                        // 白名单覆盖 —— 不改 username，保持已有账号不变
                         boolean passwordChanged = existingUser.getIsFirstLogin() != null
                                 && existingUser.getIsFirstLogin() == 0;
 
@@ -545,7 +542,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                         existingUser.setPersonnelId(row.getPersonnelId());
                         existingUser.setIdCard(row.getIdCard());
                         existingUser.setOrgNo(orgNo);
-                        existingUser.setUsername(username);
 
                         if (!passwordChanged) {
                             // 未改密 → 重置为默认密码
@@ -558,9 +554,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                         detail.setAction("覆盖");
                         updateCount++;
                     } else {
-                        // 新增用户
+                        // 新增用户 —— 保证 username 唯一后插入
+                        String finalUsername = ensureUniqueUsername(username);
+                        detail.setUsername(finalUsername);
+
                         User newUser = new User();
-                        newUser.setUsername(username)
+                        newUser.setUsername(finalUsername)
                                 .setPassword(new BCryptPasswordEncoder().encode("1234@abcD"))
                                 .setNickname(row.getNickname())
                                 .setPersonnelId(row.getPersonnelId())
