@@ -19,13 +19,16 @@
         <result column="is_delete" property="isDelete" />
         <result column="create_time" property="createTime" />
         <result column="phone" property="phone" />
+        <result column="id_card" property="idCard" />
         <result column="org_no" property="orgNo" />
         <result column="user_type" property="userType" />
+        <result column="personnel_id" property="personnelId" />
+        <result column="is_first_login" property="isFirstLogin" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, username, password, nickname, portrait, gender, introduce, city, fans, attention, good, is_alive,is_delete, create_time, phone, org_no, user_type
+        id, username, password, nickname, portrait, gender, introduce, city, fans, attention, good, is_alive, is_delete, create_time, phone, id_card, org_no, user_type, personnel_id, is_first_login
     </sql>
 
     <update id="updateUserRole">

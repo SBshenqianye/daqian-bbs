@@ -19,6 +19,11 @@
             <span class="material-symbols-outlined text-[18px]">delete</span>
             批量删除
           </button>
+          <button class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md" @click="triggerImport">
+            <span class="material-symbols-outlined text-[18px]">upload_file</span>
+            导入用户
+          </button>
+          <input ref="fileInput" type="file" accept=".xlsx,.xls" style="display:none" @change="handleFileImport">
           <div class="flex-1 min-w-[200px]">
             <div class="relative">
               <span class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline text-[18px]">search</span>
@@ -79,6 +84,10 @@
                     <button class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-warning bg-warning/5 rounded hover:bg-warning/10 transition-colors" @click="handleUpdateAlive(index, user.id)">
                       <span class="material-symbols-outlined text-[14px]">toggle_on</span>
                       状态
+                    </button>
+                    <button class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-info bg-info/5 rounded hover:bg-info/10 transition-colors" @click="handleOpenEditDialog(user)">
+                      <span class="material-symbols-outlined text-[14px]">edit</span>
+                      编辑
                     </button>
                     <button v-if="user.userType != 3" class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-secondary bg-secondary/5 rounded hover:bg-secondary/10 transition-colors" @click="handleOpenOrgDialog(user)">
                       <span class="material-symbols-outlined text-[14px]">corporate_fare</span>
@@ -175,6 +184,231 @@
           </div>
         </div>
       </div>
+
+      <!-- Edit User Dialog -->
+      <div v-if="editDialogVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="editDialogVisible = false">
+        <div class="fixed inset-0 bg-black/30"></div>
+        <div class="relative bg-container w-full max-w-lg rounded-xl shadow-2xl overflow-hidden">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+            <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">edit</span>
+              编辑用户
+            </h3>
+            <button class="text-outline hover:text-error transition-colors" @click="editDialogVisible = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="p-5 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">人员编号</label>
+                <input class="w-full px-3 py-2 bg-surface-variant border border-outline-variant rounded text-body-md text-on-surface-variant" :value="editUser.personnelId" readonly disabled>
+              </div>
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">用户名</label>
+                <input class="w-full px-3 py-2 bg-surface-variant border border-outline-variant rounded text-body-md text-on-surface-variant" :value="editUser.username" readonly disabled>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">姓名</label>
+                <input v-model="editForm.nickname" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入姓名">
+              </div>
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">手机号</label>
+                <input v-model="editForm.phone" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入手机号">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">身份证号</label>
+                <input class="w-full px-3 py-2 bg-surface-variant border border-outline-variant rounded text-body-md text-on-surface-variant" :value="editUser.idCard" readonly disabled>
+              </div>
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">所属单位</label>
+                <button class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md text-left flex items-center justify-between hover:border-primary transition-colors" @click="editOrgDialogVisible = true">
+                  <span>{{ editForm.orgName || '请选择单位' }}</span>
+                  <span class="material-symbols-outlined text-[18px] text-outline">corporate_fare</span>
+                </button>
+              </div>
+            </div>
+            <div class="flex items-center gap-6">
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">角色</label>
+                <select v-model="editForm.userType" class="px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary outline-none">
+                  <option value="1">普通用户</option>
+                  <option value="2">管理员</option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">状态</label>
+                <select v-model="editForm.isAlive" class="px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary outline-none">
+                  <option :value="0">活跃</option>
+                  <option :value="1">禁用</option>
+                </select>
+              </div>
+              <div class="space-y-1 pt-5">
+                <button class="px-4 py-2 border border-warning text-warning rounded hover:bg-warning/5 transition-all text-label-md" @click="handleResetPassword">
+                  <span class="material-symbols-outlined text-[16px] align-middle">lock_reset</span>
+                  重置密码
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
+            <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="editDialogVisible = false">取消</button>
+            <button class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" :disabled="editSaving" @click="handleSaveEdit">
+              {{ editSaving ? '保存中...' : '保存' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Org Picker Dialog (for edit dialog) -->
+      <div v-if="editOrgDialogVisible" class="fixed inset-0 z-[60] flex items-center justify-center p-4" @click.self="editOrgDialogVisible = false">
+        <div class="fixed inset-0 bg-black/30"></div>
+        <div class="relative bg-container w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
+          <div class="flex items-center justify-between p-4 border-b border-outline-variant">
+            <h3 class="font-headline-sm text-headline-sm text-on-surface">选择单位</h3>
+            <button class="text-outline hover:text-error" @click="editOrgDialogVisible = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="p-4 max-h-72 overflow-y-auto">
+            <div v-if="editOrgTree.length === 0" class="text-center py-8 text-on-surface-variant">加载中...</div>
+            <div v-else>
+              <div v-for="org in editOrgTree" :key="org.id" class="mb-1">
+                <div class="flex items-center gap-2 px-3 py-2 rounded cursor-pointer hover:bg-surface-container-low" :class="editForm.orgNo === org.id ? 'bg-primary/5 text-primary font-semibold' : ''" @click="selectEditOrg(org.id, org.label)">
+                  <span class="material-symbols-outlined text-[18px]">{{ editForm.orgNo === org.id ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
+                  <span>{{ org.label }}</span>
+                </div>
+                <div v-if="org.children && org.children.length" class="ml-6 border-l border-outline-variant/20">
+                  <div v-for="child in org.children" :key="child.id" class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-surface-container-low" :class="editForm.orgNo === child.id ? 'bg-primary/5 text-primary font-semibold' : ''" @click="selectEditOrg(child.id, child.label)">
+                    <span class="material-symbols-outlined text-[18px]">{{ editForm.orgNo === child.id ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
+                    <span>{{ child.label }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end p-4 border-t border-outline-variant">
+            <button class="px-5 py-2 bg-primary text-on-primary rounded text-label-md" @click="editOrgDialogVisible = false">确定</button>
+          </div>
+        </div>
+      </div>
+      <!-- Import Preview Dialog -->
+      <div v-if="importPreviewVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="importPreviewVisible = false">
+        <div class="fixed inset-0 bg-black/30"></div>
+        <div class="relative bg-container w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+            <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">preview</span>
+              导入预览
+            </h3>
+            <button class="text-outline hover:text-error transition-colors" @click="importPreviewVisible = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="p-5 max-h-96 overflow-y-auto">
+            <p class="text-body-md text-on-surface-variant mb-4">共 {{ importPreviewData.totalCount }} 条数据，请确认以下账号信息，多音字可手动修正：</p>
+            <table class="w-full text-left border-collapse" v-if="importPreviewData.users && importPreviewData.users.length">
+              <thead>
+                <tr class="bg-surface-container-low border-b border-border">
+                  <th class="p-2 text-label-md text-on-surface-variant">姓名</th>
+                  <th class="p-2 text-label-md text-on-surface-variant">身份证号</th>
+                  <th class="p-2 text-label-md text-on-surface-variant">账号（可编辑）</th>
+                  <th class="p-2 text-label-md text-on-surface-variant">单位</th>
+                  <th class="p-2 text-label-md text-on-surface-variant">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="user in importPreviewData.users" :key="user.rowNum" class="border-b border-border">
+                  <td class="p-2 font-body-md">{{ user.nickname }}</td>
+                  <td class="p-2 font-body-md text-on-surface-variant">{{ user.idCard }}</td>
+                  <td class="p-2">
+                    <input v-model="user.username" class="w-full px-2 py-1 border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" :class="{ 'bg-warning/10 border-warning': getDefaultUsername(user) !== user.username }">
+                  </td>
+                  <td class="p-2 font-body-md text-on-surface-variant">{{ user.orgName }}</td>
+                  <td class="p-2">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[12px] font-medium" :class="user.action === 'new' ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'">
+                      {{ user.action === 'new' ? '新增' : '覆盖' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-else class="text-center text-on-surface-variant py-8">暂无可预览的数据</p>
+          </div>
+          <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
+            <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="importPreviewVisible = false">取消</button>
+            <button class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" :disabled="importLoading" @click="confirmImport">
+              {{ importLoading ? '导入中...' : '确认导入' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import Result Dialog -->
+      <div v-if="importResultVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="importResultVisible = false">
+        <div class="fixed inset-0 bg-black/30"></div>
+        <div class="relative bg-container w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+            <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">assignment_turned_in</span>
+              导入结果
+            </h3>
+            <button class="text-outline hover:text-error transition-colors" @click="importResultVisible = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="p-5" v-if="importResultData">
+            <div class="flex gap-6 mb-4">
+              <div class="flex-1 bg-green-50 rounded-lg p-4 text-center">
+                <p class="text-2xl font-bold text-green-700">{{ importResultData.userSuccessCount || 0 }}</p>
+                <p class="text-sm text-green-600">导入成功</p>
+              </div>
+              <div class="flex-1 bg-red-50 rounded-lg p-4 text-center">
+                <p class="text-2xl font-bold text-red-700">{{ importResultData.userFailCount || 0 }}</p>
+                <p class="text-sm text-red-600">导入失败</p>
+              </div>
+              <div class="flex-1 bg-blue-50 rounded-lg p-4 text-center">
+                <p class="text-2xl font-bold text-blue-700">{{ importResultData.orgCreatedCount || 0 }}</p>
+                <p class="text-sm text-blue-600">新建组织</p>
+              </div>
+            </div>
+            <div class="max-h-64 overflow-y-auto" v-if="importResultData.details && importResultData.details.length">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-surface-container-low border-b border-border">
+                    <th class="p-2 text-label-md text-on-surface-variant">行号</th>
+                    <th class="p-2 text-label-md text-on-surface-variant">姓名</th>
+                    <th class="p-2 text-label-md text-on-surface-variant">账号</th>
+                    <th class="p-2 text-label-md text-on-surface-variant">操作</th>
+                    <th class="p-2 text-label-md text-on-surface-variant">结果</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="d in importResultData.details" :key="d.rowNum" class="border-b border-border" :class="d.success ? '' : 'bg-error/5'">
+                    <td class="p-2 font-body-md">{{ d.rowNum }}</td>
+                    <td class="p-2 font-body-md">{{ d.nickname }}</td>
+                    <td class="p-2 font-body-md">{{ d.username }}</td>
+                    <td class="p-2 font-body-md">{{ d.action }}</td>
+                    <td class="p-2">
+                      <span class="inline-flex items-center gap-1" :class="d.success ? 'text-green-600' : 'text-red-600'">
+                        <span class="material-symbols-outlined text-[16px]">{{ d.success ? 'check_circle' : 'error' }}</span>
+                        {{ d.message }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
+            <button class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" @click="importResultVisible = false; getAllUserPage()">确定</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -193,7 +427,27 @@ export default {
       orgTreeData: [],
       orgCheckValue: { label: '请选择单位', id: '' },
       currentEditUserId: null,
-      orgFilterText: ''
+      orgFilterText: '',
+      importPreviewVisible: false,
+      importResultVisible: false,
+      importLoading: false,
+      importPreviewData: { users: [], totalCount: 0 },
+      importResultData: null,
+      importFile: null,
+      // 编辑用户
+      editDialogVisible: false,
+      editOrgDialogVisible: false,
+      editSaving: false,
+      editUser: {},
+      editForm: {
+        nickname: '',
+        phone: '',
+        orgNo: '',
+        orgName: '',
+        userType: '1',
+        isAlive: 0,
+      },
+      editOrgTree: []
     }
   },
   computed: {
@@ -382,7 +636,149 @@ export default {
           }
         })
       }).catch(() => {})
-    }
+    },
+    // ====== Excel 导入 ======
+    triggerImport() {
+      this.$refs.fileInput.click()
+    },
+    handleFileImport(event) {
+      const file = event.target.files[0]
+      if (!file) return
+      this.importFile = file
+
+      const formData = new FormData()
+      formData.append('file', file)
+      this.importLoading = true
+      this.uploadFile('/admin/previewImport', formData).then(resp => {
+        this.importLoading = false
+        if (resp) {
+          const defaults = {}
+          if (resp.users) resp.users.forEach(u => { defaults[u.rowNum] = u.username })
+          resp.__defaults = defaults
+          this.importPreviewData = resp
+          this.importPreviewVisible = true
+        } else {
+          this.$message.error('预览失败，请检查文件格式')
+        }
+      }).catch(() => {
+        this.importLoading = false
+        this.$message.error('预览失败，请检查文件格式')
+      })
+      event.target.value = ''
+    },
+    getDefaultUsername(user) {
+      return (this.importPreviewData.__defaults || {})[user.rowNum] || user.username
+    },
+    confirmImport() {
+      const adjustments = {}
+      const defaults = this.importPreviewData.__defaults || {}
+      if (this.importPreviewData.users) {
+        this.importPreviewData.users.forEach(u => {
+          if (defaults[u.rowNum] && defaults[u.rowNum] !== u.username) {
+            adjustments[u.rowNum] = u.username
+          }
+        })
+      }
+
+      const formData = new FormData()
+      formData.append('file', this.importFile)
+      if (Object.keys(adjustments).length > 0) {
+        formData.append('adjustments', JSON.stringify(adjustments))
+      }
+
+      this.importLoading = true
+      this.uploadFile('/admin/importUsers', formData).then(resp => {
+        this.importLoading = false
+        this.importPreviewVisible = false
+        if (resp) {
+          this.importResultData = resp
+          this.importResultVisible = true
+        } else {
+          this.$message.error('导入失败')
+        }
+      }).catch(() => {
+        this.importLoading = false
+        this.importPreviewVisible = false
+        this.$message.error('导入失败，请检查文件格式和数据')
+      })
+    },
+    // ====== 编辑用户 ======
+    handleOpenEditDialog(user) {
+      this.editUser = user
+      this.editForm = {
+        nickname: user.nickname || '',
+        phone: user.phone || '',
+        orgNo: user.orgNo || '',
+        orgName: user.orgName || '请选择单位',
+        userType: user.userType || '1',
+        isAlive: user.isAlive != null ? user.isAlive : 0,
+      }
+      if (this.editOrgTree.length === 0) {
+        this.getRequestUrl('/common/saOrgTree').then(resp => {
+          this.editOrgTree = resp && resp.obj ? this.normalizeOrgTree(resp.obj) : []
+          this.matchOrgName()
+        }).catch(() => { this.editOrgTree = [] })
+      } else {
+        this.matchOrgName()
+      }
+      this.editDialogVisible = true
+    },
+    matchOrgName() {
+      const findName = (nodes, targetOrgNo) => {
+        for (const n of nodes) {
+          if (n.id === targetOrgNo) return n.label
+          if (n.children) {
+            const found = findName(n.children, targetOrgNo)
+            if (found) return found
+          }
+        }
+        return null
+      }
+      const name = findName(this.editOrgTree, this.editForm.orgNo)
+      if (name) this.editForm.orgName = name
+    },
+    selectEditOrg(orgNo, orgName) {
+      this.editForm.orgNo = orgNo
+      this.editForm.orgName = orgName
+      this.editOrgDialogVisible = false
+    },
+    handleResetPassword() {
+      this.$confirm('确定要重置该用户的密码为默认密码(1234@abcD)吗？', '重置密码', { type: 'warning' }).then(() => {
+        this.postRequest('/admin/updateUserDetail', {
+          id: this.editUser.id,
+          resetPassword: true,
+        }).then(resp => {
+          if (resp) {
+            this.$message.success('密码已重置为 1234@abcD，用户下次登录将强制修改密码')
+          }
+        })
+      }).catch(() => {})
+    },
+    handleSaveEdit() {
+      const params = { id: this.editUser.id }
+      if (this.editForm.nickname !== this.editUser.nickname) params.nickname = this.editForm.nickname
+      if (this.editForm.phone !== this.editUser.phone) params.phone = this.editForm.phone
+      if (this.editForm.orgNo !== this.editUser.orgNo) params.orgNo = this.editForm.orgNo
+      if (this.editForm.userType !== this.editUser.userType) params.userType = this.editForm.userType
+      if (this.editForm.isAlive !== this.editUser.isAlive) params.isAlive = this.editForm.isAlive
+
+      if (Object.keys(params).length <= 1) {
+        this.$message.info('没有需要保存的变更')
+        return
+      }
+
+      this.editSaving = true
+      this.postRequest('/admin/updateUserDetail', params).then(resp => {
+        this.editSaving = false
+        if (resp) {
+          this.$message.success('保存成功')
+          this.editDialogVisible = false
+          this.getAllUserPage()
+        }
+      }).catch(() => {
+        this.editSaving = false
+      })
+    },
   }
 }
 </script>

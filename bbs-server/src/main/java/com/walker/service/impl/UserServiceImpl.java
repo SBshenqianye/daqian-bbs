@@ -1,5 +1,6 @@
 package com.walker.service.impl;
 
+import com.alibaba.excel.EasyExcel;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -14,9 +15,15 @@ import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.utils.ConstantUtil;
 import com.walker.vo.MapCityVO;
+import com.walker.service.impl.OrgImportService;
+import com.walker.utils.PinyinUtil;
 import com.walker.vo.ResultBean;
 import com.walker.service.UserService;
 import com.walker.vo.UserMonthVO;
+import com.walker.vo.excel.ImportPreviewVO;
+import com.walker.vo.excel.ImportResultVO;
+import com.walker.vo.excel.UserExcelRow;
+import com.walker.vo.param.AdminUserUpdateParam;
 import com.walker.vo.param.UserInfoUpdateParam;
 import com.walker.vo.param.UserModOrgNoParam;
 import com.walker.vo.param.UserModPwdParam;
@@ -34,7 +41,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.InputStream;
 import java.lang.reflect.Field;
+
+import org.springframework.web.multipart.MultipartFile;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -64,6 +74,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private SaOrgMapper saOrgMapper;
+
+    @Autowired
+    private OrgImportService orgImportService;
 
 
     /**
@@ -102,7 +115,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             tokenMap.put("token",token);
             tokenMap.put("tokenHead",tokenHead);
             JSONObject jsonObject = (JSONObject) JSON.toJSON(user);
-            jsonObject.put("password",null);
+            jsonObject.put("password", null);
+            jsonObject.put("isFirstLogin", user.getIsFirstLogin());
             tokenMap.put("user", jsonObject);
 
             return ResultBean.success("登录成功！",tokenMap);
@@ -140,39 +154,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public ResultBean register(String username, String password, String phone, String orgNo, String nickname, HttpServletRequest request) {
-            if (StringUtils.isNoneBlank(username) && StringUtils.isNoneBlank(password)
-                    && StringUtils.isNoneBlank(phone) && StringUtils.isNoneBlank(orgNo)
-                    && StringUtils.isNoneBlank(nickname)){
-                // 判断用户是否存在
-                User user = userMapper.selectOne(
-                        new LambdaQueryWrapper<User>()
-                                .eq(User::getUsername, username)
-                );
-                if (user == null){
-                    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                    String date = format.format(new Date());
-
-                    User newUser = new User();
-                    BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
-                    newUser.setUsername(username)
-                            .setPassword(bCryptPasswordEncoder.encode(password))
-                            .setFans(0)
-                            .setAttention(0)
-                            .setGender(ConstantUtil.MANA_ZERO)
-                            .setGood(0)
-                            .setIsAlive(0)
-                            .setCreateTime(date)
-                            .setPhone(phone)
-                            .setOrgNo(orgNo)
-                            .setNickname(nickname)
-                            .setUserType(ConstantUtil.MANA_ONE);
-
-                    userMapper.insert(newUser);
-                    return ResultBean.success("注册成功！");
-                }
-                return ResultBean.error("用户名已经存在！");
-            }
-            return ResultBean.error("参数不全！");
+        return ResultBean.error("注册功能已关闭，请联系管理员创建账号");
     }
 
     /**
@@ -360,9 +342,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!passwordEncoder.matches(rawPassword, dbPassword)) {
             return ResultBean.error("密码不正确");
         }
-        String encodedNewPassword = passwordEncoder.encode(userModPwdParam.getNewPassword());
+        // 校验新密码强度
+        String newPassword = userModPwdParam.getNewPassword();
+        if (!PinyinUtil.checkPasswordStrength(newPassword)) {
+            return ResultBean.error("密码强度不足，需至少8位且包含数字、小写字母和大写字母");
+        }
+        // 新密码不能与原密码相同（明文比较，跳过BCrypt匹配）
+        if (rawPassword.equals(newPassword)) {
+            return ResultBean.error("新密码不能与原密码相同");
+        }
+        String encodedNewPassword = passwordEncoder.encode(newPassword);
         this.update(Wrappers.lambdaUpdate(User.class)
                 .set(User::getPassword, encodedNewPassword)
+                .set(User::getIsFirstLogin, 0)
                 .eq(User::getId, userId));
         return ResultBean.success("修改成功");
     }
@@ -414,6 +406,241 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return ResultBean.success("操作成功");
         }
         return ResultBean.error("操作失败");
+    }
+
+    // ==================== Excel 导入 ====================
+
+    @Override
+    public ImportPreviewVO previewImport(MultipartFile file) {
+        ImportPreviewVO preview = new ImportPreviewVO();
+        try (InputStream is = file.getInputStream()) {
+            List<UserExcelRow> rows = EasyExcel.read(is)
+                    .head(UserExcelRow.class)
+                    .sheet()
+                    .doReadSync();
+
+            preview.setTotalCount(rows.size());
+
+            // 组织预览
+            List<ImportPreviewVO.OrgPreview> orgPreviews = orgImportService.previewOrgs(rows);
+            preview.setOrgs(orgPreviews);
+            preview.setOrgCount(orgPreviews.size());
+
+            // 用户预览
+            List<ImportPreviewVO.UserPreview> userPreviews = new ArrayList<>();
+            for (int i = 0; i < rows.size(); i++) {
+                UserExcelRow row = rows.get(i);
+                ImportPreviewVO.UserPreview up = new ImportPreviewVO.UserPreview();
+                up.setRowNum(i + 1);
+                up.setNickname(row.getNickname());
+                up.setPersonnelId(row.getPersonnelId());
+                up.setIdCard(row.getIdCard());
+                up.setOrgName(row.getOrgName());
+                up.setDeptName(row.getDeptName());
+                up.setEditable(true);
+
+                // 生成账号
+                String idCardLast4 = row.getIdCard() != null && row.getIdCard().length() >= 4
+                        ? row.getIdCard().substring(row.getIdCard().length() - 4)
+                        : "0000";
+                up.setUsername(PinyinUtil.generateUsername(row.getNickname(), idCardLast4));
+
+                // 判断是新增还是更新
+                User existing = userMapper.selectOne(
+                        new LambdaQueryWrapper<User>()
+                                .eq(User::getPersonnelId, row.getPersonnelId())
+                                .last("LIMIT 1")
+                );
+                if (existing == null) {
+                    existing = userMapper.selectOne(
+                            new LambdaQueryWrapper<User>()
+                                    .eq(User::getIdCard, row.getIdCard())
+                                    .last("LIMIT 1")
+                    );
+                }
+                up.setAction(existing != null ? "update" : "new");
+                userPreviews.add(up);
+            }
+            preview.setUsers(userPreviews);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return preview;
+    }
+
+    @Override
+    public ImportResultVO importUsersFromExcel(MultipartFile file, Map<Integer, String> adjustments) {
+        ImportResultVO result = new ImportResultVO();
+        List<ImportResultVO.RowResult> details = new ArrayList<>();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+        try (InputStream is = file.getInputStream()) {
+            List<UserExcelRow> rows = EasyExcel.read(is)
+                    .head(UserExcelRow.class)
+                    .sheet()
+                    .doReadSync();
+
+            result.setTotalCount(rows.size());
+
+            // 1. 先导入组织
+            OrgImportService.OrgImportResult orgResult = orgImportService.importOrgs(rows);
+            result.setOrgCreatedCount(orgResult.createdCount);
+
+            int newCount = 0, updateCount = 0, failCount = 0;
+
+            // 2. 逐行导入人员
+            for (int i = 0; i < rows.size(); i++) {
+                UserExcelRow row = rows.get(i);
+                ImportResultVO.RowResult detail = new ImportResultVO.RowResult();
+                detail.setRowNum(i + 1);
+                detail.setNickname(row.getNickname());
+                detail.setPersonnelId(row.getPersonnelId());
+                detail.setOrgName(row.getOrgName());
+
+                try {
+                    // 生成账号（支持管理员手动修正）
+                    String idCardLast4 = row.getIdCard() != null && row.getIdCard().length() >= 4
+                            ? row.getIdCard().substring(row.getIdCard().length() - 4)
+                            : "0000";
+                    String username = PinyinUtil.generateUsername(row.getNickname(), idCardLast4);
+                    if (adjustments != null && adjustments.containsKey(i + 1)) {
+                        username = adjustments.get(i + 1);
+                    }
+                    detail.setUsername(username);
+
+                    // 确保 username 唯一（重名时追加序号）
+                    username = ensureUniqueUsername(username);
+
+                    // 匹配组织
+                    String orgNo = orgImportService.findBestOrgNo(row,
+                            orgResult.orgNoMap, orgResult.deptNoMap);
+
+                    // (personnel_id, id_card) 双键匹配
+                    User existingUser = userMapper.selectOne(
+                            new LambdaQueryWrapper<User>()
+                                    .eq(User::getPersonnelId, row.getPersonnelId())
+                                    .last("LIMIT 1")
+                    );
+                    if (existingUser == null) {
+                        existingUser = userMapper.selectOne(
+                                new LambdaQueryWrapper<User>()
+                                        .eq(User::getIdCard, row.getIdCard())
+                                        .last("LIMIT 1")
+                        );
+                    }
+
+                    if (existingUser != null) {
+                        // 白名单覆盖
+                        boolean passwordChanged = existingUser.getIsFirstLogin() != null
+                                && existingUser.getIsFirstLogin() == 0;
+
+                        existingUser.setNickname(row.getNickname());
+                        existingUser.setPersonnelId(row.getPersonnelId());
+                        existingUser.setIdCard(row.getIdCard());
+                        existingUser.setOrgNo(orgNo);
+                        existingUser.setUsername(username);
+
+                        if (!passwordChanged) {
+                            // 未改密 → 重置为默认密码
+                            existingUser.setPassword(new BCryptPasswordEncoder().encode("1234@abcD"));
+                            existingUser.setIsFirstLogin(1);
+                        }
+                        // 如果已改密，保留原密码和 isFirstLogin
+
+                        userMapper.updateById(existingUser);
+                        detail.setAction("覆盖");
+                        updateCount++;
+                    } else {
+                        // 新增用户
+                        User newUser = new User();
+                        newUser.setUsername(username)
+                                .setPassword(new BCryptPasswordEncoder().encode("1234@abcD"))
+                                .setNickname(row.getNickname())
+                                .setPersonnelId(row.getPersonnelId())
+                                .setIdCard(row.getIdCard())
+                                .setOrgNo(orgNo)
+                                .setPhone("")
+                                .setGender("0")
+                                .setUserType("1")
+                                .setFans(0)
+                                .setAttention(0)
+                                .setGood(0)
+                                .setIsAlive(0)
+                                .setIsFirstLogin(1)
+                                .setCreateTime(dateFormat.format(new Date()));
+                        userMapper.insert(newUser);
+                        detail.setAction("新增");
+                        newCount++;
+                    }
+
+                    detail.setSuccess(true);
+                    detail.setMessage("导入成功");
+                } catch (Exception e) {
+                    detail.setSuccess(false);
+                    detail.setMessage(e.getMessage());
+                    failCount++;
+                }
+                details.add(detail);
+            }
+
+            result.setUserNewCount(newCount);
+            result.setUserUpdatedCount(updateCount);
+            result.setUserSuccessCount(newCount + updateCount);
+            result.setUserFailCount(failCount);
+            result.setDetails(details);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    /** 保证 username 唯一，重复时追加 _1, _2 ... */
+    private String ensureUniqueUsername(String username) {
+        String candidate = username;
+        int suffix = 1;
+        while (userMapper.selectCount(
+                new LambdaQueryWrapper<User>().eq(User::getUsername, candidate)) > 0) {
+            candidate = username + "_" + suffix;
+            suffix++;
+        }
+        return candidate;
+    }
+
+    @Override
+    public ResultBean adminUpdateUserDetail(AdminUserUpdateParam param) {
+        if (param.getId() == null) {
+            return ResultBean.error("用户ID不能为空");
+        }
+        User user = this.getById(param.getId());
+        if (user == null) {
+            return ResultBean.error("用户不存在");
+        }
+
+        User updateUser = new User();
+        updateUser.setId(param.getId());
+
+        if (StringUtils.isNoneBlank(param.getNickname())) {
+            updateUser.setNickname(param.getNickname());
+        }
+        if (StringUtils.isNoneBlank(param.getPhone())) {
+            updateUser.setPhone(param.getPhone());
+        }
+        if (StringUtils.isNoneBlank(param.getOrgNo())) {
+            updateUser.setOrgNo(param.getOrgNo());
+        }
+        if (StringUtils.isNoneBlank(param.getUserType())) {
+            updateUser.setUserType(param.getUserType());
+        }
+        if (param.getIsAlive() != null) {
+            updateUser.setIsAlive(param.getIsAlive());
+        }
+        if (param.getResetPassword() != null && param.getResetPassword()) {
+            updateUser.setPassword(new BCryptPasswordEncoder().encode("1234@abcD"));
+            updateUser.setIsFirstLogin(1);
+        }
+
+        userMapper.updateById(updateUser);
+        return ResultBean.success("更新成功");
     }
 
 }

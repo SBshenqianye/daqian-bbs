@@ -10,11 +10,12 @@
         <result column="p_org_no" property="pOrgNo" />
         <result column="org_tree" property="orgTree" />
         <result column="is_delete" property="isDelete" />
+        <result column="is_ranking_selected" property="isRankingSelected" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, org_no, org_name, p_org_no, org_tree, is_delete
+        id, org_no, org_name, p_org_no, org_tree, is_delete, is_ranking_selected
     </sql>
 
 </mapper>

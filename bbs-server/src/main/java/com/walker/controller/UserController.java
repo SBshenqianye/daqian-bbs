@@ -2,6 +2,8 @@ package com.walker.controller;
 
 
 import com.alibaba.fastjson.JSONObject;
+import com.walker.vo.excel.ImportPreviewVO;
+import com.walker.vo.excel.ImportResultVO;
 import com.github.pagehelper.PageInfo;
 import com.walker.pojo.User;
 import com.walker.vo.ResultBean;
@@ -20,7 +22,9 @@ import java.io.File;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * <p>
@@ -44,12 +48,35 @@ public class UserController {
 
     @ApiOperation(value = "获取当前登录用户信息")
     @GetMapping("/common/user/info")
-    public User getUserInfo(Principal principal){
+    public Map<String, Object> getUserInfo(Principal principal){
 
         String username = principal.getName();
         User user = userService.getUserByUsername(username);
         user.setPassword(null);
-        return user;
+
+        // 手动构建返回Map，确保所有新字段被传递
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", user.getId());
+        map.put("username", user.getUsername());
+        map.put("password", null);
+        map.put("nickname", user.getNickname());
+        map.put("portrait", user.getPortrait());
+        map.put("gender", user.getGender());
+        map.put("introduce", user.getIntroduce());
+        map.put("city", user.getCity());
+        map.put("fans", user.getFans());
+        map.put("attention", user.getAttention());
+        map.put("good", user.getGood());
+        map.put("isAlive", user.getIsAlive());
+        map.put("isDelete", user.getIsDelete());
+        map.put("createTime", user.getCreateTime());
+        map.put("phone", user.getPhone());
+        map.put("idCard", user.getIdCard());
+        map.put("orgNo", user.getOrgNo());
+        map.put("userType", user.getUserType());
+        map.put("personnelId", user.getPersonnelId());
+        map.put("isFirstLogin", user.getIsFirstLogin());
+        return map;
     }
 
 
@@ -212,5 +239,33 @@ public class UserController {
     @PostMapping("/user/modOrgNo")
     public ResultBean modOrgNo(@RequestBody UserModOrgNoParam userModOrgNoParam){
         return userService.modOrgNo(userModOrgNoParam);
+    }
+
+    @ApiOperation(value = "导入预览：解析Excel但不存库")
+    @PostMapping("/admin/previewImport")
+    public ImportPreviewVO previewImport(@RequestParam("file") MultipartFile file) {
+        return userService.previewImport(file);
+    }
+
+    @ApiOperation(value = "执行导入：解析Excel并写入数据库")
+    @PostMapping("/admin/importUsers")
+    public ImportResultVO importUsers(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "adjustments", required = false) String adjustmentsJson) {
+        Map<Integer, String> adjustments = null;
+        if (StringUtils.isNoneBlank(adjustmentsJson)) {
+            JSONObject adjObj = JSONObject.parseObject(adjustmentsJson);
+            adjustments = new HashMap<>();
+            for (String key : adjObj.keySet()) {
+                adjustments.put(Integer.parseInt(key), adjObj.getString(key));
+            }
+        }
+        return userService.importUsersFromExcel(file, adjustments);
+    }
+
+    @ApiOperation(value = "管理员更新用户详细信息")
+    @PostMapping("/admin/updateUserDetail")
+    public ResultBean adminUpdateUserDetail(@RequestBody AdminUserUpdateParam param) {
+        return userService.adminUpdateUserDetail(param);
     }
 }
