@@ -50,6 +50,7 @@ public class SaOrgServiceImpl extends ServiceImpl<SaOrgMapper, SaOrg> implements
             vo.setId(org.getOrgNo());
             vo.setLabel(org.getOrgName());
             vo.setPOrgNo(org.getPOrgNo());
+            vo.setIsRankingSelected(org.getIsRankingSelected());
             orgMap.put(org.getOrgNo(), vo);
         }
 
