@@ -30,4 +30,9 @@ public class SaOrgTreeVO {
      */
     private List<SaOrgTreeVO> children;
 
+    /**
+     * 是否参与排名:0=否,1=是
+     */
+    private Integer isRankingSelected;
+
 }

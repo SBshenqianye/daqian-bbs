@@ -28,17 +28,6 @@ public class RegisterController {
     @ApiOperation(value = "注册")
     @PostMapping("/common/register")
     public ResultBean register(@Validated @RequestBody UserRegisterParam userRegisterParam, HttpServletRequest request){
-        if (userRegisterParam != null){
-            if (!userRegisterParam.getPassword().equals(userRegisterParam.getRePassword())) {
-                return ResultBean.error("两次密码不一致！");
-            }
-            return userService.register(userRegisterParam.getUsername(),
-                    userRegisterParam.getPassword(),
-                    userRegisterParam.getPhone(),
-                    userRegisterParam.getOrgNo(),
-                    userRegisterParam.getNickname(),
-                    request);
-        }
-        return ResultBean.error("参数不能为空！");
+        return ResultBean.error("注册功能已关闭，请联系管理员创建账号");
     }
 }

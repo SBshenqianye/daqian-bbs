@@ -7,7 +7,7 @@ import 'element-ui/lib/theme-chalk/index.css'; // 默认主题
 import './assets/css/icon.css';
 import 'babel-polyfill';
 import './assets/tailwind.css';
-import {postRequest,putRequest,getRequest,getRequestUrl,deleteRequest} from "@/api/api";
+import {postRequest,putRequest,getRequest,getRequestUrl,deleteRequest,uploadFile} from "@/api/api";
 import * as echarts from 'echarts'
 
 
@@ -19,6 +19,7 @@ Vue.prototype.putRequest = putRequest;
 Vue.prototype.getRequest = getRequest;
 Vue.prototype.getRequestUrl = getRequestUrl;
 Vue.prototype.deleteRequest = deleteRequest;
+Vue.prototype.uploadFile = uploadFile;
 
 
 Vue.use(ElementUI, {

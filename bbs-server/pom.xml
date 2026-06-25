@@ -36,7 +36,14 @@
             <version>2.5.5</version>
         </dependency>
 
-        <!--PostgreSQL 驱动（Spring Boot BOM 管理版本）-->
+        <!--MySQL 驱动（本地开发环境）-->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!--PostgreSQL 驱动（容器化部署环境）-->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
@@ -131,6 +138,20 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!--pinyin4j 汉字转拼音-->
+        <dependency>
+            <groupId>com.belerweb</groupId>
+            <artifactId>pinyin4j</artifactId>
+            <version>2.5.1</version>
+        </dependency>
+
+        <!--EasyExcel Excel解析-->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>easyexcel</artifactId>
+            <version>3.3.4</version>
         </dependency>
     </dependencies>
 

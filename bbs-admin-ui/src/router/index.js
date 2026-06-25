@@ -64,6 +64,11 @@ export default new Router({
                     meta: { title: '积分排名详情' }
                 },
                 {
+                    path: '/points/config',
+                    component: () => import('../pages/BBSPointsConfig.vue'),
+                    meta: { title: '排名单位配置' }
+                },
+                {
                     path: '/unitManage',
                     component: () => import('../pages/BBSUnitManage.vue'),
                     meta: { title: '单位管理' }

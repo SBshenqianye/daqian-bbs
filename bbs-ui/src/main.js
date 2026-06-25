@@ -115,26 +115,24 @@ const authPaths = ['/write', '/userinfo', '/stat'];
 const needAuth = (path) => authPaths.some(p => path === p || path.startsWith(p + '/'));
 
 router.beforeEach(((to, from, next) => {
-    const hasToken = window.sessionStorage.getItem('tokenStr');
+    var hasToken = window.sessionStorage.getItem('tokenStr');
     if (needAuth(to.path) && !hasToken) {
         next({ path: '/login', query: { redirect: to.fullPath } });
         return;
     }
-    if(hasToken){
-        if(!window.sessionStorage.getItem('user')){
-            //用户信息不存在
-            return getRequest('/common/user/info').then(resp =>{
-                if(resp){
-                    window.sessionStorage.setItem('user',JSON.stringify(resp));
-                    next()
-                }
-            })
-        }
-        next()
+
+    // 首次登录强制改密：除改密页和登录页外，isFirstLogin==1 时一律拦截
+    if (hasToken && to.path !== '/change-password' && to.path !== '/login') {
+        try {
+            var user = JSON.parse(window.sessionStorage.getItem('user') || '{}');
+            if (user.isFirstLogin === 1) {
+                next({ path: '/change-password', query: { redirect: to.fullPath } });
+                return;
+            }
+        } catch(e) {}
     }
-    else{
-        next()
-    }
+
+    next();
 }))
 
 

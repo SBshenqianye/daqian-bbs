@@ -46,4 +46,8 @@ public class SaOrg implements Serializable {
     @ApiModelProperty("是否删除")
     @TableField("is_delete")
     private Integer isDelete;
+
+    @ApiModelProperty("是否参与排名:0=否,1=是")
+    @TableField("is_ranking_selected")
+    private Integer isRankingSelected;
 }

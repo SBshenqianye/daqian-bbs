@@ -118,3 +118,13 @@ export const deleteRequest=(url,params)=>{
         //data:params
     })
 }
+
+// 上传文件（multipart/form-data）
+export const uploadFile = (url, formData) => {
+    return axios({
+        method: 'post',
+        url: `${process.env.VUE_APP_BBS_API}${url}`,
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
+}

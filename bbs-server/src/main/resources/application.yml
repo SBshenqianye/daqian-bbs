@@ -19,6 +19,7 @@ spring:
     multipart:
       max-file-size: 100MB
       max-request-size: 100MB
+      location: C:/tmp/bbs-upload
 
 # Mybatis-plus 设置
 mybatis-plus:
