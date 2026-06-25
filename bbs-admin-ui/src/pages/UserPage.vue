@@ -76,7 +76,7 @@
                   <span v-else class="text-on-surface-variant text-body-md">-</span>
                 </td>
                 <td class="p-4 font-body-md text-on-surface">
-                  <span class="cursor-pointer border-b border-dashed border-outline-variant hover:border-primary transition-colors">{{ user.personnelId }}</span>
+                  <span class="text-on-surface">{{ user.personnelId }}</span>
                 </td>
                 <td class="p-4 font-body-md text-on-surface max-w-[160px] truncate" :title="user.username">{{ user.username }}</td>
                 <td class="p-4 font-body-md text-on-surface max-w-[160px] truncate" :title="user.nickname">{{ user.nickname }}</td>
