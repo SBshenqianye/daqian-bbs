@@ -565,7 +565,12 @@ export default {
         if (resp && resp.code === 200 && resp.obj && resp.obj.taskId) {
           importStore.taskId = resp.obj.taskId
           if (resp.obj.reused) {
-            this.$message.info('检测到正在进行的导入任务，已自动接续')
+            this.$message({
+              message: '检测到正在进行的导入任务，已自动接续',
+              type: 'info',
+              duration: 10000,
+              showClose: true,
+            })
           }
           // ImportOverlay 会自动轮询进度
         } else {
