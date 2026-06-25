@@ -89,6 +89,18 @@ public class User implements Serializable,UserDetails {
     @TableField("user_type")
     private String userType;
 
+    @ApiModelProperty("人员编号")
+    @TableField("personnel_id")
+    private String personnelId;
+
+    @ApiModelProperty("身份证号")
+    @TableField("id_card")
+    private String idCard;
+
+    @ApiModelProperty("是否首次登录(1=需改密码,0=已修改)")
+    @TableField("is_first_login")
+    private Integer isFirstLogin;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return null;

@@ -8,6 +8,13 @@ import com.walker.vo.param.UserInfoUpdateParam;
 import com.walker.vo.param.UserModOrgNoParam;
 import com.walker.vo.param.UserModPwdParam;
 
+import com.walker.vo.excel.ImportPreviewVO;
+import com.walker.vo.excel.ImportResultVO;
+import com.walker.vo.param.AdminUserUpdateParam;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
+
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
@@ -156,4 +163,39 @@ public interface UserService extends IService<User> {
      * @return ResultBean
      */
     ResultBean modOrgNo(UserModOrgNoParam userModOrgNoParam);
+
+    /**
+     * 导入预览：解析Excel但不存库
+     * @param file 上传的Excel文件
+     * @return 预览结果
+     */
+    ImportPreviewVO previewImport(MultipartFile file);
+
+    /**
+     * 异步导入：解析Excel并写入数据库，立即返回 taskId
+     * @param file 上传的Excel文件
+     * @param adjustments 管理员手动修正的账号映射（rowNum → 修正后的username），可为空
+     * @return 任务ID
+     */
+    String importUsersFromExcelAsync(MultipartFile file, Map<Integer, String> adjustments);
+
+    /**
+     * 获取导入任务进度
+     * @param taskId 任务ID
+     * @return { status, progress, total, result, error }
+     */
+    Map<String, Object> getImportTaskProgress(String taskId);
+
+    /**
+     * 获取当前导入任务（无需 taskId），供页面刷新/跨管理员恢复使用
+     * @return { taskId, status, progress, total, result, error }，无任务时返回 null
+     */
+    Map<String, Object> getCurrentImportTask();
+
+    /**
+     * 管理员更新用户详细信息
+     * @param param 用户更新参数（昵称、手机号、单位、角色、状态等）
+     * @return 操作结果
+     */
+    ResultBean adminUpdateUserDetail(AdminUserUpdateParam param);
 }

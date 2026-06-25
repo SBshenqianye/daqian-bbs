@@ -50,6 +50,7 @@ public class SaOrgServiceImpl extends ServiceImpl<SaOrgMapper, SaOrg> implements
             vo.setId(org.getOrgNo());
             vo.setLabel(org.getOrgName());
             vo.setPOrgNo(org.getPOrgNo());
+            vo.setIsRankingSelected(org.getIsRankingSelected());
             orgMap.put(org.getOrgNo(), vo);
         }
 
@@ -125,16 +126,16 @@ public class SaOrgServiceImpl extends ServiceImpl<SaOrgMapper, SaOrg> implements
                 .mapToInt(SaOrg::getId)
                 .max()
                 .orElse(0);
-        // 获取pOrgNo单位下子单位最大 orgNo
-        Integer maxOrgNo = saOrgList.stream().filter(item -> item.getPOrgNo().equals(pOrgNo))
+        // 获取pOrgNo单位下子单位最大 orgNo（用 Long 避免 11+ 位编号溢出）
+        Long maxOrgNo = saOrgList.stream().filter(item -> item.getPOrgNo().equals(pOrgNo))
                 .map(SaOrg::getOrgNo)
-                .mapToInt(Integer::parseInt)
+                .mapToLong(Long::parseLong)
                 .max()
-                .orElse(0);
+                .orElse(0L);
 
         SaOrg saOrg = new SaOrg();
         saOrg.setId(maxId + 1);
-        saOrg.setOrgNo(maxOrgNo == 0 ? pOrgNo + "01" : maxOrgNo + 1 + "");
+        saOrg.setOrgNo(maxOrgNo == 0L ? pOrgNo + "01" : (maxOrgNo + 1L) + "");
         saOrg.setOrgName(orgName);
         saOrg.setPOrgNo(pOrgNo);
         saOrg.setIsDelete(0);

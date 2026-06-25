@@ -59,6 +59,12 @@ const router = new VueRouter({
             component: () => import('@/views/BBSArticleDetails.vue'),
             meta: { auth: false }
         },
+        {
+            name: 'BBSChangePassword',
+            path: '/change-password',
+            component: () => import('@/views/BBSChangePassword.vue'),
+            meta: { auth: true }
+        },
 
     ]
 })

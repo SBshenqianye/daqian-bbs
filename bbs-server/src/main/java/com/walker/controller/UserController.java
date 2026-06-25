@@ -2,6 +2,8 @@ package com.walker.controller;
 
 
 import com.alibaba.fastjson.JSONObject;
+import com.walker.vo.excel.ImportPreviewVO;
+import com.walker.vo.excel.ImportResultVO;
 import com.github.pagehelper.PageInfo;
 import com.walker.pojo.User;
 import com.walker.vo.ResultBean;
@@ -20,7 +22,9 @@ import java.io.File;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * <p>
@@ -44,12 +48,35 @@ public class UserController {
 
     @ApiOperation(value = "获取当前登录用户信息")
     @GetMapping("/common/user/info")
-    public User getUserInfo(Principal principal){
+    public Map<String, Object> getUserInfo(Principal principal){
 
         String username = principal.getName();
         User user = userService.getUserByUsername(username);
         user.setPassword(null);
-        return user;
+
+        // 手动构建返回Map，确保所有新字段被传递
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", user.getId());
+        map.put("username", user.getUsername());
+        map.put("password", null);
+        map.put("nickname", user.getNickname());
+        map.put("portrait", user.getPortrait());
+        map.put("gender", user.getGender());
+        map.put("introduce", user.getIntroduce());
+        map.put("city", user.getCity());
+        map.put("fans", user.getFans());
+        map.put("attention", user.getAttention());
+        map.put("good", user.getGood());
+        map.put("isAlive", user.getIsAlive());
+        map.put("isDelete", user.getIsDelete());
+        map.put("createTime", user.getCreateTime());
+        map.put("phone", user.getPhone());
+        map.put("idCard", user.getIdCard());
+        map.put("orgNo", user.getOrgNo());
+        map.put("userType", user.getUserType());
+        map.put("personnelId", user.getPersonnelId());
+        map.put("isFirstLogin", user.getIsFirstLogin());
+        return map;
     }
 
 
@@ -104,14 +131,12 @@ public class UserController {
     }
 
     @ApiOperation(value = "获取所有用户(搜索 + 分页)")
-    @GetMapping("/getAllUser/{params}")
-    public ResultBean getAllUser(@PathVariable String params){
-        if (StringUtils.isNoneBlank(params)){
-            JSONObject jsonObject = JSONObject.parseObject(params);
-            int pageIndex = jsonObject.getIntValue("pageIndex");
-            int pageSize = jsonObject.getIntValue("pageSize");
-            String searchInfo = jsonObject.getString("searchInfo");
-
+    @PostMapping("/getAllUser")
+    public ResultBean getAllUser(@RequestBody JSONObject params){
+        if (params != null && !params.isEmpty()){
+            int pageIndex = params.getIntValue("pageIndex");
+            int pageSize = params.getIntValue("pageSize");
+            String searchInfo = params.getString("searchInfo");
 
             PageInfo<User> pageInfo = userService.getAllUserByPageAndSearch(pageIndex,pageSize,searchInfo);
             return ResultBean.success("成功获取！",pageInfo);
@@ -212,5 +237,65 @@ public class UserController {
     @PostMapping("/user/modOrgNo")
     public ResultBean modOrgNo(@RequestBody UserModOrgNoParam userModOrgNoParam){
         return userService.modOrgNo(userModOrgNoParam);
+    }
+
+    @ApiOperation(value = "导入预览：解析Excel但不存库")
+    @PostMapping("/admin/previewImport")
+    public ImportPreviewVO previewImport(@RequestParam("file") MultipartFile file) {
+        return userService.previewImport(file);
+    }
+
+    @ApiOperation(value = "执行导入（异步）：解析Excel并写入数据库，返回 taskId")
+    @PostMapping("/admin/importUsers")
+    public ResultBean importUsers(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "adjustments", required = false) String adjustmentsJson) {
+        Map<Integer, String> adjustments = null;
+        if (StringUtils.isNoneBlank(adjustmentsJson)) {
+            JSONObject adjObj = JSONObject.parseObject(adjustmentsJson);
+            adjustments = new HashMap<>();
+            for (String key : adjObj.keySet()) {
+                adjustments.put(Integer.parseInt(key), adjObj.getString(key));
+            }
+        }
+
+        // 检测是否有正在进行的导入任务（全局防重复）
+        Map<String, Object> current = userService.getCurrentImportTask();
+        if (current != null && "processing".equals(current.get("status"))) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("taskId", current.get("taskId"));
+            map.put("reused", true);
+            return ResultBean.success("检测到正在进行的导入任务，已自动接续", map);
+        }
+
+        String taskId = userService.importUsersFromExcelAsync(file, adjustments);
+        Map<String, Object> map = new HashMap<>();
+        map.put("taskId", taskId);
+        map.put("reused", false);
+        return ResultBean.success("导入任务已创建", map);
+    }
+
+    @ApiOperation(value = "查询导入任务进度")
+    @GetMapping("/admin/importProgress/{taskId}")
+    public ResultBean getImportProgress(@PathVariable String taskId) {
+        Map<String, Object> progress = userService.getImportTaskProgress(taskId);
+        if (progress == null) return ResultBean.error("任务不存在");
+        return ResultBean.success(progress);
+    }
+
+    @ApiOperation(value = "获取当前导入任务（无需 taskId，供页面刷新/跨管理员恢复使用）")
+    @GetMapping("/admin/import/current")
+    public ResultBean getCurrentImport() {
+        Map<String, Object> current = userService.getCurrentImportTask();
+        if (current == null) {
+            return ResultBean.error("当前无导入任务");
+        }
+        return ResultBean.success(current);
+    }
+
+    @ApiOperation(value = "管理员更新用户详细信息")
+    @PostMapping("/admin/updateUserDetail")
+    public ResultBean adminUpdateUserDetail(@RequestBody AdminUserUpdateParam param) {
+        return userService.adminUpdateUserDetail(param);
     }
 }

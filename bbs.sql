@@ -365,6 +365,7 @@ CREATE TABLE `bbs_sa_org`  (
   `p_org_no` varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '父级单位编号',
   `org_tree` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '单位树',
   `is_delete` tinyint(1) NULL DEFAULT NULL COMMENT '是否删除',
+  `is_ranking_selected` tinyint(1) NULL DEFAULT 0 COMMENT '是否参与排名(0=否,1=是)',
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
@@ -462,16 +463,20 @@ CREATE TABLE `bbs_user`  (
   `phone` varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '电话',
   `org_no` varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '单位编号',
   `user_type` varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '用户类型（1：普通用户，2：管理员，3：超级管理员）',
+  `personnel_id` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '人员编号（Excel B列）',
+  `id_card` varchar(18) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '身份证号',
+  `is_first_login` tinyint(1) NULL DEFAULT 1 COMMENT '是否首次登录(1=需改密码,0=已修改)',
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 31 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of bbs_user
 -- ----------------------------
-INSERT INTO `bbs_user` VALUES (1, 'asiayak', '$2a$10$VAj33hwXHrlqUjpxxjVbDuG/rx3DLKoNhWR6HhVX7KKJSr5JG9jkO', '超级管理员', '/files/User/id_1/portrait/1773383668826_.png', '1', 'Go big or go home!', '河北省-秦皇岛市', 1201, 9, 521, 0, 0, '2022-05-20 00:00:00', NULL, '51404', '3');
-INSERT INTO `bbs_user` VALUES (27, 'nj_xingmahao', '$2a$10$AnRCvMtWSEmZ.8qI8tbapul1oj3tUk7GpgDvr60rLmFnDJiCX6ZRq', '国网四川内江东兴供电公司-内江东兴星马豪', '/files/User/id_27/portrait/1773629671056_.png', '0', NULL, NULL, 0, 0, 0, 0, 0, '2026-03-12 16:55:41', '15826457845', '5140403', '2');
-INSERT INTO `bbs_user` VALUES (28, 'cheng', '$2a$10$OIRkbKfkfElh4v312LVWYOMeV5KAcjF.qfhT2okMFpEYaYzQo4mu6', '国网四川内江威远县供电公司-程司令', NULL, '0', NULL, NULL, 0, 0, 0, 0, 0, '2026-04-08 14:01:56', '15983568745', '5140424', '1');
-INSERT INTO `bbs_user` VALUES (29, 'nj_chengqing', '$2a$10$YvljsOG3DmLWCO3RJHvhIul5hi49RWPqpi1Z8joLSB4uPF3CblFOu', '国网四川内江资中县供电公司-程总', '/files/User/id_29/portrait/1777259410841_.png', '0', NULL, NULL, 0, 0, 0, 0, 0, '2026-04-27 09:54:11', '18383380954', '5140425', '2');
-INSERT INTO `bbs_user` VALUES (30, 'nj_chengqing01', '$2a$10$a7gageaaX4CT05HMVWX5N.Q71A/Jj1e2SyapueSiCggTsE7H1CDqu', '国网四川内江隆昌市供电公司-程厅', NULL, '0', NULL, NULL, 0, 0, 0, 0, 0, '2026-04-27 10:20:28', '15983456547', '5140428', '1');
+INSERT INTO `bbs_user` (`id`, `username`, `password`, `nickname`, `portrait`, `gender`, `introduce`, `city`, `fans`, `attention`, `good`, `is_alive`, `is_delete`, `create_time`, `phone`, `org_no`, `user_type`, `personnel_id`, `id_card`, `is_first_login`) VALUES
+(1, 'asiayak', '$2a$10$VAj33hwXHrlqUjpxxjVbDuG/rx3DLKoNhWR6HhVX7KKJSr5JG9jkO', '超级管理员', '/files/User/id_1/portrait/1773383668826_.png', '1', 'Go big or go home!', '河北省-秦皇岛市', 1201, 9, 521, 0, 0, '2022-05-20 00:00:00', NULL, '51404', '3', NULL, NULL, 0),
+(27, 'nj_xingmahao', '$2a$10$AnRCvMtWSEmZ.8qI8tbapul1oj3tUk7GpgDvr60rLmFnDJiCX6ZRq', '国网四川内江东兴供电公司-内江东兴星马豪', '/files/User/id_27/portrait/1773629671056_.png', '0', NULL, NULL, 0, 0, 0, 0, 0, '2026-03-12 16:55:41', '15826457845', '5140403', '2', NULL, NULL, 0),
+(28, 'cheng', '$2a$10$OIRkbKfkfElh4v312LVWYOMeV5KAcjF.qfhT2okMFpEYaYzQo4mu6', '国网四川内江威远县供电公司-程司令', NULL, '0', NULL, NULL, 0, 0, 0, 0, 0, '2026-04-08 14:01:56', '15983568745', '5140424', '1', NULL, NULL, 0),
+(29, 'nj_chengqing', '$2a$10$YvljsOG3DmLWCO3RJHvhIul5hi49RWPqpi1Z8joLSB4uPF3CblFOu', '国网四川内江资中县供电公司-程总', '/files/User/id_29/portrait/1777259410841_.png', '0', NULL, NULL, 0, 0, 0, 0, 0, '2026-04-27 09:54:11', '18383380954', '5140425', '2', NULL, NULL, 0),
+(30, 'nj_chengqing01', '$2a$10$a7gageaaX4CT05HMVWX5N.Q71A/Jj1e2SyapueSiCggTsE7H1CDqu', '国网四川内江隆昌市供电公司-程厅', NULL, '0', NULL, NULL, 0, 0, 0, 0, 0, '2026-04-27 10:20:28', '15983456547', '5140428', '1', NULL, NULL, 0);
 
 SET FOREIGN_KEY_CHECKS = 1;
