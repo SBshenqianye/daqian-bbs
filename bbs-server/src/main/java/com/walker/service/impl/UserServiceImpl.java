@@ -239,8 +239,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public User queryUserinfoById(Integer id) {
-
-        return this.getById(id);
+        User user = this.getById(id);
+        if (user != null) {
+            resolveOrgInfo(Collections.singletonList(user));
+        }
+        return user;
     }
 
     @Override
@@ -262,6 +265,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     .like(User::getPersonnelId, searchInfo));
         }
         Page<User> result = userMapper.selectPage(mpPage, wrapper);
+        // 解析单位名称和部门名称
+        resolveOrgInfo(result.getRecords());
         // 转为 PageInfo 兼容前端
         PageInfo<User> pageInfo = new PageInfo<>(result.getRecords());
         pageInfo.setTotal(result.getTotal());
@@ -269,6 +274,73 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         pageInfo.setPageSize((int) result.getSize());
         pageInfo.setPages((int) result.getPages());
         return pageInfo;
+    }
+
+    /** 根节点 org_no（内江市） */
+    private static final String ROOT_ORG_NO = "51404";
+
+    /**
+     * 批量解析用户的单位名称和部门名称
+     * 从 bbs_sa_org 表查询 orgNo 对应的 orgName，区分单位和部门层级
+     */
+    private void resolveOrgInfo(List<User> users) {
+        if (CollectionUtils.isEmpty(users)) return;
+
+        Set<String> orgNos = users.stream()
+                .map(User::getOrgNo)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (orgNos.isEmpty()) return;
+
+        // 批量查询用户所属组织
+        List<SaOrg> orgList = saOrgMapper.selectList(
+                new LambdaQueryWrapper<SaOrg>()
+                        .in(SaOrg::getOrgNo, orgNos)
+                        .eq(SaOrg::getIsDelete, 0)
+        );
+        if (CollectionUtils.isEmpty(orgList)) return;
+
+        // 查出组织对应的父级单位（部门需要找到上级单位名称）
+        Set<String> parentOrgNos = orgList.stream()
+                .map(SaOrg::getPOrgNo)
+                .filter(Objects::nonNull)
+                .filter(p -> !ROOT_ORG_NO.equals(p))
+                .filter(p -> !orgNos.contains(p))
+                .collect(Collectors.toSet());
+        if (!parentOrgNos.isEmpty()) {
+            List<SaOrg> parentOrgs = saOrgMapper.selectList(
+                    new LambdaQueryWrapper<SaOrg>()
+                            .in(SaOrg::getOrgNo, parentOrgNos)
+                            .eq(SaOrg::getIsDelete, 0)
+            );
+            orgList.addAll(parentOrgs);
+        }
+
+        Map<String, SaOrg> orgMap = orgList.stream()
+                .collect(Collectors.toMap(SaOrg::getOrgNo, org -> org, (a, b) -> a));
+
+        for (User user : users) {
+            String orgNo = user.getOrgNo();
+            if (orgNo == null || ROOT_ORG_NO.equals(orgNo)) continue;
+
+            SaOrg org = orgMap.get(orgNo);
+            if (org == null) continue;
+
+            if (ROOT_ORG_NO.equals(org.getPOrgNo())) {
+                // 直接挂载在根节点下 → 是单位
+                user.setOrgName(org.getOrgName());
+            } else {
+                // 挂载在非根节点下 → 是部门
+                user.setDeptName(org.getOrgName());
+                SaOrg parentOrg = orgMap.get(org.getPOrgNo());
+                if (parentOrg != null) {
+                    user.setOrgName(parentOrg.getOrgName());
+                } else {
+                    // 查不到上级时降级显示部门名
+                    user.setOrgName(org.getOrgName());
+                }
+            }
+        }
     }
 
     @Override
