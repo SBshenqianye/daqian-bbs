@@ -313,12 +313,12 @@
                 {{ hoverUser.isAlive === 0 ? '活跃' : '禁用' }}
               </span>
             </div>
-            <!-- Info grid: 2-column, 短信息在左 长信息在右 -->
+            <!-- Info grid: 编号/手机号左右并排，其余全宽 -->
             <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-body-sm">
               <div><span class="text-on-surface-variant">编号：</span><span class="text-on-surface">{{ hoverUser.personnelId }}</span></div>
-              <div><span class="text-on-surface-variant">身份证：</span><span class="text-on-surface">{{ hoverUser.idCard || '-' }}</span></div>
               <div><span class="text-on-surface-variant">手机：</span><span class="text-on-surface">{{ hoverUser.phone || '-' }}</span></div>
-              <div><span class="text-on-surface-variant">单位：</span><span class="text-on-surface">{{ hoverUser.orgName || '-' }}</span></div>
+              <div class="col-span-2"><span class="text-on-surface-variant">身份证：</span><span class="text-on-surface break-all">{{ hoverUser.idCard || '-' }}</span></div>
+              <div class="col-span-2"><span class="text-on-surface-variant">单位：</span><span class="text-on-surface">{{ hoverUser.orgName || '-' }}</span></div>
               <div class="col-span-2"><span class="text-on-surface-variant">注册时间：</span><span class="text-on-surface">{{ hoverUser.createTime || '-' }}</span></div>
             </div>
           </div>
