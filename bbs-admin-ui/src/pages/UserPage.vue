@@ -63,7 +63,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(user, index) in users" :key="user.id" class="border-b border-border hover:bg-surface-container-low/50 transition-colors">
+              <tr v-for="(user, index) in users" :key="user.id" class="border-b border-border hover:bg-surface-container-low/50 transition-colors" @mouseenter="showUserTooltip(user, $event)" @mousemove="updateTooltipPosition($event)" @mouseleave="hideUserTooltip">
                 <td class="p-4">
                   <input type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded" :checked="isSelected(user)" :disabled="!canCheck(user)" @change="toggleSelect(user)">
                 </td>
@@ -75,7 +75,9 @@
                   </div>
                   <span v-else class="text-on-surface-variant text-body-md">-</span>
                 </td>
-                <td class="p-4 font-body-md text-on-surface">{{ user.personnelId }}</td>
+                <td class="p-4 font-body-md text-on-surface">
+                  <span class="cursor-pointer border-b border-dashed border-outline-variant hover:border-primary transition-colors">{{ user.personnelId }}</span>
+                </td>
                 <td class="p-4 font-body-md text-on-surface max-w-[160px] truncate" :title="user.username">{{ user.username }}</td>
                 <td class="p-4 font-body-md text-on-surface max-w-[160px] truncate" :title="user.nickname">{{ user.nickname }}</td>
                 <td class="p-4 font-body-md text-on-surface-variant">{{ user.phone }}</td>
@@ -294,10 +296,37 @@
 
       <!-- no separate import result dialog — handled by ImportOverlay -->
 
+      <!-- User Hover Tooltip -->
+      <div v-if="hoverUser" class="fixed z-[100]" :style="tooltipStyle" @mouseenter="keepTooltipVisible" @mouseleave="hideUserTooltip">
+        <div class="bg-container border border-border rounded-xl shadow-2xl p-3" style="width:420px">
+          <div class="space-y-1.5">
+            <!-- Header: username + nickname + role/status -->
+            <div class="flex items-center gap-2 pb-1.5 border-b border-border">
+              <span class="material-symbols-outlined text-primary text-[18px]">badge</span>
+              <div class="flex-1 min-w-0">
+                <span class="font-label-md text-label-md text-on-surface">{{ hoverUser.username }}</span>
+                <span class="text-body-sm text-on-surface-variant ml-1">({{ hoverUser.nickname }})</span>
+              </div>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap" :class="roleClass(hoverUser.userType)">{{ roleLabel(hoverUser.userType) }}</span>
+              <span class="inline-flex items-center gap-1 text-[11px] font-medium whitespace-nowrap" :class="hoverUser.isAlive === 0 ? 'text-green-700' : 'text-error'">
+                <span class="w-1.5 h-1.5 rounded-full" :class="hoverUser.isAlive === 0 ? 'bg-green-500' : 'bg-error'"></span>
+                {{ hoverUser.isAlive === 0 ? '活跃' : '禁用' }}
+              </span>
+            </div>
+            <!-- Info grid: 2-column, 短信息在左 长信息在右 -->
+            <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-body-sm">
+              <div><span class="text-on-surface-variant">编号：</span><span class="text-on-surface">{{ hoverUser.personnelId }}</span></div>
+              <div><span class="text-on-surface-variant">身份证：</span><span class="text-on-surface">{{ hoverUser.idCard || '-' }}</span></div>
+              <div><span class="text-on-surface-variant">手机：</span><span class="text-on-surface">{{ hoverUser.phone || '-' }}</span></div>
+              <div><span class="text-on-surface-variant">单位：</span><span class="text-on-surface">{{ hoverUser.orgName || '-' }}</span></div>
+              <div class="col-span-2"><span class="text-on-surface-variant">注册时间：</span><span class="text-on-surface">{{ hoverUser.createTime || '-' }}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
-
-</div>
 </template>
 
 <script>
@@ -331,6 +360,10 @@ export default {
         isAlive: 0,
       },
       searchTimer: null,
+      // 用户悬浮信息卡
+      hoverUser: null,
+      tooltipStyle: {},
+      tooltipTimer: null,
       // 编辑用户 - end
       // 弹窗拖动
       dialogPos: {
@@ -662,6 +695,45 @@ export default {
       }).catch(() => {})
     },
     // ====== 弹窗拖动（直接DOM操作） ======
+    showUserTooltip(user, event) {
+      if (this.tooltipTimer) {
+        clearTimeout(this.tooltipTimer)
+        this.tooltipTimer = null
+      }
+      this.hoverUser = user
+      this.setTooltipPosition(event)
+    },
+    setTooltipPosition(event) {
+      const tooltipWidth = 420
+      const tooltipHeight = 180
+      let left = event.clientX + 16
+      let top = event.clientY + 16
+      if (left + tooltipWidth > window.innerWidth - 8) {
+        left = event.clientX - tooltipWidth - 8
+      }
+      if (top + tooltipHeight > window.innerHeight - 8) {
+        top = event.clientY - tooltipHeight - 8
+      }
+      this.tooltipStyle = {
+        left: left + 'px',
+        top: top + 'px',
+      }
+    },
+    updateTooltipPosition(event) {
+      if (!this.hoverUser) return
+      this.setTooltipPosition(event)
+    },
+    keepTooltipVisible() {
+      if (this.tooltipTimer) {
+        clearTimeout(this.tooltipTimer)
+        this.tooltipTimer = null
+      }
+    },
+    hideUserTooltip() {
+      this.tooltipTimer = setTimeout(() => {
+        this.hoverUser = null
+      }, 200)
+    },
     startDrag(e, name) {
       e.preventDefault()
       const refMap = { edit: 'dialogEdit', preview: 'dialogPreview' }
