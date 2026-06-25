@@ -1,6 +1,5 @@
 package com.walker.config;
 
-import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import org.apache.ibatis.mapping.DatabaseIdProvider;
@@ -27,12 +26,13 @@ public class MyBatisConfig {
     }
 
     /**
-     * MyBatis-Plus 分页拦截器
+     * MyBatis-Plus 分页拦截器（自动适配数据库类型）
      */
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        // 不传 DbType，MyBatis-Plus 会自动从 JDBC 连接检测 MySQL/PostgreSQL
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor());
         return interceptor;
     }
 }
