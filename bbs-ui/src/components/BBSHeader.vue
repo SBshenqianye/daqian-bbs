@@ -90,7 +90,7 @@
                 >
                 <div class="overflow-hidden">
                   <h3 class="font-headline-sm text-headline-sm break-words text-on-surface">{{ username }}</h3>
-                  <p class="font-label-md text-label-md text-on-surface-variant truncate">ID: {{ userId }}</p>
+                  <p class="font-label-md text-label-md text-on-surface-variant truncate">人员编号: {{ personnelId }}</p>
                 </div>
               </div>
               <!-- Action List -->
@@ -158,8 +158,8 @@ export default {
     username() {
       return this.user && this.user.nickname ? this.user.nickname : '论坛用户'
     },
-    userId() {
-      return this.user && this.user.id ? this.user.id : '-'
+    personnelId() {
+      return this.user && this.user.personnelId ? this.user.personnelId : '-'
     },
   },
   mounted() {
