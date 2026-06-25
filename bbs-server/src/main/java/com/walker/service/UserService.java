@@ -187,6 +187,12 @@ public interface UserService extends IService<User> {
     Map<String, Object> getImportTaskProgress(String taskId);
 
     /**
+     * 获取当前导入任务（无需 taskId），供页面刷新/跨管理员恢复使用
+     * @return { taskId, status, progress, total, result, error }，无任务时返回 null
+     */
+    Map<String, Object> getCurrentImportTask();
+
+    /**
      * 管理员更新用户详细信息
      * @param param 用户更新参数（昵称、手机号、单位、角色、状态等）
      * @return 操作结果

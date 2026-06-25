@@ -70,7 +70,7 @@
       <div
         ref="resultCard"
         class="bg-container w-full rounded-xl shadow-2xl border border-outline-variant flex flex-col select-none"
-        style="max-width: 520px; max-height: 80vh; cursor: grab;"
+        style="max-width: 520px; max-height: 80vh; transform: translate3d(0,0,0); transition: none;"
         @mousedown.prevent="startDragResult"
       >
         <!-- header -->
@@ -172,6 +172,7 @@ export default {
       dockEdge: 'right',
       dockExpanded: false,
       dragResultState: null,
+      recoveryAttempted: false,
     }
   },
   computed: {
@@ -197,6 +198,9 @@ export default {
         this.stopPolling()
       }
     },
+  },
+  mounted() {
+    this.recoverImportState()
   },
   beforeDestroy() {
     this.stopPolling()
@@ -251,10 +255,40 @@ export default {
       resetImport()
     },
     minimize() {
-      // 只停止轮询关闭面板，不做 reset（保留后端任务）
+      // 只折叠面板，不停止轮询、不 reset，后台继续跑
       this.dockExpanded = false
-      this.stopPolling()
-      resetImport()
+    },
+
+    /** 页面挂载时 / 刷新后尝试恢复进行中的导入任务 */
+    async recoverImportState() {
+      if (this.recoveryAttempted) return
+      this.recoveryAttempted = true
+      // 如果已经有活跃状态（刚点了导入），不覆盖
+      if (importStore.status !== 'idle') return
+      try {
+        const base = process.env.VUE_APP_BBS_API || ''
+        const resp = await fetch(`${base}/admin/import/current`, {
+          headers: { 'Authorization': window.sessionStorage.getItem('tokenStr') || '' }
+        })
+        const data = await resp.json()
+        if (data && data.code === 200 && data.obj) {
+          const p = data.obj
+          importStore.taskId = p.taskId || null
+          importStore.progress = p.progress || 0
+          importStore.total = p.total || 0
+          if (p.status === 'processing') {
+            importStore.status = 'importing'
+          } else if (p.status === 'done') {
+            importStore.result = p.result
+            importStore.status = 'done'
+          } else if (p.status === 'error') {
+            importStore.error = p.error || '导入出错'
+            importStore.status = 'error'
+          }
+        }
+      } catch (e) {
+        // 静默失败，无任务可恢复
+      }
     },
 
     // ====== drag for result card ======
@@ -264,7 +298,7 @@ export default {
       if (!e.target.closest('.border-b')) return
       const s = el.style.transform
       let ox = 0, oy = 0
-      const m = s && s.match(/translate\(([-\d.]+)px,?\s*([-\d.]+)px\)/)
+      const m = s && s.match(/translate3?d?\(([-\d.]+)px,?\s*([-\d.]+)px/)
       if (m) { ox = parseFloat(m[1]); oy = parseFloat(m[2]) }
       this.dragResultState = { el, startX: e.clientX, startY: e.clientY, origX: ox, origY: oy }
       document.body.style.userSelect = 'none'
@@ -275,7 +309,7 @@ export default {
     onDragResult(e) {
       if (!this.dragResultState) return
       const d = this.dragResultState
-      d.el.style.transform = 'translate(' + (d.origX + e.clientX - d.startX) + 'px,' + (d.origY + e.clientY - d.startY) + 'px)'
+      d.el.style.transform = 'translate3d(' + (d.origX + e.clientX - d.startX) + 'px,' + (d.origY + e.clientY - d.startY) + 'px,0)'
     },
     stopDragResult() {
       if (!this.dragResultState) return

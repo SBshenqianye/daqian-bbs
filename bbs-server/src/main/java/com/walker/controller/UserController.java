@@ -258,9 +258,20 @@ public class UserController {
                 adjustments.put(Integer.parseInt(key), adjObj.getString(key));
             }
         }
+
+        // 检测是否有正在进行的导入任务（全局防重复）
+        Map<String, Object> current = userService.getCurrentImportTask();
+        if (current != null && "processing".equals(current.get("status"))) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("taskId", current.get("taskId"));
+            map.put("reused", true);
+            return ResultBean.success("检测到正在进行的导入任务，已自动接续", map);
+        }
+
         String taskId = userService.importUsersFromExcelAsync(file, adjustments);
         Map<String, Object> map = new HashMap<>();
         map.put("taskId", taskId);
+        map.put("reused", false);
         return ResultBean.success("导入任务已创建", map);
     }
 
@@ -270,6 +281,16 @@ public class UserController {
         Map<String, Object> progress = userService.getImportTaskProgress(taskId);
         if (progress == null) return ResultBean.error("任务不存在");
         return ResultBean.success(progress);
+    }
+
+    @ApiOperation(value = "获取当前导入任务（无需 taskId，供页面刷新/跨管理员恢复使用）")
+    @GetMapping("/admin/import/current")
+    public ResultBean getCurrentImport() {
+        Map<String, Object> current = userService.getCurrentImportTask();
+        if (current == null) {
+            return ResultBean.error("当前无导入任务");
+        }
+        return ResultBean.success(current);
     }
 
     @ApiOperation(value = "管理员更新用户详细信息")

@@ -3,9 +3,9 @@
     <!-- backdrop -->
     <div class="fixed inset-0 bg-black/30" @click="$emit('close')"></div>
     <!-- dialog card -->
-    <div ref="dialogCard" class="relative bg-container w-full max-w-lg rounded-xl shadow-2xl flex flex-col" style="max-height: 80vh;">
+    <div ref="dialogCard" class="relative bg-container w-full max-w-lg rounded-xl shadow-2xl flex flex-col" style="max-height: 80vh; transform: translate3d(0,0,0); transition: none;">
       <!-- drag handle header -->
-      <div class="flex items-center justify-between p-5 border-b border-outline-variant select-none" @mousedown.prevent="startDrag" style="cursor:grab">
+      <div class="flex items-center justify-between p-5 border-b border-outline-variant select-none" @mousedown.prevent="startDrag">
         <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
           <span class="material-symbols-outlined text-primary">corporate_fare</span>
           选择单位
@@ -144,7 +144,7 @@ export default {
       if (!el) return
       const cur = el.style.transform
       let ox = 0, oy = 0
-      const m = cur.match(/translate\(([-\d.]+)px,?\s*([-\d.]+)px\)/)
+      const m = cur.match(/translate3?d?\(([-\d.]+)px,?\s*([-\d.]+)px/)
       if (m) { ox = parseFloat(m[1]); oy = parseFloat(m[2]) }
       this.dragState = { el, startX: e.clientX, startY: e.clientY, origX: ox, origY: oy }
       document.body.style.userSelect = 'none'
@@ -155,7 +155,7 @@ export default {
     onDrag(e) {
       if (!this.dragState || !this.dragState.el) return
       const d = this.dragState
-      d.el.style.transform = 'translate(' + (d.origX + e.clientX - d.startX) + 'px,' + (d.origY + e.clientY - d.startY) + 'px)'
+      d.el.style.transform = 'translate3d(' + (d.origX + e.clientX - d.startX) + 'px,' + (d.origY + e.clientY - d.startY) + 'px,0)'
     },
     stopDrag() {
       if (!this.dragState) return

@@ -19,9 +19,13 @@
             <span class="material-symbols-outlined text-[18px]">delete</span>
             批量删除
           </button>
-          <button class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md" @click="triggerImport">
+          <button
+            class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="importStore.status === 'importing' || importStore.status === 'previewing'"
+            @click="triggerImport"
+          >
             <span class="material-symbols-outlined text-[18px]">upload_file</span>
-            导入用户
+            {{ importStore.status === 'importing' ? '导入中...' : '导入用户' }}
           </button>
           <input ref="fileInput" type="file" accept=".xlsx,.xls" style="display:none" @change="handleFileImport">
           <div class="flex-1 min-w-[200px]">
@@ -127,8 +131,8 @@
       <!-- Edit User Dialog (含内嵌单位树) -->
       <div v-show="editDialogVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="fixed inset-0 bg-black/30" @click="editDialogVisible = false"></div>
-        <div ref="dialogEdit" class="relative bg-container w-full max-w-lg rounded-xl shadow-2xl flex flex-col max-h-[85vh]">
-          <div class="flex items-center justify-between p-5 border-b border-outline-variant" @mousedown.prevent="startDrag($event, 'edit')" style="cursor:grab;user-select:none">
+        <div ref="dialogEdit" class="relative bg-container w-full max-w-lg rounded-xl shadow-2xl flex flex-col max-h-[85vh]" style="transform:translate3d(0,0,0);transition:none">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant" @mousedown.prevent="startDrag($event, 'edit')" style="user-select:none">
             <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">edit</span>
               编辑用户
@@ -221,8 +225,8 @@
       <!-- Import Preview Dialog -->
       <div v-show="importPreviewVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="importPreviewVisible = false">
         <div class="fixed inset-0 bg-black/30"></div>
-        <div ref="dialogPreview" class="relative bg-container w-full max-w-5xl rounded-xl shadow-2xl overflow-hidden">
-          <div class="flex items-center justify-between p-5 border-b border-outline-variant" @mousedown.prevent="startDrag($event, 'preview')" style="cursor:grab;user-select:none">
+        <div ref="dialogPreview" class="relative bg-container w-full max-w-5xl rounded-xl shadow-2xl overflow-hidden" style="transform:translate3d(0,0,0);transition:none">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant" @mousedown.prevent="startDrag($event, 'preview')" style="user-select:none">
             <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">preview</span>
               导入预览
@@ -278,7 +282,10 @@
           </div>
           <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
             <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="importPreviewVisible = false">取消</button>
-            <button class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" @click="confirmImport">确认导入</button>
+            <button
+              class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="importStore.status === 'importing'"
+              @click="confirmImport">确认导入</button>
           </div>
         </div>
       </div>
@@ -551,6 +558,9 @@ export default {
       this.uploadFile('/admin/importUsers', formData).then(resp => {
         if (resp && resp.code === 200 && resp.obj && resp.obj.taskId) {
           importStore.taskId = resp.obj.taskId
+          if (resp.obj.reused) {
+            this.$message.info('检测到正在进行的导入任务，已自动接续')
+          }
           // ImportOverlay 会自动轮询进度
         } else {
           importStore.status = 'error'
@@ -640,7 +650,7 @@ export default {
       const pos = this.dialogPos[name]
       // 恢复上次位置
       if (pos && (pos.x || pos.y)) {
-        el.style.transform = 'translate(' + pos.x + 'px, ' + pos.y + 'px)'
+        el.style.transform = 'translate3d(' + pos.x + 'px,' + pos.y + 'px,0)'
       }
       this.dialogDrag = {
         name, el,
@@ -657,14 +667,14 @@ export default {
     onDrag(e) {
       if (!this.dialogDrag || !this.dialogDrag.el) return
       const d = this.dialogDrag
-      d.el.style.transform = 'translate(' + (d.origX + e.clientX - d.startX) + 'px,' + (d.origY + e.clientY - d.startY) + 'px)'
+      d.el.style.transform = 'translate3d(' + (d.origX + e.clientX - d.startX) + 'px,' + (d.origY + e.clientY - d.startY) + 'px,0)'
     },
     stopDrag() {
       if (!this.dialogDrag) return
       const d = this.dialogDrag
       if (d.el) {
         const s = d.el.style.transform
-        const m = s && s.match(/translate\(([-\d.]+)px,?\s*([-\d.]+)px\)/)
+        const m = s && s.match(/translate3?d?\(([-\d.]+)px,?\s*([-\d.]+)px/)
         if (m) {
           this.dialogPos[d.name].x = parseFloat(m[1])
           this.dialogPos[d.name].y = parseFloat(m[2])

@@ -84,6 +84,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     // ========== 异步导入任务跟踪 ==========
     private final Map<String, ImportTask> importTasks = new ConcurrentHashMap<>();
     private final ExecutorService importExecutor = Executors.newSingleThreadExecutor();
+    /** 当前（最近创建的）任务ID，供跨管理员恢复使用 */
+    private volatile String currentTaskId = null;
+    /** 已完成任务保留时长 */
+    private static final long CLEANUP_THRESHOLD_MS = 5 * 60 * 1000L;
 
     public static class ImportTask {
         private final String taskId;
@@ -92,6 +96,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         private volatile int total;
         private ImportResultVO result;
         private String error;
+        private volatile long completedAt;
 
         public ImportTask(String taskId, int total) {
             this.taskId = taskId;
@@ -101,7 +106,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         public String getTaskId() { return taskId; }
         public String getStatus() { return status; }
-        public void setStatus(String s) { status = s; }
+        public void setStatus(String s) {
+            status = s;
+            if ("done".equals(s) || "error".equals(s)) {
+                completedAt = System.currentTimeMillis();
+            }
+        }
         public int getProgress() { return progress; }
         public void setProgress(int p) { progress = p; }
         public int getTotal() { return total; }
@@ -110,6 +120,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         public void setResult(ImportResultVO r) { result = r; }
         public String getError() { return error; }
         public void setError(String e) { error = e; }
+        public long getCompletedAt() { return completedAt; }
     }
 
     /**
@@ -510,9 +521,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public String importUsersFromExcelAsync(MultipartFile file, Map<Integer, String> adjustments) {
+        // 1. 检测是否有正在 processing 的任务，有则直接返回已有 taskId
+        for (Map.Entry<String, ImportTask> entry : importTasks.entrySet()) {
+            if ("processing".equals(entry.getValue().getStatus())) {
+                return entry.getKey();
+            }
+        }
+
+        // 2. 清理已完成超过阈值的旧任务
+        cleanupOldTasks();
+
+        // 3. 创建新任务
         String taskId = UUID.randomUUID().toString();
         ImportTask task = new ImportTask(taskId, 0);
         importTasks.put(taskId, task);
+        currentTaskId = taskId;
 
         importExecutor.submit(() -> {
             try {
@@ -532,12 +555,31 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         ImportTask task = importTasks.get(taskId);
         if (task == null) return null;
         Map<String, Object> map = new HashMap<>();
+        map.put("taskId", task.getTaskId());
         map.put("status", task.getStatus());
         map.put("progress", task.getProgress());
         map.put("total", task.getTotal());
         map.put("result", task.getResult());
         map.put("error", task.getError());
         return map;
+    }
+
+    @Override
+    public Map<String, Object> getCurrentImportTask() {
+        if (currentTaskId == null) return null;
+        return getImportTaskProgress(currentTaskId);
+    }
+
+    /** 移除已完成超过阈值的旧任务（保留 currentTaskId 引用的任务） */
+    private void cleanupOldTasks() {
+        long now = System.currentTimeMillis();
+        importTasks.entrySet().removeIf(entry -> {
+            ImportTask task = entry.getValue();
+            if ("processing".equals(task.getStatus())) return false;
+            if (entry.getKey().equals(currentTaskId)) return false;
+            return task.getCompletedAt() > 0
+                && (now - task.getCompletedAt()) > CLEANUP_THRESHOLD_MS;
+        });
     }
 
     /** 在后台线程中执行实际导入 */
