@@ -174,7 +174,6 @@ export default {
       dockEdge: 'right',
       dockExpanded: false,
       dragResultState: null,
-      recoveryAttempted: false,
     }
   },
   computed: {
@@ -191,6 +190,9 @@ export default {
     },
   },
   watch: {
+    hasToken(val) {
+      if (val) this.recoverImportState()
+    },
     'store.status'(val) {
       if (val === 'importing') {
         this.dockEdge = 'right'
@@ -198,7 +200,6 @@ export default {
         this.startPolling()
       } else if (val === 'done') {
         this.stopPolling()
-        this.startCountdown()
       } else if (val === 'error') {
         this.stopPolling()
       }
@@ -260,10 +261,8 @@ export default {
       this.dockExpanded = false
     },
 
-    /** 页面挂载时 / 刷新后尝试恢复进行中的导入任务 */
+    /** 挂载 / hasToken 变为 true 时尝试恢复导入任务 */
     async recoverImportState() {
-      if (this.recoveryAttempted) return
-      this.recoveryAttempted = true
       // 没有登录则不恢复
       const token = window.sessionStorage.getItem('tokenStr')
       if (!token) return
