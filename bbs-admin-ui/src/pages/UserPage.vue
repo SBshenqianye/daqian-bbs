@@ -21,11 +21,16 @@
           </button>
           <button
             class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md disabled:opacity-50 disabled:cursor-not-allowed"
-            :disabled="importStore.status === 'importing' || importStore.status === 'previewing'"
+            :disabled="importStore.status !== 'idle'"
             @click="triggerImport"
           >
             <span class="material-symbols-outlined text-[18px]">upload_file</span>
-            {{ importStore.status === 'importing' ? '导入中...' : '导入用户' }}
+            {{
+              importStore.status === 'importing' ? '导入中...' :
+              importStore.status === 'done' ? '导入完成，请确认' :
+              importStore.status === 'error' ? '导入出错，请确认' :
+              '导入用户'
+            }}
           </button>
           <input ref="fileInput" type="file" accept=".xlsx,.xls" style="display:none" @change="handleFileImport">
           <div class="flex-1 min-w-[200px]">
@@ -485,6 +490,7 @@ export default {
     },
     // ====== Excel 导入 ======
     triggerImport() {
+      if (importStore.status !== 'idle') return
       this.$refs.fileInput.click()
     },
     handleFileImport(event) {
