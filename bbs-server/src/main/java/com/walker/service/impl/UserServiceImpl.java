@@ -257,7 +257,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (StringUtils.isNoneBlank(searchInfo)) {
             wrapper.and(w -> w.like(User::getUsername, searchInfo)
                     .or()
-                    .like(User::getNickname, searchInfo));
+                    .like(User::getNickname, searchInfo)
+                    .or()
+                    .like(User::getPersonnelId, searchInfo));
         }
         Page<User> result = userMapper.selectPage(mpPage, wrapper);
         // 转为 PageInfo 兼容前端
