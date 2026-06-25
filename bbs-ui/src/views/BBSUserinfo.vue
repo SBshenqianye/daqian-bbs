@@ -68,8 +68,8 @@
                 <div class="font-body-lg text-body-lg text-on-surface">{{ userInfo.nickname }}</div>
               </div>
               <div class="flex items-center py-4 border-b border-outline-variant">
-                <label class="w-32 font-label-md text-label-md text-on-surface-variant">用户 ID</label>
-                <div class="font-body-lg text-body-lg text-on-surface">{{ userInfo.userId }}</div>
+                <label class="w-32 font-label-md text-label-md text-on-surface-variant">人员编号</label>
+                <div class="font-body-lg text-body-lg text-on-surface">{{ userInfo.personnelId }}</div>
               </div>
               <div class="flex items-center py-4 border-b border-outline-variant group cursor-default relative">
                 <label class="w-32 font-label-md text-label-md text-on-surface-variant">手机号码</label>
@@ -197,6 +197,7 @@ export default {
       userInfo: {
         nickname: '',
         userId: '',
+        personnelId: '',
         phone: '',
         username: '',
         portrait: '',
@@ -248,6 +249,7 @@ export default {
     applyUserInfo(u) {
       this.userInfo.nickname = u.nickname || this.userInfo.nickname
       this.userInfo.userId = String(u.id || u.userId || '')
+      this.userInfo.personnelId = u.personnelId || ''
       this.userInfo.phone = u.phone || ''
       this.userInfo.username = u.username || ''
       this.userInfo.portrait = u.portrait || ''
