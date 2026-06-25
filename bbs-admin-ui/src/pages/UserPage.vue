@@ -33,7 +33,7 @@
           <div class="flex-1 min-w-[200px]">
             <div class="relative">
               <span class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline text-[18px]">search</span>
-              <input v-model="searchInfo" class="w-full pl-9 pr-4 py-2 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md" placeholder="搜索用户名/姓名" @keyup.enter="handleSearch">
+              <input v-model="searchInfo" class="w-full pl-9 pr-4 py-2 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md" placeholder="搜索用户名/姓名/人员编号" @keyup.enter="handleSearch">
             </div>
           </div>
           <button class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md" @click="handleSearch">
@@ -53,7 +53,7 @@
                   <input type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded" :checked="isAllSelected" @change="selectAll">
                 </th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[60px]">操作</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[60px]">ID</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[60px]">人员编号</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[100px]">用户名</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[100px]">姓名</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[130px]">手机号</th>
@@ -75,7 +75,7 @@
                   </div>
                   <span v-else class="text-on-surface-variant text-body-md">-</span>
                 </td>
-                <td class="p-4 font-body-md text-on-surface">{{ user.id }}</td>
+                <td class="p-4 font-body-md text-on-surface">{{ user.personnelId }}</td>
                 <td class="p-4 font-body-md text-on-surface max-w-[160px] truncate" :title="user.username">{{ user.username }}</td>
                 <td class="p-4 font-body-md text-on-surface max-w-[160px] truncate" :title="user.nickname">{{ user.nickname }}</td>
                 <td class="p-4 font-body-md text-on-surface-variant">{{ user.phone }}</td>
@@ -330,6 +330,7 @@ export default {
         userType: '1',
         isAlive: 0,
       },
+      searchTimer: null,
       // 编辑用户 - end
       // 弹窗拖动
       dialogPos: {
@@ -374,6 +375,13 @@ export default {
     this.getAllUserPage()
   },
   watch: {
+    searchInfo() {
+      if (this.searchTimer) clearTimeout(this.searchTimer)
+      this.searchTimer = setTimeout(() => {
+        this.pageParams.pageIndex = 1
+        this.getAllUserPage()
+      }, 300)
+    },
     'importStore.status'(val) {
       // 导入完成后刷新用户列表
       if (val === 'done' && this.importStore.result) {
