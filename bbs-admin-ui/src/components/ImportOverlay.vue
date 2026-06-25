@@ -1,5 +1,6 @@
 <template>
   <div>
+    <template v-if="hasToken">
     <!-- ====== Preview Loading — 非模态浮层 ====== -->
     <div
       v-if="store.status === 'previewing'"
@@ -135,7 +136,7 @@
               </div>
             </div>
 
-            <p class="text-center text-body-md text-on-surface-variant">{{ countdown }} 秒后自动关闭</p>
+            <p class="text-center text-body-md text-on-surface-variant">请确认导入结果后关闭</p>
           </div>
 
           <div v-else-if="store.status === 'error'" class="py-6 text-center flex flex-col items-center gap-3">
@@ -151,6 +152,7 @@
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -176,6 +178,9 @@ export default {
     }
   },
   computed: {
+    hasToken() {
+      return !!window.sessionStorage.getItem('tokenStr') && this.$route.path !== '/login'
+    },
     progressPercent() {
       if (!this.store.total) return 0
       return Math.round((this.store.progress / this.store.total) * 100)
@@ -240,14 +245,10 @@ export default {
       if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null }
     },
     startCountdown() {
-      this.countdown = 3
-      this.countdownTimer = setInterval(() => {
-        this.countdown--
-        if (this.countdown <= 0) this.close()
-      }, 1000)
+      // 不再自动关闭，等待手动确认
     },
     stopCountdown() {
-      if (this.countdownTimer) { clearInterval(this.countdownTimer); this.countdownTimer = null }
+      // 无需操作
     },
     close() {
       this.stopCountdown()
@@ -263,12 +264,15 @@ export default {
     async recoverImportState() {
       if (this.recoveryAttempted) return
       this.recoveryAttempted = true
+      // 没有登录则不恢复
+      const token = window.sessionStorage.getItem('tokenStr')
+      if (!token) return
       // 如果已经有活跃状态（刚点了导入），不覆盖
       if (importStore.status !== 'idle') return
       try {
         const base = process.env.VUE_APP_BBS_API || ''
         const resp = await fetch(`${base}/admin/import/current`, {
-          headers: { 'Authorization': window.sessionStorage.getItem('tokenStr') || '' }
+          headers: { 'Authorization': token }
         })
         const data = await resp.json()
         if (data && data.code === 200 && data.obj) {
