@@ -26,10 +26,7 @@
           >
             <span class="material-symbols-outlined text-[18px]">upload_file</span>
             {{
-              importStore.status === 'importing' ? '导入中...' :
-              importStore.status === 'done' ? '导入完成，请确认' :
-              importStore.status === 'error' ? '导入出错，请确认' :
-              '导入用户'
+              importButtonLabel
             }}
           </button>
           <input ref="fileInput" type="file" accept=".xlsx,.xls" style="display:none" @change="handleFileImport">
@@ -347,13 +344,21 @@ export default {
       try {
         const admin = window.sessionStorage.getItem('admin')
         if (!admin) return 0
-        return JSON.parse(admin).userType != null ? Number(JSON.parse(admin).userType) : 0
+        const parsed = JSON.parse(admin)
+        return parsed.userType != null ? Number(parsed.userType) : 0
       } catch (e) { return 0 }
     },
     totalPages() {
       return Math.max(1, Math.ceil(this.total / this.pageParams.pageSize))
     },
     importStore() { return importStore },
+    importButtonLabel() {
+      const s = importStore.status
+      if (s === 'importing') return '导入中...'
+      if (s === 'done') return '导入完成，请确认'
+      if (s === 'error') return '导入出错，请确认'
+      return '导入用户'
+    },
     isAllSelected() {
       const checkable = this.users.filter(u => this.canCheck(u))
       return checkable.length > 0 && checkable.every(u => this.isSelected(u))
@@ -386,11 +391,7 @@ export default {
       if (row.userType == 2) return this.currentUserType == 3
       return true
     },
-    canShowOperation(row) {
-      if (row.userType == 3) return false
-      if (row.userType == 2) return this.currentUserType == 3
-      return true
-    },
+    canShowOperation(row) { return this.canCheck(row) },
     isSelected(user) {
       return this.multipleSelection.some(s => s.id === user.id)
     },

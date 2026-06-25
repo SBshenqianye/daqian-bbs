@@ -168,8 +168,6 @@ export default {
   data() {
     return {
       store: importStore,
-      countdown: 0,
-      countdownTimer: null,
       pollTimer: null,
       dockEdge: 'right',
       dockExpanded: false,
@@ -192,6 +190,7 @@ export default {
   watch: {
     hasToken(val) {
       if (val) this.recoverImportState()
+      else this.stopPolling()
     },
     'store.status'(val) {
       if (val === 'importing') {
@@ -210,7 +209,6 @@ export default {
   },
   beforeDestroy() {
     this.stopPolling()
-    this.stopCountdown()
     document.removeEventListener('mousemove', this.onDragResult)
     document.removeEventListener('mouseup', this.stopDragResult)
   },
@@ -248,11 +246,7 @@ export default {
     startCountdown() {
       // 不再自动关闭，等待手动确认
     },
-    stopCountdown() {
-      // 无需操作
-    },
     close() {
-      this.stopCountdown()
       this.stopPolling()
       resetImport()
     },
