@@ -26,8 +26,9 @@
               <input
                 v-model="loginForm.password"
                 class="w-full pl-10 pr-10 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
+                :class="{ 'password-masked': !showLoginPassword }"
                 placeholder="请输入密码"
-                :type="showLoginPassword ? 'text' : 'password'"
+                type="text"
               >
               <button class="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-primary" type="button" @click="showLoginPassword = !showLoginPassword">
                 <span class="material-symbols-outlined text-[20px]">{{ showLoginPassword ? 'visibility_off' : 'visibility' }}</span>
@@ -104,3 +105,9 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.password-masked {
+  -webkit-text-security: disc;
+}
+</style>
