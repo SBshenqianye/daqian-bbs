@@ -101,6 +101,14 @@ public class User implements Serializable,UserDetails {
     @TableField("is_first_login")
     private Integer isFirstLogin;
 
+    @ApiModelProperty("单位名称（非数据库字段，查询时动态填充）")
+    @TableField(exist = false)
+    private String orgName;
+
+    @ApiModelProperty("部门名称（非数据库字段，查询时动态填充）")
+    @TableField(exist = false)
+    private String deptName;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return null;
