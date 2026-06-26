@@ -128,7 +128,7 @@
           to="/login"
           class="flex items-center gap-2 bg-surface-container-low text-on-surface-variant px-5 py-2 rounded-lg font-label-md text-label-md hover:bg-outline-variant transition-all active:scale-95 no-underline"
         >
-          登录/注册
+          登录
         </router-link>
       </div>
     </div>
