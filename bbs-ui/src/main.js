@@ -101,12 +101,18 @@ Vue.prototype.getRequest = getRequest;
 Vue.prototype.deleteRequest = deleteRequest;
 
 
-const goEasy = GoEasy.getInstance({
-    host: "hangzhou.goeasy.io", //应用所在的区域地址: 【hangzhou.goeasy.io |singapore.goeasy.io】
-    appkey: "BC-f9dd1850a64d459cb4cc8f339f8fb4eb", // common key,
-    modules: ["im"],
-});
-  
+// GoEasy WebSocket — 内网环境不可用，try-catch 保护以防报错阻塞页面
+let goEasy = null;
+try {
+    goEasy = GoEasy.getInstance({
+        host: "hangzhou.goeasy.io", // 应用所在的区域地址
+        appkey: "BC-f9dd1850a64d459cb4cc8f339f8fb4eb", // common key
+        modules: ["im"],
+    });
+} catch (e) {
+    console.warn('GoEasy 初始化失败（内网环境无需关注）：', e);
+}
+
 Vue.prototype.GoEasy = GoEasy;
 Vue.prototype.goEasy = goEasy;
 
