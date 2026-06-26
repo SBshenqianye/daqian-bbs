@@ -26,6 +26,7 @@
           :placeholder="'从这里开始你的创作...'"
           :box-shadow="false"
           :ishljs="true"
+          :externalLink="localExternalLink"
           style="min-height: 500px; position: relative; z-index: 1;"
           @imgAdd="handleImgAdd"
         />
@@ -148,6 +149,7 @@
 <script>
 import { mavonEditor } from 'mavon-editor'
 import 'mavon-editor/dist/css/index.css'
+import 'mavon-editor/dist/markdown/github-markdown.min.css'
 import { Message, Loading } from 'element-ui'
 import { getArticleById, getArticleFileByArticleId } from '@/api/article'
 import { normalizeUrls } from '@/utils/utils'
@@ -157,6 +159,15 @@ export default {
   components: { mavonEditor },
   data() {
     return {
+      // 离线环境：mavon-editor 外链钩子指向本地 /public/lib/ 资源
+      localExternalLink: {
+        hljs_js: () => process.env.BASE_URL + 'lib/highlight.min.js',
+        hljs_css: (css) => process.env.BASE_URL + `lib/highlight/styles/${css}.min.css`,
+        hljs_lang: (lang) => process.env.BASE_URL + `lib/highlight/languages/${lang}.min.js`,
+        markdown_css: false,  // 已通过 import 本地导入
+        katex_js: () => process.env.BASE_URL + 'lib/katex/katex.min.js',
+        katex_css: () => process.env.BASE_URL + 'lib/katex/katex.min.css',
+      },
       articleId: this.$route.query.articleId || null,
       articleTitle: '',
       markdownContent: '',

@@ -121,6 +121,7 @@
 import BBSCommentItem from '@/components/BBSCommentItem.vue'
 import { mavonEditor } from 'mavon-editor'
 import 'mavon-editor/dist/css/index.css'
+import 'mavon-editor/dist/markdown/github-markdown.min.css'
 import { getArticleById, getUserinfoById, getArticleFileByArticleId } from '@/api/article'
 import { getCommentReply } from '@/api/comment'
 import { normalizeUrls } from '@/utils/utils'
@@ -170,6 +171,14 @@ export default {
         scrollStyle: true,
         boxShadow: false,
         ishljs: true,
+        externalLink: {
+          hljs_js: () => process.env.BASE_URL + 'lib/highlight.min.js',
+          hljs_css: (css) => process.env.BASE_URL + `lib/highlight/styles/${css}.min.css`,
+          hljs_lang: (lang) => process.env.BASE_URL + `lib/highlight/languages/${lang}.min.js`,
+          markdown_css: false,
+          katex_js: () => process.env.BASE_URL + 'lib/katex/katex.min.js',
+          katex_css: () => process.env.BASE_URL + 'lib/katex/katex.min.css',
+        },
       },
     }
   },
