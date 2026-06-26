@@ -37,32 +37,37 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        // 获取Header
-        String authHeader = request.getHeader(tokenHeader);
+        try {
+            // 获取Header
+            String authHeader = request.getHeader(tokenHeader);
 
-        //存在token，但是不是tokenHead开头
-        // Bearer jsoifdf
-        if(authHeader != null && authHeader.startsWith(tokenHead)){
-            // 字段截取authToken
-            String authToken = authHeader.substring(tokenHead.length());
-            // 根据authToken获取 username
-            String username = jwtTokenUtil.getUsernameFromToken(authToken);
-            //token存在用户名，但是未登录
-            if(username != null && SecurityContextHolder.getContext().getAuthentication() == null){
-                //登录
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                // 验证token是否有效，如果有效，将他重新放到用户对象里。
-                if(jwtTokenUtil.validateToken(authToken,userDetails)){
-                    UsernamePasswordAuthenticationToken authenticationToken = new
-                            UsernamePasswordAuthenticationToken(userDetails,null,userDetails.getAuthorities());
+            //存在token，但是不是tokenHead开头
+            // Bearer jsoifdf
+            if (authHeader != null && authHeader.startsWith(tokenHead)) {
+                // 字段截取authToken
+                String authToken = authHeader.substring(tokenHead.length());
+                // 根据authToken获取 username
+                String username = jwtTokenUtil.getUsernameFromToken(authToken);
+                //token存在用户名，但是未登录
+                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    //登录
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    // 验证token是否有效，如果有效，将他重新放到用户对象里。
+                    if (jwtTokenUtil.validateToken(authToken, userDetails)) {
+                        UsernamePasswordAuthenticationToken authenticationToken = new
+                                UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-                    // 重新设置到用户对象里
-                    authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));;
-                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                        // 重新设置到用户对象里
+                        authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        ;
+                        SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                    }
+
                 }
-
             }
+        } catch (Exception e) {
+            logger.warn("JWT token验证异常", e);
         }
-        filterChain.doFilter(request,response);
+        filterChain.doFilter(request, response);
     }
 }
