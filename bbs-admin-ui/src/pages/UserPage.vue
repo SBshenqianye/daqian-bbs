@@ -288,8 +288,13 @@
             <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="importPreviewVisible = false">取消</button>
             <button
               class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="importStore.status === 'importing'"
-              @click="confirmImport">确认导入</button>
+              :disabled="confirmButtonLoading"
+              @click="confirmImport">
+            <span class="flex items-center gap-1.5">
+              <span v-if="confirmButtonLoading" class="material-symbols-outlined animate-spin" style="font-size: 16px;">sync</span>
+              {{ confirmButtonLoading ? '导入中...' : '确认导入' }}
+            </span>
+          </button>
           </div>
         </div>
       </div>
@@ -388,10 +393,14 @@ export default {
     importStore() { return importStore },
     importButtonLabel() {
       const s = importStore.status
+      if (s === 'previewing') return '解析中...'
       if (s === 'importing') return '导入中...'
       if (s === 'done') return '导入完成，请确认'
       if (s === 'error') return '导入出错，请确认'
       return '导入用户'
+    },
+    confirmButtonLoading() {
+      return importStore.status === 'importing'
     },
     isAllSelected() {
       const checkable = this.users.filter(u => this.canCheck(u))
@@ -538,6 +547,11 @@ export default {
     handleFileImport(event) {
       const file = event.target.files[0]
       if (!file) return
+      // 防止重复提交
+      if (importStore.status !== 'idle') {
+        event.target.value = ''
+        return
+      }
       this.importFile = file
 
       resetImport()
@@ -581,6 +595,9 @@ export default {
       return t
     },
     confirmImport() {
+      // 防止重复提交
+      if (importStore.status === 'importing') return
+
       const adjustments = {}
       const defaults = this.importPreviewData.__defaults || {}
       if (this.importPreviewData.users) {
