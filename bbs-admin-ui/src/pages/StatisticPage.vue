@@ -17,12 +17,12 @@
         <div class="flex flex-wrap items-center gap-4">
           <div class="flex items-center gap-2">
             <span class="font-label-md text-label-md text-on-surface-variant whitespace-nowrap">单位：</span>
-            <div class="relative min-w-[180px]">
-              <select v-model="selectedOrgNo" class="w-full px-4 py-2 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md appearance-none">
+            <div class="grid grid-cols-1 grid-rows-1 min-w-[180px]">
+              <select v-model="selectedOrgNo" class="w-full col-start-1 row-start-1 px-4 py-2 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md appearance-none">
                 <option value="">请选择单位</option>
                 <option v-for="org in flatOrgTree" :key="org.id" :value="org.id">{{ org.label }}</option>
               </select>
-              <span class="material-symbols-outlined absolute right-2 inset-y-0 flex items-center text-outline text-[18px] pointer-events-none">unfold_more</span>
+              <span class="material-symbols-outlined col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline text-[18px] pointer-events-none">unfold_more</span>
             </div>
           </div>
           <div class="flex items-center gap-2">

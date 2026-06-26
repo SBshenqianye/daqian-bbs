@@ -9,28 +9,28 @@
         <form class="space-y-5" @submit.prevent="handleLogin">
           <div class="space-y-1.5">
             <label class="font-label-md text-label-md text-secondary ml-0.5">账号</label>
-            <div class="relative">
-              <span class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline text-[20px]">person</span>
+            <div class="grid grid-cols-1 grid-rows-1">
               <input
                 v-model="loginForm.username"
-                class="w-full pl-10 pr-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
+                class="w-full col-start-1 row-start-1 pl-10 pr-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
                 placeholder="请输入账号"
                 type="text"
               >
+              <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline text-[20px] pointer-events-none">person</span>
             </div>
           </div>
           <div class="space-y-1.5">
             <label class="font-label-md text-label-md text-secondary ml-0.5">密码</label>
-            <div class="relative">
-              <span class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline text-[20px]">lock</span>
+            <div class="grid grid-cols-1 grid-rows-1">
               <input
                 v-model="loginForm.password"
-                class="w-full pl-10 pr-10 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
+                class="w-full col-start-1 row-start-1 pl-10 pr-10 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
                 :class="{ 'password-masked': !showLoginPassword }"
                 placeholder="请输入密码"
                 type="text"
               >
-              <button class="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-primary" type="button" @click="showLoginPassword = !showLoginPassword">
+              <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline text-[20px] pointer-events-none">lock</span>
+              <button class="col-start-1 row-start-1 self-center justify-self-end mr-3 text-outline hover:text-primary" type="button" @click="showLoginPassword = !showLoginPassword">
                 <span class="material-symbols-outlined text-[20px]">{{ showLoginPassword ? 'visibility_off' : 'visibility' }}</span>
               </button>
             </div>

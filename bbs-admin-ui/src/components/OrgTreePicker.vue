@@ -17,13 +17,13 @@
 
       <!-- search + toolbar -->
       <div class="px-5 pt-4 pb-2">
-        <div class="relative">
-          <span class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline" style="font-size: 18px;">search</span>
+        <div class="grid grid-cols-1 grid-rows-1">
           <input
             v-model="filterText"
-            class="w-full pl-9 pr-4 py-2 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md"
+            class="w-full col-start-1 row-start-1 pl-9 pr-4 py-2 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md"
             placeholder="搜索单位名称"
           >
+          <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline pointer-events-none" style="font-size: 18px;">search</span>
         </div>
         <div v-if="treeData.length" class="flex gap-2 mt-2">
           <button
