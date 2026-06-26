@@ -43,3 +43,13 @@ jwt:
   # JWT 负载中拿到开头
   tokenHead: Bearer
 
+# ============================================
+# 数据库初始化配置
+# ============================================
+bbs:
+  init:
+    super-admin:
+      username: asiayak
+      # 超级管理员密码（生产环境请通过环境变量 BBS_SUPER_ADMIN_PASSWORD 覆盖）
+      password: ${BBS_SUPER_ADMIN_PASSWORD:1234@abcD}
+
