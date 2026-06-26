@@ -288,11 +288,11 @@
             <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="importPreviewVisible = false">取消</button>
             <button
               class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="confirmButtonLoading"
+              :disabled="importStore.status === 'importing'"
               @click="confirmImport">
             <span class="flex items-center gap-1.5">
-              <span v-if="confirmButtonLoading" class="material-symbols-outlined animate-spin" style="font-size: 16px;">sync</span>
-              {{ confirmButtonLoading ? '导入中...' : '确认导入' }}
+              <span v-if="importStore.status === 'importing'" class="material-symbols-outlined animate-spin" style="font-size: 16px;">sync</span>
+              {{ importStore.status === 'importing' ? '导入中...' : '确认导入' }}
             </span>
           </button>
           </div>
@@ -398,9 +398,6 @@ export default {
       if (s === 'done') return '导入完成，请确认'
       if (s === 'error') return '导入出错，请确认'
       return '导入用户'
-    },
-    confirmButtonLoading() {
-      return importStore.status === 'importing'
     },
     isAllSelected() {
       const checkable = this.users.filter(u => this.canCheck(u))
