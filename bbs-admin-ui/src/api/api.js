@@ -19,7 +19,7 @@ axios.interceptors.request.use(config=>{
 axios.interceptors.response.use(success=>{
     //业务逻辑错误
     if(success.status && success.status == 200){
-        if( success.data.code == 401 || success.status.code == 403){
+        if( success.data.code == 401 || success.data.code == 403){
             /*Message({
                 type: 'error',
                 message: success.data.message,
@@ -38,19 +38,19 @@ axios.interceptors.response.use(success=>{
     return success.data;
 
 },error => {
-    if(error.response.code == 504 || error.response.code == 404){
+    if(error.response.status == 504 || error.response.status == 404){
         Message({
             type: 'error',
             message: '服务器错误',
             //offset:50
         })
-    }else if(error.response.code == 403){
+    }else if(error.response.status == 403){
         Message({
             type: 'error',
             message: '权限不足，请联系管理员！',
             //offset:50
         })
-    }else if(error.response.code == 401){
+    }else if(error.response.status == 401){
         Message({
             type: 'error',
             message: '尚未登录，请登录！',
