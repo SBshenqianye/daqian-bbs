@@ -15,6 +15,16 @@ spring:
   main:
     allow-circular-references: true
 
+  # 不急于创建数据库连接——让 DatabaseInitializer 先建库
+  datasource:
+    druid:
+      initial-size: 0
+      min-idle: 0
+      max-active: 20
+      test-on-borrow: false
+      connection-error-retry-attempts: 0
+      break-after-acquire-failure: true
+
   servlet:
     multipart:
       max-file-size: 100MB

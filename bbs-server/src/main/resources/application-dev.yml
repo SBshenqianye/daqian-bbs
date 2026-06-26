@@ -8,10 +8,10 @@ spring:
     password: root
     # password: asiayak
     druid:
-      initial-size: 1
-      min-idle: 1
+      initial-size: 0
+      min-idle: 0
       max-active: 20
-      test-on-borrow: true
+      test-on-borrow: false
       stat-view-servlet:
         allow: true
 
