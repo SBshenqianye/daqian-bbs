@@ -15,6 +15,16 @@ spring:
   main:
     allow-circular-references: true
 
+  # 不急于创建数据库连接——让 DatabaseInitializer 先建库
+  datasource:
+    druid:
+      initial-size: 0
+      min-idle: 0
+      max-active: 20
+      test-on-borrow: false
+      connection-error-retry-attempts: 0
+      break-after-acquire-failure: true
+
   servlet:
     multipart:
       max-file-size: 100MB
@@ -42,4 +52,14 @@ jwt:
   expiration: 604800
   # JWT 负载中拿到开头
   tokenHead: Bearer
+
+# ============================================
+# 数据库初始化配置
+# ============================================
+bbs:
+  init:
+    super-admin:
+      username: asiayak
+      # 超级管理员密码（生产环境请通过环境变量 BBS_SUPER_ADMIN_PASSWORD 覆盖）
+      password: ${BBS_SUPER_ADMIN_PASSWORD:1234@abcD}
 

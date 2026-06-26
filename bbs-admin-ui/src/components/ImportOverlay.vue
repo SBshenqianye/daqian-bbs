@@ -275,13 +275,9 @@ export default {
           importStore.total = p.total || 0
           if (p.status === 'processing') {
             importStore.status = 'importing'
-          } else if (p.status === 'done') {
-            importStore.result = p.result
-            importStore.status = 'done'
-          } else if (p.status === 'error') {
-            importStore.error = p.error || '导入出错'
-            importStore.status = 'error'
           }
+          // done/error 不恢复 — 结果弹窗已在导入完成时通过轮询展示过，
+          // 若恢复会导致每次刷新都重新弹出，用户关闭后无效
         }
       } catch (e) {
         // 静默失败，无任务可恢复

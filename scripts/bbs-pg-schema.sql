@@ -204,8 +204,9 @@ CREATE TABLE bbs_sa_org (
     org_no      varchar(20) NOT NULL,
     org_name    varchar(255),
     p_org_no    varchar(20),
-    org_tree    varchar(255),
-    is_delete   smallint
+    org_tree             varchar(255),
+    is_delete            smallint,
+    is_ranking_selected  smallint DEFAULT 0
 );
 
 -- ============================================
@@ -249,7 +250,10 @@ CREATE TABLE bbs_user (
     create_time varchar(20),
     phone       varchar(20),
     org_no      varchar(20),
-    user_type   varchar(20)
+    user_type   varchar(20),
+    personnel_id varchar(50),
+    id_card     varchar(18),
+    is_first_login smallint DEFAULT 1
 );
 
 -- 重新启用外键检查

@@ -31,9 +31,9 @@
           </button>
           <input ref="fileInput" type="file" accept=".xlsx,.xls" style="display:none" @change="handleFileImport">
           <div class="flex-1 min-w-[200px]">
-            <div class="relative">
-              <span class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline text-[18px]">search</span>
-              <input v-model="searchInfo" class="w-full pl-9 pr-4 py-2 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md" placeholder="搜索用户名/姓名/人员编号" @keyup.enter="handleSearch">
+            <div class="grid grid-cols-1 grid-rows-1">
+              <input v-model="searchInfo" class="w-full col-start-1 row-start-1 pl-9 pr-4 py-2 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md" placeholder="搜索用户名/姓名/人员编号" @keyup.enter="handleSearch">
+              <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline text-[18px] pointer-events-none">search</span>
             </div>
           </div>
           <button class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md" @click="handleSearch">
@@ -289,7 +289,12 @@
             <button
               class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="importStore.status === 'importing'"
-              @click="confirmImport">确认导入</button>
+              @click="confirmImport">
+            <span class="flex items-center gap-1.5">
+              <span v-if="importStore.status === 'importing'" class="material-symbols-outlined animate-spin" style="font-size: 16px;">sync</span>
+              {{ importStore.status === 'importing' ? '导入中...' : '确认导入' }}
+            </span>
+          </button>
           </div>
         </div>
       </div>
@@ -388,6 +393,7 @@ export default {
     importStore() { return importStore },
     importButtonLabel() {
       const s = importStore.status
+      if (s === 'previewing') return '解析中...'
       if (s === 'importing') return '导入中...'
       if (s === 'done') return '导入完成，请确认'
       if (s === 'error') return '导入出错，请确认'
@@ -538,6 +544,11 @@ export default {
     handleFileImport(event) {
       const file = event.target.files[0]
       if (!file) return
+      // 防止重复提交
+      if (importStore.status !== 'idle') {
+        event.target.value = ''
+        return
+      }
       this.importFile = file
 
       resetImport()
@@ -565,9 +576,10 @@ export default {
           this.$message.error('预览失败，请检查文件格式')
           resetImport()
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.error('[UserPage] 预览请求异常：', err)
         resetImport()
-        this.$message.error('预览失败，请检查文件格式')
+        this.$message.error('预览失败：网络异常或服务器不可用')
       })
       event.target.value = ''
     },
@@ -580,6 +592,9 @@ export default {
       return t
     },
     confirmImport() {
+      // 防止重复提交
+      if (importStore.status === 'importing') return
+
       const adjustments = {}
       const defaults = this.importPreviewData.__defaults || {}
       if (this.importPreviewData.users) {
@@ -619,9 +634,10 @@ export default {
           importStore.status = 'error'
           importStore.error = (resp && resp.message) || '导入任务创建失败'
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.error('[UserPage] 导入请求异常：', err)
         importStore.status = 'error'
-        importStore.error = '导入请求失败，请检查网络'
+        importStore.error = '导入请求失败：网络异常或服务器不可用'
       })
     },
     // ====== 编辑用户 ======

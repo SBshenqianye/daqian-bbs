@@ -32,14 +32,14 @@
 
       <!-- Middle: Search Bar (only show on forum page) -->
       <div v-if="isForumPage" class="flex-grow max-w-2xl hidden md:block">
-        <div class="relative group">
+        <div class="grid grid-cols-1 grid-rows-1 group">
           <span
-            class="material-symbols-outlined absolute left-3 inset-y-0 flex items-center text-outline transition-colors"
+            class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline transition-colors pointer-events-none"
             :class="{ 'text-brand-blue': searchFocused }"
           >search</span>
           <input
             v-model="keywords"
-            class="w-full h-10 pl-10 pr-4 bg-surface-container-low rounded-lg border border-transparent focus:border-brand-blue focus:bg-container focus:ring-0 transition-all font-body-md text-body-md outline-none"
+            class="w-full col-start-1 row-start-1 h-10 pl-10 pr-4 bg-surface-container-low rounded-lg border border-transparent focus:border-brand-blue focus:bg-container focus:ring-0 transition-all font-body-md text-body-md outline-none"
             placeholder="搜索讨论、创意或人员..."
             type="text"
             @focus="searchFocused = true"
@@ -128,7 +128,7 @@
           to="/login"
           class="flex items-center gap-2 bg-surface-container-low text-on-surface-variant px-5 py-2 rounded-lg font-label-md text-label-md hover:bg-outline-variant transition-all active:scale-95 no-underline"
         >
-          登录/注册
+          登录
         </router-link>
       </div>
     </div>

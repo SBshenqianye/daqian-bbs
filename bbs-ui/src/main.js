@@ -5,8 +5,6 @@ import VueRouter from 'vue-router';
 import router from "@/router";
 //import store from "@/store";
 
-import GoEasy from "goeasy";
-
 // 引入 Tailwind CSS 全局样式
 import './assets/tailwind.css'
 
@@ -99,16 +97,6 @@ Vue.prototype.postRequest = postRequest;
 Vue.prototype.putRequest = putRequest;
 Vue.prototype.getRequest = getRequest;
 Vue.prototype.deleteRequest = deleteRequest;
-
-
-const goEasy = GoEasy.getInstance({
-    host: "hangzhou.goeasy.io", //应用所在的区域地址: 【hangzhou.goeasy.io |singapore.goeasy.io】
-    appkey: "BC-f9dd1850a64d459cb4cc8f339f8fb4eb", // common key,
-    modules: ["im"],
-});
-  
-Vue.prototype.GoEasy = GoEasy;
-Vue.prototype.goEasy = goEasy;
 
 // 需要登录才能访问的路径（未登录时直接跳转登录页）
 const authPaths = ['/write', '/userinfo', '/stat'];
