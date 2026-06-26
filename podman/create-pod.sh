@@ -1,96 +1,127 @@
 #!/bin/bash
-# ============================================
-# BBS Podman Pod 创建与启动脚本
-# 用法: ./podman/create-pod.sh
-# 前提条件:
-#   - Podman 已安装
-#   - 镜像已构建 (bbs-server:latest, bbs-nginx:latest)
-#   - 设置 BBS_DB_PASSWORD 环境变量
-# ============================================
+# Create and start the BBS Podman pod from local images.
+# Usage:
+#   BBS_DB_PASSWORD='change-me' ./podman/create-pod.sh
+#
+# This script is offline-safe: it only uses images already loaded on the host.
 set -e
 
-# 配置
-BBS_DB_PASSWORD="${BBS_DB_PASSWORD:?错误: 请设置 BBS_DB_PASSWORD 环境变量}"
+require_image() {
+    local image="$1"
+    if ! podman image exists "$image"; then
+        echo "ERROR: required image is not loaded: $image" >&2
+        echo "Load offline images first: ./podman/install-offline.sh" >&2
+        exit 1
+    fi
+}
+
+BBS_DB_PASSWORD="${BBS_DB_PASSWORD:?ERROR: please set BBS_DB_PASSWORD}"
 BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR:-/home/asiayak/bbsUpload}"
 PG_DATA_DIR="${PG_DATA_DIR:-/data/sql/postgre}"
-POD_NAME="bbs-pod"
+POD_NAME="${POD_NAME:-bbs-pod}"
+BBS_SERVER_IMAGE="${BBS_SERVER_IMAGE:-localhost/daqian-bbs-server:offline}"
+BBS_NGINX_IMAGE="${BBS_NGINX_IMAGE:-localhost/daqian-bbs-nginx:offline}"
+BBS_POSTGRES_IMAGE="${BBS_POSTGRES_IMAGE:-localhost/daqian-bbs-postgres:12}"
+SCHEMA_FILE="${SCHEMA_FILE:-scripts/bbs-pg-schema.sql}"
+SKIP_SCHEMA_INIT="${SKIP_SCHEMA_INIT:-0}"
+START_POSTGRES="${START_POSTGRES:-0}"
+BBS_DB_HOST="${BBS_DB_HOST:-127.0.0.1}"
+BBS_DB_PORT="${BBS_DB_PORT:-5432}"
+BBS_DB_NAME="${BBS_DB_NAME:-bbs}"
+BBS_DB_USER="${BBS_DB_USER:-work_flow}"
 
-echo "===== 创建 BBS Pod ($POD_NAME) ====="
-
-# 清理已存在的 pod
-if podman pod exists $POD_NAME 2>/dev/null; then
-    echo "--> Pod '$POD_NAME' 已存在，正在删除..."
-    podman pod stop $POD_NAME
-    podman pod rm $POD_NAME
+require_image "$BBS_SERVER_IMAGE"
+require_image "$BBS_NGINX_IMAGE"
+if [ "$START_POSTGRES" = "1" ]; then
+    require_image "$BBS_POSTGRES_IMAGE"
 fi
 
-# 1. 创建 Pod（共享网络命名空间）
-echo "--> 创建 Pod..."
+echo "===== Creating BBS pod ($POD_NAME) ====="
+
+if podman pod exists "$POD_NAME" 2>/dev/null; then
+    echo "--> Pod '$POD_NAME' already exists, removing it first..."
+    podman pod stop "$POD_NAME" >/dev/null 2>&1 || true
+    podman pod rm -f "$POD_NAME" >/dev/null
+fi
+
+echo "--> Creating pod..."
 podman pod create \
-    --name $POD_NAME \
+    --name "$POD_NAME" \
     --publish 18848:18848 \
     --label app=bbs
 
 echo ""
+if [ "$START_POSTGRES" = "1" ]; then
+    echo "--> Starting PostgreSQL..."
+    sudo mkdir -p "$PG_DATA_DIR" 2>/dev/null || mkdir -p "$PG_DATA_DIR"
 
-# 2. 启动 PostgreSQL 容器
-echo "--> 启动 PostgreSQL..."
-# 确保数据目录存在
-sudo mkdir -p $PG_DATA_DIR 2>/dev/null || mkdir -p $PG_DATA_DIR
+    podman run --pod "$POD_NAME" --name bbs-postgres -d \
+        --label app=bbs \
+        -e POSTGRES_USER="$BBS_DB_USER" \
+        -e POSTGRES_PASSWORD="$BBS_DB_PASSWORD" \
+        -e POSTGRES_DB="$BBS_DB_NAME" \
+        -v "$PG_DATA_DIR:/var/lib/postgresql/data:Z" \
+        "$BBS_POSTGRES_IMAGE"
 
-podman run --pod $POD_NAME --name bbs-postgres -d \
-    --label app=bbs \
-    -e POSTGRESQL_USER=bbs_user \
-    -e POSTGRESQL_PASSWORD=$BBS_DB_PASSWORD \
-    -e POSTGRESQL_DATABASE=bbs \
-    -v $PG_DATA_DIR:/var/lib/pgsql/data:Z \
-    registry.access.redhat.com/rhscl/postgresql-12-rhel7
+    echo "--> Waiting for PostgreSQL to accept connections..."
+    for i in $(seq 1 60); do
+        if podman exec bbs-postgres psql -U "$BBS_DB_USER" -d "$BBS_DB_NAME" -c "SELECT 1" >/dev/null 2>&1; then
+            break
+        fi
+        if [ "$i" -eq 60 ]; then
+            echo "ERROR: PostgreSQL did not become ready in time." >&2
+            podman logs bbs-postgres >&2 || true
+            exit 1
+        fi
+        sleep 2
+    done
 
-echo "--> 等待 PostgreSQL 初始化（15秒）..."
-sleep 15
-
-# 可选：执行数据库初始化脚本
-if [ -f scripts/bbs-pg-schema.sql ]; then
-    echo "--> 应用数据库 Schema..."
-    podman exec -i bbs-postgres psql -U bbs_user -d bbs < scripts/bbs-pg-schema.sql
+    if [ "$SKIP_SCHEMA_INIT" != "1" ] && [ -f "$SCHEMA_FILE" ]; then
+        echo "--> Applying database schema: $SCHEMA_FILE"
+        podman exec -i bbs-postgres psql -U "$BBS_DB_USER" -d "$BBS_DB_NAME" < "$SCHEMA_FILE"
+    else
+        echo "--> Skipping schema initialization."
+    fi
+else
+    echo "--> Reusing existing PostgreSQL at $BBS_DB_HOST:$BBS_DB_PORT/$BBS_DB_NAME"
 fi
 
 echo ""
+echo "--> Starting BBS application..."
+sudo mkdir -p "$BBS_UPLOAD_DIR" 2>/dev/null || mkdir -p "$BBS_UPLOAD_DIR"
 
-# 3. 启动 BBS 应用容器
-echo "--> 启动 BBS 应用..."
-# 确保上传目录存在
-sudo mkdir -p $BBS_UPLOAD_DIR 2>/dev/null || mkdir -p $BBS_UPLOAD_DIR
-
-podman run --pod $POD_NAME --name bbs-app -d \
+podman run --pod "$POD_NAME" --name bbs-app -d \
     --label app=bbs \
-    -e BBS_DB_PASSWORD=$BBS_DB_PASSWORD \
+    -e BBS_DB_PASSWORD="$BBS_DB_PASSWORD" \
+    -e BBS_DB_HOST="$BBS_DB_HOST" \
+    -e BBS_DB_PORT="$BBS_DB_PORT" \
+    -e BBS_DB_NAME="$BBS_DB_NAME" \
+    -e BBS_DB_USER="$BBS_DB_USER" \
+    -e BBS_UPLOAD_DIR=/home/asiayak/bbsUpload/ \
     -e SPRING_PROFILES_ACTIVE=podman \
-    -v $BBS_UPLOAD_DIR:/home/asiayak/bbsUpload:Z \
-    bbs-server:latest
+    -v "$BBS_UPLOAD_DIR:/home/asiayak/bbsUpload:Z" \
+    "$BBS_SERVER_IMAGE"
 
 echo ""
-
-# 4. 启动 Nginx 容器
-echo "--> 启动 Nginx..."
-podman run --pod $POD_NAME --name bbs-nginx -d \
+echo "--> Starting Nginx..."
+podman run --pod "$POD_NAME" --name bbs-nginx -d \
     --label app=bbs \
-    bbs-nginx:latest
+    "$BBS_NGINX_IMAGE"
 
 echo ""
-echo "===== Pod 已创建 ====="
+echo "===== Pod is ready ====="
 echo ""
-echo "检查状态: podman pod ps"
-echo "检查容器: podman ps -a --pod"
-echo "查看日志:"
+echo "Status:     podman pod ps"
+echo "Containers: podman ps -a --pod"
+echo "Logs:"
 echo "  podman logs bbs-app"
 echo "  podman logs bbs-nginx"
 echo "  podman logs bbs-postgres"
 echo ""
-echo "访问地址:"
-echo "  用户前端: http://<服务器IP>:18848/bbs-user/"
-echo "  管理前端: http://<服务器IP>:18848/bbs-admin/"
-echo "  API:      http://<服务器IP>:18848/bbs-server/"
+echo "URLs:"
+echo "  User UI:  http://<server-ip>:18848/bbs-user/"
+echo "  Admin UI: http://<server-ip>:18848/bbs-admin/"
+echo "  API:      http://<server-ip>:18848/bbs-server/"
 echo ""
-echo "停止: podman pod stop $POD_NAME"
-echo "删除: podman pod rm $POD_NAME"
+echo "Stop:   podman pod stop $POD_NAME"
+echo "Remove: podman pod rm -f $POD_NAME"

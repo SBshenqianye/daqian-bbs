@@ -2,8 +2,8 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     type: com.alibaba.druid.pool.DruidDataSource
-    url: jdbc:postgresql://localhost:5432/bbs
-    username: bbs_user
+    url: jdbc:postgresql://${BBS_DB_HOST:127.0.0.1}:${BBS_DB_PORT:5432}/${BBS_DB_NAME:bbs}
+    username: ${BBS_DB_USER:work_flow}
     password: ${BBS_DB_PASSWORD}
     druid:
       initial-size: 1
@@ -16,4 +16,4 @@ spring:
 
 # 文件存储路径（保持与原来一致）
 storage:
-  path: /home/asiayak/bbsUpload/
+  path: ${BBS_UPLOAD_DIR:/home/asiayak/bbsUpload/}
