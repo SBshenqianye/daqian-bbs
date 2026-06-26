@@ -33,16 +33,16 @@
       <!-- Org Tree -->
       <div v-else class="bg-container border border-border rounded-xl p-6">
         <!-- Search -->
-        <div class="mb-4 relative">
-          <span class="material-symbols-outlined absolute text-outline flex items-center" style="font-size:18px;left:12px;top:50%;transform:translateY(-50%);line-height:1">search</span>
+        <div class="mb-4 grid grid-cols-1 grid-rows-1">
           <input
             v-model="filterText"
-            class="w-full h-10 pl-9 pr-4 bg-surface rounded-lg border border-outline-variant text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-all"
+            class="w-full col-start-1 row-start-1 h-10 pl-9 pr-4 bg-surface rounded-lg border border-outline-variant text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-all"
             placeholder="搜索单位名称..."
           />
+          <span class="material-symbols-outlined col-start-1 row-start-1 self-center text-outline pointer-events-none" style="font-size:18px;margin-left:12px;line-height:1">search</span>
           <button
             v-if="filterText"
-            class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded text-outline hover:text-on-surface hover:bg-surface-variant transition-all"
+            class="col-start-1 row-start-1 self-center justify-self-end w-6 h-6 flex items-center justify-center rounded text-outline hover:text-on-surface hover:bg-surface-variant transition-all mr-2"
             @click="filterText = ''"
           >
             <span class="material-symbols-outlined" style="font-size:14px">close</span>
