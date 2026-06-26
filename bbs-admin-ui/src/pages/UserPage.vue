@@ -565,9 +565,10 @@ export default {
           this.$message.error('预览失败，请检查文件格式')
           resetImport()
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.error('[UserPage] 预览请求异常：', err)
         resetImport()
-        this.$message.error('预览失败，请检查文件格式')
+        this.$message.error('预览失败：网络异常或服务器不可用')
       })
       event.target.value = ''
     },
@@ -619,9 +620,10 @@ export default {
           importStore.status = 'error'
           importStore.error = (resp && resp.message) || '导入任务创建失败'
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.error('[UserPage] 导入请求异常：', err)
         importStore.status = 'error'
-        importStore.error = '导入请求失败，请检查网络'
+        importStore.error = '导入请求失败：网络异常或服务器不可用'
       })
     },
     // ====== 编辑用户 ======
