@@ -26,9 +26,9 @@ module.exports = {
     },
     lintOnSave: false, //关闭语法检查
 
-    //开启代理服务器(通过8082转发给8083)，使用vue-cli 实现
+    //开启代理服务器(通过9082转发给9083)，使用vue-cli 实现
     devServer: {
-        port: 8082,
+        port: 9082,
         proxy: {
             [process.env.VUE_APP_BBS_API]: {
                 target: process.env.VUE_APP_BBS_BASE_API + '/bbs-server',
