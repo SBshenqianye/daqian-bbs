@@ -16,4 +16,4 @@ spring:
 
 # 文件存储路径（保持与原来一致）
 storage:
-  path: ${BBS_UPLOAD_DIR:/home/asiayak/bbsUpload/}
+  path: ${BBS_UPLOAD_DIR:/data/bbs/bbsUpload/}
