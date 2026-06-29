@@ -30,6 +30,13 @@
             }}
           </button>
           <input ref="fileInput" type="file" accept=".xlsx,.xls" style="display:none" @change="handleFileImport">
+          <button
+            class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md"
+            @click="handleOpenAddDialog"
+          >
+            <span class="material-symbols-outlined text-[18px]">person_add</span>
+            添加用户
+          </button>
           <div class="flex-1 min-w-[200px]">
             <div class="grid grid-cols-1 grid-rows-1">
               <input v-model="searchInfo" class="w-full col-start-1 row-start-1 pl-9 pr-4 py-2 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md" placeholder="搜索用户名/姓名/人员编号" @keyup.enter="handleSearch">
@@ -301,6 +308,90 @@
 
       <!-- no separate import result dialog — handled by ImportOverlay -->
 
+      <!-- Add User Dialog -->
+      <div v-show="addDialogVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/30" @click="addDialogVisible = false"></div>
+        <div ref="dialogAdd" class="relative bg-container w-full max-w-lg rounded-xl shadow-2xl flex flex-col max-h-[85vh]" style="transform:translate3d(0,0,0);transition:none">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant" @mousedown.prevent="startDrag($event, 'add')" style="user-select:none">
+            <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">person_add</span>
+              添加用户
+            </h3>
+            <button class="text-outline hover:text-error transition-colors" @click="addDialogVisible = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="p-5 space-y-4 overflow-y-auto flex-1">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">
+                  用户名
+                  <span class="text-error">*</span>
+                </label>
+                <input v-model="addForm.username" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入用户名">
+              </div>
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">
+                  姓名
+                  <span class="text-error">*</span>
+                </label>
+                <input v-model="addForm.nickname" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入姓名">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">手机号</label>
+                <input v-model="addForm.phone" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入手机号（选填）">
+              </div>
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">
+                  所属单位
+                  <span class="text-error">*</span>
+                </label>
+                <button class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md text-left flex items-center justify-between hover:border-primary transition-colors" @click="addOrgPickerVisible = true" type="button">
+                  <span :class="addForm.orgName ? 'text-on-surface' : 'text-on-surface-variant'">{{ addForm.orgName || '请选择单位' }}</span>
+                  <span class="material-symbols-outlined text-[18px] text-outline">search</span>
+                </button>
+              </div>
+            </div>
+            <div class="flex items-center gap-6">
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">角色</label>
+                <select v-model="addForm.userType" class="px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary outline-none">
+                  <option value="1">普通用户</option>
+                  <option value="2">管理员</option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">状态</label>
+                <select v-model="addForm.isAlive" class="px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary outline-none">
+                  <option :value="0">活跃</option>
+                  <option :value="1">禁用</option>
+                </select>
+              </div>
+            </div>
+            <div class="px-0 pt-2 text-body-sm text-on-surface-variant">
+              初始密码默认为 <code class="px-1.5 py-0.5 bg-surface-variant rounded text-error text-label-md">1234@abcD</code>，用户首次登录需修改密码
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
+            <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="addDialogVisible = false">取消</button>
+            <button class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" :disabled="addSaving" @click="handleSaveAdd">
+              {{ addSaving ? '创建中...' : '创建' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add User Org Tree Picker -->
+      <OrgTreePicker
+        :visible="addOrgPickerVisible"
+        :selected-id="addForm.orgNo"
+        :selected-label="addForm.orgName"
+        @select="onAddOrgPickerSelect"
+        @close="addOrgPickerVisible = false"
+      />
+
       <!-- User Hover Tooltip -->
       <div v-if="hoverUser" class="fixed z-[100]" :style="tooltipStyle" @mouseenter="keepTooltipVisible" @mouseleave="hideUserTooltip">
         <div class="bg-container border border-border rounded-xl shadow-2xl p-3" style="width:420px">
@@ -369,11 +460,25 @@ export default {
       hoverUser: null,
       tooltipStyle: {},
       tooltipTimer: null,
+      // 新增用户
+      addDialogVisible: false,
+      addSaving: false,
+      addForm: {
+        username: '',
+        nickname: '',
+        phone: '',
+        orgNo: '',
+        orgName: '',
+        userType: '1',
+        isAlive: 0,
+      },
+      addOrgPickerVisible: false,
       // 编辑用户 - end
       // 弹窗拖动
       dialogPos: {
         edit: { x: 0, y: 0 },
         preview: { x: 0, y: 0 },
+        add: { x: 0, y: 0 },
       },
       dialogDrag: null, // { name, startX, startY, origX, origY }
     }
@@ -710,6 +815,59 @@ export default {
         })
       }).catch(() => {})
     },
+    // ====== 新增用户 ======
+    handleOpenAddDialog() {
+      this.addForm = {
+        username: '',
+        nickname: '',
+        phone: '',
+        orgNo: '',
+        orgName: '',
+        userType: '1',
+        isAlive: 0,
+      }
+      this.addDialogVisible = true
+    },
+    onAddOrgPickerSelect(org) {
+      if (org && org.id) {
+        this.addForm.orgNo = org.id
+        this.addForm.orgName = org.label
+      }
+      this.addOrgPickerVisible = false
+    },
+    handleSaveAdd() {
+      if (!this.addForm.username.trim()) {
+        this.$message.warning('请输入用户名')
+        return
+      }
+      if (!this.addForm.nickname.trim()) {
+        this.$message.warning('请输入姓名')
+        return
+      }
+      if (!this.addForm.orgNo) {
+        this.$message.warning('请选择所属单位')
+        return
+      }
+
+      this.addSaving = true
+      this.postRequest('/admin/addUser', {
+        username: this.addForm.username.trim(),
+        nickname: this.addForm.nickname.trim(),
+        phone: this.addForm.phone.trim() || null,
+        orgNo: this.addForm.orgNo,
+        userType: this.addForm.userType,
+        isAlive: this.addForm.isAlive,
+      }).then(resp => {
+        this.addSaving = false
+        if (resp) {
+          this.$message.success('用户创建成功')
+          this.addDialogVisible = false
+          this.getAllUserPage()
+        }
+      }).catch(() => {
+        this.addSaving = false
+      })
+    },
     // ====== 弹窗拖动（直接DOM操作） ======
     showUserTooltip(user, event) {
       if (this.tooltipTimer) {
@@ -752,7 +910,7 @@ export default {
     },
     startDrag(e, name) {
       e.preventDefault()
-      const refMap = { edit: 'dialogEdit', preview: 'dialogPreview' }
+      const refMap = { edit: 'dialogEdit', preview: 'dialogPreview', add: 'dialogAdd' }
       const el = this.$refs[refMap[name]]
       if (!el) return
       const pos = this.dialogPos[name]

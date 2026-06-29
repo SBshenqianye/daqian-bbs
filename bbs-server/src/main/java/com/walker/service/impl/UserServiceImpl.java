@@ -23,6 +23,7 @@ import com.walker.vo.UserMonthVO;
 import com.walker.vo.excel.ImportPreviewVO;
 import com.walker.vo.excel.ImportResultVO;
 import com.walker.vo.excel.UserExcelRow;
+import com.walker.vo.param.AdminUserAddParam;
 import com.walker.vo.param.AdminUserUpdateParam;
 import com.walker.vo.param.UserInfoUpdateParam;
 import com.walker.vo.param.UserModOrgNoParam;
@@ -845,6 +846,33 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         userMapper.updateById(updateUser);
         return ResultBean.success("更新成功");
+    }
+
+    @Override
+    public ResultBean adminAddUser(AdminUserAddParam param) {
+        // 校验用户名唯一性
+        if (userMapper.selectCount(
+                new LambdaQueryWrapper<User>().eq(User::getUsername, param.getUsername())) > 0) {
+            return ResultBean.error("用户名已存在");
+        }
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        User newUser = new User();
+        newUser.setUsername(param.getUsername())
+                .setPassword(new BCryptPasswordEncoder().encode("1234@abcD"))
+                .setNickname(param.getNickname())
+                .setPhone(param.getPhone() != null ? param.getPhone() : "")
+                .setOrgNo(param.getOrgNo())
+                .setGender("0")
+                .setUserType(param.getUserType() != null ? param.getUserType() : "1")
+                .setIsAlive(param.getIsAlive() != null ? param.getIsAlive() : 0)
+                .setFans(0)
+                .setAttention(0)
+                .setGood(0)
+                .setIsFirstLogin(1)
+                .setCreateTime(dateFormat.format(new Date()));
+        userMapper.insert(newUser);
+        return ResultBean.success("用户创建成功");
     }
 
 }

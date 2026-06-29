@@ -10,6 +10,7 @@ import com.walker.vo.param.UserModPwdParam;
 
 import com.walker.vo.excel.ImportPreviewVO;
 import com.walker.vo.excel.ImportResultVO;
+import com.walker.vo.param.AdminUserAddParam;
 import com.walker.vo.param.AdminUserUpdateParam;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -197,5 +198,12 @@ public interface UserService extends IService<User> {
      * @param param 用户更新参数（昵称、手机号、单位、角色、状态等）
      * @return 操作结果
      */
+    /**
+     * 管理员新增用户
+     * @param param 新增用户参数（用户名、昵称、手机号、单位、角色、状态）
+     * @return 操作结果
+     */
+    ResultBean adminAddUser(AdminUserAddParam param);
+
     ResultBean adminUpdateUserDetail(AdminUserUpdateParam param);
 }
