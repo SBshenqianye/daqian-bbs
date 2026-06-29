@@ -3,12 +3,10 @@
 # 构建时上下文应为项目根目录:
 #   podman build -t bbs-nginx -f nginx/Dockerfile .
 # ============================================
-FROM registry.access.redhat.com/ubi7/nginx-120:latest
+FROM nginx:stable-alpine
 
-# 安装 envsubst（用于启动时渲染 nginx 端口配置）
-USER root
-RUN yum install -y gettext && yum clean all
-USER 1001
+# 安装 envsubst（Alpine 需要安装 gettext 包）
+RUN apk add --no-cache gettext
 
 # Nginx configuration template（启动时由 envsubst 渲染为最终配置）
 COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
