@@ -6,7 +6,12 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.StreamUtils;
 
 import java.nio.charset.StandardCharsets;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,14 +32,14 @@ public class DatabaseInitHelper {
      */
     public static void bootstrap(String jdbcUrl, String dbUsername, String dbPassword) {
         if (jdbcUrl == null || jdbcUrl.isEmpty()) {
-            log.warn("未提供 JDBC URL，跳过数据库引导初始化");
+            log.warn("JDBC URL is empty, skip database bootstrap.");
             return;
         }
 
         String dbName = extractDatabaseName(jdbcUrl);
         String dbType = detectDbType(jdbcUrl);
         if (dbName == null) {
-            log.info("JDBC URL 中未指定数据库名，跳过引导初始化");
+            log.info("No database name found in JDBC URL, skip database bootstrap.");
             return;
         }
 
@@ -46,34 +51,37 @@ public class DatabaseInitHelper {
             // 2. 检查表是否存在，不存在则建表导数据
             boolean tablesExist = checkTablesExist(jdbcUrl, dbUsername, dbPassword);
             if (!tablesExist) {
-                log.info("数据库 [{}] 为空，开始执行初始化脚本...", dbName);
+                log.info("Database [{}] has no bbs_user table, executing full init SQL.", dbName);
                 executeInitSql(jdbcUrl, dbUsername, dbPassword, dbType);
-                log.info("数据库 [{}] 初始化脚本执行完成", dbName);
             } else {
-                log.info("数据库 [{}] 表已存在，跳过初始化", dbName);
+                log.info("Database [{}] already has bbs_user table, executing incremental init SQL.", dbName);
+                executeUpgradeSql(jdbcUrl, dbUsername, dbPassword, dbType);
+                executeInitSql(jdbcUrl, dbUsername, dbPassword, dbType);
             }
         } catch (Exception e) {
-            log.error("数据库引导初始化失败: {}", e.getMessage(), e);
+            log.error("Database bootstrap failed: {}", e.getMessage(), e);
         }
     }
 
     // ==================== 数据库创建 ====================
 
     private static void ensureDatabaseExists(String adminUrl, String username, String password,
-                                             String dbName, String dbType) throws Exception {
-        log.info("检查数据库 [{}] 是否存在 (via: {})", dbName, adminUrl);
+                                             String dbName, String dbType) {
+        log.info("Checking database [{}] via [{}]", dbName, adminUrl);
         try (Connection conn = DriverManager.getConnection(adminUrl, username, password)) {
             boolean exists = "postgresql".equals(dbType)
                     ? checkPgDatabaseExists(conn, dbName)
                     : checkMysqlDatabaseExists(conn, dbName);
             if (!exists) {
                 createDatabase(conn, dbName, dbType);
-                log.info("数据库 [{}] 创建成功", dbName);
+                log.info("Database [{}] created.", dbName);
             } else {
-                log.info("数据库 [{}] 已存在", dbName);
+                log.info("Database [{}] already exists.", dbName);
             }
         } catch (SQLException e) {
-            log.warn("创建数据库失败: {}", e.getMessage());
+            log.warn("Create/check database failed: {}", e.getMessage());
+        } catch (Exception e) {
+            log.warn("Create/check database failed: {}", e.getMessage(), e);
         }
     }
 
@@ -120,38 +128,51 @@ public class DatabaseInitHelper {
     private static void executeInitSql(String url, String username, String password,
                                        String dbType) throws Exception {
         String sqlFile = "postgresql".equals(dbType) ? "db/init/init-pg.sql" : "db/init/init-mysql.sql";
-        log.info("执行初始化脚本：{}", sqlFile);
+        log.info("Executing init SQL: {}", sqlFile);
+        executeSqlFile(url, username, password, sqlFile);
+    }
 
+    private static void executeUpgradeSql(String url, String username, String password,
+                                          String dbType) throws Exception {
+        String sqlFile = "postgresql".equals(dbType) ? "db/init/upgrade-pg.sql" : "db/init/upgrade-mysql.sql";
+        log.info("Executing upgrade SQL: {}", sqlFile);
+        executeSqlFile(url, username, password, sqlFile);
+    }
+
+    private static void executeSqlFile(String url, String username, String password,
+                                       String sqlFile) throws Exception {
         ClassPathResource resource = new ClassPathResource(sqlFile);
         if (!resource.exists()) {
-            log.error("初始化 SQL 文件不存在：{}", sqlFile);
+            log.warn("SQL file does not exist: {}", sqlFile);
             return;
         }
 
         String sql = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
-
         try (Connection conn = DriverManager.getConnection(url, username, password);
              Statement stmt = conn.createStatement()) {
-
             String[] statements = sql.split(";");
             for (String statement : statements) {
                 String trimmed = statement.trim();
-                if (trimmed.isEmpty()) continue;
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
                 try {
                     stmt.execute(trimmed);
                 } catch (Exception e) {
                     String upper = trimmed.toUpperCase();
                     if (upper.startsWith("SET ") || upper.startsWith("SELECT SETVAL")) {
-                        log.debug("跳过非关键语句: {}", trimmed.substring(0, Math.min(50, trimmed.length())));
+                        log.debug("Skip non-critical SQL: {}", preview(trimmed));
                     } else {
-                        log.warn("执行 SQL 时出现警告: {} —— {}", trimmed.substring(0, Math.min(80, trimmed.length())), e.getMessage());
+                        log.warn("SQL warning while executing [{}]: {}", preview(trimmed), e.getMessage());
                     }
                 }
             }
         }
     }
 
-    // ==================== 工具方法 ====================
+    private static String preview(String sql) {
+        return sql.substring(0, Math.min(100, sql.length()));
+    }
 
     private static String extractDatabaseName(String url) {
         Matcher m = Pattern.compile("/([^/?]+)(\\?|$)").matcher(url);
