@@ -15,9 +15,8 @@ COPY src ./src
 RUN mvn package -DskipTests -B
 
 # ============================================
-# Runtime stage: minimal Java 8 runtime
-# Use Red Hat UBI 7 for RHEL 7 compatibility
-FROM registry.access.redhat.com/ubi7/openjdk-8:latest
+# Runtime stage: minimal Java 8 runtime (Eclipse Temurin)
+FROM eclipse-temurin:8-jre
 
 WORKDIR /app
 
@@ -26,6 +25,6 @@ COPY --from=build /build/target/bbs-server.jar app.jar
 EXPOSE 8083
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:8083/bbs-server/ || exit 1
+  CMD wget -q --spider http://localhost:${SERVER_PORT:-8083}/bbs-server/ || exit 1
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar", "--spring.profiles.active=podman"]

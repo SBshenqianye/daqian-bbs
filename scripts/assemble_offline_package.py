@@ -119,9 +119,8 @@ def main():
     # ── Step 4: 构建容器镜像 ──
     if not args.skip_build:
         step("5/6  构建容器镜像")
-        run([CONTAINER_TOOL, "build", "-t", BBS_SERVER_IMAGE,
-             "-f", "bbs-server/Dockerfile", "."],
-            PROJECT_DIR, "后端镜像")
+        run([CONTAINER_TOOL, "build", "-t", BBS_SERVER_IMAGE, "."],
+            PROJECT_DIR / "bbs-server", "后端镜像")
         run([CONTAINER_TOOL, "build", "-t", BBS_NGINX_IMAGE,
              "-f", "nginx/Dockerfile", "."],
             PROJECT_DIR, "Nginx 镜像")
