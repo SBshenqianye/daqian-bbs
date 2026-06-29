@@ -293,6 +293,12 @@ public class UserController {
         return ResultBean.success(current);
     }
 
+    @ApiOperation(value = "管理员新增用户")
+    @PostMapping("/admin/addUser")
+    public ResultBean adminAddUser(@RequestBody AdminUserAddParam param) {
+        return userService.adminAddUser(param);
+    }
+
     @ApiOperation(value = "管理员更新用户详细信息")
     @PostMapping("/admin/updateUserDetail")
     public ResultBean adminUpdateUserDetail(@RequestBody AdminUserUpdateParam param) {
