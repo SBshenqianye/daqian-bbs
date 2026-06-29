@@ -1,7 +1,7 @@
 
 server:
   # 端口号设置
-  port: 8083
+  port: 9083
   servlet:
     context-path: /bbs-server
 spring:
