@@ -12,6 +12,6 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY bbs-ui/dist/ /usr/share/nginx/html/bbs-ui/
 COPY bbs-admin-ui/dist/ /usr/share/nginx/html/bbs-admin/
 
-EXPOSE 18848
+EXPOSE 19848
 
 CMD ["nginx", "-g", "daemon off;"]

@@ -47,7 +47,7 @@ fi
 echo "--> Creating pod..."
 podman pod create \
     --name "$POD_NAME" \
-    --publish 18848:18848 \
+    --publish 19848:19848 \
     --label app=bbs
 
 echo ""
@@ -119,9 +119,9 @@ echo "  podman logs bbs-nginx"
 echo "  podman logs bbs-postgres"
 echo ""
 echo "URLs:"
-echo "  User UI:  http://<server-ip>:18848/bbs-user/"
-echo "  Admin UI: http://<server-ip>:18848/bbs-admin/"
-echo "  API:      http://<server-ip>:18848/bbs-server/"
+echo "  User UI:  http://<server-ip>:19848/bbs-user/"
+echo "  Admin UI: http://<server-ip>:19848/bbs-admin/"
+echo "  API:      http://<server-ip>:19848/bbs-server/"
 echo ""
 echo "Stop:   podman pod stop $POD_NAME"
 echo "Remove: podman pod rm -f $POD_NAME"
