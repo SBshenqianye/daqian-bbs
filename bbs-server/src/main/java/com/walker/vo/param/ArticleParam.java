@@ -54,5 +54,5 @@ public class ArticleParam {
     private String createTime;
 
     @ApiModelProperty(value = "文章附件Ids",required = true)
-    private String [] files;
+    private Integer [] files;
 }

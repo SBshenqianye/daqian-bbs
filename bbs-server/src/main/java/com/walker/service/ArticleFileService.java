@@ -31,7 +31,7 @@ public interface ArticleFileService extends IService<ArticleFile> {
      * @param articleId 文章id
      * @return int 返回数据影响行数
      */
-    int updateArticleFile(String [] fileIds, Integer articleId);
+    int updateArticleFile(Integer [] fileIds, Integer articleId);
 
     /**
      * 方法描述 获取文章附件信息

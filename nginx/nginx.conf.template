@@ -8,11 +8,11 @@ http {
 
     # 后端上游（Pod 内通过 localhost 访问）
     upstream bbs-backend {
-        server 127.0.0.1:8083;
+        server 127.0.0.1:${BBS_SERVER_PORT};
     }
 
     server {
-        listen 19848;
+        listen ${NGINX_PORT};
         server_name _;
 
         # 与 Spring Boot 配置保持一致（100MB）

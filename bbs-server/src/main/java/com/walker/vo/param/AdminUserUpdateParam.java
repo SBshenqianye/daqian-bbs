@@ -33,4 +33,16 @@ public class AdminUserUpdateParam {
 
     @ApiModelProperty("是否重置密码(true=重置为默认密码1234@abcD)")
     private Boolean resetPassword;
+
+    @ApiModelProperty("人员编号")
+    private String personnelId;
+
+    @ApiModelProperty("身份证号")
+    private String idCard;
+
+    @ApiModelProperty("用户名（更改需谨慎，涉及登录账号）")
+    private String username;
+
+    @ApiModelProperty("密码（明文传入，后端自动BCrypt加密）")
+    private String password;
 }

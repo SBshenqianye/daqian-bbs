@@ -23,7 +23,7 @@ public interface ArticleFileMapper extends BaseMapper<ArticleFile> {
      * @param articleId 文章id
      * @return int 返回数据影响行数
      */
-    int updateArticleFile(@Param("fileIds") String[] fileIds, @Param("articleId")Integer articleId);
+    int updateArticleFile(@Param("fileIds") Integer[] fileIds, @Param("articleId")Integer articleId);
 
     /**
      * 方法描述 解除文章绑定的附件

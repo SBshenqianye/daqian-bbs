@@ -839,7 +839,30 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (param.getIsAlive() != null) {
             updateUser.setIsAlive(param.getIsAlive());
         }
-        if (param.getResetPassword() != null && param.getResetPassword()) {
+        if (StringUtils.isNoneBlank(param.getPersonnelId())) {
+            updateUser.setPersonnelId(param.getPersonnelId());
+        }
+        if (StringUtils.isNoneBlank(param.getIdCard())) {
+            updateUser.setIdCard(param.getIdCard());
+        }
+        if (StringUtils.isNoneBlank(param.getUsername())) {
+            // 校验用户名唯一性
+            User existing = userMapper.selectOne(
+                    new LambdaQueryWrapper<User>()
+                            .eq(User::getUsername, param.getUsername())
+                            .ne(User::getId, param.getId())
+                            .last("LIMIT 1")
+            );
+            if (existing != null) {
+                return ResultBean.error("用户名已被其他用户使用");
+            }
+            updateUser.setUsername(param.getUsername());
+        }
+        // 优先使用自定义密码，其次判断是否重置
+        if (StringUtils.isNoneBlank(param.getPassword())) {
+            updateUser.setPassword(new BCryptPasswordEncoder().encode(param.getPassword()));
+            updateUser.setIsFirstLogin(0);
+        } else if (param.getResetPassword() != null && param.getResetPassword()) {
             updateUser.setPassword(new BCryptPasswordEncoder().encode("1234@abcD"));
             updateUser.setIsFirstLogin(1);
         }

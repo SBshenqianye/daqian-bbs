@@ -7,7 +7,6 @@ import org.springframework.util.StreamUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -44,19 +43,16 @@ public class DatabaseInitHelper {
         }
 
         try {
-            // 1. 确保数据库存在
+            // 1. 确保数据库存在，并记录是否为刚创建
             String adminUrl = buildAdminUrl(jdbcUrl, dbType);
-            ensureDatabaseExists(adminUrl, dbUsername, dbPassword, dbName, dbType);
+            boolean databaseCreated = ensureDatabaseExists(adminUrl, dbUsername, dbPassword, dbName, dbType);
 
-            // 2. 检查表是否存在，不存在则建表导数据
-            boolean tablesExist = checkTablesExist(jdbcUrl, dbUsername, dbPassword);
-            if (!tablesExist) {
-                log.info("Database [{}] has no bbs_user table, executing full init SQL.", dbName);
+            // 2. 仅当数据库是刚创建时（完全为空），才执行建表+基础数据初始化
+            if (databaseCreated) {
+                log.info("Database [{}] was just created, executing init SQL.", dbName);
                 executeInitSql(jdbcUrl, dbUsername, dbPassword, dbType);
             } else {
-                log.info("Database [{}] already has bbs_user table, executing incremental init SQL.", dbName);
-                executeUpgradeSql(jdbcUrl, dbUsername, dbPassword, dbType);
-                executeInitSql(jdbcUrl, dbUsername, dbPassword, dbType);
+                log.info("Database [{}] already exists, skipping init SQL. (Data preserved)", dbName);
             }
         } catch (Exception e) {
             log.error("Database bootstrap failed: {}", e.getMessage(), e);
@@ -65,8 +61,12 @@ public class DatabaseInitHelper {
 
     // ==================== 数据库创建 ====================
 
-    private static void ensureDatabaseExists(String adminUrl, String username, String password,
-                                             String dbName, String dbType) {
+    /**
+     * 确保数据库存在。
+     * @return true 表示数据库是刚创建的（完全为空），false 表示数据库已存在
+     */
+    private static boolean ensureDatabaseExists(String adminUrl, String username, String password,
+                                                String dbName, String dbType) {
         log.info("Checking database [{}] via [{}]", dbName, adminUrl);
         try (Connection conn = DriverManager.getConnection(adminUrl, username, password)) {
             boolean exists = "postgresql".equals(dbType)
@@ -75,14 +75,17 @@ public class DatabaseInitHelper {
             if (!exists) {
                 createDatabase(conn, dbName, dbType);
                 log.info("Database [{}] created.", dbName);
+                return true;  // 刚创建，完全为空
             } else {
                 log.info("Database [{}] already exists.", dbName);
+                return false; // 已存在，不允许执行 init
             }
         } catch (SQLException e) {
             log.warn("Create/check database failed: {}", e.getMessage());
         } catch (Exception e) {
             log.warn("Create/check database failed: {}", e.getMessage(), e);
         }
+        return false; // 异常时保守返回 false（不执行 init）
     }
 
     private static boolean checkMysqlDatabaseExists(Connection conn, String dbName) throws Exception {
@@ -115,15 +118,6 @@ public class DatabaseInitHelper {
     }
 
     // ==================== 建表 + 导数据 ====================
-
-    private static boolean checkTablesExist(String url, String username, String password) throws Exception {
-        try (Connection conn = DriverManager.getConnection(url, username, password)) {
-            DatabaseMetaData meta = conn.getMetaData();
-            try (ResultSet rs = meta.getTables(null, null, "bbs_user", null)) {
-                return rs.next();
-            }
-        }
-    }
 
     private static void executeInitSql(String url, String username, String password,
                                        String dbType) throws Exception {
