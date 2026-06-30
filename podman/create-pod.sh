@@ -27,7 +27,6 @@ auto_tag_image() {
     fi
     return 1
 }
-
 usage() {
     cat <<EOF
 Usage: $0 [OPTIONS]
