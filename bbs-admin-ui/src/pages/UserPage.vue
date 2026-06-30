@@ -156,11 +156,11 @@
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">人员编号</label>
-                <input class="w-full px-3 py-2 bg-surface-variant border border-outline-variant rounded text-body-md text-on-surface-variant" :value="editUser.personnelId" readonly disabled>
+                <input v-model="editForm.personnelId" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入人员编号">
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">用户名</label>
-                <input class="w-full px-3 py-2 bg-surface-variant border border-outline-variant rounded text-body-md text-on-surface-variant" :value="editUser.username" readonly disabled>
+                <input v-model="editForm.username" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入用户名（更改需谨慎）">
               </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
@@ -176,7 +176,7 @@
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">身份证号</label>
-                <input class="w-full px-3 py-2 bg-surface-variant border border-outline-variant rounded text-body-md text-on-surface-variant" :value="editUser.idCard" readonly disabled>
+                <input v-model="editForm.idCard" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入身份证号">
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">所属单位</label>
@@ -186,27 +186,47 @@
                 </button>
               </div>
             </div>
-            <div class="flex items-center gap-6">
+            <div class="flex items-start gap-6">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">角色</label>
-                <select v-model="editForm.userType" class="px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary outline-none">
-                  <option value="1">普通用户</option>
-                  <option value="2">管理员</option>
-                </select>
+                <div class="grid grid-cols-1 grid-rows-1">
+                  <select v-model="editForm.userType" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
+                    <option value="1">普通用户</option>
+                    <option value="2">管理员</option>
+                  </select>
+                  <span class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline pointer-events-none">
+                    <span class="material-symbols-outlined text-[18px]">unfold_more</span>
+                  </span>
+                </div>
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">状态</label>
-                <select v-model="editForm.isAlive" class="px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary outline-none">
-                  <option :value="0">活跃</option>
-                  <option :value="1">禁用</option>
-                </select>
+                <div class="grid grid-cols-1 grid-rows-1">
+                  <select v-model="editForm.isAlive" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
+                    <option :value="0">活跃</option>
+                    <option :value="1">禁用</option>
+                  </select>
+                  <span class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline pointer-events-none">
+                    <span class="material-symbols-outlined text-[18px]">unfold_more</span>
+                  </span>
+                </div>
               </div>
-              <div class="space-y-1 pt-5">
-                <button class="px-4 py-2 border border-warning text-warning rounded hover:bg-warning/5 transition-all text-label-md" @click="handleResetPassword">
-                  <span class="material-symbols-outlined text-[16px] align-middle">lock_reset</span>
-                  重置密码
+            </div>
+            <div class="space-y-1">
+              <label class="text-label-md text-secondary">密码（留空不修改）</label>
+              <div class="grid grid-cols-1 grid-rows-1 max-w-xs">
+                <input v-model="editForm.password" class="w-full col-start-1 row-start-1 pl-3 pr-10 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" :class="{ 'password-masked': !editShowPassword }" placeholder="输入新密码" type="text">
+                <button class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline hover:text-primary transition-colors" type="button" @click="editShowPassword = !editShowPassword">
+                  <span class="material-symbols-outlined text-[18px]">{{ editShowPassword ? 'visibility_off' : 'visibility' }}</span>
                 </button>
               </div>
+            </div>
+            <div class="flex flex-col items-start gap-1.5">
+              <button class="inline-flex items-center gap-1 px-4 py-2 border border-warning text-warning rounded hover:bg-warning/5 transition-all text-label-md" @click="handleResetPassword">
+                <span class="material-symbols-outlined text-[16px]">lock_reset</span>
+                重置密码
+              </button>
+              <span class="text-body-sm text-on-surface-variant">重置为默认密码 1234@abcD，用户下次登录需修改</span>
             </div>
           </div>
           <div class="flex justify-between gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
@@ -446,6 +466,7 @@ export default {
       // 编辑用户
       editDialogVisible: false,
       editSaving: false,
+      editShowPassword: false,
       editUser: {},
       editForm: {
         nickname: '',
@@ -454,6 +475,10 @@ export default {
         orgName: '',
         userType: '1',
         isAlive: 0,
+        personnelId: '',
+        idCard: '',
+        username: '',
+        password: '',
       },
       searchTimer: null,
       // 用户悬浮信息卡
@@ -755,7 +780,12 @@ export default {
         orgName: user.orgName || '',
         userType: user.userType || '1',
         isAlive: user.isAlive != null ? user.isAlive : 0,
+        personnelId: user.personnelId || '',
+        idCard: user.idCard || '',
+        username: user.username || '',
+        password: '',
       }
+      this.editShowPassword = false
       this.editDialogVisible = true
     },
     onOrgPickerSelect(org) {
@@ -784,6 +814,10 @@ export default {
       if (this.editForm.orgNo !== this.editUser.orgNo) params.orgNo = this.editForm.orgNo
       if (this.editForm.userType !== this.editUser.userType) params.userType = this.editForm.userType
       if (this.editForm.isAlive !== this.editUser.isAlive) params.isAlive = this.editForm.isAlive
+      if (this.editForm.personnelId !== (this.editUser.personnelId || '')) params.personnelId = this.editForm.personnelId
+      if (this.editForm.idCard !== (this.editUser.idCard || '')) params.idCard = this.editForm.idCard
+      if (this.editForm.username !== this.editUser.username) params.username = this.editForm.username
+      if (this.editForm.password) params.password = this.editForm.password
 
       if (Object.keys(params).length <= 1) {
         this.$message.info('没有需要保存的变更')
@@ -956,3 +990,9 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.password-masked {
+  -webkit-text-security: disc;
+}
+</style>
