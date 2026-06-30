@@ -6,7 +6,7 @@ BBS 离线部署包一键构建脚本（Windows / Linux 通用）
 依赖:
   - Maven (mvn.cmd / mvn)
   - Node.js 18+ (npm)
-  - Podman 或 Docker (podman / docker)
+  - Podman (podman)
   - Python 3.8+ (tarfile, subprocess, shutil, pathlib)
 """
 
@@ -28,7 +28,7 @@ BBS_SERVER_IMAGE = "daqian-bbs-server:offline"
 BBS_NGINX_IMAGE = "daqian-bbs-nginx:offline"
 POSTGRES_IMAGE = "docker.io/postgres:12"
 
-CONTAINER_TOOL = "podman"  # 可通过 --docker 参数切换
+CONTAINER_TOOL = "podman"
 
 
 # ── 工具函数 ──────────────────────────────────────────
@@ -58,15 +58,9 @@ def check_tool(name: str, install_hint: str = ""):
 
 # ── 主构建流程 ────────────────────────────────────────
 def main():
-    global CONTAINER_TOOL
-
-    parser = argparse.ArgumentParser(description="BBS 离线部署包一键构建")
-    parser.add_argument("--docker", action="store_true", help="使用 Docker 替代 Podman")
+    parser = argparse.ArgumentParser(description="BBS 离线部署包一键构建（Podman）")
     parser.add_argument("--skip-build", action="store_true", help="跳过构建步骤，仅打包已有产物")
     args = parser.parse_args()
-
-    if args.docker:
-        CONTAINER_TOOL = "docker"
 
     print("=" * 60)
     print("  BBS 离线部署包打包工具")
@@ -81,7 +75,7 @@ def main():
         check_tool("mvn" if sys.platform != "win32" else "mvn.cmd",
                     "https://maven.apache.org/install.html")
     check_tool(CONTAINER_TOOL,
-               "https://podman.io/docs/installation (或使用 --docker 切换为 Docker)")
+               "https://podman.io/docs/installation")
 
     # ── Step 1: 清理 ──
     step("1/6  清理旧的输出目录")
