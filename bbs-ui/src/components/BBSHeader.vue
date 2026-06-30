@@ -136,6 +136,8 @@
 </template>
 
 <script>
+import { getToken, getUser, removeToken, removeUser } from '@/utils/auth'
+
 export default {
   name: 'BBSHeader',
   data() {
@@ -182,9 +184,10 @@ export default {
   },
   methods: {
     checkLoginState() {
-      if (window.sessionStorage.getItem('tokenStr')) {
+      var token = getToken()
+      if (token) {
         this.isLogin = true
-        this.user = JSON.parse(window.sessionStorage.getItem('user') || 'null')
+        this.user = getUser()
       } else {
         this.isLogin = false
         this.user = null
@@ -197,7 +200,7 @@ export default {
       const keywords = (this.keywords || '').trim()
       window.localStorage.setItem('bbs_search_keywords', keywords)
 
-      if (!window.sessionStorage.getItem('tokenStr')) {
+      if (!getToken()) {
         this.$router.push('/login')
         return
       }
@@ -205,8 +208,8 @@ export default {
       this.$bus && this.$bus.$emit('forumSearch', keywords)
     },
     handleLogout() {
-      window.sessionStorage.removeItem('tokenStr')
-      window.sessionStorage.removeItem('user')
+      removeToken()
+      removeUser()
       this.user = null
       this.isLogin = false
       this.$router.push('/login')

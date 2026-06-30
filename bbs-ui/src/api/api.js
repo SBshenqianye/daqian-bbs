@@ -4,12 +4,14 @@ import axios from "axios";
 //引入 element-ui 信息
 import {Message} from "element-ui";
 import router from "@/router";
+import {getToken, removeToken, removeUser} from "@/utils/auth";
 
 
 //请求拦截器
 axios.interceptors.request.use(config=>{
-    if(window.sessionStorage.getItem('tokenStr')){
-        config.headers['Authorization'] = window.sessionStorage.getItem('tokenStr');
+    var token = getToken()
+    if(token){
+        config.headers['Authorization'] = token;
     }
     return config;
 },error=>{
@@ -31,6 +33,8 @@ axios.interceptors.response.use(success=>{
             return;
         }
         if(success.data.code === 401){
+            removeToken()
+            removeUser()
             const currentPath = router.currentRoute.fullPath
             router.replace(currentPath !== '/login' ? `/login?redirect=${encodeURIComponent(currentPath)}` : '/login');
             return;
