@@ -2,16 +2,12 @@ package com.walker.controller;
 
 
 import com.alibaba.fastjson.JSONObject;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.pagehelper.PageInfo;
 import com.walker.pojo.ArticleLabel;
-import com.walker.pojo.User;
 import com.walker.service.ArticleLabelService;
 import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -91,16 +87,12 @@ public class ArticleLabelController {
     }
 
     @ApiOperation(value = "分页查询文章标签（可按标签名模糊查询）")
-    @GetMapping("/admin/pageArticleLabel/{params}")
-    public ResultBean pageArticleLabel(@PathVariable String params) {
-        if (StringUtils.isNoneBlank(params)){
-            JSONObject jsonObject = JSONObject.parseObject(params);
-            int pageIndex = jsonObject.getIntValue("pageIndex");
-            int pageSize = jsonObject.getIntValue("pageSize");
-            String searchInfo = jsonObject.getString("searchInfo");
-            PageInfo<ArticleLabel> pageInfo = articleLabelService.getAllArticleLabelByPageAndSearch(pageIndex,pageSize,searchInfo);
-            return ResultBean.success("成功获取！",pageInfo);
-        }
-        return ResultBean.error("参数不能为空");
+    @PostMapping("/admin/pageArticleLabel")
+    public ResultBean pageArticleLabel(@RequestBody JSONObject jsonObject) {
+        int pageIndex = jsonObject.getIntValue("pageIndex");
+        int pageSize = jsonObject.getIntValue("pageSize");
+        String searchInfo = jsonObject.getString("searchInfo");
+        PageInfo<ArticleLabel> pageInfo = articleLabelService.getAllArticleLabelByPageAndSearch(pageIndex,pageSize,searchInfo);
+        return ResultBean.success("成功获取！",pageInfo);
     }
 }
