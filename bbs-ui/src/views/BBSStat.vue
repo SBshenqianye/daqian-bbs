@@ -23,8 +23,7 @@
           <div class="flex items-center flex-wrap gap-4 font-label-md text-label-md text-on-surface-variant">
             <div class="flex items-center gap-2">
               <div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center overflow-hidden">
-                <img v-if="article.authorAvatar" alt="Avatar" class="w-full h-full object-cover" :src="article.authorAvatar">
-                <span v-else class="material-symbols-outlined text-[14px]">person</span>
+                <img alt="Avatar" class="w-full h-full object-cover" :src="article.authorAvatar || require('@/assets/portrait.png')">
               </div>
               <span>{{ article.author }}</span>
             </div>
@@ -79,6 +78,7 @@ export default {
       loading: false,
       articles: [],
       imageBase: process.env.VUE_APP_BBS_BASE_FILE || '',
+      apiBase: process.env.VUE_APP_BBS_API || '',
     }
   },
   mounted() {
@@ -91,7 +91,9 @@ export default {
         this.articles = []
         return
       }
-      const userId = JSON.parse(userStr).id
+      const user = JSON.parse(userStr)
+      const userId = user.id
+      const userAvatar = user.portrait ? this.apiBase + user.portrait : ''
       this.loading = true
       this.getRequest(`/article/getArticleByUserId?userId=${userId}`).then(resp => {
         this.loading = false
@@ -101,7 +103,7 @@ export default {
           title: a.articleTitle || '',
           summary: a.articleSummary || '',
           author: a.articleAuthor || '',
-          authorAvatar: '',
+          authorAvatar: userAvatar,
           time: a.createTime || a.articleCreateTime || '',
           views: a.articleViewNum || 0,
           comments: a.articleCommentNum || 0,
