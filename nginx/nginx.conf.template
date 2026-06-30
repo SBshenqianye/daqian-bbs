@@ -61,6 +61,19 @@ http {
             }
         }
 
+        # ========== 静态文件（上传的图片/附件）代理到后端 ==========
+        location /files/ {
+            proxy_pass http://bbs-backend/bbs-server/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # CORS 头
+            add_header Access-Control-Allow-Origin $http_origin always;
+            add_header Access-Control-Allow-Credentials true always;
+        }
+
         # ========== 根路径重定向到用户前端 ==========
         location = / {
             return 302 /bbs-user/;

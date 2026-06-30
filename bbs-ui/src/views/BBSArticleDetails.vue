@@ -172,7 +172,7 @@ export default {
         boxShadow: false,
         ishljs: true,
         externalLink: {
-          hljs_js: () => process.env.BASE_URL + 'lib/highlight.min.js',
+          hljs_js: () => process.env.BASE_URL + 'lib/highlight/highlight.min.js',
           hljs_css: (css) => process.env.BASE_URL + `lib/highlight/styles/${css}.min.css`,
           hljs_lang: (lang) => process.env.BASE_URL + `lib/highlight/languages/${lang}.min.js`,
           markdown_css: false,
