@@ -15,6 +15,19 @@ require_image() {
     fi
 }
 
+# Auto-tag images from docker.io/library/ to localhost/ (Docker export → Podman import mismatch)
+auto_tag_image() {
+    local expected="$1"
+    podman image exists "$expected" 2>/dev/null && return 0
+    local alt="docker.io/library/${expected#localhost/}"
+    if podman image exists "$alt" 2>/dev/null; then
+        echo "--> Tagging $alt -> $expected"
+        podman tag "$alt" "$expected"
+        return $?
+    fi
+    return 1
+}
+
 usage() {
     cat <<EOF
 Usage: $0 [OPTIONS]
@@ -93,10 +106,26 @@ BBS_DB_HOST="${BBS_DB_HOST:-127.0.0.1}"
 BBS_DB_NAME="${BBS_DB_NAME:-bbs}"
 BBS_DB_USER="${BBS_DB_USER:-work_flow}"
 
-require_image "$BBS_SERVER_IMAGE"
-require_image "$BBS_NGINX_IMAGE"
+# --- Rootless detection (WSL/dev vs RHEL/prod) ---
+IS_ROOTLESS=0
+if podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -q "true"; then
+    IS_ROOTLESS=1
+fi
+
+# --- Auto-tag images before checking ---
+for img in "$BBS_SERVER_IMAGE" "$BBS_NGINX_IMAGE"; do
+    auto_tag_image "$img" || require_image "$img"
+done
 if [ "$START_POSTGRES" = "1" ]; then
-    require_image "$BBS_POSTGRES_IMAGE"
+    auto_tag_image "$BBS_POSTGRES_IMAGE" || require_image "$BBS_POSTGRES_IMAGE"
+fi
+
+# --- Internal DB port for backend ---
+# PG in-pod → 5432 (container default); external PG → user-configured port
+if [ "$START_POSTGRES" = "1" ]; then
+    BBS_DB_CONNECT_PORT=5432
+else
+    BBS_DB_CONNECT_PORT="$BBS_DB_PORT"
 fi
 
 echo "===== Creating BBS pod ($POD_NAME) ====="
@@ -108,23 +137,31 @@ if podman pod exists "$POD_NAME" 2>/dev/null; then
 fi
 
 echo "--> Creating pod..."
+POD_PUBLISH="--publish $BBS_NGINX_PORT:18848"
+[ "$START_POSTGRES" = "1" ] && POD_PUBLISH="$POD_PUBLISH --publish $BBS_DB_PORT:5432"
 podman pod create \
     --name "$POD_NAME" \
-    --publish "$BBS_NGINX_PORT":18848 \
+    $POD_PUBLISH \
     --label app=bbs
 
 echo ""
 if [ "$START_POSTGRES" = "1" ]; then
     echo "--> Starting PostgreSQL..."
-    sudo mkdir -p "$PG_DATA_DIR" 2>/dev/null || mkdir -p "$PG_DATA_DIR"
+    if [ "$IS_ROOTLESS" = "1" ]; then
+        PG_VOLUME_NAME="bbs-pgdata"
+        podman volume exists "$PG_VOLUME_NAME" 2>/dev/null || podman volume create "$PG_VOLUME_NAME"
+        PG_VOLUME="$PG_VOLUME_NAME:/var/lib/postgresql/data"
+    else
+        sudo mkdir -p "$PG_DATA_DIR"
+        PG_VOLUME="$PG_DATA_DIR:/var/lib/postgresql/data:Z"
+    fi
 
     podman run --pod "$POD_NAME" --name bbs-postgres -d \
         --label app=bbs \
         -e POSTGRES_USER="$BBS_DB_USER" \
         -e POSTGRES_PASSWORD="$BBS_DB_PASSWORD" \
         -e POSTGRES_DB="$BBS_DB_NAME" \
-        -v "$PG_DATA_DIR:/var/lib/postgresql/data:Z" \
-        --publish "$BBS_DB_PORT":5432 \
+        -v "$PG_VOLUME" \
         "$BBS_POSTGRES_IMAGE"
 
     echo "--> Waiting for PostgreSQL to accept connections..."
@@ -152,13 +189,17 @@ fi
 
 echo ""
 echo "--> Starting BBS application..."
-sudo mkdir -p "$BBS_UPLOAD_DIR" 2>/dev/null || mkdir -p "$BBS_UPLOAD_DIR"
+if [ "$IS_ROOTLESS" = "1" ]; then
+    mkdir -p "$BBS_UPLOAD_DIR" 2>/dev/null || true
+else
+    sudo mkdir -p "$BBS_UPLOAD_DIR"
+fi
 
 podman run --pod "$POD_NAME" --name bbs-app -d \
     --label app=bbs \
     -e BBS_DB_PASSWORD="$BBS_DB_PASSWORD" \
     -e BBS_DB_HOST="$BBS_DB_HOST" \
-    -e BBS_DB_PORT="$BBS_DB_PORT" \
+    -e BBS_DB_PORT="$BBS_DB_CONNECT_PORT" \
     -e BBS_DB_NAME="$BBS_DB_NAME" \
     -e BBS_DB_USER="$BBS_DB_USER" \
     -e BBS_UPLOAD_DIR=/data/bbs/bbsUpload/ \
