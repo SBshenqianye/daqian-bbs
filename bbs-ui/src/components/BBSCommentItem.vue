@@ -1,7 +1,7 @@
 <template>
   <div class="flex gap-3">
     <div class="w-8 h-8 rounded-full overflow-hidden border border-border flex-shrink-0">
-      <img :src="comment.avatar" class="w-full h-full object-cover">
+      <img :src="comment.avatar || require('../assets/portrait.png')" class="w-full h-full object-cover">
     </div>
     <div class="flex-grow">
       <div class="flex items-center justify-between mb-1">
