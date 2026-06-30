@@ -15,7 +15,7 @@ SERVER_PORT="8083"
 UPLOAD_DIR="/data/bbs/bbsUpload"
 PG_DATA_DIR="/data/sql/postgre"
 START_PG=0
-SKIP_SCHEMA=0
+SKIP_SCHEMA=1
 
 # --- 帮助 ---
 usage() {
@@ -32,18 +32,16 @@ BBS 一键部署脚本
   --upload-dir DIR      上传文件目录              [默认: /data/bbs/bbsUpload]
   --pg-data-dir DIR     PostgreSQL 数据目录       [默认: /data/sql/postgre]
   --start-pg            启动 PostgreSQL 容器      [默认: 否]
-  --skip-schema         跳过数据库初始化           [默认: 否]
+  --init-schema         首次部署时初始化数据库     [默认: 否，安全起见需要显式指定]
+  --skip-schema         跳过数据库初始化（兼容旧版） [默认: 是]
   -h, --help            显示帮助信息
 
 示例:
-  # 最小部署（使用外部 PostgreSQL）
-  $0 --db-password r123456
+  # 首次部署（容器内 PostgreSQL，初始化数据库）
+  $0 --db-password r123456 --start-pg --init-schema
 
-  # 完整部署（容器内 PostgreSQL）
+  # 重部署（保留已有数据）
   $0 --db-password r123456 --start-pg
-
-  # 自定义端口
-  $0 --db-password r123456 --nginx-port 80 --db-port 15432 --start-pg
 EOF
     exit 0
 }
@@ -58,6 +56,7 @@ while [ $# -gt 0 ]; do
         --upload-dir)     UPLOAD_DIR="$2";     shift 2 ;;
         --pg-data-dir)    PG_DATA_DIR="$2";    shift 2 ;;
         --start-pg)       START_PG=1;          shift   ;;
+        --init-schema)    SKIP_SCHEMA=0;       shift   ;;
         --skip-schema)    SKIP_SCHEMA=1;       shift   ;;
         -h|--help)        usage                        ;;
         *) echo "错误: 未知参数 $1"; usage ;;

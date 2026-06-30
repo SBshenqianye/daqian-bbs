@@ -177,8 +177,18 @@ if [ "$START_POSTGRES" = "1" ]; then
     done
 
     if [ "$SKIP_SCHEMA_INIT" != "1" ] && [ -f "$SCHEMA_FILE" ]; then
-        echo "--> Applying database schema: $SCHEMA_FILE"
-        podman exec -i bbs-postgres psql -U "$BBS_DB_USER" -d "$BBS_DB_NAME" < "$SCHEMA_FILE"
+        # 检查数据库中是否已有表，避免重复初始化导致数据丢失
+        TABLES_EXIST=$(podman exec bbs-postgres psql -U "$BBS_DB_USER" -d "$BBS_DB_NAME" \
+            -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'" 2>/dev/null || echo "0")
+        TABLES_EXIST=${TABLES_EXIST:-0}
+        TABLES_EXIST=$((TABLES_EXIST + 0))  # 确保为数字
+        if [ "$TABLES_EXIST" -eq "0" ]; then
+            echo "--> No existing tables found, applying database schema: $SCHEMA_FILE"
+            podman exec -i bbs-postgres psql -U "$BBS_DB_USER" -d "$BBS_DB_NAME" < "$SCHEMA_FILE"
+        else
+            echo "--> $TABLES_EXIST table(s) already exist, skipping schema init (data preserved)."
+            echo "    Set SKIP_SCHEMA_INIT=0 to force re-initialization."
+        fi
     else
         echo "--> Skipping schema initialization."
     fi
