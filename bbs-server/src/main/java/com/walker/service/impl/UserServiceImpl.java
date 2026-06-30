@@ -882,7 +882,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         User newUser = new User();
         newUser.setUsername(param.getUsername())
-                .setPassword(new BCryptPasswordEncoder().encode("1234@abcD"))
                 .setNickname(param.getNickname())
                 .setPhone(param.getPhone() != null ? param.getPhone() : "")
                 .setOrgNo(param.getOrgNo())
@@ -892,8 +891,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .setFans(0)
                 .setAttention(0)
                 .setGood(0)
-                .setIsFirstLogin(1)
                 .setCreateTime(dateFormat.format(new Date()));
+
+        // 密码：自定义密码 > 默认密码
+        if (StringUtils.isNoneBlank(param.getPassword())) {
+            newUser.setPassword(new BCryptPasswordEncoder().encode(param.getPassword()));
+            newUser.setIsFirstLogin(0);
+        } else {
+            newUser.setPassword(new BCryptPasswordEncoder().encode("1234@abcD"));
+            newUser.setIsFirstLogin(1);
+        }
+
+        // 人员编号
+        if (StringUtils.isNoneBlank(param.getPersonnelId())) {
+            newUser.setPersonnelId(param.getPersonnelId());
+        }
+        // 身份证号
+        if (StringUtils.isNoneBlank(param.getIdCard())) {
+            newUser.setIdCard(param.getIdCard());
+        }
+
         userMapper.insert(newUser);
         return ResultBean.success("用户创建成功");
     }

@@ -35,4 +35,13 @@ public class AdminUserAddParam {
 
     @ApiModelProperty("是否禁用(0=活跃,1=禁用)")
     private Integer isAlive;
+
+    @ApiModelProperty("人员编号")
+    private String personnelId;
+
+    @ApiModelProperty("身份证号")
+    private String idCard;
+
+    @ApiModelProperty("自定义密码（不传则默认 1234@abcD，用户首次登录需修改）")
+    private String password;
 }
