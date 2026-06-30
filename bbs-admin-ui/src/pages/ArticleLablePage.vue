@@ -233,7 +233,7 @@ export default {
         pageSize: this.pageParams.pageSize,
         searchInfo: (this.searchLabelName || '').trim()
       }
-      this.getRequest('/admin/pageArticleLabel', JSON.stringify(params)).then(resp => {
+      this.postRequest('/admin/pageArticleLabel', params).then(resp => {
         if (resp) {
           let list = [], total = 0
           const obj = resp.obj || resp
