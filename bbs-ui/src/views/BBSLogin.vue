@@ -55,6 +55,7 @@
 
 <script>
 import { Message } from 'element-ui'
+import { setToken, setUser, getRememberedAccount, setRememberedAccount, removeRememberedAccount } from '@/utils/auth'
 
 export default {
   name: 'BBSLogin',
@@ -69,6 +70,15 @@ export default {
       },
     }
   },
+  mounted() {
+    // 读取记住我的凭证，自动填充账密
+    var account = getRememberedAccount()
+    if (account) {
+      this.loginForm.username = account.username
+      this.loginForm.password = account.password
+      this.loginForm.remember = true
+    }
+  },
   methods: {
     handleLogin() {
       if (!this.loginForm.username || !this.loginForm.password) {
@@ -80,18 +90,26 @@ export default {
         this.loginLoading = false
         if (resp && resp.obj) {
           const tokenStr = resp.obj.tokenHead + resp.obj.token
-          window.sessionStorage.setItem('tokenStr', tokenStr)
+          var remember = this.loginForm.remember
+          setToken(tokenStr, remember)
           this.$bus.$emit('isLogin', true)
 
           // 使用登录响应中的 user 数据（后端已显式写入 isFirstLogin）
           var user = resp.obj.user
           if (user) {
-            window.sessionStorage.setItem('user', JSON.stringify(user))
+            setUser(user, remember)
             if (user.isFirstLogin == 1) {
               this.$router.replace('/change-password')
               setTimeout(function() { location.reload() }, 600)
               return
             }
+          }
+
+          // 记住我 → 保存凭证用于登录页自动回填；不记住 → 清除旧凭证
+          if (remember) {
+            setRememberedAccount(this.loginForm.username, this.loginForm.password)
+          } else {
+            removeRememberedAccount()
           }
 
           var redirect = this.$route.query.redirect || '/forum'
