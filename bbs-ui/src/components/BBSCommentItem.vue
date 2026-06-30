@@ -27,6 +27,7 @@
           v-for="child in comment.children"
           :key="child.id"
           :comment="child"
+          :currentUserAvatar="currentUserAvatar"
           @delete="$emit('delete', $event)"
           @reply="$emit('reply', $event)"
         />
@@ -34,7 +35,9 @@
 
       <!-- Reply Input Box -->
       <div v-if="showReplyInput" class="mt-4 ml-10 flex gap-3 items-start">
-        <div class="w-8 h-8 rounded-full bg-surface-variant flex-shrink-0"></div>
+        <div class="w-8 h-8 rounded-full overflow-hidden border border-border flex-shrink-0">
+          <img :src="currentUserAvatar || require('../assets/portrait.png')" class="w-full h-full object-cover">
+        </div>
         <div class="flex-grow flex gap-2">
           <input
             v-model="replyText"
@@ -59,6 +62,10 @@ export default {
     comment: {
       type: Object,
       required: true,
+    },
+    currentUserAvatar: {
+      type: String,
+      default: '',
     },
   },
   data() {

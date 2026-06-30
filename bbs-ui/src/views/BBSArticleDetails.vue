@@ -108,6 +108,7 @@
             v-for="comment in comments"
             :key="comment.id"
             :comment="comment"
+            :currentUserAvatar="currentUserAvatar"
             @delete="handleDeleteComment"
             @reply="handleReply"
           />
