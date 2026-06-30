@@ -23,7 +23,12 @@ module.exports = {
                 pathRewrite: {
                     ['^' + process.env.VUE_APP_BBS_API]: ''
                 }
-            }
+            },
+            // 代理 /files/ 静态资源到后端
+            '/files/': {
+                target: process.env.VUE_APP_BBS_BASE_FILE + '/bbs-server',
+                changeOrigin: true,
+            },
         },
     }
 }

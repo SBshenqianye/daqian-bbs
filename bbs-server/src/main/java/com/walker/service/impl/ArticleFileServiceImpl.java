@@ -31,7 +31,7 @@ public class ArticleFileServiceImpl extends ServiceImpl<ArticleFileMapper, Artic
     }
 
     @Override
-    public int updateArticleFile(String[] fileIds, Integer articleId) {
+    public int updateArticleFile(Integer[] fileIds, Integer articleId) {
         return articleFileMapper.updateArticleFile(fileIds, articleId);
     }
 

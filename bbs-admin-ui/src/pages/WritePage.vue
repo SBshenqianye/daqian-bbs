@@ -52,13 +52,10 @@ export default {
     $imgAdd(pos, $file) {
       var formdata = new FormData()
       formdata.append('file', $file)
-      this.$axios({
-        url: '/common/upload',
-        method: 'post',
-        data: formdata,
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }).then((url) => {
-        this.$refs.md.$img2Url(pos, url)
+      this.uploadFile('/common/upload', formdata).then(res => {
+        if (res && typeof res === 'string') {
+          this.$refs.md.$img2Url(pos, res)
+        }
       })
     },
     change(value, render) {

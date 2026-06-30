@@ -18,4 +18,4 @@ spring:
 # 图片服务器的配置信息
 storage:
   #  path: ${FILE_UPLOAD_PATH:/Users/walker/Projects/BBSForum/bbs/upload/}
-  path: D:\temp\temp\file20260228\upload\
+  path: D:\temp\bbs-upload\
