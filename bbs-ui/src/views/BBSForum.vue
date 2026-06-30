@@ -44,7 +44,7 @@
                 <div class="flex items-center justify-between text-label-md text-outline">
                   <div class="flex items-center gap-2">
                     <div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">
-                      <span class="material-symbols-outlined text-[14px]">person</span>
+                      <img :src="article.authorAvatar || require('@/assets/portrait.png')" alt="Avatar" class="w-full h-full object-cover">
                     </div>
                     <span class="truncate max-w-[150px]">作者：{{ article.author }}</span>
                     <span class="mx-1">•</span>
@@ -110,6 +110,8 @@
 </template>
 
 <script>
+import { getUserinfoById } from '@/api/article'
+
 export default {
   name: 'BBSForum',
   data() {
@@ -120,6 +122,7 @@ export default {
       hotTopics: [],
       filteredLabelId: null,
       imageBase: process.env.VUE_APP_BBS_BASE_FILE || '',
+      apiBase: process.env.VUE_APP_BBS_API || '',
     }
   },
   mounted() {
@@ -148,6 +151,8 @@ export default {
           title: a.articleTitle || '',
           summary: a.articleSummary || '',
           author: a.articleAuthor || '',
+          userId: a.userId,
+          authorAvatar: '',
           time: a.createTime || a.articleCreateTime || '',
           views: a.articleViewNum || 0,
           comments: a.articleCommentNum || a.commentNum || 0,
@@ -155,6 +160,7 @@ export default {
           labelId: a.articleLabelId || null,
           cover: a.articleImage ? this.imageBase + a.articleImage : null,
         }))
+        this.loadAuthorAvatars()
       }).catch(() => {
         this.loading = false
         this.articles = []
@@ -169,6 +175,21 @@ export default {
         })).filter(h => h.articleId)
       }).catch(() => {
         this.hotTopics = []
+      })
+    },
+    loadAuthorAvatars() {
+      const userIds = [...new Set(this.articles.map(a => a.userId).filter(Boolean))]
+      userIds.forEach(id => {
+        getUserinfoById(id).then(resp => {
+          if (resp && resp.portrait) {
+            const avatarUrl = this.apiBase + resp.portrait
+            this.articles.forEach(a => {
+              if (a.userId === id) {
+                this.$set(a, 'authorAvatar', avatarUrl)
+              }
+            })
+          }
+        }).catch(() => {})
       })
     },
     getLabelIcon(labelName) {

@@ -21,7 +21,7 @@
             </div>
             <div class="flex items-center gap-3 py-1 px-3 bg-surface-container-lowest border border-border rounded-lg">
               <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-white overflow-hidden shadow-inner">
-                <img alt="Author" class="w-full h-full object-cover" :src="article.authorAvatar">
+                <img alt="Author" class="w-full h-full object-cover" :src="article.authorAvatar || require('@/assets/portrait.png')">
               </div>
               <div class="flex flex-col">
                 <span class="font-bold text-on-surface">{{ article.author }}</span>
