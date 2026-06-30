@@ -253,7 +253,10 @@ CREATE TABLE bbs_user (
     user_type       varchar(20),
     personnel_id    varchar(50),
     id_card         varchar(18),
-    is_first_login  smallint DEFAULT 1
+    is_first_login  smallint DEFAULT 1,
+    CONSTRAINT uk_bbs_user_username UNIQUE (username),
+    CONSTRAINT uk_bbs_user_personnel_id UNIQUE (personnel_id),
+    CONSTRAINT uk_bbs_user_id_card UNIQUE (id_card)
 );
 
 -- 重新启用外键检查

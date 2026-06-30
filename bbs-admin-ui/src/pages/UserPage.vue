@@ -156,7 +156,7 @@
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">人员编号</label>
-                <input v-model="editForm.personnelId" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入人员编号">
+                <input v-model="editForm.personnelId" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="人员编号（与身份证号至少填一个）">
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">用户名</label>
@@ -176,7 +176,7 @@
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">身份证号</label>
-                <input v-model="editForm.idCard" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入身份证号">
+                <input v-model="editForm.idCard" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="身份证号（与人员编号至少填一个）">
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">所属单位</label>
@@ -345,7 +345,7 @@
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">人员编号</label>
-                <input v-model="addForm.personnelId" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入人员编号（选填）">
+                <input v-model="addForm.personnelId" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="人员编号（与身份证号至少填一个）">
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">
@@ -371,7 +371,7 @@
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">身份证号</label>
-                <input v-model="addForm.idCard" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入身份证号（选填）">
+                <input v-model="addForm.idCard" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="身份证号（与人员编号至少填一个）">
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">
@@ -917,6 +917,10 @@ export default {
       }
       if (!this.addForm.orgNo) {
         this.$message.warning('请选择所属单位')
+        return
+      }
+      if (!this.addForm.personnelId.trim() && !this.addForm.idCard.trim()) {
+        this.$message.warning('人员编号和身份证号至少填一个')
         return
       }
 

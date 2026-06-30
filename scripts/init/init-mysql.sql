@@ -272,7 +272,10 @@ CREATE TABLE `bbs_user` (
   `personnel_id`   varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '人员编号（Excel B列）',
   `id_card`        varchar(18) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '身份证号',
   `is_first_login` tinyint(1) NULL DEFAULT 1 COMMENT '是否首次登录(1=需改密码,0=已修改)',
-  PRIMARY KEY (`id`) USING BTREE
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_bbs_user_username` (`username`),
+  UNIQUE KEY `uk_bbs_user_personnel_id` (`personnel_id`),
+  UNIQUE KEY `uk_bbs_user_id_card` (`id_card`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 -- ============================================
