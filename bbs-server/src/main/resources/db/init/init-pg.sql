@@ -1,7 +1,7 @@
 -- ============================================
 -- BBS 数据库初始化脚本 - PostgreSQL 版
--- 用于首次部署时自动建表 + 基础数据
--- 不包含测试数据
+-- 安全模式：不会覆盖已有数据
+-- 可重复执行：CREATE TABLE IF NOT EXISTS + ON CONFLICT DO NOTHING
 -- ============================================
 
 SET session_replication_role = 'replica';
@@ -9,8 +9,7 @@ SET session_replication_role = 'replica';
 -- ----------------------------
 -- Table: bbs_admin
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_admin;
-CREATE TABLE bbs_admin (
+CREATE TABLE IF NOT EXISTS bbs_admin (
     id          SERIAL PRIMARY KEY,
     username    varchar(20),
     password    varchar(255),
@@ -23,8 +22,7 @@ CREATE TABLE bbs_admin (
 -- ----------------------------
 -- Table: bbs_area
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_area;
-CREATE TABLE bbs_area (
+CREATE TABLE IF NOT EXISTS bbs_area (
     area_id     SERIAL PRIMARY KEY,
     image_title varchar(20),
     image_url   varchar(255)
@@ -33,8 +31,7 @@ CREATE TABLE bbs_area (
 -- ----------------------------
 -- Table: bbs_article
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_article;
-CREATE TABLE bbs_article (
+CREATE TABLE IF NOT EXISTS bbs_article (
     article_id           SERIAL PRIMARY KEY,
     article_label_id     integer,
     article_author       varchar(20),
@@ -57,8 +54,7 @@ CREATE TABLE bbs_article (
 -- ----------------------------
 -- Table: bbs_article_file
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_article_file;
-CREATE TABLE bbs_article_file (
+CREATE TABLE IF NOT EXISTS bbs_article_file (
     file_id    SERIAL PRIMARY KEY,
     file_name  varchar(255),
     file_type  varchar(255),
@@ -69,8 +65,7 @@ CREATE TABLE bbs_article_file (
 -- ----------------------------
 -- Table: bbs_article_label
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_article_label;
-CREATE TABLE bbs_article_label (
+CREATE TABLE IF NOT EXISTS bbs_article_label (
     label_id   SERIAL PRIMARY KEY,
     label_name varchar(10),
     enabled    smallint
@@ -79,8 +74,7 @@ CREATE TABLE bbs_article_label (
 -- ----------------------------
 -- Table: bbs_article_type
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_article_type;
-CREATE TABLE bbs_article_type (
+CREATE TABLE IF NOT EXISTS bbs_article_type (
     type_id   SERIAL PRIMARY KEY,
     type_name varchar(10)
 );
@@ -88,8 +82,7 @@ CREATE TABLE bbs_article_type (
 -- ----------------------------
 -- Table: bbs_article_user
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_article_user;
-CREATE TABLE bbs_article_user (
+CREATE TABLE IF NOT EXISTS bbs_article_user (
     id          SERIAL PRIMARY KEY,
     user_id     integer,
     article_id  integer,
@@ -99,8 +92,7 @@ CREATE TABLE bbs_article_user (
 -- ----------------------------
 -- Table: bbs_comment
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_comment;
-CREATE TABLE bbs_comment (
+CREATE TABLE IF NOT EXISTS bbs_comment (
     comment_id          SERIAL PRIMARY KEY,
     comment_content     varchar(255),
     comment_article_id  integer,
@@ -113,8 +105,7 @@ CREATE TABLE bbs_comment (
 -- ----------------------------
 -- Table: bbs_community
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_community;
-CREATE TABLE bbs_community (
+CREATE TABLE IF NOT EXISTS bbs_community (
     community_id         SERIAL PRIMARY KEY,
     community_name       varchar(20),
     community_introduce  varchar(255),
@@ -129,8 +120,7 @@ CREATE TABLE bbs_community (
 -- ----------------------------
 -- Table: bbs_community_user
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_community_user;
-CREATE TABLE bbs_community_user (
+CREATE TABLE IF NOT EXISTS bbs_community_user (
     id            SERIAL PRIMARY KEY,
     community_id  integer,
     user_id       integer
@@ -139,8 +129,7 @@ CREATE TABLE bbs_community_user (
 -- ----------------------------
 -- Table: bbs_dict
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_dict;
-CREATE TABLE bbs_dict (
+CREATE TABLE IF NOT EXISTS bbs_dict (
     id          SERIAL PRIMARY KEY,
     dict_type   varchar(50),
     dict_value  varchar(50),
@@ -156,8 +145,7 @@ CREATE TABLE bbs_dict (
 -- ----------------------------
 -- Table: bbs_fans
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_fans;
-CREATE TABLE bbs_fans (
+CREATE TABLE IF NOT EXISTS bbs_fans (
     id            SERIAL PRIMARY KEY,
     user_id       integer,
     attention_id  integer,
@@ -167,8 +155,7 @@ CREATE TABLE bbs_fans (
 -- ----------------------------
 -- Table: bbs_inventory
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_inventory;
-CREATE TABLE bbs_inventory (
+CREATE TABLE IF NOT EXISTS bbs_inventory (
     id         SERIAL PRIMARY KEY,
     area       varchar(255),
     category   varchar(255),
@@ -183,8 +170,7 @@ CREATE TABLE bbs_inventory (
 -- ----------------------------
 -- Table: bbs_reply
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_reply;
-CREATE TABLE bbs_reply (
+CREATE TABLE IF NOT EXISTS bbs_reply (
     reply_id         SERIAL PRIMARY KEY,
     reply_content    varchar(255),
     reply_to_user_id integer,
@@ -198,8 +184,7 @@ CREATE TABLE bbs_reply (
 -- ----------------------------
 -- Table: bbs_sa_org
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_sa_org;
-CREATE TABLE bbs_sa_org (
+CREATE TABLE IF NOT EXISTS bbs_sa_org (
     id                 integer PRIMARY KEY,
     org_no             varchar(20) NOT NULL,
     org_name           varchar(255),
@@ -212,8 +197,7 @@ CREATE TABLE bbs_sa_org (
 -- ----------------------------
 -- Table: bbs_sensitive_word
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_sensitive_word;
-CREATE TABLE bbs_sensitive_word (
+CREATE TABLE IF NOT EXISTS bbs_sensitive_word (
     id      SERIAL PRIMARY KEY,
     keyword varchar(255)
 );
@@ -221,8 +205,7 @@ CREATE TABLE bbs_sensitive_word (
 -- ----------------------------
 -- Table: bbs_slideshow
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_slideshow;
-CREATE TABLE bbs_slideshow (
+CREATE TABLE IF NOT EXISTS bbs_slideshow (
     slideshow_id SERIAL PRIMARY KEY,
     image_url    varchar(255),
     successive   integer,
@@ -232,8 +215,7 @@ CREATE TABLE bbs_slideshow (
 -- ----------------------------
 -- Table: bbs_user
 -- ----------------------------
-DROP TABLE IF EXISTS bbs_user;
-CREATE TABLE bbs_user (
+CREATE TABLE IF NOT EXISTS bbs_user (
     id              SERIAL PRIMARY KEY,
     username        varchar(20),
     password        varchar(255),
@@ -263,14 +245,15 @@ CREATE TABLE bbs_user (
 SET session_replication_role = 'origin';
 
 -- ============================================
--- 基础数据
+-- 基础数据（不会覆盖已有数据）
 -- ============================================
 
 -- ----------------------------
 -- 超级管理员（密码由 DatabaseInitializer 启动时用 BCrypt 加密写入）
 -- ----------------------------
 INSERT INTO bbs_user (id, username, password, nickname, gender, city, fans, attention, good, is_alive, is_delete, create_time, org_no, user_type, is_first_login)
-VALUES (1, 'asiayak', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2rk3O', '超级管理员', '1', '河北省-秦皇岛市', 0, 0, 0, 0, 0, '2026-06-26 00:00:00', '51404', '3', 0);
+VALUES (1, 'asiayak', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2rk3O', '超级管理员', '1', '河北省-秦皇岛市', 0, 0, 0, 0, 0, '2026-06-26 00:00:00', '51404', '3', 0)
+ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------
 -- 文章标签
@@ -278,7 +261,8 @@ VALUES (1, 'asiayak', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2r
 INSERT INTO bbs_article_label (label_id, label_name, enabled) VALUES
 (1, '电量', 0),
 (2, '电费', 1),
-(3, '电价', 0);
+(3, '电价', 0)
+ON CONFLICT (label_id) DO NOTHING;
 
 -- ----------------------------
 -- 组织机构（国网四川内江供电公司）
@@ -315,7 +299,8 @@ INSERT INTO bbs_sa_org (id, org_no, org_name, p_org_no, org_tree, is_delete) VAL
 (29, '514042804', '国网四川内江隆昌金鹅供电所', '5140428', '51101|51404|5140428|514042804', 0),
 (30, '514042806', '国网四川内江隆昌黄家供电所', '5140428', '51101|51404|5140428|514042806', 0),
 (31, '514042807', '国网四川内江隆昌石碾供电所', '5140428', '51101|51404|5140428|514042807', 0),
-(32, '514042812', '国网四川内江隆昌云顶供电所', '5140428', '51101|51404|5140428|514042812', 0);
+(32, '514042812', '国网四川内江隆昌云顶供电所', '5140428', '51101|51404|5140428|514042812', 0)
+ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------
 -- 数据字典
@@ -323,7 +308,8 @@ INSERT INTO bbs_sa_org (id, org_no, org_name, p_org_no, org_tree, is_delete) VAL
 INSERT INTO bbs_dict (id, dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark) VALUES
 (1, 'post', '3', '发帖积分', 1, '系统', '2026-06-26 00:00:00', '发一个帖子所得积分'),
 (2, 'reply', '1', '回帖积分', 0, '系统', '2026-06-26 00:00:00', '回帖一次所得积分'),
-(3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）');
+(3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）')
+ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------
 -- 敏感词
@@ -333,12 +319,14 @@ INSERT INTO bbs_sensitive_word (id, keyword) VALUES
 (2, '肉票'),
 (3, '抢劫'),
 (4, '莎莎舞'),
-(5, '老司机');
+(5, '老司机')
+ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------
 -- 重置序列，使后续自增从正确值开始
+-- 仅当序列当前值小于 max(id) 时才更新
 -- ----------------------------
-SELECT setval('bbs_user_id_seq', (SELECT COALESCE(max(id), 0) FROM bbs_user));
-SELECT setval('bbs_article_label_label_id_seq', (SELECT COALESCE(max(label_id), 0) FROM bbs_article_label));
-SELECT setval('bbs_sensitive_word_id_seq', (SELECT COALESCE(max(id), 0) FROM bbs_sensitive_word));
-SELECT setval('bbs_dict_id_seq', (SELECT COALESCE(max(id), 0) FROM bbs_dict));
+SELECT setval('bbs_user_id_seq', GREATEST(nextval('bbs_user_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_user)));
+SELECT setval('bbs_article_label_label_id_seq', GREATEST(nextval('bbs_article_label_label_id_seq'), (SELECT COALESCE(max(label_id), 0) FROM bbs_article_label)));
+SELECT setval('bbs_sensitive_word_id_seq', GREATEST(nextval('bbs_sensitive_word_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_sensitive_word)));
+SELECT setval('bbs_dict_id_seq', GREATEST(nextval('bbs_dict_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_dict)));
