@@ -47,8 +47,18 @@ public class DatabaseInitHelper {
             String adminUrl = buildAdminUrl(jdbcUrl, dbType);
             ensureDatabaseExists(adminUrl, dbUsername, dbPassword, dbName, dbType);
 
-            // 2. 执行建表 + 基础数据初始化（SQL 已使用 IF NOT EXISTS / ON CONFLICT，可安全重复执行）
-            log.info("Executing init SQL for database [{}] (safe mode).", dbName);
+            // 2. 检查是否已有表（防止重复初始化覆盖数据）
+            try (Connection conn = DriverManager.getConnection(jdbcUrl, dbUsername, dbPassword)) {
+                if (hasExistingTables(conn, dbType)) {
+                    log.info("Tables already exist in database [{}], skip init SQL.", dbName);
+                    return;
+                }
+            } catch (Exception e) {
+                log.warn("Failed to check existing tables, will run init SQL anyway: {}", e.getMessage());
+            }
+
+            // 3. 首次初始化：建表 + 基础数据
+            log.info("First-time init for database [{}], executing init SQL.", dbName);
             executeInitSql(jdbcUrl, dbUsername, dbPassword, dbType);
         } catch (Exception e) {
             log.error("Database bootstrap failed: {}", e.getMessage(), e);
@@ -106,6 +116,22 @@ public class DatabaseInitHelper {
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("CREATE DATABASE `" + dbName + "` CHARACTER SET utf8 COLLATE utf8_general_ci");
             }
+        }
+    }
+
+    /**
+     * 检查指定数据库中是否已存在 bbs_user 表。
+     * 用于判断是首次初始化还是重复启动。
+     */
+    private static boolean hasExistingTables(Connection conn, String dbType) throws Exception {
+        String sql;
+        if ("postgresql".equals(dbType)) {
+            sql = "SELECT 1 FROM information_schema.tables WHERE table_name = 'bbs_user' AND table_schema = 'public'";
+        } else {
+            sql = "SELECT 1 FROM information_schema.tables WHERE table_name = 'bbs_user' AND table_schema = DATABASE()";
+        }
+        try (ResultSet rs = conn.createStatement().executeQuery(sql)) {
+            return rs.next();
         }
     }
 
