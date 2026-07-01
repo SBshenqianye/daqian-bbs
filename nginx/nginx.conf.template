@@ -8,7 +8,7 @@ http {
 
     # 后端上游（Pod 内通过 localhost 访问）
     upstream bbs-backend {
-        server 127.0.0.1:${BBS_SERVER_PORT};
+        server bbs-server:${BBS_SERVER_PORT};
     }
 
     server {
