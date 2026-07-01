@@ -83,7 +83,7 @@ export default {
       return (this.adminInfo && this.adminInfo.username) || '管理员'
     },
     avatarUrl() {
-      const baseApi = process.env.VUE_APP_BBS_BASE_API || ''
+      const baseApi = process.env.VUE_APP_BBS_API || ''
       const portrait = this.adminInfo && this.adminInfo.portrait
       if (!portrait) return this.defaultPortrait
       const path = portrait.startsWith('/') ? portrait : '/' + portrait
@@ -108,6 +108,9 @@ export default {
     toggleCollapse() {
       this.localCollapse = !this.localCollapse
       bus.$emit('collapse', this.localCollapse)
+    },
+    onAvatarError(e) {
+      e.target.src = this.defaultPortrait
     },
     handleLogout() {
       this.showDropdown = false
