@@ -38,7 +38,12 @@ daqian-bbs-offline/
 
 # Deployment output
 bbs-deploy/
+bbs-offline/
 bbs-deploy-latest.tar.gz
+bbs-offline-latest.tar.gz
 
 # Environment configuration (contains secrets)
 .env
+
+# Build output directories
+bbs/

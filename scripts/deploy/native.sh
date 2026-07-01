@@ -38,8 +38,13 @@ ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 err()   { echo -e "${RED}[ERR]${NC} $1"; }
 
+# --------------- 进度指示库 ---------------
+source scripts/lib/progress.sh
+
 # --------------- 前置检查 ---------------
 check_prereqs() {
+    show_step "$1" "$2" "前置依赖检查"
+
     local missing=0
 
     # PostgreSQL
@@ -63,7 +68,6 @@ check_prereqs() {
         ok "Nginx 已安装"
     else
         warn "Nginx 未安装"
-        # 非致命，可以后续安装
     fi
 
     if [ "$missing" -ne 0 ]; then
@@ -74,7 +78,7 @@ check_prereqs() {
 
 # --------------- PostgreSQL 检查/启动 ---------------
 ensure_postgres() {
-    info "===== 检查 PostgreSQL ====="
+    show_step "$1" "$2" "检查 PostgreSQL"
 
     if systemctl is-active postgresql >/dev/null 2>&1; then
         ok "PostgreSQL 服务运行中"
@@ -118,7 +122,7 @@ EOF
 
 # --------------- 数据库初始化 ---------------
 init_database() {
-    info "===== 初始化数据库表结构 ====="
+    show_step "$1" "$2" "初始化数据库表结构"
     local sql_file="$ROOT_DIR/bbs-server/src/main/resources/db/init/init-pg.sql"
     if [ ! -f "$sql_file" ]; then
         warn "未找到 init-pg.sql，跳过数据库初始化"
@@ -131,7 +135,7 @@ init_database() {
 
 # --------------- 部署后端 ---------------
 deploy_backend() {
-    info "===== 部署后端 ====="
+    show_step "$1" "$2" "部署后端 (bbs-server)"
 
     local jar_path="$ROOT_DIR/bbs-server/target/bbs-server.jar"
     if [ ! -f "$jar_path" ]; then
@@ -176,20 +180,28 @@ deploy_backend() {
 
     ok "bbs-server 已启动 (PID: $new_pid)"
     info "查看日志: tail -f /var/log/bbs-server.log"
-    info "等待后端就绪..."
 
-    for i in $(seq 1 30); do
+    # 轮询等待后端就绪（显示已用秒数）
+    local health_start
+    health_start=$(date +%s)
+    local max_attempts=30
+    for i in $(seq 1 "$max_attempts"); do
+        polling_spinner "等待后端就绪" "$i" "$max_attempts" "$health_start"
         if curl -s http://127.0.0.1:$BBS_SERVER_PORT/bbs-server/ >/dev/null 2>&1; then
-            ok "后端就绪！"
-            break
+            polling_clear
+            local now; now=$(date +%s)
+            ok "后端就绪！($(( now - health_start ))s/${i}次)"
+            return 0
         fi
         sleep 2
     done
+    polling_clear
+    warn "后端就绪超时，请检查日志: tail -f /var/log/bbs-server.log"
 }
 
 # --------------- 部署前端到 Nginx ---------------
 deploy_frontend() {
-    info "===== 部署前端静态文件 ====="
+    show_step "$1" "$2" "部署前端静态文件"
 
     local nginx_html_dir="/usr/share/nginx/html"
 
@@ -209,7 +221,7 @@ deploy_frontend() {
 
 # --------------- 配置 Nginx ---------------
 configure_nginx() {
-    info "===== 配置 Nginx ====="
+    show_step "$1" "$2" "配置 Nginx"
 
     local nginx_conf="/etc/nginx/conf.d/bbs.conf"
     local template="$ROOT_DIR/nginx/nginx.conf.template"
@@ -245,11 +257,11 @@ configure_nginx() {
 
 # --------------- systemd 服务（可选） -----------
 setup_systemd() {
+    show_step "$1" "$2" "配置 systemd 服务"
+
     if [ ! -d "/etc/systemd/system" ]; then
         return
     fi
-
-    info "===== 配置 systemd 服务 ====="
 
     local service_file="/etc/systemd/system/bbs-server.service"
     if [ -f "$service_file" ]; then
@@ -286,30 +298,28 @@ EOF
 }
 
 # --------------- 主流程 ---------------
-echo "=========================================="
-echo " BBS 原生部署 (RHEL 7 / CentOS 7)"
-echo "=========================================="
+show_header "BBS 原生部署 (RHEL 7 / CentOS 7)"
 
-check_prereqs
-ensure_postgres
-init_database
-deploy_backend
-deploy_frontend
-configure_nginx
-setup_systemd
+check_prereqs 1 7
+ensure_postgres 2 7
+init_database 3 7
+deploy_backend 4 7
+deploy_frontend 5 7
+configure_nginx 6 7
+setup_systemd 7 7
 
 echo ""
-ok "========================================"
-ok "部署完成！"
-echo ""
-echo "  用户前端:  http://<服务器IP>:${NGINX_PORT}/bbs-user/"
-echo "  管理后台:  http://<服务器IP>:${NGINX_PORT}/bbs-admin/"
-echo "  后端 API:  http://127.0.0.1:${BBS_SERVER_PORT}/bbs-server/"
-echo ""
-echo "  管理命令:"
-echo "    查看后端日志:  journalctl -u bbs-server -f"
-echo "    重启后端:     sudo systemctl restart bbs-server"
-echo "    重启 Nginx:   sudo systemctl reload nginx"
-echo ""
-echo "  停止服务:  bash scripts/ops/teardown.sh"
-echo "========================================"
+echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║${NC}  部署完成！"
+echo -e "${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  用户前端:  http://<服务器IP>:${NGINX_PORT}/bbs-user/"
+echo -e "${GREEN}║${NC}  管理后台:  http://<服务器IP>:${NGINX_PORT}/bbs-admin/"
+echo -e "${GREEN}║${NC}  后端 API:  http://127.0.0.1:${BBS_SERVER_PORT}/bbs-server/"
+echo -e "${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  管理命令:"
+echo -e "${GREEN}║${NC}    查看后端日志:  journalctl -u bbs-server -f"
+echo -e "${GREEN}║${NC}    重启后端:     sudo systemctl restart bbs-server"
+echo -e "${GREEN}║${NC}    重启 Nginx:   sudo systemctl reload nginx"
+echo -e "${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  停止服务:  bash scripts/ops/teardown.sh"
+echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"
