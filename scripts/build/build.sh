@@ -5,10 +5,11 @@
 #   1. 容器镜像模式（默认）：构建 Docker 镜像
 #   2. 原生 JAR 模式（--native）：编译 bbs-server.jar
 # 用法:
-#   bash scripts/build/build.sh              # 构建全部 + Docker 镜像
-#   bash scripts/build/build.sh --native     # 构建全部 + bbs-server.jar
+#   bash scripts/build/build.sh              # 构建全部 + 容器离线包（默认）
+#   bash scripts/build/build.sh --native     # 构建全部 + 原生部署包
 #   bash scripts/build/build.sh --frontend   # 仅构建前端
 #   bash scripts/build/build.sh --backend    # 仅构建后端
+# 注意: 默认和 --native 模式构建完后自动打包，无需再运行 package.sh
 # ============================================
 set -e
 
@@ -143,6 +144,9 @@ case "$MODE" in
         build_backend  &  PID_BE=$!
         wait $PID_FE || { err "前端构建失败"; exit 1; }
         wait $PID_BE || { err "后端构建失败"; exit 1; }
+        # 自动打包
+        info "自动打包中..."
+        bash scripts/dist/package.sh --native
         ;;
     *)
         MODE="container"
@@ -153,15 +157,18 @@ case "$MODE" in
         wait $PID_FE || { err "前端构建失败"; exit 1; }
         wait $PID_BE || { err "后端构建失败"; exit 1; }
         build_nginx
+        # 自动打包
+        info "自动打包中..."
+        bash scripts/dist/package.sh
         ;;
 esac
 
 echo ""
 ok "========================================"
-ok "构建全部完成！"
+ok "构建 + 打包全部完成！"
 if [[ "$MODE" == "container" ]]; then
-    ok "下一步: bash scripts/deploy/container.sh"
+    ok "分发包: $(ls -t bbs-offline-*.tar.gz 2>/dev/null | head -1)"
 else
-    ok "下一步: bash scripts/deploy/native.sh"
+    ok "分发包: $(ls -t bbs-deploy-*.tar.gz 2>/dev/null | head -1)"
 fi
 echo "========================================"

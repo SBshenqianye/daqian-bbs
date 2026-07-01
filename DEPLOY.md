@@ -215,7 +215,7 @@ bash scripts/build.sh --native
 
 ```bash
 # 打包成 tar.gz 用于传输到生产服务器
-bash scripts/package.sh
+bash scripts/dist/package.sh --native
 # 输出: bbs-deploy-YYYYMMDD-HHMMSS.tar.gz
 ```
 
@@ -234,10 +234,10 @@ vi .env   # 配置数据库连接信息
 
 ```bash
 # 方式一：通过部署脚本（自动执行）
-bash scripts/deploy-native.sh
+bash scripts/deploy/native.sh
 
 # 方式二：手动初始化
-bash scripts/init-db.sh -h 127.0.0.1 -p 5432 -U work_flow -d bbs
+bash scripts/ops/init-db.sh -h 127.0.0.1 -p 5432 -U work_flow -d bbs
 ```
 
 #### 5.3.3 部署后端
@@ -272,14 +272,15 @@ sudo nginx -t   # 测试配置
 ### 6.1 打包命令
 
 ```bash
-# 标准打包（仅构建产物）
-bash scripts/package.sh
+# 构建 + 自动打包（推荐）
+bash scripts/build/build.sh                   # 容器模式 → bbs-offline-*.tar.gz
+bash scripts/build/build.sh --native          # 原生模式 → bbs-deploy-*.tar.gz
 
-# 最小打包（仅运行所需文件）
-bash scripts/package.sh --minimal
-
-# 含源代码打包
-bash scripts/package.sh --with-source
+# 或用已有构建产物手动打包
+bash scripts/dist/package.sh                  # 容器离线包（默认）
+bash scripts/dist/package.sh --native         # 原生部署包
+bash scripts/dist/package.sh --minimal        # 仅运行所需文件
+bash scripts/dist/package.sh --with-source    # 含源代码
 ```
 
 ### 6.2 输出文件

@@ -10,7 +10,7 @@ scripts/
 ├── .env.example                 ← 环境变量配置模板
 │
 ├── build/
-│   └── build.sh                 ← 构建脚本
+│   └── build.sh                 ← 构建脚本（自动打包）
 │
 ├── deploy/
 │   ├── container.sh             ← 容器部署（WSL2 + Podman）
@@ -32,7 +32,7 @@ scripts/
 ### 开发环境（WSL2 + Podman）
 
 ```bash
-bash scripts/build/build.sh                   # 构建全部
+bash scripts/build/build.sh                   # 构建全部 + 容器离线包（默认）
 bash scripts/deploy/container.sh              # 一键部署
 bash scripts/ops/teardown.sh                  # 清理
 ```
@@ -40,9 +40,9 @@ bash scripts/ops/teardown.sh                  # 清理
 ### 生产环境（RHEL 7）
 
 ```bash
-bash scripts/build/build.sh --native          # 构建前端 + 编译 JAR
-bash scripts/dist/package.sh                  # 打包为 tar.gz
-# 传输到生产服务器后:
+bash scripts/build/build.sh --native          # 构建全部 + 原生部署包
+# 传输 bbs-deploy-*.tar.gz 到生产服务器后:
+tar -xzf bbs-deploy-*.tar.gz
 bash scripts/deploy/native.sh                 # 部署
 ```
 
@@ -52,14 +52,18 @@ bash scripts/deploy/native.sh                 # 部署
 
 ### build/ — 构建
 
-并行构建前后端，支持容器镜像和原生 JAR 两种模式。
+并行构建前后端（前端 npm 和后端 Maven 同时跑），构建完成后**自动打包**为分发包，无需再手动运行 package.sh。
 
 ```bash
-bash scripts/build/build.sh                   # 完整构建 + Docker 镜像
-bash scripts/build/build.sh --native          # 构建 + 编译 JAR（无镜像）
-bash scripts/build/build.sh --frontend        # 仅前端
-bash scripts/build/build.sh --backend         # 仅后端
+bash scripts/build/build.sh                   # 构建 + 容器离线包（默认）
+bash scripts/build/build.sh --native          # 构建 + 原生部署包
+bash scripts/build/build.sh --frontend        # 仅构建前端
+bash scripts/build/build.sh --backend         # 仅构建后端
 ```
+
+输出:
+- 容器模式 → `bbs-offline-YYYYMMDD-HHMMSS.tar.gz`
+- 原生模式 → `bbs-deploy-YYYYMMDD-HHMMSS.tar.gz`
 
 ### deploy/ — 部署
 
@@ -98,13 +102,16 @@ bash scripts/ops/init-db.sh
 bash scripts/ops/init-db.sh -h 127.0.0.1 -p 5432 -U work_flow -d bbs
 ```
 
-### dist/ — 分发
+### dist/ — 手动分发打包
+
+> 一般情况下无需手动运行——`build.sh` 构建完后会自动打包。
+> 以下命令用于单独需要打包的场景（如用已有构建产物打包）。
 
 **package.sh / package.ps1** — 打包构建产物为可分发的 tar.gz。
 
-Linux:
 ```bash
-bash scripts/dist/package.sh                  # 标准打包
+bash scripts/dist/package.sh                  # 容器离线包（默认）
+bash scripts/dist/package.sh --native         # 原生部署包
 bash scripts/dist/package.sh --minimal        # 仅运行所需文件
 bash scripts/dist/package.sh --with-source    # 含源代码
 ```
@@ -116,7 +123,9 @@ Windows (PowerShell):
 .\scripts\dist\package.ps1 -WithSource        # 含源代码
 ```
 
-输出: `bbs-deploy-YYYYMMDD-HHMMSS.tar.gz`（在项目根目录）
+输出:
+- 容器模式 → `bbs-offline-YYYYMMDD-HHMMSS.tar.gz`
+- 原生模式 → `bbs-deploy-YYYYMMDD-HHMMSS.tar.gz`
 
 ### 配置
 
