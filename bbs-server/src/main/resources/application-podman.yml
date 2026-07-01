@@ -1,4 +1,7 @@
 spring:
+  servlet:
+    multipart:
+      location: /tmp/bbs-upload
   datasource:
     driver-class-name: org.postgresql.Driver
     type: com.alibaba.druid.pool.DruidDataSource

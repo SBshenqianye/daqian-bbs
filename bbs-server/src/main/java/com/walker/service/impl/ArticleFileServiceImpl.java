@@ -39,7 +39,7 @@ public class ArticleFileServiceImpl extends ServiceImpl<ArticleFileMapper, Artic
     public List<ArticleFile> getArticleFileByArticleId(Integer articleId) {
         return articleFileMapper.selectList(
                 new LambdaQueryWrapper<ArticleFile>()
-                    .like(ArticleFile::getArticleId,articleId)
+                    .eq(ArticleFile::getArticleId,articleId)
                     .orderByAsc(ArticleFile::getFileId)
         );
     }
