@@ -177,7 +177,7 @@ track_parallel() {
             esac
         done
 
-        printf "\r%-80s" "$line"
+        printf "\r%-80b" "$line"
         [ $all_done -eq 1 ] && break
         sleep 1
     done
