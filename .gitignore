@@ -45,5 +45,8 @@ bbs-offline-latest.tar.gz
 # Environment configuration (contains secrets)
 .env
 
+# Build cache
+.cache_checksum
+
 # Build output directories
 bbs/
