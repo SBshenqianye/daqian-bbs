@@ -4,6 +4,9 @@ module.exports = defineConfig({
     lintOnSave:false
 })*/
 
+// 后端地址，可通过 .env 中 DEV_BACKEND_URL 覆盖，默认 127.0.0.1:9083
+const DEV_BACKEND_URL = process.env.DEV_BACKEND_URL || 'http://127.0.0.1:9083'
+
 module.exports = {
     publicPath: process.env.NODE_ENV === "development" ? "/" : "/bbs-user/",
     pages: {
@@ -13,12 +16,12 @@ module.exports = {
     },
     lintOnSave: false, //关闭语法检查
 
-    //开启代理服务器(通过9081转发给9083)，使用vue-cli 实现
+    //开启代理服务器(通过9081转发给后端)，使用vue-cli 实现
     devServer: {
         port: 9081,
         proxy: {
             [process.env.VUE_APP_BBS_API]: {
-                target: 'http://127.0.0.1:9083/bbs-server',
+                target: DEV_BACKEND_URL + '/bbs-server',
                 changeOrigin: true,
                 pathRewrite: {
                     ['^' + process.env.VUE_APP_BBS_API]: ''
@@ -26,7 +29,7 @@ module.exports = {
             },
             // 文件统一走 /files/ proxy
             '/files/': {
-                target: 'http://127.0.0.1:9083/bbs-server',
+                target: DEV_BACKEND_URL + '/bbs-server',
                 changeOrigin: true,
             },
         },
