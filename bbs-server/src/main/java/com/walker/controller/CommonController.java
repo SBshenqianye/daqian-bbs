@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -28,33 +29,34 @@ public class CommonController {
     @ApiOperation(value = "上传图片（mavon-editor 通用图片上传）")
     @PostMapping("/common/upload")
     public String uploadImage(@RequestParam("file") MultipartFile file) throws Exception {
-        // 1. Normalize file extension
-        String contentType = file.getContentType();
-        String ext = contentType != null ? contentType.substring(contentType.indexOf("/") + 1) : "png";
-        if ("jpeg".equals(ext)) {
-            ext = "jpg";
+        String pType = file.getContentType();
+        pType = pType.substring(pType.indexOf("/") + 1);
+        if ("jpeg".equals(pType)) {
+            pType = "jpg";
         }
 
-        // 2. Generate date-based path and unique filename
         Date date = new Date();
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        String day = sdf.format(date);
-        long timestamp = System.currentTimeMillis();
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        String day = format.format(date);
+        Long time = System.currentTimeMillis();
 
-        // 3. Build paths
-        String relativePath = "common/upload/" + day + "/" + timestamp + "_." + ext;
-        String absolutePath = basePath + relativePath;
+        String url = "common/upload/" + day + "/" + time + "_." + pType;
+        String path = basePath + url;
 
-        // 4. Ensure parent directory exists
-        File outFile = new File(absolutePath);
-        if (outFile.getParentFile() != null || !outFile.getParentFile().isDirectory()) {
-            outFile.getParentFile().mkdirs();
+        String imageUrl = "";
+        File outFile = new File(path);
+        File parentDir = outFile.getParentFile();
+        if (parentDir != null && !parentDir.isDirectory()) {
+            if (!parentDir.mkdirs() && !parentDir.exists()) {
+                throw new IOException("无法创建上传目录: " + parentDir.getAbsolutePath());
+            }
         }
-
-        // 5. Persist file
-        file.transferTo(outFile);
-
-        // 6. Return URL string for frontend consumption
-        return "/files/" + relativePath;
+        try {
+            file.transferTo(new File(path));
+            imageUrl = "/files/" + url;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return imageUrl;
     }
 }
