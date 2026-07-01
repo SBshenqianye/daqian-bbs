@@ -89,9 +89,16 @@ export default {
         this.articles = []
         return
       }
-      const user = JSON.parse(userStr)
-      const userId = user.id
-      const userAvatar = user.portrait || ''
+      let user, userId, userAvatar
+      try {
+        user = JSON.parse(userStr)
+        userId = user.id
+        userAvatar = user.portrait || ''
+      } catch (e) {
+        this.articles = []
+        this.loading = false
+        return
+      }
       this.loading = true
       this.getRequest(`/article/getArticleByUserId?userId=${userId}`).then(resp => {
         this.loading = false

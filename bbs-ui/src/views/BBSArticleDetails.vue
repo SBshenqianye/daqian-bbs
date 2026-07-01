@@ -238,8 +238,9 @@ export default {
           this.article.tagId = resp.articleLabelId
           this.article.author = resp.articleAuthor || ''
           const rawContent = resp.articleContentHtml || resp.articleContent || ''
-          this.article.contentHtml = normalizeUrls(rawContent)
-          this.mdContent = normalizeUrls(rawContent)
+          const normalized = normalizeUrls(rawContent)
+          this.article.contentHtml = normalized
+          this.mdContent = normalized
           this.article.articleImage = resp.articleImage || ''
           // Fetch author info
           if (resp.userId) {
@@ -360,7 +361,12 @@ export default {
       })
     },
     handleDeleteComment(comment) {
-      const commentId = comment.id || comment
+      if (!comment) return
+      const commentId = comment.id != null ? comment.id : null
+      if (commentId == null) {
+        console.warn('[handleDeleteComment] missing id:', comment)
+        return
+      }
       const isReply = commentId !== comment.commentRootId
       this.$confirm('确定删除该' + (isReply ? '回复' : '评论') + '？', '提示', {
         confirmButtonText: '确定',
