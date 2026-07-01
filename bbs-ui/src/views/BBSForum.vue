@@ -110,8 +110,6 @@
 </template>
 
 <script>
-import { getUserinfoById } from '@/api/article'
-
 export default {
   name: 'BBSForum',
   data() {
@@ -150,7 +148,7 @@ export default {
           summary: a.articleSummary || '',
           author: a.articleAuthor || '',
           userId: a.userId,
-          authorAvatar: '',
+          authorAvatar: a.portrait || '',
           time: a.createTime || a.articleCreateTime || '',
           views: a.articleViewNum || 0,
           comments: a.articleCommentNum || a.commentNum || 0,
@@ -158,7 +156,6 @@ export default {
           labelId: a.articleLabelId || null,
           cover: a.articleImage || null,
         }))
-        this.loadAuthorAvatars()
       }).catch(() => {
         this.loading = false
         this.articles = []
@@ -173,22 +170,6 @@ export default {
         })).filter(h => h.articleId)
       }).catch(() => {
         this.hotTopics = []
-      })
-    },
-    loadAuthorAvatars() {
-      const userIds = [...new Set(this.articles.map(a => a.userId).filter(Boolean))]
-      // 限制并发请求数，避免文章过多时同时发大量请求
-      userIds.slice(0, 10).forEach(id => {
-        getUserinfoById(id).then(resp => {
-          if (resp && resp.portrait) {
-            const avatarUrl = resp.portrait
-            this.articles.forEach(a => {
-              if (a.userId === id) {
-                this.$set(a, 'authorAvatar', avatarUrl)
-              }
-            })
-          }
-        }).catch(() => {})
       })
     },
     getLabelIcon(labelName) {
