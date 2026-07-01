@@ -51,38 +51,59 @@ build_frontend() {
     local step=$1 total=$2
     show_step "$step" "$total" "构建前端（并行 bbs-ui + bbs-admin-ui）"
 
+    # ========== 阶段 1：依赖安装（串行，避免 IO 争抢） ==========
+
+    _install_deps() {
+        local dir=$1 label=$2
+        local checksum_file="${dir}/.cache_checksum"
+        local pkg_checksum
+        pkg_checksum=$(md5sum "${dir}/package.json" 2>/dev/null | cut -d' ' -f1)
+
+        if [ -d "${dir}/node_modules" ] && [ -f "$checksum_file" ] && [ "$pkg_checksum" = "$(cat "$checksum_file" 2>/dev/null)" ]; then
+            info "${label}: package.json 未变化，跳过 npm install"
+            return
+        fi
+
+        run_with_spinner "${label}: npm install" bash -c "
+            cd '${dir}' || exit 1
+            if [ -f package-lock.json ]; then
+                npm ci --legacy-peer-deps
+            else
+                npm install --legacy-peer-deps
+            fi
+        "
+        echo "$pkg_checksum" > "$checksum_file"
+    }
+
+    _install_deps "bbs-ui" "bbs-ui"
+    _install_deps "bbs-admin-ui" "bbs-admin-ui"
+
+    # ========== 阶段 2：并行构建（build 本身 CPU/内存密集，并行收益大） ==========
+
     local log_ui log_admin
     log_ui=$(mktemp /tmp/bbs-ui-XXXX.log)
     log_admin=$(mktemp /tmp/bbs-admin-XXXX.log)
 
-    # bbs-ui（子 shell 中依次执行 npm install → npm build）
     (
         cd bbs-ui || exit 1
-        echo "--- npm install ---" >> "$log_ui"
-        npm install --legacy-peer-deps >> "$log_ui" 2>&1 || exit 1
         echo "--- npm run build ---" >> "$log_ui"
         npm run build >> "$log_ui" 2>&1 || exit 1
         [ -d "dist" ] || exit 1
     ) &
     local pid_ui=$!
 
-    # bbs-admin-ui
     (
         cd bbs-admin-ui || exit 1
-        echo "--- npm install ---" >> "$log_admin"
-        npm install --legacy-peer-deps >> "$log_admin" 2>&1 || exit 1
         echo "--- npm run build (openssl-legacy-provider) ---" >> "$log_admin"
         NODE_OPTIONS="--openssl-legacy-provider" npm run build >> "$log_admin" 2>&1 || exit 1
         [ -d "dist" ] || exit 1
     ) &
     local pid_admin=$!
 
-    # 并行监控两个任务
     track_parallel "前端构建进度:" "$pid_ui" "bbs-ui" "$pid_admin" "bbs-admin-ui"
     local rc=$?
 
     if [ $rc -ne 0 ]; then
-        # 显示失败日志
         if ! wait "$pid_ui" 2>/dev/null; then
             err "[bbs-ui] 构建失败"
             sed 's/^/  /' "$log_ui"
