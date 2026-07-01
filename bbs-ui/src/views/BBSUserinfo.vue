@@ -193,7 +193,6 @@ export default {
       showAvatarDialog: false,
       avatarPreview: null,
       avatarFile: null,
-      apiBase: process.env.VUE_APP_BBS_API || '',
       userInfo: {
         nickname: '',
         userId: '',
@@ -221,7 +220,7 @@ export default {
   computed: {
     avatarSrc() {
       if (this.avatarPreview) return this.avatarPreview
-      if (this.userInfo.portrait) return this.apiBase + this.userInfo.portrait
+      if (this.userInfo.portrait) return this.userInfo.portrait
       return ''
     },
   },

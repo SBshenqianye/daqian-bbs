@@ -2,7 +2,7 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     type: com.alibaba.druid.pool.DruidDataSource
-    url: jdbc:postgresql://${BBS_DB_HOST:127.0.0.1}:${BBS_DB_PORT:5432}/${BBS_DB_NAME:bbs}
+    url: jdbc:postgresql://${BBS_DB_HOST:127.0.0.1}:${BBS_DB_PORT:15432}/${BBS_DB_NAME:bbs}
     username: ${BBS_DB_USER:work_flow}
     password: ${BBS_DB_PASSWORD}
     druid:

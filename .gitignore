@@ -35,3 +35,10 @@ bbs-admin-ui/stitch_bbs_forum_design_system/
 # Offline deployment package
 daqian-bbs-offline/
 *.tar.gz
+
+# Deployment output
+bbs-deploy/
+bbs-deploy-latest.tar.gz
+
+# Environment configuration (contains secrets)
+.env

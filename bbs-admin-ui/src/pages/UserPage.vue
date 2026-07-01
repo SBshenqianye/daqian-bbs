@@ -156,7 +156,7 @@
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">人员编号</label>
-                <input v-model="editForm.personnelId" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入人员编号">
+                <input v-model="editForm.personnelId" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="人员编号（与身份证号至少填一个）">
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">用户名</label>
@@ -176,7 +176,7 @@
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">身份证号</label>
-                <input v-model="editForm.idCard" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入身份证号">
+                <input v-model="editForm.idCard" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="身份证号（与人员编号至少填一个）">
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">所属单位</label>
@@ -344,12 +344,18 @@
           <div class="p-5 space-y-4 overflow-y-auto flex-1">
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
+                <label class="text-label-md text-secondary">人员编号</label>
+                <input v-model="addForm.personnelId" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="人员编号（与身份证号至少填一个）">
+              </div>
+              <div class="space-y-1">
                 <label class="text-label-md text-secondary">
                   用户名
                   <span class="text-error">*</span>
                 </label>
                 <input v-model="addForm.username" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入用户名">
               </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">
                   姓名
@@ -357,11 +363,15 @@
                 </label>
                 <input v-model="addForm.nickname" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入姓名">
               </div>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">手机号</label>
                 <input v-model="addForm.phone" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入手机号（选填）">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="text-label-md text-secondary">身份证号</label>
+                <input v-model="addForm.idCard" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="身份证号（与人员编号至少填一个）">
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">
@@ -377,21 +387,40 @@
             <div class="flex items-center gap-6">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">角色</label>
-                <select v-model="addForm.userType" class="px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary outline-none">
-                  <option value="1">普通用户</option>
-                  <option value="2">管理员</option>
-                </select>
+                <div class="grid grid-cols-1 grid-rows-1">
+                  <select v-model="addForm.userType" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
+                    <option value="1">普通用户</option>
+                    <option value="2">管理员</option>
+                  </select>
+                  <span class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline pointer-events-none">
+                    <span class="material-symbols-outlined text-[18px]">unfold_more</span>
+                  </span>
+                </div>
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">状态</label>
-                <select v-model="addForm.isAlive" class="px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary outline-none">
-                  <option :value="0">活跃</option>
-                  <option :value="1">禁用</option>
-                </select>
+                <div class="grid grid-cols-1 grid-rows-1">
+                  <select v-model="addForm.isAlive" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
+                    <option :value="0">活跃</option>
+                    <option :value="1">禁用</option>
+                  </select>
+                  <span class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline pointer-events-none">
+                    <span class="material-symbols-outlined text-[18px]">unfold_more</span>
+                  </span>
+                </div>
               </div>
             </div>
-            <div class="px-0 pt-2 text-body-sm text-on-surface-variant">
-              初始密码默认为 <code class="px-1.5 py-0.5 bg-surface-variant rounded text-error text-label-md">1234@abcD</code>，用户首次登录需修改密码
+            <div class="space-y-1">
+              <label class="text-label-md text-secondary">密码（留空则默认为 1234@abcD）</label>
+              <div class="grid grid-cols-1 grid-rows-1 max-w-xs">
+                <input v-model="addForm.password" class="w-full col-start-1 row-start-1 pl-3 pr-10 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" :class="{ 'password-masked': !addShowPassword }" placeholder="输入自定义密码" type="text">
+                <button class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline hover:text-primary transition-colors" type="button" @click="addShowPassword = !addShowPassword">
+                  <span class="material-symbols-outlined text-[18px]">{{ addShowPassword ? 'visibility_off' : 'visibility' }}</span>
+                </button>
+              </div>
+            </div>
+            <div class="px-0 text-body-sm text-on-surface-variant">
+              密码不填则默认为 <code class="px-1.5 py-0.5 bg-surface-variant rounded text-error text-label-md">1234@abcD</code>，用户首次登录需修改密码
             </div>
           </div>
           <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
@@ -488,6 +517,7 @@ export default {
       // 新增用户
       addDialogVisible: false,
       addSaving: false,
+      addShowPassword: false,
       addForm: {
         username: '',
         nickname: '',
@@ -496,6 +526,9 @@ export default {
         orgName: '',
         userType: '1',
         isAlive: 0,
+        personnelId: '',
+        idCard: '',
+        password: '',
       },
       addOrgPickerVisible: false,
       // 编辑用户 - end
@@ -859,7 +892,11 @@ export default {
         orgName: '',
         userType: '1',
         isAlive: 0,
+        personnelId: '',
+        idCard: '',
+        password: '',
       }
+      this.addShowPassword = false
       this.addDialogVisible = true
     },
     onAddOrgPickerSelect(org) {
@@ -882,6 +919,10 @@ export default {
         this.$message.warning('请选择所属单位')
         return
       }
+      if (!this.addForm.personnelId.trim() && !this.addForm.idCard.trim()) {
+        this.$message.warning('人员编号和身份证号至少填一个')
+        return
+      }
 
       this.addSaving = true
       this.postRequest('/admin/addUser', {
@@ -891,6 +932,9 @@ export default {
         orgNo: this.addForm.orgNo,
         userType: this.addForm.userType,
         isAlive: this.addForm.isAlive,
+        personnelId: this.addForm.personnelId.trim() || null,
+        idCard: this.addForm.idCard.trim() || null,
+        password: this.addForm.password || null,
       }).then(resp => {
         this.addSaving = false
         if (resp) {
