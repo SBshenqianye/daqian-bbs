@@ -47,7 +47,7 @@ public class CommonController {
 
         // 4. Ensure parent directory exists
         File outFile = new File(absolutePath);
-        if (outFile.getParentFile() != null && !outFile.getParentFile().isDirectory()) {
+        if (outFile.getParentFile() != null || !outFile.getParentFile().isDirectory()) {
             outFile.getParentFile().mkdirs();
         }
 
