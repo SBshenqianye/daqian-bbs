@@ -161,7 +161,7 @@ export default {
     return {
       // 离线环境：mavon-editor 外链钩子指向本地 /public/lib/ 资源
       localExternalLink: {
-        hljs_js: () => process.env.BASE_URL + 'lib/highlight.min.js',
+        hljs_js: () => process.env.BASE_URL + 'lib/highlight/highlight.min.js',
         hljs_css: (css) => process.env.BASE_URL + `lib/highlight/styles/${css}.min.css`,
         hljs_lang: (lang) => process.env.BASE_URL + `lib/highlight/languages/${lang}.min.js`,
         markdown_css: false,  // 已通过 import 本地导入
