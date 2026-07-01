@@ -96,4 +96,8 @@ public class Article implements Serializable {
     @TableField("is_delete")
     @TableLogic
     private Integer isDelete;
+
+    @ApiModelProperty("用户头像")
+    @TableField(exist = false)
+    private String portrait;
 }

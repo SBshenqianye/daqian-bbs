@@ -21,7 +21,7 @@
             </div>
             <div class="flex items-center gap-3 py-1 px-3 bg-surface-container-lowest border border-border rounded-lg">
               <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-white overflow-hidden shadow-inner">
-                <img alt="Author" class="w-full h-full object-cover" :src="article.authorAvatar">
+                <img alt="Author" class="w-full h-full object-cover" :src="article.authorAvatar || require('@/assets/portrait.png')">
               </div>
               <div class="flex flex-col">
                 <span class="font-bold text-on-surface">{{ article.author }}</span>
@@ -108,6 +108,7 @@
             v-for="comment in comments"
             :key="comment.id"
             :comment="comment"
+            :currentUserAvatar="currentUserAvatar"
             @delete="handleDeleteComment"
             @reply="handleReply"
           />
@@ -127,6 +128,16 @@ import { getCommentReply } from '@/api/comment'
 import { normalizeUrls } from '@/utils/utils'
 import { Message } from 'element-ui'
 
+// mavon-editor 预览模式的外部资源链接（仅引用编译时常量，提升到模块级避免重复创建）
+const previewExternalLink = {
+  hljs_js: () => process.env.BASE_URL + 'lib/highlight/highlight.min.js',
+  hljs_css: (css) => process.env.BASE_URL + `lib/highlight/styles/${css}.min.css`,
+  hljs_lang: (lang) => process.env.BASE_URL + `lib/highlight/languages/${lang}.min.js`,
+  markdown_css: false,
+  katex_js: () => process.env.BASE_URL + 'lib/katex/katex.min.js',
+  katex_css: () => process.env.BASE_URL + 'lib/katex/katex.min.css',
+}
+
 export default {
   name: 'BBSArticleDetails',
   components: { BBSCommentItem, mavonEditor },
@@ -135,8 +146,7 @@ export default {
       newComment: '',
       articleId: this.$route.params.articleId,
       loading: true,
-      apiBase: process.env.VUE_APP_BBS_API || '',
-      fileBase: process.env.VUE_APP_BBS_BASE_FILE || '',
+      // VUE_APP_BBS_API、VUE_APP_BBS_BASE_FILE 废弃，文件统一使用 /files/ 原始路径
       // Current user
       currentUser: null,
       currentUserAvatar: '',
@@ -171,14 +181,7 @@ export default {
         scrollStyle: true,
         boxShadow: false,
         ishljs: true,
-        externalLink: {
-          hljs_js: () => process.env.BASE_URL + 'lib/highlight/highlight.min.js',
-          hljs_css: (css) => process.env.BASE_URL + `lib/highlight/styles/${css}.min.css`,
-          hljs_lang: (lang) => process.env.BASE_URL + `lib/highlight/languages/${lang}.min.js`,
-          markdown_css: false,
-          katex_js: () => process.env.BASE_URL + 'lib/katex/katex.min.js',
-          katex_css: () => process.env.BASE_URL + 'lib/katex/katex.min.css',
-        },
+        externalLink: previewExternalLink,
       },
     }
   },
@@ -216,7 +219,7 @@ export default {
         if (u) {
           this.currentUser = JSON.parse(u)
           if (this.currentUser.portrait) {
-            this.currentUserAvatar = this.apiBase + this.currentUser.portrait
+            this.currentUserAvatar = this.currentUser.portrait
           }
         }
       } catch (e) { /* ignore */ }
@@ -238,9 +241,10 @@ export default {
           this.article.tagId = resp.articleLabelId
           this.article.author = resp.articleAuthor || ''
           const rawContent = resp.articleContentHtml || resp.articleContent || ''
-          this.article.contentHtml = normalizeUrls(rawContent)
-          this.mdContent = normalizeUrls(rawContent)
-          this.article.articleImage = resp.articleImage ? this.fileBase + resp.articleImage : ''
+          const normalized = normalizeUrls(rawContent)
+          this.article.contentHtml = normalized
+          this.mdContent = normalized
+          this.article.articleImage = resp.articleImage || ''
           // Fetch author info
           if (resp.userId) {
             this.loadAuthorInfo(resp.userId)
@@ -255,7 +259,7 @@ export default {
         if (resp) {
           this.authorInfo = resp
           if (resp.portrait) {
-            this.article.authorAvatar = this.apiBase + resp.portrait
+            this.article.authorAvatar = resp.portrait
           }
           this.article.authorTitle = resp.title || ''
         }
@@ -281,7 +285,7 @@ export default {
         commentRootId: commentId,
         userId: c.userId,
         author: c.nickname || '',
-        avatar: c.portrait ? this.apiBase + c.portrait : '',
+        avatar: c.portrait || '',
         time: c.commentTime || '',
         content: c.commentContent || '',
         canDelete: myId != null && String(c.userId) === String(myId),
@@ -291,7 +295,7 @@ export default {
           userId: r.replyUserId || r.userId,
           replyTargetUserId: r.replyToUserId,
           author: r.nickname || '',
-          avatar: r.portrait ? this.apiBase + r.portrait : '',
+          avatar: r.portrait || '',
           time: r.replyTime || '',
           content: r.replyContent || '',
           replyTo: r.replyToNickname || '',
@@ -360,7 +364,12 @@ export default {
       })
     },
     handleDeleteComment(comment) {
-      const commentId = comment.id || comment
+      if (!comment) return
+      const commentId = comment.id != null ? comment.id : null
+      if (commentId == null) {
+        console.warn('[handleDeleteComment] missing id:', comment)
+        return
+      }
       const isReply = commentId !== comment.commentRootId
       this.$confirm('确定删除该' + (isReply ? '回复' : '评论') + '？', '提示', {
         confirmButtonText: '确定',
@@ -390,7 +399,7 @@ export default {
     },
     downloadFile(filePath, fileName) {
       if (!filePath) return
-      const url = this.fileBase + (filePath.startsWith('/') ? filePath : '/' + filePath)
+      const url = filePath.startsWith('/') ? filePath : '/' + filePath
       fetch(url, { method: 'GET', credentials: 'include' })
         .then(resp => {
           if (!resp.ok) throw new Error('下载失败')

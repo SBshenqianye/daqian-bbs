@@ -24,10 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -211,8 +208,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      */
     @Override
     public List<Article> queryAllArticleList(String keywords) {
+        List<Article> articles;
         if (StringUtils.isEmpty(keywords)) {
-            return articleMapper.selectList(new LambdaQueryWrapper<Article>()
+            articles = articleMapper.selectList(new LambdaQueryWrapper<Article>()
                     .eq(Article::getEnable,1)
                     .orderByDesc(Article::getCreateTime)
             );
@@ -226,7 +224,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                         .distinct()
                         .collect(Collectors.toList());
 
-                return articleMapper.selectList(new LambdaQueryWrapper<Article>()
+                articles = articleMapper.selectList(new LambdaQueryWrapper<Article>()
                         .eq(Article::getEnable,1)
                         .like(Article::getArticleContent, keywords)
                         .or()
@@ -235,17 +233,36 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                         .in(Article::getArticleId, distinctArticleIds)
                         .orderByDesc(Article::getCreateTime)
                 );
+            } else {
+                articles = articleMapper.selectList(new LambdaQueryWrapper<Article>()
+                        .eq(Article::getEnable,1)
+                        .like(Article::getArticleContent, keywords)
+                        .or()
+                        .like(Article::getArticleTitle, keywords)
+                        .orderByDesc(Article::getCreateTime)
+                );
             }
-
-            return articleMapper.selectList(new LambdaQueryWrapper<Article>()
-                    .eq(Article::getEnable,1)
-                    .like(Article::getArticleContent, keywords)
-                    .or()
-                    .like(Article::getArticleTitle, keywords)
-                    .orderByDesc(Article::getCreateTime)
-            );
         }
+        // 批量填充用户头像
+        enrichWithPortraits(articles);
+        return articles;
+    }
 
+    private void enrichWithPortraits(List<Article> articles) {
+        Set<Integer> userIds = articles.stream()
+                .map(Article::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (userIds.isEmpty()) return;
+        List<User> users = userService.listByIds(userIds);
+        Map<Integer, String> portraitMap = users.stream()
+                .filter(u -> u.getPortrait() != null)
+                .collect(Collectors.toMap(User::getId, User::getPortrait, (a, b) -> a));
+        articles.forEach(a -> {
+            if (a.getUserId() != null && portraitMap.containsKey(a.getUserId())) {
+                a.setPortrait(portraitMap.get(a.getUserId()));
+            }
+        });
     }
 
     @Override

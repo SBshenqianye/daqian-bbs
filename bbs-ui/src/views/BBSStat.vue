@@ -23,8 +23,7 @@
           <div class="flex items-center flex-wrap gap-4 font-label-md text-label-md text-on-surface-variant">
             <div class="flex items-center gap-2">
               <div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center overflow-hidden">
-                <img v-if="article.authorAvatar" alt="Avatar" class="w-full h-full object-cover" :src="article.authorAvatar">
-                <span v-else class="material-symbols-outlined text-[14px]">person</span>
+                <img alt="Avatar" class="w-full h-full object-cover" :src="article.authorAvatar || require('@/assets/portrait.png')">
               </div>
               <span>{{ article.author }}</span>
             </div>
@@ -71,6 +70,7 @@
 
 <script>
 import { Message } from 'element-ui'
+import { getUser } from '@/utils/auth'
 
 export default {
   name: 'BBSStat',
@@ -78,7 +78,6 @@ export default {
     return {
       loading: false,
       articles: [],
-      imageBase: process.env.VUE_APP_BBS_BASE_FILE || '',
     }
   },
   mounted() {
@@ -86,12 +85,14 @@ export default {
   },
   methods: {
     fetchMyArticles() {
-      const userStr = window.sessionStorage.getItem('user')
-      if (!userStr) {
+      const user = getUser()
+      if (!user) {
         this.articles = []
+        this.loading = false
         return
       }
-      const userId = JSON.parse(userStr).id
+      const userId = user.id
+      const userAvatar = user.portrait || ''
       this.loading = true
       this.getRequest(`/article/getArticleByUserId?userId=${userId}`).then(resp => {
         this.loading = false
@@ -101,12 +102,12 @@ export default {
           title: a.articleTitle || '',
           summary: a.articleSummary || '',
           author: a.articleAuthor || '',
-          authorAvatar: '',
+          authorAvatar: userAvatar,
           time: a.createTime || a.articleCreateTime || '',
           views: a.articleViewNum || 0,
           comments: a.articleCommentNum || 0,
           likes: a.articleGoodNum || 0,
-          cover: a.articleImage ? this.imageBase + a.articleImage : null,
+          cover: a.articleImage || null,
         }))
       }).catch(() => {
         this.loading = false

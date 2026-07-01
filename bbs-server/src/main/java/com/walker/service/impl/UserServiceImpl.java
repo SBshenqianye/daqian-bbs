@@ -32,6 +32,7 @@ import com.walker.vo.param.UserModPwdParam;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -879,10 +880,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return ResultBean.error("用户名已存在");
         }
 
+        // 人员编号和身份证号至少填一个
+        if (StringUtils.isBlank(param.getPersonnelId()) && StringUtils.isBlank(param.getIdCard())) {
+            return ResultBean.error("人员编号和身份证号至少填一个");
+        }
+
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         User newUser = new User();
         newUser.setUsername(param.getUsername())
-                .setPassword(new BCryptPasswordEncoder().encode("1234@abcD"))
                 .setNickname(param.getNickname())
                 .setPhone(param.getPhone() != null ? param.getPhone() : "")
                 .setOrgNo(param.getOrgNo())
@@ -892,9 +897,39 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .setFans(0)
                 .setAttention(0)
                 .setGood(0)
-                .setIsFirstLogin(1)
                 .setCreateTime(dateFormat.format(new Date()));
-        userMapper.insert(newUser);
+
+        // 密码：自定义密码 > 默认密码
+        if (StringUtils.isNoneBlank(param.getPassword())) {
+            newUser.setPassword(new BCryptPasswordEncoder().encode(param.getPassword()));
+            newUser.setIsFirstLogin(0);
+        } else {
+            newUser.setPassword(new BCryptPasswordEncoder().encode("1234@abcD"));
+            newUser.setIsFirstLogin(1);
+        }
+
+        // 人员编号
+        if (StringUtils.isNoneBlank(param.getPersonnelId())) {
+            newUser.setPersonnelId(param.getPersonnelId());
+        }
+        // 身份证号
+        if (StringUtils.isNoneBlank(param.getIdCard())) {
+            newUser.setIdCard(param.getIdCard());
+        }
+
+        try {
+            userMapper.insert(newUser);
+        } catch (DuplicateKeyException e) {
+            String msg = e.getMostSpecificCause().getMessage();
+            if (msg.contains("uk_bbs_user_username")) {
+                return ResultBean.error("用户名已存在");
+            } else if (msg.contains("uk_bbs_user_personnel_id")) {
+                return ResultBean.error("人员编号已被使用");
+            } else if (msg.contains("uk_bbs_user_id_card")) {
+                return ResultBean.error("身份证号已被使用");
+            }
+            return ResultBean.error("用户创建失败：" + msg);
+        }
         return ResultBean.success("用户创建成功");
     }
 

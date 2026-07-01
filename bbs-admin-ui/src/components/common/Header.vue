@@ -22,8 +22,7 @@
         @click="showDropdown = !showDropdown"
       >
         <div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center overflow-hidden border-2 border-surface-container-high ring-2 ring-white">
-          <img v-if="avatarUrl" :src="avatarUrl" class="w-full h-full object-cover" alt="avatar" />
-          <span v-else class="material-symbols-outlined text-[18px] text-primary">person</span>
+          <img :src="avatarUrl" @error="onAvatarError" class="w-full h-full object-cover" alt="avatar" />
         </div>
         <span class="font-label-md text-label-md text-on-surface hidden sm:inline">{{ username }}</span>
         <span class="material-symbols-outlined text-[16px] text-outline transition-transform duration-200" :class="{ 'rotate-180': showDropdown }">expand_more</span>
@@ -76,6 +75,7 @@ export default {
       showDropdown: false,
       adminInfo: null,
       userClientHref: process.env.VUE_APP_BBS_USER_API || '',
+      defaultPortrait: require('@/assets/portrait.png'),
     }
   },
   computed: {
@@ -83,9 +83,9 @@ export default {
       return (this.adminInfo && this.adminInfo.username) || '管理员'
     },
     avatarUrl() {
-      const baseApi = process.env.VUE_APP_BBS_BASE_API || ''
+      const baseApi = process.env.VUE_APP_BBS_API || ''
       const portrait = this.adminInfo && this.adminInfo.portrait
-      if (!portrait) return ''
+      if (!portrait) return this.defaultPortrait
       const path = portrait.startsWith('/') ? portrait : '/' + portrait
       return baseApi + path
     },
@@ -108,6 +108,9 @@ export default {
     toggleCollapse() {
       this.localCollapse = !this.localCollapse
       bus.$emit('collapse', this.localCollapse)
+    },
+    onAvatarError(e) {
+      e.target.src = this.defaultPortrait
     },
     handleLogout() {
       this.showDropdown = false

@@ -43,17 +43,13 @@ public class DatabaseInitHelper {
         }
 
         try {
-            // 1. 确保数据库存在，并记录是否为刚创建
+            // 1. 确保数据库存在
             String adminUrl = buildAdminUrl(jdbcUrl, dbType);
-            boolean databaseCreated = ensureDatabaseExists(adminUrl, dbUsername, dbPassword, dbName, dbType);
+            ensureDatabaseExists(adminUrl, dbUsername, dbPassword, dbName, dbType);
 
-            // 2. 仅当数据库是刚创建时（完全为空），才执行建表+基础数据初始化
-            if (databaseCreated) {
-                log.info("Database [{}] was just created, executing init SQL.", dbName);
-                executeInitSql(jdbcUrl, dbUsername, dbPassword, dbType);
-            } else {
-                log.info("Database [{}] already exists, skipping init SQL. (Data preserved)", dbName);
-            }
+            // 2. 执行建表 + 基础数据初始化（SQL 已使用 IF NOT EXISTS / ON CONFLICT，可安全重复执行）
+            log.info("Executing init SQL for database [{}] (safe mode).", dbName);
+            executeInitSql(jdbcUrl, dbUsername, dbPassword, dbType);
         } catch (Exception e) {
             log.error("Database bootstrap failed: {}", e.getMessage(), e);
         }
@@ -62,11 +58,10 @@ public class DatabaseInitHelper {
     // ==================== 数据库创建 ====================
 
     /**
-     * 确保数据库存在。
-     * @return true 表示数据库是刚创建的（完全为空），false 表示数据库已存在
+     * 确保数据库存在。不存在则创建。
      */
-    private static boolean ensureDatabaseExists(String adminUrl, String username, String password,
-                                                String dbName, String dbType) {
+    private static void ensureDatabaseExists(String adminUrl, String username, String password,
+                                             String dbName, String dbType) {
         log.info("Checking database [{}] via [{}]", dbName, adminUrl);
         try (Connection conn = DriverManager.getConnection(adminUrl, username, password)) {
             boolean exists = "postgresql".equals(dbType)
@@ -75,17 +70,14 @@ public class DatabaseInitHelper {
             if (!exists) {
                 createDatabase(conn, dbName, dbType);
                 log.info("Database [{}] created.", dbName);
-                return true;  // 刚创建，完全为空
             } else {
                 log.info("Database [{}] already exists.", dbName);
-                return false; // 已存在，不允许执行 init
             }
         } catch (SQLException e) {
             log.warn("Create/check database failed: {}", e.getMessage());
         } catch (Exception e) {
             log.warn("Create/check database failed: {}", e.getMessage(), e);
         }
-        return false; // 异常时保守返回 false（不执行 init）
     }
 
     private static boolean checkMysqlDatabaseExists(Connection conn, String dbName) throws Exception {
