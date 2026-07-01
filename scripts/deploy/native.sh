@@ -29,6 +29,7 @@ BBS_DB_PASSWORD="${BBS_DB_PASSWORD:-work_flow123}"
 BBS_SERVER_PORT="${BBS_SERVER_PORT:-9083}"
 NGINX_PORT="${NGINX_PORT:-19848}"
 BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR:-/data/bbs/bbsUpload}"
+BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR%/}/"
 BBS_PG_DATA="${BBS_PG_DATA:-/data/sql/postgre}"
 
 # --------------- 颜色 ---------------

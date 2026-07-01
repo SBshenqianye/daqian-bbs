@@ -31,6 +31,7 @@ BBS_PG_CONTAINER="${BBS_PG_CONTAINER:-bbs-postgres}"
 BBS_SERVER_CONTAINER="${BBS_SERVER_CONTAINER:-bbs-server}"
 BBS_NGINX_CONTAINER="${BBS_NGINX_CONTAINER:-bbs-nginx}"
 BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR:-/data/bbs/bbsUpload}"
+BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR%/}/"
 
 RUNNER="podman"
 command -v podman >/dev/null 2>&1 || RUNNER="docker"
