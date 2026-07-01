@@ -8,6 +8,8 @@
 scripts/
 ├── SCRIPT.md                    ← 本文件
 ├── .env.example                 ← 环境变量配置模板
+├── lib/
+│   └── progress.sh              ← 进度指示工具库（步骤计数、spinner、进度条）
 │
 ├── build/
 │   └── build.sh                 ← 构建脚本（自动打包）
@@ -138,6 +140,21 @@ Windows (PowerShell):
 输出:
 - 容器模式 → `bbs-offline-YYYYMMDD-HHMMSS.tar.gz`
 - 原生模式 → `bbs-deploy-YYYYMMDD-HHMMSS.tar.gz`
+
+### 进度指示
+
+所有主要脚本（build.sh、deploy/*.sh、package.sh/ps1）都集成了进度指示功能，由 `lib/progress.sh` 提供：
+
+| 功能 | 函数 | 适用场景 |
+|------|------|----------|
+| 步骤编号标题 | `show_step <当前> <总数> <描述>` | 每个主要阶段顶部 |
+| Spinner 动画 | `run_with_spinner <消息> <命令>` | 长时间单命令（npm install、docker build） |
+| 并行任务监控 | `track_parallel <标题> <PID> <标签> ...` | 并行构建的前端项目 |
+| 轮询指示器 | `polling_spinner <消息> <当前> <总数>` | 后端健康检查等待 |
+| 百分比进度条 | `progress_bar <当前> <总数> [标签]` | 已知总数的文件操作 |
+| 总框标题 | `show_header <标题>` | 脚本入口处的步骤概览 |
+
+不引入外部依赖——纯 bash 实现，`pv`/`dialog`/`tqdm` 均非必需。
 
 ### 配置
 

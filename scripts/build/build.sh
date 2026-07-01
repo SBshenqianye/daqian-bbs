@@ -25,6 +25,9 @@ ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 err()   { echo -e "${RED}[ERR]${NC} $1"; }
 
+# --------------- 进度指示库 ---------------
+source scripts/lib/progress.sh
+
 # --------------- 前置检查 ---------------
 check_prereqs() {
     local missing=0
@@ -45,76 +48,82 @@ check_prereqs() {
 
 # --------------- 构建前端 ---------------
 build_frontend() {
-    info "===== 并行构建前端 ====="
+    local step=$1 total=$2
+    show_step "$step" "$total" "构建前端（并行 bbs-ui + bbs-admin-ui）"
 
-    # bbs-ui
+    local log_ui log_admin
+    log_ui=$(mktemp /tmp/bbs-ui-XXXX.log)
+    log_admin=$(mktemp /tmp/bbs-admin-XXXX.log)
+
+    # bbs-ui（子 shell 中依次执行 npm install → npm build）
     (
-        info "[bbs-ui] 安装依赖..."
-        cd bbs-ui
-        npm install --legacy-peer-deps 2>&1 | tail -1
-        info "[bbs-ui] 构建..."
-        npm run build 2>&1 | tail -1
-        if [ -d "dist" ]; then
-            ok "[bbs-ui] 构建成功 → $(pwd)/dist"
-        else
-            err "[bbs-ui] 构建失败: dist 目录未生成"
-            exit 1
-        fi
+        cd bbs-ui || exit 1
+        echo "--- npm install ---" >> "$log_ui"
+        npm install --legacy-peer-deps >> "$log_ui" 2>&1 || exit 1
+        echo "--- npm run build ---" >> "$log_ui"
+        npm run build >> "$log_ui" 2>&1 || exit 1
+        [ -d "dist" ] || exit 1
     ) &
-    PID_UI=$!
+    local pid_ui=$!
 
     # bbs-admin-ui
     (
-        info "[bbs-admin-ui] 安装依赖..."
-        cd bbs-admin-ui
-        npm install --legacy-peer-deps 2>&1 | tail -1
-        info "[bbs-admin-ui] 构建（openssl-legacy-provider）..."
-        NODE_OPTIONS="--openssl-legacy-provider" npm run build 2>&1 | tail -1
-        if [ -d "dist" ]; then
-            ok "[bbs-admin-ui] 构建成功 → $(pwd)/dist"
-        else
-            err "[bbs-admin-ui] 构建失败: dist 目录未生成"
-            exit 1
-        fi
+        cd bbs-admin-ui || exit 1
+        echo "--- npm install ---" >> "$log_admin"
+        npm install --legacy-peer-deps >> "$log_admin" 2>&1 || exit 1
+        echo "--- npm run build (openssl-legacy-provider) ---" >> "$log_admin"
+        NODE_OPTIONS="--openssl-legacy-provider" npm run build >> "$log_admin" 2>&1 || exit 1
+        [ -d "dist" ] || exit 1
     ) &
-    PID_ADMIN=$!
+    local pid_admin=$!
 
-    # 等待两个前端构建完成
-    wait $PID_UI || { err "bbs-ui 构建失败"; exit 1; }
-    wait $PID_ADMIN || { err "bbs-admin-ui 构建失败"; exit 1; }
+    # 并行监控两个任务
+    track_parallel "前端构建进度:" "$pid_ui" "bbs-ui" "$pid_admin" "bbs-admin-ui"
+    local rc=$?
+
+    if [ $rc -ne 0 ]; then
+        # 显示失败日志
+        if ! wait "$pid_ui" 2>/dev/null; then
+            err "[bbs-ui] 构建失败"
+            sed 's/^/  /' "$log_ui"
+        fi
+        if ! wait "$pid_admin" 2>/dev/null; then
+            err "[bbs-admin-ui] 构建失败"
+            sed 's/^/  /' "$log_admin"
+        fi
+        rm -f "$log_ui" "$log_admin"
+        exit 1
+    fi
+
     ok "前端构建全部完成"
+    rm -f "$log_ui" "$log_admin"
 }
 
 # --------------- 构建后端 ---------------
 build_backend() {
-    info "===== 构建后端 ====="
+    local step=$1 total=$2
+    show_step "$step" "$total" "构建后端"
 
     if [[ "$MODE" == "container" ]]; then
         # Docker 镜像模式
         local runner="podman"
         command -v podman >/dev/null 2>&1 || runner="docker"
-        info "使用 $runner 构建 bbs-server 镜像..."
-        $runner build -t bbs-server bbs-server
+        run_with_spinner "使用 $runner 构建 bbs-server 镜像" "$runner" build -t bbs-server bbs-server
         ok "bbs-server 镜像构建完成"
     else
         # 原生 JAR 模式
-        info "使用 Maven 编译 bbs-server.jar..."
-        cd bbs-server
-        mvn package -DskipTests -B
-        cd "$ROOT_DIR"
+        run_with_spinner "使用 Maven 编译 bbs-server.jar" bash -c "cd bbs-server && mvn package -DskipTests -B"
         ok "bbs-server.jar 编译完成: bbs-server/target/bbs-server.jar"
     fi
 }
 
 # --------------- 构建 Nginx 镜像 ---------------
 build_nginx() {
+    local step=$1 total=$2
     if [[ "$MODE" != "container" ]]; then
-        info "非容器模式，跳过 Nginx 镜像构建"
         return
     fi
-    info "===== 构建 Nginx 镜像 ====="
-    local runner="podman"
-    command -v podman >/dev/null 2>&1 || runner="docker"
+    show_step "$step" "$total" "构建 Nginx 镜像"
 
     # 检查前端 dist 是否存在
     if [ ! -d "bbs-ui/dist" ] || [ ! -d "bbs-admin-ui/dist" ]; then
@@ -122,53 +131,65 @@ build_nginx() {
         exit 1
     fi
 
-    $runner build -t bbs-nginx -f nginx/Dockerfile .
+    local runner="podman"
+    command -v podman >/dev/null 2>&1 || runner="docker"
+    run_with_spinner "使用 $runner 构建 bbs-nginx 镜像" "$runner" build -t bbs-nginx -f nginx/Dockerfile .
     ok "bbs-nginx 镜像构建完成"
 }
 
 # --------------- 主流程 ---------------
 case "$MODE" in
     --frontend|frontend)
+        MODE="frontend"
+        show_header "BBS 前端构建"
         check_prereqs
-        build_frontend
+        build_frontend 1 1
         ;;
     --backend|backend)
+        MODE="backend"
+        show_header "BBS 后端构建"
         check_prereqs
-        build_backend
+        build_backend 1 1
         ;;
     --native|native)
         MODE="native"
+        show_header "BBS 原生构建 + 打包"
         check_prereqs
         # 前后端并行构建（互不依赖）
-        build_frontend &  PID_FE=$!
-        build_backend  &  PID_BE=$!
-        wait $PID_FE || { err "前端构建失败"; exit 1; }
-        wait $PID_BE || { err "后端构建失败"; exit 1; }
+        build_frontend 1 3 &
+        local pid_fe=$!
+        build_backend 2 3 &
+        local pid_be=$!
+        wait $pid_fe || { err "前端构建失败"; exit 1; }
+        wait $pid_be || { err "后端构建失败"; exit 1; }
         # 自动打包
-        info "自动打包中..."
-        bash scripts/dist/package.sh --native
+        show_step 3 3 "自动打包"
+        run_with_spinner "创建原生部署包" bash scripts/dist/package.sh --native
         ;;
     *)
         MODE="container"
+        show_header "BBS 容器镜像构建 + 打包"
         check_prereqs
         # 前后端并行构建，Nginx 镜像需等前端 dist 就绪
-        build_frontend &  PID_FE=$!
-        build_backend  &  PID_BE=$!
-        wait $PID_FE || { err "前端构建失败"; exit 1; }
-        wait $PID_BE || { err "后端构建失败"; exit 1; }
-        build_nginx
+        build_frontend 1 4 &
+        local pid_fe=$!
+        build_backend 2 4 &
+        local pid_be=$!
+        wait $pid_fe || { err "前端构建失败"; exit 1; }
+        wait $pid_be || { err "后端构建失败"; exit 1; }
+        build_nginx 3 4
         # 自动打包
-        info "自动打包中..."
-        bash scripts/dist/package.sh
+        show_step 4 4 "自动打包"
+        run_with_spinner "创建容器离线包" bash scripts/dist/package.sh
         ;;
 esac
 
 echo ""
-ok "========================================"
-ok "构建 + 打包全部完成！"
+echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║${NC}  构建 + 打包全部完成！"
 if [[ "$MODE" == "container" ]]; then
-    ok "分发包: $(ls -t bbs-offline-*.tar.gz 2>/dev/null | head -1)"
+    echo -e "${GREEN}║${NC}  分发包: $(ls -t bbs-offline-*.tar.gz 2>/dev/null | head -1)"
 else
-    ok "分发包: $(ls -t bbs-deploy-*.tar.gz 2>/dev/null | head -1)"
+    echo -e "${GREEN}║${NC}  分发包: $(ls -t bbs-deploy-*.tar.gz 2>/dev/null | head -1)"
 fi
-echo "========================================"
+echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"

@@ -41,8 +41,12 @@ info()  { echo -e "${CYAN}[INFO]${NC} $1"; }
 ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
+# --------------- 进度指示库 ---------------
+source scripts/lib/progress.sh
+
 # --------------- 网络 ---------------
 ensure_network() {
+    show_step "$1" "$2" "容器网络"
     if $RUNNER network exists "$BBS_NET_NAME" 2>/dev/null; then
         ok "网络 $BBS_NET_NAME 已存在"
     else
@@ -54,6 +58,7 @@ ensure_network() {
 
 # --------------- PostgreSQL ---------------
 start_postgres() {
+    show_step "$1" "$2" "PostgreSQL 数据库"
     if $RUNNER ps aux 2>/dev/null | grep -q "$BBS_PG_CONTAINER"; then
         # Podman 方式
         if $RUNNER container exists "$BBS_PG_CONTAINER" 2>/dev/null; then
@@ -68,7 +73,7 @@ start_postgres() {
         fi
     fi
 
-    info "启动 PostgreSQL 容器..."
+    info "拉取并启动 PostgreSQL 容器..."
     $RUNNER run -d \
         --name "$BBS_PG_CONTAINER" \
         --network "$BBS_NET_NAME" \
@@ -78,12 +83,15 @@ start_postgres() {
         -v bbs-pg-data:/var/lib/postgresql/data \
         docker.io/postgres:13-alpine
 
-    ok "PostgreSQL 容器已启动（等待初始化中...）"
-    sleep 3
+    ok "PostgreSQL 容器已启动"
+    # 等几秒让数据库初始化完成
+    run_with_spinner "等待 PostgreSQL 初始化" sleep 5
 }
 
 # --------------- 后端 ---------------
 start_backend() {
+    show_step "$1" "$2" "后端服务 (bbs-server)"
+
     # 移除旧容器
     if $RUNNER container exists "$BBS_SERVER_CONTAINER" 2>/dev/null; then
         info "移除旧后端容器..."
@@ -111,24 +119,33 @@ start_backend() {
         bbs-server
 
     ok "bbs-server 容器已启动"
-    info "等待后端启动（约 30 秒）..."
+
+    # 先等几秒让 Spring Boot 开始初始化
+    info "后端启动中，等待就绪..."
     sleep 5
 
-    # 轮询等待后端就绪
-    for i in $(seq 1 30); do
+    # 轮询等待后端就绪（显示已用秒数）
+    local health_start
+    health_start=$(date +%s)
+    local max_attempts=30
+    for i in $(seq 1 "$max_attempts"); do
+        polling_spinner "等待后端就绪" "$i" "$max_attempts" "$health_start"
         if $RUNNER exec "$BBS_SERVER_CONTAINER" wget -q --spider http://localhost:$BBS_SERVER_PORT/bbs-server/ 2>/dev/null; then
-            ok "后端就绪！"
-            break
-        fi
-        if [ "$i" -eq 30 ]; then
-            warn "后端启动较慢，请稍后检查: $RUNNER logs $BBS_SERVER_CONTAINER"
+            polling_clear
+            local now; now=$(date +%s)
+            ok "后端就绪！($(( now - health_start ))s/${i}次)"
+            return 0
         fi
         sleep 2
     done
+    polling_clear
+    warn "后端就绪超时，请检查日志: $RUNNER logs $BBS_SERVER_CONTAINER"
 }
 
 # --------------- Nginx ---------------
 start_nginx() {
+    show_step "$1" "$2" "Nginx 反向代理"
+
     if $RUNNER container exists "$BBS_NGINX_CONTAINER" 2>/dev/null; then
         info "移除旧 Nginx 容器..."
         $RUNNER rm -f "$BBS_NGINX_CONTAINER" 2>/dev/null || true
@@ -150,42 +167,52 @@ start_nginx() {
         bbs-nginx
 
     ok "Nginx 容器已启动"
-    info "访问地址: http://localhost:${NGINX_PORT}/bbs-user/"
-    info "管理后台: http://localhost:${NGINX_PORT}/bbs-admin/"
+    echo ""
+    echo -e "  ${CYAN}用户前端:${NC}  http://localhost:${NGINX_PORT}/bbs-user/"
+    echo -e "  ${CYAN}管理后台:${NC}  http://localhost:${NGINX_PORT}/bbs-admin/"
+    echo -e "  ${CYAN}后端 API:${NC}  http://localhost:${NGINX_PORT}/bbs-server/"
 }
 
 # --------------- 主流程 ---------------
 MODE="${1:-all}"
 
-ensure_network
+show_header "BBS 容器部署"
+
+ensure_network 1 4
 
 case "$MODE" in
     --pg-only|pg-only)
-        start_postgres
+        start_postgres 2 2
+        echo ""
+        ok "========================================"
+        ok "PostgreSQL 容器启动完成！"
+        echo "========================================"
         exit 0
         ;;
     --no-pg|no-pg)
         ok "跳过 PostgreSQL 启动"
+        show_step 2 3 "PostgreSQL（已跳过）"
+        start_backend 2 3
+        start_nginx 3 3
         ;;
     *)
-        start_postgres
+        start_postgres 2 4
+        start_backend 3 4
+        start_nginx 4 4
         ;;
 esac
 
-start_backend
-start_nginx
-
 echo ""
-ok "========================================"
-ok "部署完成！"
-echo ""
-echo "  用户前端:  http://localhost:${NGINX_PORT}/bbs-user/"
-echo "  管理后台:  http://localhost:${NGINX_PORT}/bbs-admin/"
-echo "  后端 API:  http://localhost:${NGINX_PORT}/bbs-server/"
-echo ""
-echo "  查看日志:"
-echo "    $RUNNER logs -f $BBS_SERVER_CONTAINER"
-echo "    $RUNNER logs -f $BBS_NGINX_CONTAINER"
-echo ""
-echo "  停止容器:  bash scripts/ops/teardown.sh"
-echo "========================================"
+echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║${NC}  部署完成！"
+echo -e "${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  用户前端:  http://localhost:${NGINX_PORT}/bbs-user/"
+echo -e "${GREEN}║${NC}  管理后台:  http://localhost:${NGINX_PORT}/bbs-admin/"
+echo -e "${GREEN}║${NC}  后端 API:  http://localhost:${NGINX_PORT}/bbs-server/"
+echo -e "${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  查看日志:"
+echo -e "${GREEN}║${NC}    $RUNNER logs -f $BBS_SERVER_CONTAINER"
+echo -e "${GREEN}║${NC}    $RUNNER logs -f $BBS_NGINX_CONTAINER"
+echo -e "${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  停止容器:  bash scripts/ops/teardown.sh"
+echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"
