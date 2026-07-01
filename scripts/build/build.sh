@@ -51,6 +51,12 @@ install_frontend_deps() {
     local step=$1 total=$2
     show_step "$step" "$total" "安装前端依赖（串行）"
 
+    # 如果 dist 已存在，跳过整个步骤（前端由 Windows 构建）
+    if [ -d "bbs-ui/dist" ] && [ -d "bbs-admin-ui/dist" ]; then
+        info "前端 dist 已存在，跳过 npm install"
+        return
+    fi
+
     _install_deps() {
         local dir=$1 label=$2
         local checksum_file="${dir}/.cache_checksum"
@@ -81,6 +87,12 @@ install_frontend_deps() {
 build_frontend() {
     local step=$1 total=$2
     show_step "$step" "$total" "构建前端（并行 bbs-ui + bbs-admin-ui）"
+
+    # 如果 dist 已存在，跳过整个步骤（前端由 Windows 构建）
+    if [ -d "bbs-ui/dist" ] && [ -d "bbs-admin-ui/dist" ]; then
+        info "前端 dist 已存在，跳过前端构建"
+        return
+    fi
 
     local log_ui log_admin
     log_ui=$(mktemp /tmp/bbs-ui-XXXX.log)
