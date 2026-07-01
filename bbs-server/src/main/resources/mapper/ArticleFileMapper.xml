@@ -19,10 +19,10 @@
     <!--给文章和附件添加绑定关系-->
     <update id="updateArticleFile">
         UPDATE bbs_article_file
-        SET article_id = #{articleId}
+        SET article_id = #{articleId,jdbcType=INTEGER}
         WHERE file_id IN
         <foreach collection="fileIds" item="fileId" open="(" separator="," close=")">
-            #{fileId}
+            #{fileId,jdbcType=INTEGER}
         </foreach>
     </update>
 
@@ -30,7 +30,7 @@
     <update id="unBindArticleFile">
         UPDATE bbs_article_file
         SET article_id = NULL
-        WHERE article_id = #{articleId}
+        WHERE article_id = #{articleId,jdbcType=INTEGER}
     </update>
 
 </mapper>
