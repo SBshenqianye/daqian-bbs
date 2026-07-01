@@ -121,7 +121,6 @@ export default {
       articles: [],
       hotTopics: [],
       filteredLabelId: null,
-      _alive: true,
     }
   },
   mounted() {
@@ -132,7 +131,6 @@ export default {
   },
   beforeDestroy() {
     this.$bus && this.$bus.$off('forumSearch', this.handleForumSearch)
-    this._alive = false
   },
   computed: {
     filteredArticles() {
@@ -179,10 +177,9 @@ export default {
     },
     loadAuthorAvatars() {
       const userIds = [...new Set(this.articles.map(a => a.userId).filter(Boolean))]
-      // 限制并发数，避免文章过多时同时发大量请求
+      // 限制并发请求数，避免文章过多时同时发大量请求
       userIds.slice(0, 10).forEach(id => {
         getUserinfoById(id).then(resp => {
-          if (!this._alive) return
           if (resp && resp.portrait) {
             const avatarUrl = resp.portrait
             this.articles.forEach(a => {

@@ -70,6 +70,7 @@
 
 <script>
 import { Message } from 'element-ui'
+import { getUser } from '@/utils/auth'
 
 export default {
   name: 'BBSStat',
@@ -84,21 +85,14 @@ export default {
   },
   methods: {
     fetchMyArticles() {
-      const userStr = window.sessionStorage.getItem('user')
-      if (!userStr) {
-        this.articles = []
-        return
-      }
-      let user, userId, userAvatar
-      try {
-        user = JSON.parse(userStr)
-        userId = user.id
-        userAvatar = user.portrait || ''
-      } catch (e) {
+      const user = getUser()
+      if (!user) {
         this.articles = []
         this.loading = false
         return
       }
+      const userId = user.id
+      const userAvatar = user.portrait || ''
       this.loading = true
       this.getRequest(`/article/getArticleByUserId?userId=${userId}`).then(resp => {
         this.loading = false

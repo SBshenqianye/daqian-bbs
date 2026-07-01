@@ -39,7 +39,8 @@ export function removeToken() {
 export function getUser() {
   const raw = window.sessionStorage.getItem(USER_KEY)
     || window.localStorage.getItem(USER_KEY)
-  return raw ? JSON.parse(raw) : null
+  if (!raw) return null
+  try { return JSON.parse(raw) } catch (e) { return null }
 }
 
 export function setUser(user, remember = false) {

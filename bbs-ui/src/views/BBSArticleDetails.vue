@@ -128,6 +128,16 @@ import { getCommentReply } from '@/api/comment'
 import { normalizeUrls } from '@/utils/utils'
 import { Message } from 'element-ui'
 
+// mavon-editor 预览模式的外部资源链接（仅引用编译时常量，提升到模块级避免重复创建）
+const previewExternalLink = {
+  hljs_js: () => process.env.BASE_URL + 'lib/highlight/highlight.min.js',
+  hljs_css: (css) => process.env.BASE_URL + `lib/highlight/styles/${css}.min.css`,
+  hljs_lang: (lang) => process.env.BASE_URL + `lib/highlight/languages/${lang}.min.js`,
+  markdown_css: false,
+  katex_js: () => process.env.BASE_URL + 'lib/katex/katex.min.js',
+  katex_css: () => process.env.BASE_URL + 'lib/katex/katex.min.css',
+}
+
 export default {
   name: 'BBSArticleDetails',
   components: { BBSCommentItem, mavonEditor },
@@ -171,14 +181,7 @@ export default {
         scrollStyle: true,
         boxShadow: false,
         ishljs: true,
-        externalLink: {
-          hljs_js: () => process.env.BASE_URL + 'lib/highlight/highlight.min.js',
-          hljs_css: (css) => process.env.BASE_URL + `lib/highlight/styles/${css}.min.css`,
-          hljs_lang: (lang) => process.env.BASE_URL + `lib/highlight/languages/${lang}.min.js`,
-          markdown_css: false,
-          katex_js: () => process.env.BASE_URL + 'lib/katex/katex.min.js',
-          katex_css: () => process.env.BASE_URL + 'lib/katex/katex.min.css',
-        },
+        externalLink: previewExternalLink,
       },
     }
   },
