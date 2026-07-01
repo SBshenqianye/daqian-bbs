@@ -18,15 +18,15 @@ module.exports = {
         port: 9081,
         proxy: {
             [process.env.VUE_APP_BBS_API]: {
-                target: process.env.DEV_BACKEND_URL + '/bbs-server',
+                target: 'http://127.0.0.1:9083/bbs-server',
                 changeOrigin: true,
                 pathRewrite: {
                     ['^' + process.env.VUE_APP_BBS_API]: ''
                 }
             },
-            // 代理 /files/ 静态资源到后端
+            // 文件统一走 /files/ proxy
             '/files/': {
-                target: process.env.DEV_BACKEND_URL + '/bbs-server',
+                target: 'http://127.0.0.1:9083/bbs-server',
                 changeOrigin: true,
             },
         },

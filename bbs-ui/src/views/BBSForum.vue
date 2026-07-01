@@ -121,8 +121,6 @@ export default {
       articles: [],
       hotTopics: [],
       filteredLabelId: null,
-      imageBase: process.env.VUE_APP_BBS_BASE_FILE || '',
-      apiBase: process.env.VUE_APP_BBS_API || '',
     }
   },
   mounted() {
@@ -158,7 +156,7 @@ export default {
           comments: a.articleCommentNum || a.commentNum || 0,
           likes: a.articleGoodNum || 0,
           labelId: a.articleLabelId || null,
-          cover: a.articleImage ? this.imageBase + a.articleImage : null,
+          cover: a.articleImage || null,
         }))
         this.loadAuthorAvatars()
       }).catch(() => {
@@ -182,7 +180,7 @@ export default {
       userIds.forEach(id => {
         getUserinfoById(id).then(resp => {
           if (resp && resp.portrait) {
-            const avatarUrl = this.apiBase + resp.portrait
+            const avatarUrl = resp.portrait
             this.articles.forEach(a => {
               if (a.userId === id) {
                 this.$set(a, 'authorAvatar', avatarUrl)
