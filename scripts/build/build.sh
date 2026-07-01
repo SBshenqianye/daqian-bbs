@@ -138,14 +138,20 @@ case "$MODE" in
     --native|native)
         MODE="native"
         check_prereqs
-        build_frontend
-        build_backend
+        # 前后端并行构建（互不依赖）
+        build_frontend &  PID_FE=$!
+        build_backend  &  PID_BE=$!
+        wait $PID_FE || { err "前端构建失败"; exit 1; }
+        wait $PID_BE || { err "后端构建失败"; exit 1; }
         ;;
     *)
         MODE="container"
         check_prereqs
-        build_frontend
-        build_backend
+        # 前后端并行构建，Nginx 镜像需等前端 dist 就绪
+        build_frontend &  PID_FE=$!
+        build_backend  &  PID_BE=$!
+        wait $PID_FE || { err "前端构建失败"; exit 1; }
+        wait $PID_BE || { err "后端构建失败"; exit 1; }
         build_nginx
         ;;
 esac
