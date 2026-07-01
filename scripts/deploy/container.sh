@@ -59,18 +59,15 @@ ensure_network() {
 # --------------- PostgreSQL ---------------
 start_postgres() {
     show_step "$1" "$2" "PostgreSQL 数据库"
-    if $RUNNER ps aux 2>/dev/null | grep -q "$BBS_PG_CONTAINER"; then
-        # Podman 方式
-        if $RUNNER container exists "$BBS_PG_CONTAINER" 2>/dev/null; then
-            info "PostgreSQL 容器已存在，检查状态..."
-            if ! $RUNNER ps --filter "name=$BBS_PG_CONTAINER" --format "{{.Status}}" | grep -q "Up"; then
-                info "启动已存在的 PostgreSQL 容器..."
-                $RUNNER start "$BBS_PG_CONTAINER"
-            else
-                ok "PostgreSQL 容器已在运行"
-            fi
-            return
+    if $RUNNER container exists "$BBS_PG_CONTAINER" 2>/dev/null; then
+        info "PostgreSQL 容器已存在，检查状态..."
+        if $RUNNER ps --filter "name=$BBS_PG_CONTAINER" --format "{{.Status}}" | grep -q "Up"; then
+            ok "PostgreSQL 容器已在运行"
+        else
+            info "启动已存在的 PostgreSQL 容器..."
+            $RUNNER start "$BBS_PG_CONTAINER"
         fi
+        return
     fi
 
     info "拉取并启动 PostgreSQL 容器..."

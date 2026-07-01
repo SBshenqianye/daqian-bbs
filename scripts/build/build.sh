@@ -157,9 +157,9 @@ case "$MODE" in
         check_prereqs
         # 前后端并行构建（互不依赖）
         build_frontend 1 3 &
-        local pid_fe=$!
+        pid_fe=$!
         build_backend 2 3 &
-        local pid_be=$!
+        pid_be=$!
         wait $pid_fe || { err "前端构建失败"; exit 1; }
         wait $pid_be || { err "后端构建失败"; exit 1; }
         # 自动打包
@@ -172,9 +172,9 @@ case "$MODE" in
         check_prereqs
         # 前后端并行构建，Nginx 镜像需等前端 dist 就绪
         build_frontend 1 4 &
-        local pid_fe=$!
+        pid_fe=$!
         build_backend 2 4 &
-        local pid_be=$!
+        pid_be=$!
         wait $pid_fe || { err "前端构建失败"; exit 1; }
         wait $pid_be || { err "后端构建失败"; exit 1; }
         build_nginx 3 4
