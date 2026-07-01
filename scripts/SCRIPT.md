@@ -21,7 +21,8 @@ scripts/
 │   └── init-db.sh               ← 数据库初始化
 │
 └── dist/
-    └── package.sh               ← 离线打包分发
+    ├── package.sh               ← 离线打包分发（Linux）
+    └── package.ps1              ← 离线打包分发（Windows PowerShell）
 ```
 
 ---
@@ -99,14 +100,23 @@ bash scripts/ops/init-db.sh -h 127.0.0.1 -p 5432 -U work_flow -d bbs
 
 ### dist/ — 分发
 
-**package.sh** — 打包构建产物为可分发的 tar.gz。
+**package.sh / package.ps1** — 打包构建产物为可分发的 tar.gz。
 
+Linux:
 ```bash
-bash scripts/dist/package.sh                  # 标准打包（JAR + dist + 配置 + 脚本）
+bash scripts/dist/package.sh                  # 标准打包
 bash scripts/dist/package.sh --minimal        # 仅运行所需文件
 bash scripts/dist/package.sh --with-source    # 含源代码
-# 输出: bbs-deploy-YYYYMMDD-HHMMSS.tar.gz （在项目根目录）
 ```
+
+Windows (PowerShell):
+```powershell
+.\scripts\dist\package.ps1                    # 标准打包
+.\scripts\dist\package.ps1 -Minimal           # 仅运行所需文件
+.\scripts\dist\package.ps1 -WithSource        # 含源代码
+```
+
+输出: `bbs-deploy-YYYYMMDD-HHMMSS.tar.gz`（在项目根目录）
 
 ### 配置
 
