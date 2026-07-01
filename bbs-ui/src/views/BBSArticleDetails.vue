@@ -136,8 +136,7 @@ export default {
       newComment: '',
       articleId: this.$route.params.articleId,
       loading: true,
-      apiBase: process.env.VUE_APP_BBS_API || '',
-      fileBase: process.env.VUE_APP_BBS_BASE_FILE || '',
+      // VUE_APP_BBS_API、VUE_APP_BBS_BASE_FILE 废弃，文件统一使用 /files/ 原始路径
       // Current user
       currentUser: null,
       currentUserAvatar: '',
@@ -217,7 +216,7 @@ export default {
         if (u) {
           this.currentUser = JSON.parse(u)
           if (this.currentUser.portrait) {
-            this.currentUserAvatar = this.apiBase + this.currentUser.portrait
+            this.currentUserAvatar = this.currentUser.portrait
           }
         }
       } catch (e) { /* ignore */ }
@@ -241,7 +240,7 @@ export default {
           const rawContent = resp.articleContentHtml || resp.articleContent || ''
           this.article.contentHtml = normalizeUrls(rawContent)
           this.mdContent = normalizeUrls(rawContent)
-          this.article.articleImage = resp.articleImage ? this.fileBase + resp.articleImage : ''
+          this.article.articleImage = resp.articleImage || ''
           // Fetch author info
           if (resp.userId) {
             this.loadAuthorInfo(resp.userId)
@@ -256,7 +255,7 @@ export default {
         if (resp) {
           this.authorInfo = resp
           if (resp.portrait) {
-            this.article.authorAvatar = this.apiBase + resp.portrait
+            this.article.authorAvatar = resp.portrait
           }
           this.article.authorTitle = resp.title || ''
         }
@@ -282,7 +281,7 @@ export default {
         commentRootId: commentId,
         userId: c.userId,
         author: c.nickname || '',
-        avatar: c.portrait ? this.apiBase + c.portrait : '',
+        avatar: c.portrait || '',
         time: c.commentTime || '',
         content: c.commentContent || '',
         canDelete: myId != null && String(c.userId) === String(myId),
@@ -292,7 +291,7 @@ export default {
           userId: r.replyUserId || r.userId,
           replyTargetUserId: r.replyToUserId,
           author: r.nickname || '',
-          avatar: r.portrait ? this.apiBase + r.portrait : '',
+          avatar: r.portrait || '',
           time: r.replyTime || '',
           content: r.replyContent || '',
           replyTo: r.replyToNickname || '',
@@ -391,7 +390,7 @@ export default {
     },
     downloadFile(filePath, fileName) {
       if (!filePath) return
-      const url = this.fileBase + (filePath.startsWith('/') ? filePath : '/' + filePath)
+      const url = filePath.startsWith('/') ? filePath : '/' + filePath
       fetch(url, { method: 'GET', credentials: 'include' })
         .then(resp => {
           if (!resp.ok) throw new Error('下载失败')

@@ -153,7 +153,7 @@ export default {
   computed: {
     portrait() {
       if (this.user && this.user.portrait) {
-        return `${process.env.VUE_APP_BBS_API}${this.user.portrait}`
+        return this.user.portrait
       }
       return require('../assets/portrait.png')
     },

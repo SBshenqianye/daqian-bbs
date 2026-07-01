@@ -77,8 +77,6 @@ export default {
     return {
       loading: false,
       articles: [],
-      imageBase: process.env.VUE_APP_BBS_BASE_FILE || '',
-      apiBase: process.env.VUE_APP_BBS_API || '',
     }
   },
   mounted() {
@@ -93,7 +91,7 @@ export default {
       }
       const user = JSON.parse(userStr)
       const userId = user.id
-      const userAvatar = user.portrait ? this.apiBase + user.portrait : ''
+      const userAvatar = user.portrait || ''
       this.loading = true
       this.getRequest(`/article/getArticleByUserId?userId=${userId}`).then(resp => {
         this.loading = false
@@ -108,7 +106,7 @@ export default {
           views: a.articleViewNum || 0,
           comments: a.articleCommentNum || 0,
           likes: a.articleGoodNum || 0,
-          cover: a.articleImage ? this.imageBase + a.articleImage : null,
+          cover: a.articleImage || null,
         }))
       }).catch(() => {
         this.loading = false
