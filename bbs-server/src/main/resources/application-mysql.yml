@@ -13,6 +13,10 @@ spring:
       validation-query: SELECT 1
       stat-view-servlet:
         allow: true
+  servlet:
+    multipart:
+      # 容器环境必须用 Linux 路径（覆盖 application.yml 中的 Windows 路径）
+      location: ${BBS_UPLOAD_TEMP:/tmp/bbs-upload}
 
 # 文件存储路径（保持与原来一致）
 storage:
