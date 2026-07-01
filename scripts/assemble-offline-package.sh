@@ -47,13 +47,17 @@ echo "       done: bbs-server.jar"
 # ============================================
 echo "===== [3/7] 构建前端 bbs-ui ====="
 cd "${PROJECT_DIR}/bbs-ui"
-npm install --silent
+if [ ! -d "node_modules" ]; then
+    npm install
+fi
 npm run build
 echo "       done: bbs-ui/dist"
 
 echo "===== [4/7] 构建前端 bbs-admin-ui ====="
 cd "${PROJECT_DIR}/bbs-admin-ui"
-npm install --silent
+if [ ! -d "node_modules" ]; then
+    npm install
+fi
 npm run build
 echo "       done: bbs-admin-ui/dist"
 
