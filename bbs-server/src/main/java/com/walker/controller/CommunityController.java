@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -126,9 +127,11 @@ public class CommunityController {
         String pathDB = "";
 
         File outFile = new File(path);
-        if(outFile.getParentFile() != null || !outFile.getParentFile().isDirectory()){
-            // 创建文件夹
-            outFile.getParentFile().mkdirs();
+        File parentDir = outFile.getParentFile();
+        if (parentDir != null && !parentDir.isDirectory()) {
+            if (!parentDir.mkdirs() && !parentDir.exists()) {
+                throw new IOException("无法创建上传目录: " + parentDir.getAbsolutePath());
+            }
         }
         try {
             // 将前端传递的文件保存到本地服务器路径下

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -51,7 +52,7 @@ public class SlideshowController {
 
     @ApiOperation(value = "保存轮播图返回地址给前端")
     @PostMapping("/admin/addSlideshowReturnImageUrl")
-    public String addSlideshowReturnUrl(@RequestParam("image") String image){
+    public String addSlideshowReturnUrl(@RequestParam("image") String image) throws Exception {
         // 图片后缀
         String suffix="jpg";
 
@@ -64,9 +65,11 @@ public class SlideshowController {
         String pathDB = "";
 
         File outFile = new File(path);
-        if (outFile.getParentFile() != null || !outFile.getParentFile().isDirectory()) {
-            // 创建文件夹
-            outFile.getParentFile().mkdirs();
+        File parentDir = outFile.getParentFile();
+        if (parentDir != null && !parentDir.isDirectory()) {
+            if (!parentDir.mkdirs() && !parentDir.exists()) {
+                throw new IOException("无法创建上传目录: " + parentDir.getAbsolutePath());
+            }
         }
         try {
             // 将前端传递的文件保存到本地服务器路径下
