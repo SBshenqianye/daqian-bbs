@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.File;
+import java.io.IOException;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -96,9 +97,11 @@ public class UserController {
         String path = basePath +"User/"+"id_"+id+"/portrait/"+time+"_."+pType;
 
         File outFile = new File(path);
-        if(outFile.getParentFile() != null || !outFile.getParentFile().isDirectory()){
-            // 创建文件夹
-            outFile.getParentFile().mkdirs();
+        File parentDir = outFile.getParentFile();
+        if (parentDir != null && !parentDir.isDirectory()) {
+            if (!parentDir.mkdirs() && !parentDir.exists()) {
+                throw new IOException("无法创建上传目录: " + parentDir.getAbsolutePath());
+            }
         }
         try {
             // 将前端传递的文件保存到本地服务器路径下
@@ -112,7 +115,7 @@ public class UserController {
             e.printStackTrace();
         }
 
-        return null;
+        return ResultBean.error("上传头像失败");
     }
 
     @ApiOperation(value = "修改当前用户信息")

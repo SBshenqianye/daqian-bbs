@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -47,6 +48,10 @@ public class ArticleFileController {
     public ResultBean articleFile(@RequestParam("userId") Integer id, @RequestParam("file") MultipartFile file) throws Exception {
         // 附件完整名称，如：xxx.txt
         String fileName = file.getOriginalFilename();
+        // 防止路径遍历：过滤掉文件名中的目录分隔符
+        if (fileName != null) {
+            fileName = new File(fileName).getName();
+        }
         // 附件完整类型，如："image/jpeg" 或 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         String contentType = file.getContentType();
         Date date = new Date();
@@ -59,9 +64,11 @@ public class ArticleFileController {
         // 返回给前端的 url 路径
         String imageUrl = "";
         File outFile = new File(path);
-        if (outFile.getParentFile() != null || !outFile.getParentFile().isDirectory()) {
-            // 创建文件夹
-            outFile.getParentFile().mkdirs();
+        File parentDir = outFile.getParentFile();
+        if (parentDir != null && !parentDir.isDirectory()) {
+            if (!parentDir.mkdirs() && !parentDir.exists()) {
+                throw new IOException("无法创建上传目录: " + parentDir.getAbsolutePath());
+            }
         }
         try {
             // 将前端传递的文件保存到本地服务器路径下
