@@ -7,6 +7,9 @@ node_modules/
 # Frontend build output
 dist/
 
+# But keep scripts/dist (not a build output)
+!scripts/dist/
+
 # Java build output
 target/
 
