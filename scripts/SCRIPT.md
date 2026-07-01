@@ -42,8 +42,20 @@ bash scripts/ops/teardown.sh                  # 清理
 ```bash
 bash scripts/build/build.sh --native          # 构建全部 + 原生部署包
 # 传输 bbs-deploy-*.tar.gz 到生产服务器后:
-tar -xzf bbs-deploy-*.tar.gz
+sudo tar -xzf bbs-deploy-*.tar.gz -C /data
+cd /data/bbs-deploy
 bash scripts/deploy/native.sh                 # 部署
+```
+
+### 离线分发（容器模式）
+
+```bash
+bash scripts/build/build.sh                   # 构建 + 容器离线包
+# 传输 bbs-offline-*.tar.gz 到内网服务器后:
+sudo mkdir -p /data
+sudo tar -xzf bbs-offline-*.tar.gz -C /data
+cd /data/bbs
+sudo bash deploy.sh                           # 一键部署
 ```
 
 ---
