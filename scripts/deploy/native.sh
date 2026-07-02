@@ -2,7 +2,7 @@
 # ============================================
 # BBS 原生部署脚本（适用于 RHEL 7 / CentOS 7）
 # 前置条件:
-#   1. PostgreSQL 已安装并运行
+#   1. PostgreSQL 数据库已运行并可访问
 #   2. JDK 8+ 已安装
 #   3. Nginx 已安装
 #   4. 已运行 bash scripts/build/build.sh --native
@@ -20,9 +20,9 @@ if [ -f ".env" ]; then
     set -a; source .env; set +a
 fi
 
-# 默认值（生产环境默认 PostgreSQL 端口 5432）
+# 默认值
 BBS_DB_HOST="${BBS_DB_HOST:-127.0.0.1}"
-BBS_DB_PORT="${BBS_DB_PORT:-5432}"
+BBS_DB_PORT="${BBS_DB_PORT:-15432}"
 BBS_DB_NAME="${BBS_DB_NAME:-bbs}"
 BBS_DB_USER="${BBS_DB_USER:-work_flow}"
 BBS_DB_PASSWORD="${BBS_DB_PASSWORD:-work_flow123}"
@@ -30,7 +30,6 @@ BBS_SERVER_PORT="${BBS_SERVER_PORT:-9083}"
 NGINX_PORT="${NGINX_PORT:-19848}"
 BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR:-/data/bbs/bbsUpload}"
 BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR%/}/"
-BBS_PG_DATA="${BBS_PG_DATA:-/data/sql/postgre}"
 
 # --------------- 颜色 ---------------
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; RED='\033[0;31m'; NC='\033[0m'
@@ -47,14 +46,6 @@ check_prereqs() {
     show_step "$1" "$2" "前置依赖检查"
 
     local missing=0
-
-    # PostgreSQL
-    if command -v psql >/dev/null 2>&1; then
-        ok "PostgreSQL 客户端已安装"
-    else
-        warn "psql 未安装，请安装 postgresql-client"
-        missing=1
-    fi
 
     # JDK
     if command -v java >/dev/null 2>&1; then
@@ -75,63 +66,6 @@ check_prereqs() {
         err "请安装缺失的依赖后重试"
         exit 1
     fi
-}
-
-# --------------- PostgreSQL 检查/启动 ---------------
-ensure_postgres() {
-    show_step "$1" "$2" "检查 PostgreSQL"
-
-    if systemctl is-active postgresql >/dev/null 2>&1; then
-        ok "PostgreSQL 服务运行中"
-    elif systemctl is-active postgresql-13 >/dev/null 2>&1; then
-        ok "PostgreSQL 13 服务运行中"
-    elif systemctl is-active postgresql-12 >/dev/null 2>&1; then
-        ok "PostgreSQL 12 服务运行中"
-    elif pg_isready -h "$BBS_DB_HOST" -p "$BBS_DB_PORT" >/dev/null 2>&1; then
-        ok "PostgreSQL 正在监听 $BBS_DB_HOST:$BBS_DB_PORT"
-    else
-        cat <<'EOF'
-警告: PostgreSQL 未运行！
-请先启动 PostgreSQL：
-
-  # RHEL 7 / CentOS 7 启动命令:
-  sudo systemctl start postgresql-13
-  sudo systemctl enable postgresql-13
-
-  # 或手动启动:
-  pg_ctl -D /data/sql/postgre start
-
-  # 检查状态:
-  pg_isready -h 127.0.0.1 -p 5432
-
-如果 PostgreSQL 数据目录在 /data/sql/postgre，初始化命令:
-  sudo postgresql-13-setup initdb
-  sudo systemctl start postgresql-13
-EOF
-        exit 1
-    fi
-
-    # 检查数据库是否存在
-    if PGPASSWORD="$BBS_DB_PASSWORD" psql -h "$BBS_DB_HOST" -p "$BBS_DB_PORT" -U "$BBS_DB_USER" -d "$BBS_DB_NAME" -c "SELECT 1" >/dev/null 2>&1; then
-        ok "数据库 $BBS_DB_NAME 已存在"
-    else
-        info "创建数据库 $BBS_DB_NAME..."
-        PGPASSWORD="$BBS_DB_PASSWORD" psql -h "$BBS_DB_HOST" -p "$BBS_DB_PORT" -U "$BBS_DB_USER" -d postgres -c "CREATE DATABASE \"$BBS_DB_NAME\";"
-        ok "数据库 $BBS_DB_NAME 已创建"
-    fi
-}
-
-# --------------- 数据库初始化 ---------------
-init_database() {
-    show_step "$1" "$2" "初始化数据库表结构"
-    local sql_file="$ROOT_DIR/bbs-server/src/main/resources/db/init/init-pg.sql"
-    if [ ! -f "$sql_file" ]; then
-        warn "未找到 init-pg.sql，跳过数据库初始化"
-        return
-    fi
-
-    PGPASSWORD="$BBS_DB_PASSWORD" psql -h "$BBS_DB_HOST" -p "$BBS_DB_PORT" -U "$BBS_DB_USER" -d "$BBS_DB_NAME" -f "$sql_file"
-    ok "数据库初始化完成"
 }
 
 # --------------- 部署后端 ---------------
@@ -274,8 +208,7 @@ setup_systemd() {
     sudo tee "$service_file" >/dev/null <<EOF
 [Unit]
 Description=BBS Server
-After=network.target postgresql.service
-Wants=postgresql.service
+After=network.target
 
 [Service]
 Type=simple
@@ -301,13 +234,11 @@ EOF
 # --------------- 主流程 ---------------
 show_header "BBS 原生部署 (RHEL 7 / CentOS 7)"
 
-check_prereqs 1 7
-ensure_postgres 2 7
-init_database 3 7
-deploy_backend 4 7
-deploy_frontend 5 7
-configure_nginx 6 7
-setup_systemd 7 7
+check_prereqs 1 5
+deploy_backend 2 5
+deploy_frontend 3 5
+configure_nginx 4 5
+setup_systemd 5 5
 
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
@@ -322,5 +253,26 @@ echo -e "${GREEN}║${NC}    查看后端日志:  journalctl -u bbs-server -f"
 echo -e "${GREEN}║${NC}    重启后端:     sudo systemctl restart bbs-server"
 echo -e "${GREEN}║${NC}    重启 Nginx:   sudo systemctl reload nginx"
 echo -e "${GREEN}║${NC}"
+echo -e "${YELLOW}╔══════════════════════════════════════════════╗${NC}"
+echo -e "${YELLOW}║${NC}  ⚠ 请确保 PostgreSQL 已启动并正常运行"
+echo -e "${YELLOW}║${NC}"
+echo -e "${YELLOW}║${NC}    默认端口:  ${BBS_DB_PORT}  |  数据库: ${BBS_DB_NAME}"
+echo -e "${YELLOW}║${NC}"
+echo -e "${YELLOW}║${NC}  BBS_DB_HOST 配置方式（按实际情况选一种）:"
+echo -e "${YELLOW}║${NC}"
+echo -e "${YELLOW}║${NC}  方案 A) PG 是容器且与后端在同一台机器:"
+echo -e "${YELLOW}║${NC}      podman network connect bbs-net <PG容器名>"
+echo -e "${YELLOW}║${NC}      然后 BBS_DB_HOST=<PG容器名>"
+echo -e "${YELLOW}║${NC}"
+echo -e "${YELLOW}║${NC}  方案 B) PG 是同宿主机原生服务:"
+echo -e "${YELLOW}║${NC}      确保 PG 监听 0.0.0.0 或所需 IP"
+echo -e "${YELLOW}║${NC}      BBS_DB_HOST=127.0.0.1 或宿主机 IP"
+echo -e "${YELLOW}║${NC}"
+echo -e "${YELLOW}║${NC}  方案 C) PG 在远程服务器:"
+echo -e "${YELLOW}║${NC}      BBS_DB_HOST=<远程服务器 IP>"
+echo -e "${YELLOW}║${NC}"
+echo -e "${YELLOW}║${NC}  PostgreSQL 需自行管理，脚本不会自动启动或关闭"
+echo -e "${YELLOW}╚══════════════════════════════════════════════╝${NC}"
+echo ""
 echo -e "${GREEN}║${NC}  停止服务:  bash scripts/ops/teardown.sh"
 echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"
