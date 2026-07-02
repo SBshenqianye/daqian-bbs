@@ -149,7 +149,29 @@ if [ ! -f ".env" ]; then
     read -r
 fi
 
-# 3. 部署
+# 3. 确认 PostgreSQL 已就绪
+echo ""
+echo "============================================"
+echo "  ⚠ 请确保 PostgreSQL 已启动并正常运行"
+echo ""
+echo "  BBS_DB_HOST 配置方式（按实际情况选一种）:"
+echo ""
+echo "  方案 A) PG 是容器且加入 bbs-net 网络:"
+echo "     podman network connect bbs-net <PG容器名>"
+echo "     然后 BBS_DB_HOST=<PG容器名>"
+echo ""
+echo "  方案 B) PG 是同宿主机原生服务:"
+echo "     BBS_DB_HOST=host.docker.internal 或宿主机 IP"
+echo ""
+echo "  方案 C) PG 在远程服务器:"
+echo "     BBS_DB_HOST=<远程服务器 IP>"
+echo ""
+echo "  PostgreSQL 需自行管理，脚本不会自动启动或关闭"
+echo "  默认端口: 15432"
+echo "============================================"
+echo ""
+
+# 4. 部署
 echo "[INFO] 启动容器部署..."
 bash scripts/deploy/container.sh
 DEPLOYEOF
@@ -161,7 +183,7 @@ DEPLOYEOF
 
 ## 前置条件
 
-目标服务器需安装 **Podman**（推荐）或 **Docker**，以及 **PostgreSQL 13+**。
+目标服务器需安装 **Podman**（推荐）或 **Docker**，以及可访问的 **PostgreSQL** 数据库（默认端口 15432）。
 
 ## 一键部署
 
@@ -174,6 +196,9 @@ sudo bash deploy.sh
 ```
 
 `deploy.sh` 会自动完成：加载镜像 → 初始化配置 → 启动容器。
+
+> PostgreSQL 需自行管理，部署脚本不会自动启动数据库。
+> 部署前请确保 PG 已运行并在 `.env` 中正确配置 `BBS_DB_HOST`。
 
 ## 自定义配置
 
@@ -188,7 +213,7 @@ bash deploy.sh
 ## 清理
 
 ```bash
-bash scripts/teardown.sh
+bash scripts/ops/teardown.sh
 ```
 
 ## 目录结构
@@ -267,7 +292,9 @@ package_native() {
      cp scripts/.env.example .env
      vi .env         # 修改数据库密码等配置
 
-  2. 选择部署方式:
+  2. 确保 PostgreSQL 已运行并可在 .env 中配置的地址访问
+
+  3. 选择部署方式:
 
      方式 A - 容器部署（需要 Podman/Docker）:
        bash scripts/deploy/container.sh
@@ -275,11 +302,11 @@ package_native() {
      方式 B - 原生部署（RHEL 7 / CentOS 7）:
        bash scripts/deploy/native.sh
 
-  3. 访问:
+  4. 访问:
      用户前端:  http://<服务器IP>:19848/bbs-user/
      管理后台:  http://<服务器IP>:19848/bbs-admin/
 
-  4. 清理:
+  5. 清理:
      bash scripts/ops/teardown.sh
 
 详细文档请参见 DEPLOY.md

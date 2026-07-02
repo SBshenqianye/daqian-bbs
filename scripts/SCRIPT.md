@@ -6,25 +6,25 @@
 
 ```
 scripts/
-├── SCRIPT.md                    ← 本文件
-├── .env.example                 ← 环境变量配置模板
+├── SCRIPT.md              ← 本文件
+├── .env.example           ← 环境变量配置模板
 ├── lib/
-│   └── progress.sh              ← 进度指示工具库（步骤计数、spinner、进度条）
+│   └── progress.sh        ← 进度指示工具库（步骤计数、spinner、进度条）
 │
 ├── build/
-│   └── build.sh                 ← 构建脚本（自动打包）
+│   └── build.sh           ← 构建脚本（自动打包）
 │
 ├── deploy/
-│   ├── container.sh             ← 容器部署（WSL2 + Podman）
-│   └── native.sh                ← 原生部署（RHEL 7）
+│   ├── container.sh       ← 容器部署（WSL2 + Podman）
+│   └── native.sh          ← 原生部署（RHEL 7）
 │
 ├── ops/
-│   ├── teardown.sh              ← 清理脚本
-│   └── init-db.sh               ← 数据库初始化
+│   ├── teardown.sh        ← 清理脚本
+│   └── init-db.sh         ← 数据库初始化
 │
 └── dist/
-    ├── package.sh               ← 离线打包分发（Linux）
-    └── package.ps1              ← 离线打包分发（Windows PowerShell）
+    ├── package.sh         ← 离线打包分发（Linux）
+    └── package.ps1        ← 离线打包分发（Windows PowerShell）
 ```
 
 ---
@@ -60,6 +60,9 @@ cd /data/bbs
 sudo bash deploy.sh                           # 一键部署
 ```
 
+> **注意**: PostgreSQL 需自行启动，部署脚本不会自动管理数据库。
+> 部署前请确保 PG 已运行并在 `.env` 中正确配置 `BBS_DB_HOST`。默认端口 `15432`。
+
 ---
 
 ## 各分类说明
@@ -81,17 +84,17 @@ bash scripts/build/build.sh --backend         # 仅构建后端
 
 ### deploy/ — 部署
 
-**container.sh** — 在 WSL2 上使用 Podman 部署整套环境。
-自动创建网络、启动 PostgreSQL/后端/Nginx 三个容器。
+**container.sh** — 在 WSL2 上使用 Podman 部署后端和 Nginx 容器。
+自动创建网络、启动后端/Nginx 两个容器。
+PostgreSQL 需自行管理。
 
 ```bash
 bash scripts/deploy/container.sh              # 完整部署
-bash scripts/deploy/container.sh --no-pg      # 跳过 PG（用已有数据库）
-bash scripts/deploy/container.sh --pg-only    # 仅启动 PG 容器
 ```
 
 **native.sh** — 在 RHEL 7 上原生部署（不依赖容器）。
-自动执行数据库初始化、启动后端进程、创建 systemd 服务、配置 Nginx。
+自动启动后端进程、创建 systemd 服务、配置 Nginx。
+PostgreSQL 需自行管理。
 
 ```bash
 bash scripts/deploy/native.sh
@@ -99,11 +102,11 @@ bash scripts/deploy/native.sh
 
 ### ops/ — 运维
 
-**teardown.sh** — 停止所有容器/进程，可选择删除数据。
+**teardown.sh** — 停止所有容器/进程。不会影响外部管理的 PostgreSQL。
 
 ```bash
-bash scripts/ops/teardown.sh                  # 停止容器（保留数据卷）
-bash scripts/ops/teardown.sh --all            # 停止容器 + 删除数据
+bash scripts/ops/teardown.sh                  # 停止容器
+bash scripts/ops/teardown.sh --all            # 停止容器 + 删除网络
 bash scripts/ops/teardown.sh --native         # 停止原生部署的后端进程
 ```
 
@@ -148,7 +151,7 @@ Windows (PowerShell):
 | 功能 | 函数 | 适用场景 |
 |------|------|----------|
 | 步骤编号标题 | `show_step <当前> <总数> <描述>` | 每个主要阶段顶部 |
-| Spinner 动画 | `run_with_spinner <消息> <命令>` | 长时间单命令（npm install、docker build） |
+| 计时器 | `run_with_timer <消息> <命令>` | 长时间单命令（npm install、docker build） |
 | 并行任务监控 | `track_parallel <标题> <PID> <标签> ...` | 并行构建的前端项目 |
 | 轮询指示器 | `polling_spinner <消息> <当前> <总数>` | 后端健康检查等待 |
 | 百分比进度条 | `progress_bar <当前> <总数> [标签]` | 已知总数的文件操作 |
@@ -163,5 +166,5 @@ Windows (PowerShell):
 ```bash
 cp scripts/.env.example .env
 # 编辑 .env 填入数据库密码等
-# 完整变量列表见 DEPLOY.md 附录
+# PostgreSQL 需自行启动，确保 BBS_DB_HOST 指向正确的数据库地址
 ```
