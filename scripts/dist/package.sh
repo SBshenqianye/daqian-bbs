@@ -95,11 +95,9 @@ package_container() {
 
     # 2. 部署脚本
     info "===== 复制部署脚本 ====="
-    mkdir -p "$OUTPUT_DIR/scripts"
-    cp scripts/.env.example         "$OUTPUT_DIR/scripts/"
-    cp scripts/deploy/container.sh  "$OUTPUT_DIR/scripts/"
-    cp scripts/ops/teardown.sh      "$OUTPUT_DIR/scripts/"
-    cp scripts/ops/init-db.sh       "$OUTPUT_DIR/scripts/"
+    rm -rf "$OUTPUT_DIR/scripts"
+    cp -r scripts "$OUTPUT_DIR/scripts"
+    rm -f "$OUTPUT_DIR/scripts/.env.example"  # 单独处理
 
     # 3. Dockerfile（可选，方便内网重编）
     info "===== 复制 Dockerfile ====="
@@ -201,9 +199,14 @@ bash scripts/teardown.sh
 ├── bbs-server.tar           # 后端镜像
 ├── bbs-nginx.tar            # Nginx 镜像（含前端静态文件）
 ├── scripts/
-│   ├── .env.example         # 配置模板
-│   ├── container.sh         # 容器部署脚本
-│   └── teardown.sh          # 清理脚本
+│   ├── deploy/
+│   │   └── container.sh     # 容器部署脚本
+│   ├── ops/
+│   │   ├── teardown.sh      # 清理脚本
+│   │   └── init-db.sh       # 数据库初始化
+│   ├── lib/
+│   │   └── progress.sh      # 进度指示库
+│   └── .env.example         # 配置模板
 ├── docker/                  # Dockerfile（内网重编用）
 └── README.md
 ```
@@ -245,13 +248,9 @@ package_native() {
     cp bbs-server/src/main/resources/db/init/init-pg.sql "$OUTPUT_DIR/db/init/"
 
     # 脚本
-    mkdir -p "$OUTPUT_DIR/scripts"
-    cp scripts/deploy/native.sh   "$OUTPUT_DIR/scripts/"
-    cp scripts/deploy/container.sh "$OUTPUT_DIR/scripts/"
-    cp scripts/ops/teardown.sh    "$OUTPUT_DIR/scripts/"
-    cp scripts/ops/init-db.sh     "$OUTPUT_DIR/scripts/"
-    cp scripts/.env.example       "$OUTPUT_DIR/scripts/"
-    cp scripts/build/build.sh     "$OUTPUT_DIR/scripts/" 2>/dev/null || true
+    rm -rf "$OUTPUT_DIR/scripts"
+    cp -r scripts "$OUTPUT_DIR/scripts"
+    rm -f "$OUTPUT_DIR/scripts/.env.example"  # 单独处理
 
     # 文档
     cp DEPLOY.md "$OUTPUT_DIR/" 2>/dev/null || true
