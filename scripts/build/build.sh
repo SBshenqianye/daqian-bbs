@@ -46,12 +46,16 @@ check_prereqs() {
     fi
 }
 
-# --------------- 构建前端 ---------------
-build_frontend() {
+# --------------- 依赖安装（串行，避免 IO 争抢） ---------------
+install_frontend_deps() {
     local step=$1 total=$2
-    show_step "$step" "$total" "构建前端（并行 bbs-ui + bbs-admin-ui）"
+    show_step "$step" "$total" "安装前端依赖（串行）"
 
-    # ========== 阶段 1：依赖安装（串行，避免 IO 争抢） ==========
+    # 如果 dist 已存在，跳过整个步骤（前端由 Windows 构建）
+    if [ -d "bbs-ui/dist" ] && [ -d "bbs-admin-ui/dist" ]; then
+        info "前端 dist 已存在，跳过 npm install"
+        return
+    fi
 
     _install_deps() {
         local dir=$1 label=$2
@@ -77,8 +81,18 @@ build_frontend() {
 
     _install_deps "bbs-ui" "bbs-ui"
     _install_deps "bbs-admin-ui" "bbs-admin-ui"
+}
 
-    # ========== 阶段 2：并行构建（build 本身 CPU/内存密集，并行收益大） ==========
+# --------------- 构建前端（仅 build，依赖已就绪） ---------------
+build_frontend() {
+    local step=$1 total=$2
+    show_step "$step" "$total" "构建前端（并行 bbs-ui + bbs-admin-ui）"
+
+    # 如果 dist 已存在，跳过整个步骤（前端由 Windows 构建）
+    if [ -d "bbs-ui/dist" ] && [ -d "bbs-admin-ui/dist" ]; then
+        info "前端 dist 已存在，跳过前端构建"
+        return
+    fi
 
     local log_ui log_admin
     log_ui=$(mktemp /tmp/bbs-ui-XXXX.log)
@@ -164,7 +178,8 @@ case "$MODE" in
         MODE="frontend"
         show_header "BBS 前端构建"
         check_prereqs
-        build_frontend 1 1
+        install_frontend_deps 1 2
+        build_frontend 2 2
         ;;
     --backend|backend)
         MODE="backend"
@@ -176,31 +191,35 @@ case "$MODE" in
         MODE="native"
         show_header "BBS 原生构建 + 打包"
         check_prereqs
-        # 前后端并行构建（互不依赖）
-        build_frontend 1 3 &
+        # 1. 先串行安装依赖（输出整洁）
+        install_frontend_deps 1 4
+        # 2. 再并行构建（build 本身 CPU 密集）
+        build_frontend 2 4 &
         pid_fe=$!
-        build_backend 2 3 &
+        build_backend 3 4 &
         pid_be=$!
         wait $pid_fe || { err "前端构建失败"; exit 1; }
         wait $pid_be || { err "后端构建失败"; exit 1; }
-        # 自动打包
-        show_step 3 3 "自动打包"
+        # 3. 自动打包
+        show_step 4 4 "自动打包"
         run_with_spinner "创建原生部署包" bash scripts/dist/package.sh --native
         ;;
     *)
         MODE="container"
         show_header "BBS 容器镜像构建 + 打包"
         check_prereqs
-        # 前后端并行构建，Nginx 镜像需等前端 dist 就绪
-        build_frontend 1 4 &
+        # 1. 先串行安装依赖（输出整洁）
+        install_frontend_deps 1 5
+        # 2. 再并行构建
+        build_frontend 2 5 &
         pid_fe=$!
-        build_backend 2 4 &
+        build_backend 3 5 &
         pid_be=$!
         wait $pid_fe || { err "前端构建失败"; exit 1; }
         wait $pid_be || { err "后端构建失败"; exit 1; }
-        build_nginx 3 4
-        # 自动打包
-        show_step 4 4 "自动打包"
+        build_nginx 4 5
+        # 3. 自动打包
+        show_step 5 5 "自动打包"
         run_with_spinner "创建容器离线包" bash scripts/dist/package.sh
         ;;
 esac

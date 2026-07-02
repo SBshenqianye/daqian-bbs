@@ -1,4 +1,7 @@
 spring:
+  servlet:
+    multipart:
+      location: D:/tmp/bbs-upload
   # MySQL 5.6 设置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver

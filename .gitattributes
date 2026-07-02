@@ -1,0 +1,16 @@
+# Shell 脚本强制 LF（兼容 Linux/WSL）
+*.sh text eol=lf
+
+# 二进制文件不要转换
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ttf binary
+*.zip binary
+*.tar.gz binary

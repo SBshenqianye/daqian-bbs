@@ -17,8 +17,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // 确保 path 有且仅有一个尾部斜杠，避免双斜杠问题
+        String normalizedPath = path.replaceAll("[/\\\\]+$", "") + "/";
         registry.addResourceHandler("/files/**")
-                .addResourceLocations("file:" + path + "/");
+                .addResourceLocations("file:" + normalizedPath);
     }
 
     @Bean

@@ -1,0 +1,8 @@
+# 本地开发环境覆盖（临时）
+# 激活方式：spring.profiles.active: dev,local
+spring:
+  servlet:
+    multipart:
+      location: C:/tmp/bbs-upload
+storage:
+  path: C:\temp\bbs-upload\

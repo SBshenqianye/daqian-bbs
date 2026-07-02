@@ -7,6 +7,9 @@ node_modules/
 # Frontend build output
 dist/
 
+# But keep scripts/dist (not a build output)
+!scripts/dist/
+
 # Java build output
 target/
 
@@ -44,6 +47,9 @@ bbs-offline-latest.tar.gz
 
 # Environment configuration (contains secrets)
 .env
+
+# Build cache
+.cache_checksum
 
 # Build output directories
 bbs/
