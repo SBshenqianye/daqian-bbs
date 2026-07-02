@@ -3,6 +3,7 @@ package com.walker.controller;
 
 import com.walker.pojo.Slideshow;
 import com.walker.service.SlideshowService;
+import com.walker.utils.FilePathNormalizer;
 import com.walker.utils.ImageUtil;
 import com.walker.vo.ResultBean;
 import com.walker.vo.param.SlideshowParam;
@@ -35,13 +36,21 @@ public class SlideshowController {
     @Value("${storage.path}")
     private String basePath;
 
+    @Value("${server.servlet.context-path}")
+    private String contextPath;
+
 
 
     @ApiOperation(value = "获取首页轮播图")
     @GetMapping("/common/getSlideshow")
     public List<Slideshow> getAllSlideshow(){
-
-        return slideshowService.queryAllSlideshow();
+        List<Slideshow> list = slideshowService.queryAllSlideshow();
+        if (list != null) {
+            for (Slideshow s : list) {
+                s.setImageUrl(FilePathNormalizer.normalizeFieldUrl(s.getImageUrl(), contextPath));
+            }
+        }
+        return list;
     }
 
     @ApiOperation(value = "获取轮播图")
@@ -76,7 +85,7 @@ public class SlideshowController {
             ImageUtil.generateImage(image, path);
 
 
-            pathDB = "/files/Admin/slidesshow/" + time + "_." + suffix;
+            pathDB = contextPath + "/files/Admin/slidesshow/" + time + "_." + suffix;
 
         } catch (Exception e) {
             e.printStackTrace();

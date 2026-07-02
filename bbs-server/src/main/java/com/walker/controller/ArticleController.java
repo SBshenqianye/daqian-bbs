@@ -3,6 +3,7 @@ package com.walker.controller;
 
 import com.walker.pojo.Article;
 import com.walker.utils.ConstantUtil;
+import com.walker.utils.FilePathNormalizer;
 import com.walker.utils.SensitiveWordUtil;
 import com.walker.vo.InformationVO;
 import com.walker.vo.ResultBean;
@@ -42,6 +43,29 @@ public class ArticleController {
     @Value("${storage.path}")
     private String basePath;
 
+    @Value("${server.servlet.context-path}")
+    private String contextPath;
+
+    /**
+     * 脱敏 + 路径归一化：确保返回前端的路径统一包含 context-path
+     */
+    private Article normalizeArticle(Article article) {
+        if (article == null) return null;
+        SensitiveWordUtil.desensitizeArticle(article);
+        article.setArticleContent(FilePathNormalizer.normalizeEmbeddedUrls(article.getArticleContent(), contextPath));
+        article.setArticleContentHtml(FilePathNormalizer.normalizeEmbeddedUrls(article.getArticleContentHtml(), contextPath));
+        article.setArticleImage(FilePathNormalizer.normalizeFieldUrl(article.getArticleImage(), contextPath));
+        return article;
+    }
+
+    private List<Article> normalizeArticles(List<Article> articles) {
+        if (articles == null) return null;
+        for (Article a : articles) {
+            normalizeArticle(a);
+        }
+        return articles;
+    }
+
 
     @ApiOperation(value = "保存文章中的图片并返回地址")
     @PostMapping("/article/articleImg")
@@ -75,7 +99,7 @@ public class ArticleController {
         try {
             // 将前端传递的文件保存到本地服务器路径下
             image.transferTo(new File(path));
-            imageUrl = "/files/User/" + "id_" + id + "/article/" + day + "/" + time + "_." + pType;
+            imageUrl = contextPath + "/files/User/" + "id_" + id + "/article/" + day + "/" + time + "_." + pType;
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -118,7 +142,7 @@ public class ArticleController {
             // 将前端传递的文件保存到本地服务器路径下
             image.transferTo(new File(path));
 
-            pathDB = "/files/User/" + "id_" + id + "/article/" + day + "/cover/" + time + "_." + pType;
+            pathDB = contextPath + "/files/User/" + "id_" + id + "/article/" + day + "/cover/" + time + "_." + pType;
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -142,7 +166,7 @@ public class ArticleController {
     @GetMapping("/common/article/getHeaderRecommend")
     public List<Article> getHeaderRecommend() {
 
-        return SensitiveWordUtil.desensitizeArticles(articleService.queryHeaderRecommend());
+        return normalizeArticles(articleService.queryHeaderRecommend());
     }
 
 
@@ -150,7 +174,7 @@ public class ArticleController {
     @GetMapping("/common/article/getRecommend")
     public List<Article> getRecommend() {
 
-        return articleService.queryRecommend();
+        return normalizeArticles(articleService.queryRecommend());
     }
 
 
@@ -158,7 +182,7 @@ public class ArticleController {
     @GetMapping("/common/article/getNewest")
     public List<Article> getNewest() {
 
-        return articleService.queryNewest();
+        return normalizeArticles(articleService.queryNewest());
     }
 
 
@@ -166,7 +190,7 @@ public class ArticleController {
     @GetMapping("/common/article/getHot")
     public List<Article> getHot() {
 
-        return SensitiveWordUtil.desensitizeArticles(articleService.queryHot());
+        return normalizeArticles(articleService.queryHot());
     }
 
 
@@ -174,7 +198,7 @@ public class ArticleController {
     @PostMapping("/common/article/getArticleById/articleId/{articleId}")
     public Article getArticleById(@PathVariable("articleId") Integer articleId) {
 
-        return SensitiveWordUtil.desensitizeArticle(articleService.queryArticleById(articleId));
+        return normalizeArticle(articleService.queryArticleById(articleId));
 
     }
 
@@ -183,33 +207,33 @@ public class ArticleController {
     @GetMapping("/common/article/getArticle")
     public List<Article> getArticle(@RequestParam("keywords") String keywords) {
 
-        return SensitiveWordUtil.desensitizeArticles(articleService.queryAllArticleList(keywords));
+        return normalizeArticles(articleService.queryAllArticleList(keywords));
     }
 
     @ApiOperation(value = "获取社区文章 时间排序")
     @GetMapping("/article/getArticleByCommunityId/{communityId}")
     public List<Article> getArticleByCommunityId(@PathVariable("communityId") Integer communityId) {
-        return articleService.queryArticleByCommunityId(communityId);
+        return normalizeArticles(articleService.queryArticleByCommunityId(communityId));
     }
 
     @ApiOperation(value = "获取社区文章 浏览量排序")
     @GetMapping("/article/getArticleByHotAndOrderByDesc/{communityId}")
     public List<Article> getArticleByHotAndOrderByDesc(@PathVariable("communityId") Integer communityId) {
-        return articleService.getArticleByHotAndOrderByDesc(communityId);
+        return normalizeArticles(articleService.getArticleByHotAndOrderByDesc(communityId));
     }
 
 
     @ApiOperation(value = "通过关键词搜索文章(搜索框)")
     @GetMapping("/article/getArticleByKeywords")
     public List<Article> getArticleByKeywords(@RequestParam("keywords") String keywords) {
-        return SensitiveWordUtil.desensitizeArticles(articleService.getArticleByKeywords(keywords));
+        return normalizeArticles(articleService.getArticleByKeywords(keywords));
     }
 
 
     @ApiOperation(value = "通过用户id查询文章")
     @GetMapping("/article/getArticleByUserId")
     public List<Article> getArticleByUserId(@RequestParam Integer userId) {
-        return SensitiveWordUtil.desensitizeArticles(articleService.getArticleByUserId(userId));
+        return normalizeArticles(articleService.getArticleByUserId(userId));
     }
 
     @ApiOperation(value = "获取用户 消息")
@@ -222,13 +246,25 @@ public class ArticleController {
     @ApiOperation(value = "查询所有的已审核的文章")
     @GetMapping("/admin/getAliveArticles/all")
     public ResultBean getAliveArticles(){
-        return articleService.getAliveArticles();
+        ResultBean result = articleService.getAliveArticles();
+        if (result != null && result.getObj() instanceof List) {
+            for (Object item : (List<?>) result.getObj()) {
+                if (item instanceof Article) normalizeArticle((Article) item);
+            }
+        }
+        return result;
     }
 
     @ApiOperation(value = "查询所有的未审核的文章")
     @GetMapping("/admin/getNotAliveArticles/all")
     public ResultBean getNotAliveArticles(){
-        return articleService.getNotAliveArticles();
+        ResultBean result = articleService.getNotAliveArticles();
+        if (result != null && result.getObj() instanceof List) {
+            for (Object item : (List<?>) result.getObj()) {
+                if (item instanceof Article) normalizeArticle((Article) item);
+            }
+        }
+        return result;
     }
 
 
@@ -271,7 +307,11 @@ public class ArticleController {
     @GetMapping("/admin/getArticleByArticleId/{articleId}")
     public ResultBean getArticleByArticle(@PathVariable Integer articleId){
         if (articleId != null){
-            return articleService.getArticleByArticle(articleId);
+            ResultBean result = articleService.getArticleByArticle(articleId);
+            if (result != null && result.getObj() instanceof Article) {
+                normalizeArticle((Article) result.getObj());
+            }
+            return result;
         }
         return ResultBean.error("查询文章id不能为空！");
     }

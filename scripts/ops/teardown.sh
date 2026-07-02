@@ -1,10 +1,10 @@
 #!/bin/bash
 # ============================================
 # BBS 清理脚本
-# 停止并移除所有容器，可选择删除数据
+# 停止应用容器/进程，不影响外部管理的 PostgreSQL
 # 用法:
 #   bash scripts/ops/teardown.sh              # 停止所有容器
-#   bash scripts/ops/teardown.sh --all        # 停止所有容器 + 删除数据卷
+#   bash scripts/ops/teardown.sh --all        # 停止所有容器 + 删除网络
 #   bash scripts/ops/teardown.sh --native     # 停止原生部署的后端进程
 # ============================================
 set -e
@@ -18,7 +18,6 @@ if [ -f ".env" ]; then
 fi
 
 BBS_NET_NAME="${BBS_NET_NAME:-bbs-net}"
-BBS_PG_CONTAINER="${BBS_PG_CONTAINER:-bbs-postgres}"
 BBS_SERVER_CONTAINER="${BBS_SERVER_CONTAINER:-bbs-server}"
 BBS_NGINX_CONTAINER="${BBS_NGINX_CONTAINER:-bbs-nginx}"
 
@@ -34,7 +33,7 @@ warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 teardown_container() {
     info "===== 停止容器 ====="
 
-    for container in "$BBS_NGINX_CONTAINER" "$BBS_SERVER_CONTAINER" "$BBS_PG_CONTAINER"; do
+    for container in "$BBS_NGINX_CONTAINER" "$BBS_SERVER_CONTAINER"; do
         if $RUNNER container exists "$container" 2>/dev/null; then
             info "停止容器 $container..."
             $RUNNER stop "$container" 2>/dev/null || true
@@ -44,17 +43,6 @@ teardown_container() {
             info "容器 $container 不存在，跳过"
         fi
     done
-}
-
-# --------------- 删除数据卷 ---------------
-remove_volumes() {
-    warn "删除数据卷 bbs-pg-data..."
-    if $RUNNER volume exists bbs-pg-data 2>/dev/null; then
-        $RUNNER volume rm bbs-pg-data
-        ok "数据卷已删除"
-    else
-        info "数据卷不存在，跳过"
-    fi
 }
 
 # --------------- 删除网络 ---------------
@@ -99,9 +87,8 @@ teardown_native() {
         fi
     fi
 
-    # 注意: 不自动停止 PostgreSQL 和 Nginx（它们可能是系统服务）
-    warn "请手动停止 PostgreSQL 和 Nginx（如需）:"
-    info "  sudo systemctl stop postgresql-13"
+    # 注意: 不自动停止 Nginx（它可能是系统服务）
+    warn "请手动停止 Nginx（如需）:"
     info "  sudo systemctl stop nginx"
 }
 
@@ -114,13 +101,11 @@ case "$MODE" in
         ;;
     --all|all)
         teardown_container
-        remove_volumes
         remove_network
-        ok "全部清理完成！（数据卷已删除）"
+        ok "全部清理完成！"
         ;;
     *)
         teardown_container
-        warn "保留数据卷 bbs-pg-data（如需删除数据请加 --all 参数）"
         ok "容器已清理完成"
         ;;
 esac

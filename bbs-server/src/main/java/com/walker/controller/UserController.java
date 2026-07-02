@@ -6,6 +6,7 @@ import com.walker.vo.excel.ImportPreviewVO;
 import com.walker.vo.excel.ImportResultVO;
 import com.github.pagehelper.PageInfo;
 import com.walker.pojo.User;
+import com.walker.utils.FilePathNormalizer;
 import com.walker.vo.ResultBean;
 import com.walker.service.UserService;
 import com.walker.vo.param.*;
@@ -46,6 +47,9 @@ public class UserController {
     @Value("${storage.path}")
     private String basePath;
 
+    @Value("${server.servlet.context-path}")
+    private String contextPath;
+
 
     @ApiOperation(value = "获取当前登录用户信息")
     @GetMapping("/common/user/info")
@@ -61,7 +65,7 @@ public class UserController {
         map.put("username", user.getUsername());
         map.put("password", null);
         map.put("nickname", user.getNickname());
-        map.put("portrait", user.getPortrait());
+        map.put("portrait", FilePathNormalizer.normalizeFieldUrl(user.getPortrait(), contextPath));
         map.put("gender", user.getGender());
         map.put("introduce", user.getIntroduce());
         map.put("city", user.getCity());
@@ -108,7 +112,7 @@ public class UserController {
             file.transferTo(new File(path));
 
             // 同步到数据库的路径
-            String pathDB = "/files/User/" +"id_"+id+"/portrait/"+time+"_."+pType;
+            String pathDB = contextPath + "/files/User/" +"id_"+id+"/portrait/"+time+"_."+pType;
             return userService.updatePortrait(id,pathDB);
 
         }catch (Exception e){
@@ -130,6 +134,7 @@ public class UserController {
     public User getUserinfoById(@PathVariable("id") Integer id){
         User user = userService.queryUserinfoById(id);
         user.setPassword(null);
+        user.setPortrait(FilePathNormalizer.normalizeFieldUrl(user.getPortrait(), contextPath));
         return user;
     }
 

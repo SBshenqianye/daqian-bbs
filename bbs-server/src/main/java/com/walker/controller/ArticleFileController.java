@@ -2,6 +2,7 @@ package com.walker.controller;
 
 import com.walker.pojo.ArticleFile;
 import com.walker.service.ArticleFileService;
+import com.walker.utils.FilePathNormalizer;
 import com.walker.vo.CommentReplyVO;
 import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
@@ -35,6 +36,9 @@ public class ArticleFileController {
 
     @Value("${storage.path}")
     private String basePath;
+
+    @Value("${server.servlet.context-path}")
+    private String contextPath;
     /**
      * 方法描述 保存文章中的附件
      * @author chengQing
@@ -73,7 +77,7 @@ public class ArticleFileController {
         try {
             // 将前端传递的文件保存到本地服务器路径下
             file.transferTo(new File(path));
-            imageUrl = "/files/"+url;
+            imageUrl = contextPath + "/files/"+url;
             // 将附件基本信息 保存到数据库并返回 数据库file信息
             ArticleFile articleFile = new ArticleFile();
             articleFile.setFileName(fileName);
@@ -99,7 +103,13 @@ public class ArticleFileController {
     @ApiOperation(value = "获取文章附件信息")
     @PostMapping("/common/getArticleFileByArticleId/{articleId}")
     public List<ArticleFile> getArticleFileByArticleId(@PathVariable("articleId") Integer articleId){
-        return articleFileService.getArticleFileByArticleId(articleId);
+        List<ArticleFile> list = articleFileService.getArticleFileByArticleId(articleId);
+        if (list != null) {
+            for (ArticleFile f : list) {
+                f.setFilePath(FilePathNormalizer.normalizeFieldUrl(f.getFilePath(), contextPath));
+            }
+        }
+        return list;
     }
 
 }
