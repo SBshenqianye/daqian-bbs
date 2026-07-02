@@ -4,6 +4,7 @@ package com.walker.controller;
 import com.walker.pojo.Community;
 import com.walker.service.CommunityService;
 import com.walker.service.UserService;
+import com.walker.utils.FilePathNormalizer;
 import com.walker.vo.CommunityVO;
 import com.walker.vo.ResultBean;
 import com.walker.vo.param.CommunityParam;
@@ -39,13 +40,19 @@ public class CommunityController {
     @Value("${storage.path}")
     private String basePath;
 
+    @Value("${server.servlet.context-path}")
+    private String contextPath;
+
 
     @ApiOperation(value = "获取所有社区名称")
     @GetMapping("/community/getCommunity")
     public List<Community> getCommunity(){
-
         List<Community> communities = communityService.queryAllCommunity();
-
+        if (communities != null) {
+            for (Community c : communities) {
+                c.setCommunityImage(FilePathNormalizer.normalizeFieldUrl(c.getCommunityImage(), contextPath));
+            }
+        }
         return communities;
     }
 
@@ -53,17 +60,24 @@ public class CommunityController {
     @ApiOperation(value = "获取所有社区列表")
     @GetMapping("/common/community/getCommunityList")
     public List<CommunityVO> getCommunityList(){
-
-        return communityService.queryAllCommunityList();
-
+        List<CommunityVO> list = communityService.queryAllCommunityList();
+        if (list != null) {
+            for (CommunityVO vo : list) {
+                vo.setCommunityImage(FilePathNormalizer.normalizeFieldUrl(vo.getCommunityImage(), contextPath));
+            }
+        }
+        return list;
     }
 
 
     @ApiOperation(value = "通过社区ID获取社区信息")
     @PutMapping("/community/getCommunityById/{communityId}")
     public Community getCommunityById(@PathVariable("communityId") Integer communityId){
-
-        return communityService.queryCommunityById(communityId);
+        Community community = communityService.queryCommunityById(communityId);
+        if (community != null) {
+            community.setCommunityImage(FilePathNormalizer.normalizeFieldUrl(community.getCommunityImage(), contextPath));
+        }
+        return community;
     }
 
     @ApiOperation(value = "创建社区")
@@ -138,7 +152,7 @@ public class CommunityController {
             file.transferTo(new File(path));
 
             // 同步到数据库的路径
-            pathDB = "/files/Admin/communityImage/" +time+"_."+pType;
+            pathDB = contextPath + "/files/Admin/communityImage/" +time+"_."+pType;
 
         }catch (Exception e){
             e.printStackTrace();

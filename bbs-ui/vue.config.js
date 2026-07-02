@@ -27,11 +27,24 @@ module.exports = {
                     ['^' + process.env.VUE_APP_BBS_API]: ''
                 }
             },
-            // 文件统一走 /files/ proxy
+            // 文件走 /files/ proxy
             '/files/': {
                 target: DEV_BACKEND_URL + '/bbs-server',
                 changeOrigin: true,
             },
+        },
+        // /bbs-server/ 开头的请求用 setupMiddlewares 手动转发
+        setupMiddlewares(middlewares, devServer) {
+            if (!devServer) throw new Error('webpack-dev-server is not defined');
+            const { createProxyMiddleware } = require('http-proxy-middleware');
+            devServer.app.use(
+                '/bbs-server/',
+                createProxyMiddleware({
+                    target: DEV_BACKEND_URL,
+                    changeOrigin: true,
+                })
+            );
+            return middlewares;
         },
     }
 }

@@ -26,6 +26,9 @@ public class CommonController {
     @Value("${storage.path}")
     private String basePath;
 
+    @Value("${server.servlet.context-path}")
+    private String contextPath;
+
     @ApiOperation(value = "上传图片（mavon-editor 通用图片上传）")
     @PostMapping("/common/upload")
     public String uploadImage(@RequestParam("file") MultipartFile file) throws Exception {
@@ -53,7 +56,7 @@ public class CommonController {
         }
         try {
             file.transferTo(new File(path));
-            imageUrl = "/files/" + url;
+            imageUrl = contextPath + "/files/" + url;
         } catch (Exception e) {
             e.printStackTrace();
         }
