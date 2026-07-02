@@ -70,18 +70,37 @@
             :loading="false"
           >
             <template #node-actions="{ node }">
-              <!-- Switch toggle -->
-              <button
-                class="relative w-10 h-5 rounded-full transition-all duration-200 flex-shrink-0"
-                :class="node.isRankingSelected ? 'bg-primary' : 'bg-gray-300'"
-                :title="node.isRankingSelected ? '取消参与排名' : '参与排名'"
-                @click.stop="toggleOrg(node)"
-              >
-                <span
-                  class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-200"
-                  :style="node.isRankingSelected ? 'left:22px' : 'left:2px'"
-                ></span>
-              </button>
+              <div class="flex items-center gap-1">
+                <!-- 级联操作按钮（仅父节点显示） -->
+                <template v-if="node._hasChildren">
+                  <button
+                    class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-primary hover:bg-primary/10 transition-all opacity-60 hover:opacity-100"
+                    title="勾选所有子级单位"
+                    @click.stop="cascadeSelect(node, true)"
+                  >
+                    <span class="material-symbols-outlined" style="font-size:16px">done_all</span>
+                  </button>
+                  <button
+                    class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-error hover:bg-error/10 transition-all opacity-60 hover:opacity-100"
+                    title="取消所有子级单位"
+                    @click.stop="cascadeSelect(node, false)"
+                  >
+                    <span class="material-symbols-outlined" style="font-size:16px">indeterminate_check_box</span>
+                  </button>
+                </template>
+                <!-- Switch toggle -->
+                <button
+                  class="relative w-10 h-5 rounded-full transition-all duration-200 flex-shrink-0"
+                  :class="node.isRankingSelected ? 'bg-primary' : 'bg-gray-300'"
+                  :title="node.isRankingSelected ? '取消参与排名' : '参与排名'"
+                  @click.stop="toggleOrg(node)"
+                >
+                  <span
+                    class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-200"
+                    :style="node.isRankingSelected ? 'left:22px' : 'left:2px'"
+                  ></span>
+                </button>
+              </div>
             </template>
           </OrgTree>
         </template>
@@ -159,6 +178,14 @@ export default {
     },
     collapseAll() {
       if (this.$refs.orgTree) this.$refs.orgTree.collapseAll()
+    },
+    /** 级联勾选/取消：将 node 所有后代的勾选状态设为 selected */
+    cascadeSelect(node, selected) {
+      walkTree(node.children, child => {
+        const val = selected ? 1 : 0
+        this.$set(this.rankingMap, child.id, !!val)
+        child.isRankingSelected = val
+      })
     },
     hasChanges() {
       return Object.keys(this.rankingMap).some(k => this.rankingMap[k] !== this.originalState[k])
