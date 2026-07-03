@@ -26,6 +26,8 @@ export function formatDate(t) {
 export function normalizeUrls(content) {
   if (!content) return content
 
+  content = normalizeFileUrls(content)
+
   // 处理 markdown 链接: [text](url) 中 url 没有协议的情况
   content = content.replace(
     /\[([^\]]*)\]\(((?!https?:\/\/|ftp:\/\/|\/\/|data:|mailto:|tel:|#|\/)[^\s\)]+)\)/g,
@@ -47,6 +49,54 @@ export function normalizeUrls(content) {
   )
 
   return content
+}
+
+const FILE_CONTEXT_PATH = '/bbs-server'
+const FILE_PREFIX = `${FILE_CONTEXT_PATH}/files/`
+
+function normalizeRelativeFilePath(path) {
+  if (!path || typeof path !== 'string') return path
+
+  let normalized = path.replace(/\/bbs-server\/bbs-server\/files\//g, FILE_PREFIX)
+
+  if (normalized.startsWith('bbs-server/files/')) {
+    return `/${normalized}`
+  }
+  if (normalized.startsWith('files/')) {
+    return `${FILE_CONTEXT_PATH}/${normalized}`
+  }
+  if (normalized.startsWith('/files/')) {
+    return `${FILE_CONTEXT_PATH}${normalized}`
+  }
+  return normalized
+}
+
+export function normalizeFileUrl(url) {
+  if (!url || typeof url !== 'string') return url
+  if (/^(https?:)?\/\//.test(url) || url.startsWith('data:')) return url
+  const normalized = normalizeRelativeFilePath(url)
+
+  if (normalized.startsWith(FILE_PREFIX)) {
+    if (typeof window !== 'undefined' && window.location && window.location.origin) {
+      return `${window.location.origin}${normalized}`
+    }
+    return normalized
+  }
+  return normalized
+}
+
+export function normalizeFileUrls(content) {
+  if (!content || typeof content !== 'string') return content
+  return content.replace(
+    /\/bbs-server\/bbs-server\/files\/|\/bbs-server\/files\/|\/files\/|bbs-server\/files\/|files\//g,
+    (match, offset, source) => {
+      const prev = offset > 0 ? source[offset - 1] : ''
+      if ((match === 'bbs-server/files/' || match === 'files/') && /[a-zA-Z0-9_-]/.test(prev)) {
+        return match
+      }
+      return normalizeRelativeFilePath(match)
+    }
+  )
 }
 
 /**

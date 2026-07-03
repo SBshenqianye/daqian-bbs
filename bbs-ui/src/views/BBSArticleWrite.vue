@@ -152,7 +152,7 @@ import 'mavon-editor/dist/css/index.css'
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
 import { Message, Loading } from 'element-ui'
 import { getArticleById, getArticleFileByArticleId } from '@/api/article'
-import { normalizeUrls } from '@/utils/utils'
+import { normalizeFileUrl, normalizeUrls } from '@/utils/utils'
 
 export default {
   name: 'BBSArticleWrite',
@@ -252,7 +252,7 @@ export default {
           this.articleSummary = resp.articleSummary || ''
           this.selectedLabelId = resp.articleLabelId
           if (resp.articleImage) {
-            this.coverPreview = resp.articleImage
+            this.coverPreview = normalizeFileUrl(resp.articleImage)
           }
           // Load attachment files
           this.loadArticleFiles(id)
@@ -406,12 +406,12 @@ export default {
         formData.append('userId', user.id)
         formData.append('image', this.coverFile)
         this.postRequest('/article/coverImg', formData).then(resp => {
-          doPublish(resp && typeof resp === 'string' ? resp : (resp && resp.url || ''))
+          doPublish(normalizeFileUrl(resp && typeof resp === 'string' ? resp : (resp && resp.url || '')))
         }).catch(() => {
           doPublish('')
         })
       } else {
-        doPublish(this.coverPreview && typeof this.coverPreview === 'string' && !this.coverPreview.startsWith('data:') ? this.coverPreview : '')
+        doPublish(this.coverPreview && typeof this.coverPreview === 'string' && !this.coverPreview.startsWith('data:') ? normalizeFileUrl(this.coverPreview) : '')
       }
     },
   },

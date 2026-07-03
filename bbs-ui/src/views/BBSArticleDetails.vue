@@ -125,7 +125,7 @@ import 'mavon-editor/dist/css/index.css'
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
 import { getArticleById, getUserinfoById, getArticleFileByArticleId } from '@/api/article'
 import { getCommentReply } from '@/api/comment'
-import { normalizeUrls } from '@/utils/utils'
+import { normalizeFileUrl, normalizeUrls } from '@/utils/utils'
 import { Message } from 'element-ui'
 
 // mavon-editor 预览模式的外部资源链接（仅引用编译时常量，提升到模块级避免重复创建）
@@ -219,7 +219,7 @@ export default {
         if (u) {
           this.currentUser = JSON.parse(u)
           if (this.currentUser.portrait) {
-            this.currentUserAvatar = this.currentUser.portrait
+            this.currentUserAvatar = normalizeFileUrl(this.currentUser.portrait)
           }
         }
       } catch (e) { /* ignore */ }
@@ -244,7 +244,7 @@ export default {
           const normalized = normalizeUrls(rawContent)
           this.article.contentHtml = normalized
           this.mdContent = normalized
-          this.article.articleImage = resp.articleImage || ''
+          this.article.articleImage = normalizeFileUrl(resp.articleImage || '')
           // Fetch author info
           if (resp.userId) {
             this.loadAuthorInfo(resp.userId)
@@ -259,7 +259,7 @@ export default {
         if (resp) {
           this.authorInfo = resp
           if (resp.portrait) {
-            this.article.authorAvatar = resp.portrait
+            this.article.authorAvatar = normalizeFileUrl(resp.portrait)
           }
           this.article.authorTitle = resp.title || ''
         }
@@ -285,7 +285,7 @@ export default {
         commentRootId: commentId,
         userId: c.userId,
         author: c.nickname || '',
-        avatar: c.portrait || '',
+        avatar: normalizeFileUrl(c.portrait || ''),
         time: c.commentTime || '',
         content: c.commentContent || '',
         canDelete: myId != null && String(c.userId) === String(myId),
@@ -295,7 +295,7 @@ export default {
           userId: r.replyUserId || r.userId,
           replyTargetUserId: r.replyToUserId,
           author: r.nickname || '',
-          avatar: r.portrait || '',
+          avatar: normalizeFileUrl(r.portrait || ''),
           time: r.replyTime || '',
           content: r.replyContent || '',
           replyTo: r.replyToNickname || '',

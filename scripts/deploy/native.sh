@@ -20,7 +20,7 @@ if [ -f ".env" ]; then
     set -a; source .env; set +a
 fi
 
-# 默认值
+# 默认值（生产环境默认 PostgreSQL 端口 5432）
 BBS_DB_HOST="${BBS_DB_HOST:-127.0.0.1}"
 BBS_DB_PORT="${BBS_DB_PORT:-15432}"
 BBS_DB_NAME="${BBS_DB_NAME:-bbs}"
@@ -30,6 +30,7 @@ BBS_SERVER_PORT="${BBS_SERVER_PORT:-9083}"
 NGINX_PORT="${NGINX_PORT:-19848}"
 BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR:-/data/bbs/bbsUpload}"
 BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR%/}/"
+BBS_PG_DATA="${BBS_PG_DATA:-/data/sql/postgre}"
 
 # --------------- 颜色 ---------------
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; RED='\033[0;31m'; NC='\033[0m'
@@ -41,7 +42,32 @@ err()   { echo -e "${RED}[ERR]${NC} $1"; }
 # --------------- 进度指示库 ---------------
 source scripts/lib/progress.sh
 
-# --------------- 前置检查 ---------------
+ensure_upload_dir() {
+    local upload_dir="$1"
+
+    if [ ! -d "$upload_dir" ]; then
+        info "Creating upload directory: $upload_dir"
+        sudo mkdir -p "$upload_dir"
+    fi
+
+    if [ ! -r "$upload_dir" ] || [ ! -w "$upload_dir" ] || [ ! -x "$upload_dir" ]; then
+        info "Granting read/write/execute permissions on upload directory: $upload_dir"
+        sudo chmod u+rwx "$upload_dir"
+    fi
+
+    if [ ! -r "$upload_dir" ] || [ ! -w "$upload_dir" ] || [ ! -x "$upload_dir" ]; then
+        warn "Owner permissions are still insufficient, applying 755 to upload directory: $upload_dir"
+        sudo chmod 755 "$upload_dir"
+    fi
+
+    if [ ! -r "$upload_dir" ] || [ ! -w "$upload_dir" ] || [ ! -x "$upload_dir" ]; then
+        err "Upload directory is still not readable/writable/executable: $upload_dir"
+        exit 1
+    fi
+
+    ok "Upload directory is ready: $upload_dir"
+}
+
 check_prereqs() {
     show_step "$1" "$2" "前置依赖检查"
 
@@ -73,16 +99,14 @@ deploy_backend() {
     show_step "$1" "$2" "部署后端 (bbs-server)"
 
     local jar_path="$ROOT_DIR/bbs-server/target/bbs-server.jar"
+
+
     if [ ! -f "$jar_path" ]; then
         err "未找到 bbs-server.jar，请先运行 bash scripts/build/build.sh --native"
         exit 1
     fi
 
-    # 确保上传目录存在
-    if [ ! -d "$BBS_UPLOAD_DIR" ]; then
-        sudo mkdir -p "$BBS_UPLOAD_DIR"
-        sudo chmod 755 "$BBS_UPLOAD_DIR"
-    fi
+    ensure_upload_dir "$BBS_UPLOAD_DIR"
 
     # 停止旧进程
     local pid_file="/var/run/bbs-server.pid"
@@ -99,7 +123,7 @@ deploy_backend() {
     # 启动后端
     info "启动 bbs-server (端口 $BBS_SERVER_PORT)..."
     nohup java -jar "$jar_path" \
-        --server.port=$BBS_SERVER_PORT \
+        --server.port="$BBS_SERVER_PORT" \
         --spring.profiles.active=podman \
         -DBBS_DB_HOST="$BBS_DB_HOST" \
         -DBBS_DB_PORT="$BBS_DB_PORT" \
@@ -108,7 +132,7 @@ deploy_backend() {
         -DBBS_DB_PASSWORD="$BBS_DB_PASSWORD" \
         -DBBS_UPLOAD_DIR="$BBS_UPLOAD_DIR" \
         -DBBS_SUPER_ADMIN_PASSWORD="${BBS_SUPER_ADMIN_PASSWORD:-1234@abcD}" \
-        > /var/log/bbs-server.log 2>&1 &
+        > "$log_file" 2>&1 &
 
     local new_pid=$!
     echo $new_pid | sudo tee "$pid_file" >/dev/null

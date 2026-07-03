@@ -110,6 +110,8 @@
 </template>
 
 <script>
+import { normalizeFileUrl } from '@/utils/utils'
+
 export default {
   name: 'BBSForum',
   data() {
@@ -143,18 +145,23 @@ export default {
         this.loading = false
         const list = Array.isArray(resp) ? resp : (resp && resp.data && Array.isArray(resp.data) ? resp.data : [])
         this.articles = list.map(a => ({
+          ...(console.log('[BBSForum] article image path', {
+            articleId: a.articleId,
+            rawArticleImage: a.articleImage || null,
+            normalizedArticleImage: normalizeFileUrl(a.articleImage || null),
+          }), {}),
           articleId: a.articleId,
           title: a.articleTitle || '',
           summary: a.articleSummary || '',
           author: a.articleAuthor || '',
           userId: a.userId,
-          authorAvatar: a.portrait || '',
+          authorAvatar: normalizeFileUrl(a.portrait || ''),
           time: a.createTime || a.articleCreateTime || '',
           views: a.articleViewNum || 0,
           comments: a.articleCommentNum || a.commentNum || 0,
           likes: a.articleGoodNum || 0,
           labelId: a.articleLabelId || null,
-          cover: a.articleImage || null,
+          cover: normalizeFileUrl(a.articleImage || null),
         }))
       }).catch(() => {
         this.loading = false

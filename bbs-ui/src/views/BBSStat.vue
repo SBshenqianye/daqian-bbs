@@ -71,6 +71,7 @@
 <script>
 import { Message } from 'element-ui'
 import { getUser } from '@/utils/auth'
+import { normalizeFileUrl } from '@/utils/utils'
 
 export default {
   name: 'BBSStat',
@@ -92,7 +93,7 @@ export default {
         return
       }
       const userId = user.id
-      const userAvatar = user.portrait || ''
+      const userAvatar = normalizeFileUrl(user.portrait || '')
       this.loading = true
       this.getRequest(`/article/getArticleByUserId?userId=${userId}`).then(resp => {
         this.loading = false
@@ -107,7 +108,7 @@ export default {
           views: a.articleViewNum || 0,
           comments: a.articleCommentNum || 0,
           likes: a.articleGoodNum || 0,
-          cover: a.articleImage || null,
+          cover: normalizeFileUrl(a.articleImage || null),
         }))
       }).catch(() => {
         this.loading = false

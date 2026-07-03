@@ -14,9 +14,9 @@ module.exports = {
             entry: 'src/main.js',
         }
     },
-    lintOnSave: false, //关闭语法检查
+    lintOnSave: false, // 关闭语法检查
 
-    //开启代理服务器(通过9081转发给后端)，使用vue-cli 实现
+    // 开启代理服务器(通过9081转发给后端)，使用 vue-cli 实现
     devServer: {
         port: 9081,
         proxy: {
@@ -26,11 +26,6 @@ module.exports = {
                 pathRewrite: {
                     ['^' + process.env.VUE_APP_BBS_API]: ''
                 }
-            },
-            // 文件走 /files/ proxy
-            '/files/': {
-                target: DEV_BACKEND_URL + '/bbs-server',
-                changeOrigin: true,
             },
         },
         // /bbs-server/ 开头的请求用 setupMiddlewares 手动转发
