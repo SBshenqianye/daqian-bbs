@@ -1,5 +1,6 @@
 package com.walker.pojo;
 
+import com.walker.annotation.NormalizeFilePath;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -35,6 +36,7 @@ public class ArticleFile {
 
     @ApiModelProperty("附件路径")
     @TableField("file_path")
+    @NormalizeFilePath
     private String filePath;
 
     @ApiModelProperty("文章id")

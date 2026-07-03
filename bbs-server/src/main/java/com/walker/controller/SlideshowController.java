@@ -3,7 +3,6 @@ package com.walker.controller;
 
 import com.walker.pojo.Slideshow;
 import com.walker.service.SlideshowService;
-import com.walker.utils.FilePathNormalizer;
 import com.walker.utils.ImageUtil;
 import com.walker.vo.ResultBean;
 import com.walker.vo.param.SlideshowParam;
@@ -39,18 +38,10 @@ public class SlideshowController {
     @Value("${server.servlet.context-path}")
     private String contextPath;
 
-
-
     @ApiOperation(value = "获取首页轮播图")
     @GetMapping("/common/getSlideshow")
     public List<Slideshow> getAllSlideshow(){
-        List<Slideshow> list = slideshowService.queryAllSlideshow();
-        if (list != null) {
-            for (Slideshow s : list) {
-                s.setImageUrl(FilePathNormalizer.normalizeFieldUrl(s.getImageUrl(), contextPath));
-            }
-        }
-        return list;
+        return slideshowService.queryAllSlideshow();
     }
 
     @ApiOperation(value = "获取轮播图")

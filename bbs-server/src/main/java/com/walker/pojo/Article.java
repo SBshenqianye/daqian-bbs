@@ -1,6 +1,7 @@
 package com.walker.pojo;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.walker.annotation.NormalizeFilePath;
 import com.walker.utils.SensitiveWordUtil;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -54,14 +55,17 @@ public class Article implements Serializable {
 
     @ApiModelProperty("文章内容")
     @TableField("article_content")
+    @NormalizeFilePath(embedded = true)
     private String articleContent;
 
     @ApiModelProperty("文章内容html")
     @TableField("article_content_html")
+    @NormalizeFilePath(embedded = true)
     private String articleContentHtml;
 
     @ApiModelProperty("文章中的图片")
     @TableField("article_image")
+    @NormalizeFilePath
     private String articleImage;
 
     @ApiModelProperty("发布文章的用户的id")
@@ -99,5 +103,6 @@ public class Article implements Serializable {
 
     @ApiModelProperty("用户头像")
     @TableField(exist = false)
+    @NormalizeFilePath
     private String portrait;
 }

@@ -1,5 +1,6 @@
 package com.walker.pojo;
 
+import com.walker.annotation.NormalizeFilePath;
 import com.baomidou.mybatisplus.annotation.*;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -45,6 +46,7 @@ public class User implements Serializable,UserDetails {
     private String nickname;
 
     @ApiModelProperty("用户头像")
+    @NormalizeFilePath
     private String portrait;
 
     @ApiModelProperty("用户性别")

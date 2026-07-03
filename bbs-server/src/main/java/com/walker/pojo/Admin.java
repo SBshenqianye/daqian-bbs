@@ -1,5 +1,6 @@
 package com.walker.pojo;
 
+import com.walker.annotation.NormalizeFilePath;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
@@ -39,6 +40,7 @@ public class Admin implements Serializable {
     private String password;
 
     @ApiModelProperty("管理员头像")
+    @NormalizeFilePath
     private String portrait;
 
     @ApiModelProperty("是否禁用")

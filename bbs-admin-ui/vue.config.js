@@ -37,7 +37,22 @@ module.exports = {
                     ['^' + process.env.VUE_APP_BBS_API]: ''
                 }
             },
-
+            // 文件直接走 /files/ 代理（后端 normalizeFieldUrl/normalizeEmbeddedUrls 处理后的路径）
+            '/files/': {
+                target: process.env.VUE_APP_BBS_BASE_API + '/bbs-server',
+                changeOrigin: true,
+            },
+        },
+        // /bbs-server/ 开头的请求手动转发（后端 normalize 后返回的路径已含 context-path）
+        before(app, server) {
+            const proxy = require('http-proxy-middleware');
+            app.use(
+                '/bbs-server/',
+                proxy({
+                    target: process.env.VUE_APP_BBS_BASE_API,
+                    changeOrigin: true,
+                })
+            );
         },
     }
 }

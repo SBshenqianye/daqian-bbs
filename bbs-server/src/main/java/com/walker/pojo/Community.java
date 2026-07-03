@@ -1,5 +1,6 @@
 package com.walker.pojo;
 
+import com.walker.annotation.NormalizeFilePath;
 import com.baomidou.mybatisplus.annotation.*;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -40,6 +41,7 @@ public class Community implements Serializable {
 
     @ApiModelProperty("社区的照片")
     @TableField("community_image")
+    @NormalizeFilePath
     private String communityImage;
 
     @ApiModelProperty("社区用户数量")

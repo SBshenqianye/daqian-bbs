@@ -2,7 +2,6 @@ package com.walker.controller;
 
 import com.walker.pojo.ArticleFile;
 import com.walker.service.ArticleFileService;
-import com.walker.utils.FilePathNormalizer;
 import com.walker.vo.CommentReplyVO;
 import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
@@ -39,6 +38,7 @@ public class ArticleFileController {
 
     @Value("${server.servlet.context-path}")
     private String contextPath;
+
     /**
      * 方法描述 保存文章中的附件
      * @author chengQing
@@ -103,13 +103,7 @@ public class ArticleFileController {
     @ApiOperation(value = "获取文章附件信息")
     @PostMapping("/common/getArticleFileByArticleId/{articleId}")
     public List<ArticleFile> getArticleFileByArticleId(@PathVariable("articleId") Integer articleId){
-        List<ArticleFile> list = articleFileService.getArticleFileByArticleId(articleId);
-        if (list != null) {
-            for (ArticleFile f : list) {
-                f.setFilePath(FilePathNormalizer.normalizeFieldUrl(f.getFilePath(), contextPath));
-            }
-        }
-        return list;
+        return articleFileService.getArticleFileByArticleId(articleId);
     }
 
 }

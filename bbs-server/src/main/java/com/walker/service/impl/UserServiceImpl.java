@@ -14,6 +14,7 @@ import com.walker.mapper.UserMapper;
 import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.utils.ConstantUtil;
+import com.walker.utils.FilePathNormalizer;
 import com.walker.vo.MapCityVO;
 import com.walker.service.impl.OrgImportService;
 import com.walker.utils.PinyinUtil;
@@ -76,6 +77,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private JwtTokenUtil jwtTokenUtil;
     @Value("${jwt.tokenHead}")
     private String tokenHead;
+
+    @Value("${server.servlet.context-path}")
+    private String contextPath;
 
     @Autowired
     private SaOrgMapper saOrgMapper;
@@ -163,6 +167,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             JSONObject jsonObject = (JSONObject) JSON.toJSON(user);
             jsonObject.put("password", null);
             jsonObject.put("isFirstLogin", user.getIsFirstLogin());
+            // 归一化头像路径
+            if (jsonObject.containsKey("portrait")) {
+                jsonObject.put("portrait", FilePathNormalizer.normalizeFieldUrl(jsonObject.getString("portrait"), contextPath));
+            }
             tokenMap.put("user", jsonObject);
 
             return ResultBean.success("登录成功！",tokenMap);

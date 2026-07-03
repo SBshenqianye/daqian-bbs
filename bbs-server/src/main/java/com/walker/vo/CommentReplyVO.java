@@ -1,5 +1,6 @@
 package com.walker.vo;
 
+import com.walker.annotation.NormalizeFilePath;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Getter;
@@ -19,6 +20,7 @@ public class CommentReplyVO {
     private Integer userId;
 
     @ApiModelProperty("评论人的头像")
+    @NormalizeFilePath
     private String portrait;
 
     @ApiModelProperty("评论人的昵称")

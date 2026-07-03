@@ -107,7 +107,6 @@ export default {
       },
       comments: [],
       fileList: [],
-      avatarBase: process.env.VUE_APP_BBS_API || ''
     }
   },
   computed: {
@@ -130,8 +129,7 @@ export default {
     },
     getAvatarUrl(portrait) {
       if (!portrait) return require('../assets/img/img.jpeg')
-      const path = portrait.startsWith('/') ? portrait : `/${portrait}`
-      return `${this.avatarBase}${path}`
+      return portrait.startsWith('/') || portrait.startsWith('http') ? portrait : '/' + portrait
     },
     normalizeUrls(content) {
       if (!content) return content
@@ -176,8 +174,7 @@ export default {
     },
     downloadFile(filePath) {
       if (!filePath) return
-      const base = process.env.VUE_APP_BBS_BASE_API || ''
-      const url = base.endsWith('/') ? base + filePath.replace(/^\//, '') : (filePath.startsWith('/') ? base + filePath : base + '/' + filePath)
+      const url = filePath.startsWith('/') || filePath.startsWith('http') ? filePath : '/' + filePath
       const iframe = document.createElement('iframe')
       iframe.setAttribute('style', 'position:fixed;left:-9999px;top:0;width:0;height:0;border:0;visibility:hidden;')
       document.body.appendChild(iframe)

@@ -1,5 +1,6 @@
 package com.walker.vo;
 
+import com.walker.annotation.NormalizeFilePath;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Getter;
@@ -22,6 +23,7 @@ public class CommunityVO {
     private String communityIntroduce;
 
     @ApiModelProperty("社区的照片")
+    @NormalizeFilePath
     private String communityImage;
 
     @ApiModelProperty("社区创建者的昵称")

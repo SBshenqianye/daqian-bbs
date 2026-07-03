@@ -1,5 +1,6 @@
 package com.walker.pojo;
 
+import com.walker.annotation.NormalizeFilePath;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -35,6 +36,7 @@ public class Slideshow implements Serializable {
 
     @ApiModelProperty("轮播图的地址")
     @TableField("image_url")
+    @NormalizeFilePath
     private String imageUrl;
 
     @ApiModelProperty("顺序（数字越大，越靠前）")

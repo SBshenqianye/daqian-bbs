@@ -7,8 +7,10 @@ import com.walker.pojo.Fans;
 import com.walker.pojo.User;
 import com.walker.service.FansService;
 import com.walker.service.UserService;
+import com.walker.utils.FilePathNormalizer;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -25,6 +27,9 @@ import java.util.*;
  */
 @Service
 public class FansServiceImpl extends ServiceImpl<FansMapper, Fans> implements FansService {
+
+    @Value("${server.servlet.context-path}")
+    private String contextPath;
 
     @Autowired
     private FansMapper fansMapper;
@@ -114,7 +119,7 @@ public class FansServiceImpl extends ServiceImpl<FansMapper, Fans> implements Fa
             }
             User user = userService.getById(userId);
             map.put("name",user.getNickname());
-            map.put("portrait",user.getPortrait());
+            map.put("portrait", FilePathNormalizer.normalizeFieldUrl(user.getPortrait(), contextPath));
             map.put("createTime",fans.getCreateTime());
             result.add(map);
         }

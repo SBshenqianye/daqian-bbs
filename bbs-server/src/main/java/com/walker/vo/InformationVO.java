@@ -1,5 +1,6 @@
 package com.walker.vo;
 
+import com.walker.annotation.NormalizeFilePath;
 import io.swagger.annotations.ApiModel;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,6 +14,7 @@ public class InformationVO {
 
     private Integer userId;
     private String nickName;
+    @NormalizeFilePath
     private String portrait;
     private Integer articleId;
     private String articleName;
