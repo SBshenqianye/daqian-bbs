@@ -12,8 +12,8 @@
     <div class="max-w-7xl mx-auto px-page-margin-desktop py-8">
       <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
         <!-- Left Sidebar: Categories -->
-        <aside class="md:col-span-2 space-y-4">
-          <div class="bg-container border border-border rounded-lg p-2 sticky top-8">
+        <aside class="md:col-span-2 space-y-4 sticky top-20 self-start">
+          <div class="bg-container border border-border rounded-lg p-2">
             <nav class="flex flex-col gap-1">
               <button
                 v-for="cat in categories"
@@ -71,7 +71,7 @@
         </section>
 
         <!-- Right Sidebar: Hot Topics -->
-        <aside class="md:col-span-3 space-y-4">
+        <aside class="md:col-span-3 space-y-4 sticky top-20 self-start">
           <div class="bg-container border border-border rounded-lg p-card-padding">
             <div class="flex items-center justify-between mb-4">
               <h2 class="font-headline-sm flex items-center gap-2">
