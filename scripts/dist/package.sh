@@ -93,17 +93,14 @@ package_container() {
         ok "${name}.tar 导出完成 (${size})"
     done
 
-    # 2. 部署脚本
-    info "===== 复制部署脚本 ====="
-    rm -rf "$OUTPUT_DIR/scripts"
-    cp -r scripts "$OUTPUT_DIR/scripts"
-    rm -f "$OUTPUT_DIR/scripts/.env.example"  # 单独处理
-
-    # 3. Dockerfile（可选，方便内网重编）
+    # 2. Dockerfile（可选，方便内网重编）
     info "===== 复制 Dockerfile ====="
     mkdir -p "$OUTPUT_DIR/docker"
     cp nginx/Dockerfile             "$OUTPUT_DIR/docker/"
     cp bbs-server/Dockerfile        "$OUTPUT_DIR/docker/" 2>/dev/null || true
+
+    # 3. 环境变量模板
+    cp scripts/.env.example "$OUTPUT_DIR/"
 
     # 4. 顶层一键部署脚本
     info "===== 生成一键部署脚本 ====="
@@ -127,6 +124,20 @@ else
 fi
 echo "[INFO] 使用容器引擎: $RUNNER"
 
+# 默认配置
+BBS_DB_HOST="${BBS_DB_HOST:-127.0.0.1}"
+BBS_DB_PORT="${BBS_DB_PORT:-15432}"
+BBS_DB_NAME="${BBS_DB_NAME:-bbs}"
+BBS_DB_USER="${BBS_DB_USER:-work_flow}"
+BBS_DB_PASSWORD="${BBS_DB_PASSWORD:-work_flow123}"
+BBS_SERVER_PORT="${BBS_SERVER_PORT:-9083}"
+NGINX_PORT="${NGINX_PORT:-19848}"
+BBS_SERVER_CONTAINER="${BBS_SERVER_CONTAINER:-bbs-server}"
+BBS_NGINX_CONTAINER="${BBS_NGINX_CONTAINER:-bbs-nginx}"
+BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR:-/data/bbs/bbsUpload}"
+BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR%/}/"
+BBS_SUPER_ADMIN_PASSWORD="${BBS_SUPER_ADMIN_PASSWORD:-1234@abcD}"
+
 # 1. 加载镜像
 cd "$(dirname "$0")"
 for img_file in bbs-server.tar bbs-nginx.tar; do
@@ -143,41 +154,79 @@ done
 # 2. 环境变量
 if [ ! -f ".env" ]; then
     echo "[INFO] 创建 .env（使用默认配置）..."
-    cp scripts/.env.example .env
+    cp .env.example .env
     echo "[WARN] 请检查 .env 中的数据库密码等配置：vi .env"
     echo "      按 Enter 使用默认配置继续，或 Ctrl+C 修改后重试"
     read -r
 fi
+set -a; source .env; set +a
 
 # 3. 确认 PostgreSQL 已就绪
 echo ""
 echo "============================================"
 echo "  ⚠ 请确保 PostgreSQL 已启动并正常运行"
 echo ""
-echo "  BBS_DB_HOST 配置方式（按实际情况选一种）:"
-echo ""
-echo "  方案 A) PG 是容器且加入 bbs-net 网络:"
-echo "     podman network connect bbs-net <PG容器名>"
-echo "     然后 BBS_DB_HOST=<PG容器名>"
-echo ""
-echo "  方案 B) PG 是同宿主机原生服务:"
-echo "     BBS_DB_HOST=host.docker.internal 或宿主机 IP"
-echo ""
-echo "  方案 C) PG 在远程服务器:"
-echo "     BBS_DB_HOST=<远程服务器 IP>"
+echo "  容器使用 host 网络，通过 127.0.0.1:${BBS_DB_PORT} 连接数据库"
 echo ""
 echo "  PostgreSQL 需自行管理，脚本不会自动启动或关闭"
 echo "  默认端口: 15432"
 echo "============================================"
 echo ""
 
-# 4. 部署
-echo "[INFO] 启动容器部署..."
-bash scripts/deploy/container.sh
+# 4. 启动后端
+echo "[INFO] 启动 bbs-server..."
+if $RUNNER container exists "$BBS_SERVER_CONTAINER" 2>/dev/null; then
+    $RUNNER rm -f "$BBS_SERVER_CONTAINER" 2>/dev/null || true
+fi
+
+if [ ! -d "$BBS_UPLOAD_DIR" ]; then
+    mkdir -p "$BBS_UPLOAD_DIR"
+fi
+
+$RUNNER run -d \
+    --name "$BBS_SERVER_CONTAINER" \
+    --network host \
+    -e BBS_DB_HOST="$BBS_DB_HOST" \
+    -e BBS_DB_PORT="$BBS_DB_PORT" \
+    -e BBS_DB_NAME="$BBS_DB_NAME" \
+    -e BBS_DB_USER="$BBS_DB_USER" \
+    -e BBS_DB_PASSWORD="$BBS_DB_PASSWORD" \
+    -e BBS_SUPER_ADMIN_PASSWORD="$BBS_SUPER_ADMIN_PASSWORD" \
+    -e BBS_UPLOAD_DIR="$BBS_UPLOAD_DIR" \
+    -v "$BBS_UPLOAD_DIR:$BBS_UPLOAD_DIR" \
+    bbs-server
+
+echo "[OK] bbs-server 已启动"
+
+# 5. 启动 Nginx
+echo "[INFO] 启动 bbs-nginx..."
+if $RUNNER container exists "$BBS_NGINX_CONTAINER" 2>/dev/null; then
+    $RUNNER rm -f "$BBS_NGINX_CONTAINER" 2>/dev/null || true
+fi
+
+$RUNNER run -d \
+    --name "$BBS_NGINX_CONTAINER" \
+    --network host \
+    -e NGINX_PORT="$NGINX_PORT" \
+    -e BBS_SERVER_PORT="$BBS_SERVER_PORT" \
+    bbs-nginx
+
+echo "[OK] bbs-nginx 已启动"
+
+echo ""
+echo "============================================"
+echo "  部署完成！"
+echo ""
+echo "  用户前端:  http://localhost:${NGINX_PORT}/bbs-user/"
+echo "  管理后台:  http://localhost:${NGINX_PORT}/bbs-admin/"
+echo "  后端 API:  http://localhost:${NGINX_PORT}/bbs-server/"
+echo ""
+echo "  停止容器:  ${RUNNER} stop bbs-server bbs-nginx"
+echo "============================================"
 DEPLOYEOF
     chmod +x "$OUTPUT_DIR/deploy.sh"
 
-    # 5. README 简化
+    # 5. README
     cat > "$OUTPUT_DIR/README.md" << 'READMEEOF'
 # BBS 离线部署包（容器模式）
 
@@ -188,32 +237,29 @@ DEPLOYEOF
 ## 一键部署
 
 ```bash
-# 解压到 /data/bbs
+# 解压
 sudo mkdir -p /data
 sudo tar -xzf bbs-offline-*.tar.gz -C /data
 cd /data/bbs
+
+# 编辑数据库配置
+cp .env.example .env
+vi .env
+
+# 部署
 sudo bash deploy.sh
 ```
 
-`deploy.sh` 会自动完成：加载镜像 → 初始化配置 → 启动容器。
+`deploy.sh` 会自动完成：加载镜像 → 启动后端和 Nginx 容器（host 网络模式）。
 
 > PostgreSQL 需自行管理，部署脚本不会自动启动数据库。
 > 部署前请确保 PG 已运行并在 `.env` 中正确配置 `BBS_DB_HOST`。
 
-## 自定义配置
-
-如需修改数据库密码等，在运行 `deploy.sh` 前编辑 `.env`：
-
-```bash
-cp scripts/.env.example .env
-vi .env        # 修改数据库密码等
-bash deploy.sh
-```
-
 ## 清理
 
 ```bash
-bash scripts/ops/teardown.sh
+sudo podman stop bbs-server bbs-nginx
+sudo podman rm bbs-server bbs-nginx
 ```
 
 ## 目录结构
@@ -223,16 +269,10 @@ bash scripts/ops/teardown.sh
 ├── deploy.sh                # 一键部署入口
 ├── bbs-server.tar           # 后端镜像
 ├── bbs-nginx.tar            # Nginx 镜像（含前端静态文件）
-├── scripts/
-│   ├── deploy/
-│   │   └── container.sh     # 容器部署脚本
-│   ├── ops/
-│   │   ├── teardown.sh      # 清理脚本
-│   │   └── init-db.sh       # 数据库初始化
-│   ├── lib/
-│   │   └── progress.sh      # 进度指示库
-│   └── .env.example         # 配置模板
+├── .env.example             # 配置模板
 ├── docker/                  # Dockerfile（内网重编用）
+│   ├── Dockerfile.nginx
+│   └── Dockerfile.server
 └── README.md
 ```
 READMEEOF
