@@ -182,6 +182,7 @@
 
 <script>
 import { Message } from 'element-ui'
+import { getUser, setUser } from '@/utils/auth'
 
 export default {
   name: 'BBSUserinfo',
@@ -322,11 +323,14 @@ export default {
         newPassword: newPassword.trim(),
       }).then(resp => {
         if (resp) {
-          Message({ type: 'success', message: '密码修改成功，请重新登录！', offset: 54 })
-          window.sessionStorage.clear()
-          this.$bus.$emit('isLogin', false)
-          this.$router.replace('/login')
-          setTimeout(() => { location.reload() }, 600)
+          Message({ type: 'success', message: '密码修改成功', offset: 54 })
+          // 更新本地用户信息的 isFirstLogin 状态（token 仍然有效，无需重新登录）
+          const user = getUser()
+          if (user) {
+            user.isFirstLogin = 0
+            setUser(user, !!window.localStorage.getItem('user'))
+          }
+          this.$router.replace('/forum')
         }
       }).catch(() => {
         Message({ type: 'error', message: '密码修改失败', offset: 54 })
