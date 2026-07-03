@@ -354,7 +354,6 @@ export default {
       }
       this.putRequest('/reply/userReply', params).then(resp => {
         if (resp) {
-          Message({ type: 'success', message: '回复成功', offset: 54 })
           this.loadComments(this.articleId)
         } else {
           Message({ type: 'error', message: '回复失败', offset: 54 })
@@ -379,7 +378,6 @@ export default {
         if (isReply) {
           this.postRequest('/reply/deleteReplyById', { replyId: commentId }).then(resp => {
             if (resp) {
-              Message({ type: 'success', message: '删除成功', offset: 54 })
               this.loadComments(this.articleId)
             }
           }).catch(() => {
@@ -388,7 +386,6 @@ export default {
         } else {
           this.postRequest('/comment/deleteCommentById', { commentId }).then(resp => {
             if (resp) {
-              Message({ type: 'success', message: '删除成功', offset: 54 })
               this.loadComments(this.articleId)
             }
           }).catch(() => {
