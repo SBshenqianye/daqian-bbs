@@ -74,7 +74,8 @@ export default {
       localCollapse: false,
       showDropdown: false,
       adminInfo: null,
-      userClientHref: process.env.VUE_APP_BBS_USER_API || '',
+      userClientHref:
+        (process.env.VUE_APP_BBS_USER_API || '') + '/#/userinfo',
       defaultPortrait: require('@/assets/portrait.png'),
     }
   },
