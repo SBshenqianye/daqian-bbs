@@ -110,13 +110,14 @@
                   我的发布
                 </router-link>
                 <div class="h-[1px] bg-outline-variant my-1"></div>
-                <a
-                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-error-container/20 text-error hover:text-error transition-colors font-body-md text-body-md cursor-pointer"
+                <button
+                  type="button"
+                  class="flex items-center gap-3 w-full px-3 py-2 rounded-lg hover:bg-error-container/20 text-error hover:text-error transition-colors font-body-md text-body-md"
                   @click="handleLogout"
                 >
                   <span class="material-symbols-outlined text-[20px]">logout</span>
                   退出登录
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -212,7 +213,10 @@ export default {
       removeUser()
       this.user = null
       this.isLogin = false
-      this.$router.push('/login')
+      this.$bus && this.$bus.$emit('isLogin', false)
+      this.$nextTick(() => {
+        this.$router.replace('/login')
+      })
     },
     isActive(path) {
       return this.$route.path === path
