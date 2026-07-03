@@ -32,7 +32,6 @@
             <div class="flex items-center gap-6 ml-auto">
               <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">visibility</span> {{ article.views }}</span>
               <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">chat_bubble</span> {{ article.comments }}</span>
-              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">auto_awesome</span> {{ article.likes }}</span>
             </div>
           </div>
         </div>
@@ -106,7 +105,7 @@ export default {
           authorAvatar: userAvatar,
           time: a.createTime || a.articleCreateTime || '',
           views: a.articleViewNum || 0,
-          comments: a.articleCommentNum || 0,
+          comments: a.commentNum || a.articleCommentNum || 0,
           likes: a.articleGoodNum || 0,
           cover: normalizeFileUrl(a.articleImage || null),
         }))

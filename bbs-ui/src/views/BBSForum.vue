@@ -53,7 +53,6 @@
                   <div class="flex items-center gap-4">
                     <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">visibility</span> {{ article.views }}</span>
                     <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">chat_bubble</span> {{ article.comments }}</span>
-                    <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">thumb_up</span> {{ article.likes }}</span>
                   </div>
                 </div>
               </div>

@@ -100,4 +100,8 @@ public class Article implements Serializable {
     @ApiModelProperty("用户头像")
     @TableField(exist = false)
     private String portrait;
+
+    @ApiModelProperty("评论数量")
+    @TableField(exist = false)
+    private Integer commentNum;
 }

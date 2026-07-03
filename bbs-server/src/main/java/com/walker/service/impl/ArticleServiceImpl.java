@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.ArticleMapper;
+import com.walker.mapper.CommentMapper;
 import com.walker.mapper.SaOrgMapper;
 import com.walker.pojo.*;
 import com.walker.service.*;
@@ -59,6 +60,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Autowired
     private SaOrgMapper saOrgMapper;
 
+    @Autowired
+    private CommentMapper commentMapper;
 
     /**
      * 发布文章
@@ -245,6 +248,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
         // 批量填充用户头像
         enrichWithPortraits(articles);
+        // 批量填充评论数量
+        enrichWithCommentCounts(articles);
         return articles;
     }
 
@@ -261,6 +266,26 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         articles.forEach(a -> {
             if (a.getUserId() != null && portraitMap.containsKey(a.getUserId())) {
                 a.setPortrait(portraitMap.get(a.getUserId()));
+            }
+        });
+    }
+
+    private void enrichWithCommentCounts(List<Article> articles) {
+        if (CollectionUtils.isEmpty(articles)) return;
+        List<Integer> articleIds = articles.stream()
+                .map(Article::getArticleId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        if (articleIds.isEmpty()) return;
+        List<Map<String, Object>> counts = commentMapper.countByArticleIds(articleIds);
+        Map<Integer, Integer> countMap = counts.stream()
+                .collect(Collectors.toMap(
+                        m -> (Integer) m.get("articleId"),
+                        m -> ((Long) m.get("commentCount")).intValue()
+                ));
+        articles.forEach(a -> {
+            if (a.getArticleId() != null && countMap.containsKey(a.getArticleId())) {
+                a.setCommentNum(countMap.get(a.getArticleId()));
             }
         });
     }
@@ -321,7 +346,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .eq(Article::getEnable,1)
                 .eq(Article::getUserId, userId)
                 .orderByDesc(Article::getCreateTime);
-        return articleMapper.selectList(lambdaQueryWrapper);
+        List<Article> articles = articleMapper.selectList(lambdaQueryWrapper);
+        enrichWithCommentCounts(articles);
+        return articles;
     }
 
     @Override
