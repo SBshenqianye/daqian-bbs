@@ -364,11 +364,12 @@ export default {
           this.showAvatarDialog = false
           this.avatarPreview = null
           this.avatarFile = null
-          // Refresh user info
+          // Refresh user info & sync to both storage layers
           this.getRequest('/common/user/info').then(r => {
             if (r) {
-              window.sessionStorage.setItem('user', JSON.stringify(r))
+              setUser(r, !!window.localStorage.getItem('user'))
               this.applyUserInfo(r)
+              this.$bus && this.$bus.$emit('portraitUpdated')
             }
           })
         }

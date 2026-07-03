@@ -178,10 +178,13 @@ export default {
       this.isLogin = data
       this.checkLoginState()
     })
+    // Listen for avatar update
+    this.$bus && this.$bus.$on('portraitUpdated', this.checkLoginState)
   },
   beforeDestroy() {
     window.removeEventListener('scroll', this.handleScroll)
     this.$bus && this.$bus.$off('isLogin')
+    this.$bus && this.$bus.$off('portraitUpdated')
   },
   methods: {
     checkLoginState() {
