@@ -281,7 +281,12 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         Map<Integer, Integer> countMap = counts.stream()
                 .collect(Collectors.toMap(
                         m -> (Integer) m.get("articleId"),
-                        m -> ((Long) m.get("commentCount")).intValue()
+                        m -> {
+                            Object count = m.get("commentCount");
+                            if (count == null) return 0;
+                            return ((Number) count).intValue();
+                        },
+                        Integer::sum
                 ));
         articles.forEach(a -> {
             if (a.getArticleId() != null && countMap.containsKey(a.getArticleId())) {
