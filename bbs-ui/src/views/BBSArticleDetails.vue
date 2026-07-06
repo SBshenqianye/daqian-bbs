@@ -87,13 +87,15 @@
           <div class="w-10 h-10 rounded-full overflow-hidden bg-surface-variant border border-outline-variant flex-shrink-0">
             <img :src="currentUserAvatar || require('@/assets/portrait.png')" class="w-full h-full object-cover">
           </div>
-          <input
+          <textarea
             ref="commentInput"
             v-model="newComment"
-            class="flex-grow min-w-0 py-2.5 px-4 rounded-lg border border-border focus:border-primary-container focus:ring-1 focus:ring-primary-container bg-surface font-body-md text-body-md transition-primary outline-none"
+            class="flex-grow min-w-0 py-2 px-4 rounded-lg border border-border focus:border-primary-container focus:ring-1 focus:ring-primary-container bg-surface font-body-md text-body-md transition-primary outline-none resize-none"
             :placeholder="commentPlaceholder"
-            @keyup.enter="submitComment"
-          />
+            rows="1"
+            @keydown.enter.exact="submitComment"
+            @input="autoResizeCommentInput"
+          ></textarea>
           <button
             class="bg-primary-container text-white px-6 py-2 rounded-lg font-label-md text-label-md hover:shadow-md hover:bg-primary transition-primary active:scale-95 flex-shrink-0"
             @click="submitComment"
@@ -129,12 +131,14 @@
           </div>
 
           <template v-if="currentUser">
-            <input
+            <textarea
               v-model="newComment"
-              class="flex-grow min-w-0 py-2.5 px-4 rounded-lg border border-border focus:border-primary-container focus:ring-1 focus:ring-primary-container bg-surface font-body-md text-body-md transition-primary outline-none"
+              class="flex-grow min-w-0 py-2 px-4 rounded-lg border border-border focus:border-primary-container focus:ring-1 focus:ring-primary-container bg-surface font-body-md text-body-md transition-primary outline-none resize-none"
               :placeholder="commentPlaceholder"
-              @keyup.enter="submitComment"
-            />
+              rows="1"
+              @keydown.enter.exact="submitComment"
+              @input="autoResizeCommentInput"
+            ></textarea>
             <button
               class="bg-primary-container text-white px-6 py-2 rounded-lg font-label-md text-label-md hover:shadow-md hover:bg-primary transition-primary active:scale-95 flex-shrink-0"
               @click="submitComment"
@@ -396,6 +400,11 @@ export default {
       }).catch(() => {
         this.article.attachments = []
       })
+    },
+    autoResizeCommentInput(e) {
+      const el = e.target
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
     },
     submitComment() {
       if (!this.newComment.trim()) return

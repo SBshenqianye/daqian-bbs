@@ -16,7 +16,7 @@
         </div>
       </div>
       <p class="text-outline text-label-xs mb-1">{{ comment.time }}</p>
-      <div class="font-body-sm text-on-surface leading-relaxed mb-2">
+      <div class="font-body-sm text-on-surface leading-relaxed mb-2 whitespace-pre-line">
         <span v-if="comment.replyTo" class="text-primary-container font-medium mr-1.5">回复{{ comment.replyTo }}:</span>
         {{ comment.content }}
       </div>
@@ -27,13 +27,14 @@
           <img :src="currentUserAvatar || require('../assets/portrait.png')" class="w-full h-full object-cover">
         </div>
         <div class="flex-grow flex gap-1.5">
-          <input
+          <textarea
             v-model="replyText"
-            class="flex-grow p-1.5 rounded-lg border border-border text-label-sm bg-surface focus:border-primary-container outline-none"
+            class="flex-grow p-1.5 rounded-lg border border-border text-label-sm bg-surface focus:border-primary-container outline-none resize-none"
             :placeholder="'回复 ' + comment.author"
-            type="text"
-            @keyup.enter="submitReply"
-          >
+            rows="1"
+            @keydown.enter.exact="submitReply"
+            @input="autoResizeReplyInput"
+          ></textarea>
           <button class="bg-primary-container/10 text-primary-container px-3 py-1 rounded-lg font-label-sm text-label-sm hover:bg-primary-container hover:text-white transition-primary whitespace-nowrap" @click="submitReply">
             回复
           </button>
@@ -104,6 +105,11 @@ export default {
   methods: {
     handleToggleReply() {
       this.replyState.activeId = this.showReplyInput ? null : this.comment.id
+    },
+    autoResizeReplyInput(e) {
+      const el = e.target
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
     },
     submitReply() {
       if (!this.replyText.trim()) return
