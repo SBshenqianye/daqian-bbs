@@ -94,7 +94,7 @@ export default {
   },
   computed: {
     showReplyInput() {
-      return this.replyState.activeId === this.comment.id
+      return this.replyState.activeId === this.comment.replyKey
     },
     displayChildren() {
       if (!this.comment.children) return []
@@ -104,7 +104,7 @@ export default {
   },
   methods: {
     handleToggleReply() {
-      this.replyState.activeId = this.showReplyInput ? null : this.comment.id
+      this.replyState.activeId = this.showReplyInput ? null : this.comment.replyKey
     },
     autoResizeReplyInput(e) {
       const el = e.target

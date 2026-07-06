@@ -114,6 +114,25 @@
             @delete="handleDeleteComment"
             @reply="handleReply"
           />
+
+          <!-- 空状态：全无评论 -->
+          <div
+            v-if="showCommentEmptyState && totalCommentCount === 0"
+            class="flex flex-col items-center justify-center py-16 text-on-surface-variant"
+          >
+            <span class="material-symbols-outlined text-7xl mb-4 opacity-10">chat_bubble_outline</span>
+            <p class="font-headline-sm text-headline-sm mb-2">暂无评论</p>
+            <p class="font-body-md text-body-md">快来发表第一条评论吧～</p>
+          </div>
+
+          <!-- 空状态：仅有零散评论 -->
+          <div
+            v-if="showCommentEmptyState && totalCommentCount > 0"
+            class="flex flex-col items-center justify-center py-8 text-on-surface-variant border-t border-border mt-6"
+          >
+            <span class="material-symbols-outlined text-4xl mb-2 opacity-20">chat_bubble_outline</span>
+            <p class="font-body-md text-body-md">评论不多，来说点什么吧～</p>
+          </div>
         </div>
       </div>
     </section>
@@ -171,6 +190,9 @@ import { getCommentReply } from '@/api/comment'
 import { normalizeFileUrl, normalizeUrls } from '@/utils/utils'
 import { Message } from 'element-ui'
 
+// 评论区域空白填充阈值：评论数低于此值时显示空状态，避免头重脚轻
+const MIN_COMMENT_FILLER = 3
+
 // mavon-editor 预览模式的外部资源链接（仅引用编译时常量，提升到模块级避免重复创建）
 const previewExternalLink = {
   hljs_js: () => process.env.BASE_URL + 'lib/highlight/highlight.min.js',
@@ -218,6 +240,7 @@ export default {
       authorInfo: {},
       // Comment & reply
       comments: [],
+      commentsLoaded: false,
       // Markdown content for preview
       mdContent: '',
       // Markdown editor preview config
@@ -248,6 +271,9 @@ export default {
         return count
       }
       return countChildren(this.comments)
+    },
+    showCommentEmptyState() {
+      return this.commentsLoaded && this.comments.length < MIN_COMMENT_FILLER
     },
     articleTagName() {
       if (!this.article.tagId || !this.labelList.length) return ''
@@ -351,8 +377,10 @@ export default {
         } else {
           this.comments = []
         }
+        this.commentsLoaded = true
       }).catch(() => {
         this.comments = []
+        this.commentsLoaded = true
       })
     },
     // Map API comment to BBSCommentItem props format
@@ -361,6 +389,7 @@ export default {
       const commentId = c.commentId || c.id
       const mapped = {
         id: commentId,
+        replyKey: 'c-' + commentId,
         commentRootId: commentId,
         userId: c.userId,
         author: c.nickname || '',
@@ -368,19 +397,23 @@ export default {
         time: c.commentTime || '',
         content: c.commentContent || '',
         canDelete: myId != null && String(c.userId) === String(myId),
-        children: (c.reply || []).map(r => ({
-          id: r.replyId || r.id,
-          commentRootId: commentId,
-          userId: r.replyUserId || r.userId,
-          replyTargetUserId: r.replyToUserId,
-          author: r.nickname || '',
-          avatar: normalizeFileUrl(r.portrait || ''),
-          time: r.replyTime || '',
-          content: r.replyContent || '',
-          replyTo: r.replyToNickname || '',
-          canDelete: myId != null && String(r.replyUserId || r.userId) === String(myId),
-          children: [],
-        })),
+        children: (c.reply || []).map(r => {
+          const replyId = r.replyId || r.id
+          return {
+            id: replyId,
+            replyKey: 'r-' + replyId,
+            commentRootId: commentId,
+            userId: r.replyUserId || r.userId,
+            replyTargetUserId: r.replyToUserId,
+            author: r.nickname || '',
+            avatar: normalizeFileUrl(r.portrait || ''),
+            time: r.replyTime || '',
+            content: r.replyContent || '',
+            replyTo: r.replyToNickname || '',
+            canDelete: myId != null && String(r.replyUserId || r.userId) === String(myId),
+            children: [],
+          }
+        }),
       }
       if (mapped.userId == null) {
         console.warn('[mapComment] comment without userId:', JSON.parse(JSON.stringify(c)))
