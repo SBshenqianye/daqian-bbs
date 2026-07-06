@@ -40,16 +40,31 @@
         </div>
       </div>
 
-      <!-- Nested Replies -->
-      <div v-if="comment.children && comment.children.length > 0" class="ml-10 space-y-6 border-l-2 border-surface-container pl-4">
-        <BBSCommentItem
-          v-for="child in comment.children"
-          :key="child.id"
-          :comment="child"
-          :currentUserAvatar="currentUserAvatar"
-          @delete="$emit('delete', $event)"
-          @reply="$emit('reply', $event)"
-        />
+      <!-- Nested Replies (自动折叠) -->
+      <div v-if="comment.children && comment.children.length > 0" class="ml-10 border-l-2 border-surface-container pl-4">
+        <div class="space-y-6">
+          <BBSCommentItem
+            v-for="child in displayChildren"
+            :key="child.id"
+            :comment="child"
+            :currentUserAvatar="currentUserAvatar"
+            @delete="$emit('delete', $event)"
+            @reply="$emit('reply', $event)"
+          />
+        </div>
+        <!-- 展开/折叠按钮 -->
+        <button
+          v-if="comment.children.length > maxVisibleReplies"
+          class="mt-3 text-label-md font-label-md text-primary-container hover:text-primary transition-primary cursor-pointer"
+          @click="expandedReplies = !expandedReplies"
+        >
+          <template v-if="expandedReplies">
+            收起回复
+          </template>
+          <template v-else>
+            展开全部 {{ comment.children.length }} 条回复
+          </template>
+        </button>
       </div>
     </div>
   </div>
@@ -72,11 +87,18 @@ export default {
   data() {
     return {
       replyText: '',
+      maxVisibleReplies: 3,
+      expandedReplies: false,
     }
   },
   computed: {
     showReplyInput() {
       return this.replyState.activeId === this.comment.id
+    },
+    displayChildren() {
+      if (!this.comment.children) return []
+      if (this.expandedReplies) return this.comment.children
+      return this.comment.children.slice(0, this.maxVisibleReplies)
     },
   },
   methods: {
