@@ -48,18 +48,27 @@ public class DatabaseInitHelper {
             ensureDatabaseExists(adminUrl, dbUsername, dbPassword, dbName, dbType);
 
             // 2. 检查是否已有表（防止重复初始化覆盖数据）
+            boolean isFirstInit = false;
             try (Connection conn = DriverManager.getConnection(jdbcUrl, dbUsername, dbPassword)) {
                 if (hasExistingTables(conn, dbType)) {
                     log.info("Tables already exist in database [{}], skip init SQL.", dbName);
-                    return;
+                } else {
+                    isFirstInit = true;
                 }
             } catch (Exception e) {
                 log.warn("Failed to check existing tables, will run init SQL anyway: {}", e.getMessage());
+                isFirstInit = true;
             }
 
-            // 3. 首次初始化：建表 + 基础数据
-            log.info("First-time init for database [{}], executing init SQL.", dbName);
-            executeInitSql(jdbcUrl, dbUsername, dbPassword, dbType);
+            if (isFirstInit) {
+                // 3. 首次初始化：建表 + 基础数据
+                log.info("First-time init for database [{}], executing init SQL.", dbName);
+                executeInitSql(jdbcUrl, dbUsername, dbPassword, dbType);
+            }
+
+            // 4. 升级 SQL 由 DatabaseInitializer（@PostConstruct 在 Spring 容器内执行）负责
+            //    因为 bootstrap 阶段的配置加载不支持多 profile（如 dev,local），
+            //    在 Spring 容器内执行更可靠
         } catch (Exception e) {
             log.error("Database bootstrap failed: {}", e.getMessage(), e);
         }

@@ -71,6 +71,9 @@ CREATE TABLE IF NOT EXISTS bbs_article_label (
     enabled    smallint
 );
 
+ALTER TABLE bbs_article_label ADD COLUMN IF NOT EXISTS icon varchar(50);
+ALTER TABLE bbs_article_label ADD COLUMN IF NOT EXISTS description varchar(200);
+
 -- ----------------------------
 -- Table: bbs_article_type
 -- ----------------------------
@@ -258,10 +261,10 @@ ON CONFLICT (id) DO NOTHING;
 -- ----------------------------
 -- 文章标签
 -- ----------------------------
-INSERT INTO bbs_article_label (label_id, label_name, enabled) VALUES
-(1, '电量', 0),
-(2, '电费', 1),
-(3, '电价', 0)
+INSERT INTO bbs_article_label (label_id, label_name, enabled, icon, description) VALUES
+(1, '技术交流', 0, 'thumb_up', ''),
+(2, '求助问答', 1, 'help', ''),
+(3, '资源共享', 0, 'folder_open', '')
 ON CONFLICT (label_id) DO NOTHING;
 
 -- ----------------------------
