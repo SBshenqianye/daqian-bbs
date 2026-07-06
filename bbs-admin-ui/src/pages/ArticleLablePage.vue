@@ -331,7 +331,18 @@ export default {
         if (resp) {
           this.$message.success('修改成功')
           this.editVisible = false
-          this.getArticleLabelPage()
+          // 本地更新该行数据，避免后端排序差异导致行位移
+          const item = this.labelsRaw.find(r => this.getLabelId(r) === labelId)
+          if (item) {
+            const updated = { ...item }
+            updated.labelName = labelName
+            updated.icon = this.editForm.icon
+            updated.description = this.editForm.description
+            updated.enabled = this.editForm.enabled
+            updated.isDisable = Number(this.editForm.enabled === 0 ? 1 : 0)
+            const idx = this.labelsRaw.indexOf(item)
+            this.$set(this.labelsRaw, idx, updated)
+          }
         }
       })
     },
