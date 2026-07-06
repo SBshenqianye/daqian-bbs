@@ -42,7 +42,7 @@
           <input
             v-model="replyText"
             class="flex-grow p-2 rounded-lg border border-border text-label-md bg-surface focus:border-primary-container outline-none"
-            placeholder="请输入评论内容..."
+            :placeholder="'回复 ' + comment.author"
             type="text"
             @keyup.enter="submitReply"
           >
