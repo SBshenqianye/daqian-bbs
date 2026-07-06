@@ -286,9 +286,7 @@ export default {
             if (r) window.sessionStorage.setItem('user', JSON.stringify(r))
           })
         }
-      }).catch(() => {
-        Message({ type: 'error', message: '保存失败', offset: 54 })
-      })
+      }).catch(() => {})
     },
     cancelChanges() {
       this.userInfo.phone = this.originalPhone
@@ -332,9 +330,7 @@ export default {
           }
           this.$router.replace('/forum')
         }
-      }).catch(() => {
-        Message({ type: 'error', message: '密码修改失败', offset: 54 })
-      })
+      }).catch(() => {})
     },
     resetPasswordForm() {
       this.passwordForm = { ...this.originalPasswordForm }
@@ -373,9 +369,7 @@ export default {
             }
           })
         }
-      }).catch(() => {
-        Message({ type: 'error', message: '头像上传失败', offset: 54 })
-      })
+      }).catch(() => {})
     },
   },
 }

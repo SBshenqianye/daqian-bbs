@@ -38,39 +38,30 @@ axios.interceptors.response.use(success=>{
     return success.data;
 
 },error => {
-    if(error.response.status == 504 || error.response.status == 404){
+    // 优先显示后端返回的错误信息，方便 debug；没有则兜底通用文案
+    const resMsg = error.response && error.response.data && error.response.data.message
+    const status = error.response && error.response.status
+    if(status == 504 || status == 404){
         Message({
             type: 'error',
-            message: '服务器错误',
-            //offset:50
+            message: resMsg || '服务器错误',
         })
-    }else if(error.response.status == 403){
+    }else if(status == 403){
         Message({
             type: 'error',
-            message: '权限不足，请联系管理员！',
-            //offset:50
+            message: resMsg || '权限不足，请联系管理员！',
         })
-    }else if(error.response.status == 401){
+    }else if(status == 401){
         Message({
             type: 'error',
-            message: '尚未登录，请登录！',
-            //offset:50
+            message: resMsg || '尚未登录，请登录！',
         })
         router.replace('/');
     }else{
-        if(error.response.data.message){
-            Message({
-                type: 'error',
-                message: error.response.data.message,
-                //offset:50
-            })
-        }else{
-            Message({
-                type: 'error',
-                message: '未知错误！',
-                //offset:50
-            })
-        }
+        Message({
+            type: 'error',
+            message: resMsg || '未知错误！',
+        })
     }
     return;
 })

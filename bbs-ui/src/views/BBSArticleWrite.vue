@@ -265,7 +265,6 @@ export default {
           this.loadArticleFiles(id)
         }
       }).catch(() => {
-        Message({ message: '加载文章失败', type: 'error', showClose: true, offset: 54 })
       })
     },
     loadArticleFiles(id) {
@@ -326,7 +325,6 @@ export default {
             Message({ message: (resp && resp.message) || '上传失败', type: 'error', showClose: true, offset: 54 })
           }
         }).catch(() => {
-          Message({ message: '上传失败', type: 'error', showClose: true, offset: 54 })
         })
       })
       this.$refs.attachmentInput.value = ''
@@ -403,7 +401,6 @@ export default {
           }
         }).catch(() => {
           loading.close()
-          Message({ message: '发布失败', type: 'error', showClose: true, offset: 54 })
         })
       }
 

@@ -55,18 +55,20 @@ axios.interceptors.response.use(success=>{
     return success.data;
 
 },error => {
+    // 优先显示后端返回的错误信息，方便 debug；没有则兜底通用文案
+    const resMsg = error.response && error.response.data && error.response.data.message
     const status = error.response && error.response.status;
     if(status === 504 || status === 404){
         Message({
             type: 'error',
-            message: '服务器错误',
+            message: resMsg || '服务器错误',
             offset:54
         })
 
     }else if(status === 403){
         Message({
             type: 'error',
-            message: '权限不足，请联系管理员！',
+            message: resMsg || '权限不足，请联系管理员！',
             offset:54
         })
 
@@ -74,19 +76,11 @@ axios.interceptors.response.use(success=>{
         const currentPath = router.currentRoute.fullPath
         router.replace(currentPath !== '/login' ? `/login?redirect=${encodeURIComponent(currentPath)}` : '/login');
     }else{
-        if(error.response.data.message){
-            Message({
-                type: 'error',
-                message: error.response.data.message,
-                offset:54
-            })
-        }else{
-            Message({
-                type: 'error',
-                message: '未知错误！',
-                offset:54
-            })
-        }
+        Message({
+            type: 'error',
+            message: resMsg || '未知错误！',
+            offset:54
+        })
     }
 
 })

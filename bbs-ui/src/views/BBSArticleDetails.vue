@@ -345,9 +345,7 @@ export default {
           this.newComment = ''
           this.loadComments(this.articleId)
         }
-      }).catch(() => {
-        Message({ type: 'error', message: '评论失败', offset: 54 })
-      })
+      }).catch(() => {})
     },
     handleReply({ commentId, replyContent, replyToUserId }) {
       if (!this.currentUser) return
@@ -365,9 +363,7 @@ export default {
         } else {
           Message({ type: 'error', message: '回复失败', offset: 54 })
         }
-      }).catch(() => {
-        Message({ type: 'error', message: '回复失败', offset: 54 })
-      })
+      }).catch(() => {})
     },
     handleDeleteComment(comment) {
       if (!comment) return
@@ -387,17 +383,13 @@ export default {
             if (resp) {
               this.loadComments(this.articleId)
             }
-          }).catch(() => {
-            Message({ type: 'error', message: '删除失败', offset: 54 })
-          })
+          }).catch(() => {})
         } else {
           this.postRequest('/comment/deleteCommentById', { commentId }).then(resp => {
             if (resp) {
               this.loadComments(this.articleId)
             }
-          }).catch(() => {
-            Message({ type: 'error', message: '删除失败', offset: 54 })
-          })
+          }).catch(() => {})
         }
       }).catch(() => {})
     },
