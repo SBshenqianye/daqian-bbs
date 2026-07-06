@@ -279,6 +279,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (articleIds.isEmpty()) return;
         List<Map<String, Object>> counts = commentMapper.countByArticleIds(articleIds);
         Map<Integer, Integer> countMap = counts.stream()
+                .filter(m -> m.get("articleId") != null)
                 .collect(Collectors.toMap(
                         m -> ((Number) m.get("articleId")).intValue(),
                         m -> {
