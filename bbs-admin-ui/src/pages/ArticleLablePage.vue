@@ -46,6 +46,7 @@
                   <input type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded" :checked="isAllSelected" @change="selectAll">
                 </th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">标签ID</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[80px]">图标</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[120px]">标签名称</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[160px]">标签描述</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">是否禁用</th>
@@ -58,6 +59,9 @@
                   <input type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded" :checked="isSelected(label)" @change="toggleSelect(label)">
                 </td>
                 <td class="p-4 font-body-md text-on-surface">{{ label.labelId }}</td>
+                <td class="p-4">
+                  <span class="material-symbols-outlined text-on-surface-variant" :title="label.icon || 'label'" style="font-size:22px;">{{ label.icon || 'label' }}</span>
+                </td>
                 <td class="p-4 font-body-md text-on-surface font-medium max-w-[200px] truncate" :title="label.labelName">{{ label.labelName }}</td>
                 <td class="p-4 font-body-md text-on-surface-variant max-w-[200px] truncate" :title="label.description || ''">{{ label.description || '--' }}</td>
                 <td class="p-4">
@@ -80,7 +84,7 @@
                 </td>
               </tr>
               <tr v-if="labelsRaw.length === 0">
-                <td colspan="6" class="p-12 text-center">
+                <td colspan="7" class="p-12 text-center">
                   <div class="flex flex-col items-center gap-2 text-on-surface-variant">
                     <span class="material-symbols-outlined text-[48px] opacity-20">label_off</span>
                     <p class="text-body-md">暂无标签数据</p>
@@ -121,8 +125,8 @@
       <!-- Add Dialog -->
       <div v-if="addVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="addVisible = false">
         <div class="fixed inset-0 bg-black/30"></div>
-        <div class="relative bg-container w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
-          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+        <div class="relative bg-container w-full max-w-md rounded-xl shadow-2xl flex flex-col dialog-card">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant shrink-0">
             <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">add_circle</span>
               新增标签
@@ -131,10 +135,18 @@
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
-          <div class="p-5 space-y-4">
+          <div class="p-5 space-y-4 dialog-body">
             <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">标签名称</label>
               <input v-model="addForm.labelName" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md" placeholder="请输入标签名称" maxlength="50">
+            </div>
+            <div>
+              <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">标签图标</label>
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-on-surface-variant border border-outline-variant rounded-lg p-2" :title="addForm.icon || '未选择'" style="font-size:28px;">{{ addForm.icon || 'label' }}</span>
+                <button class="px-4 py-2 border border-outline rounded-lg text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="openIconPicker('add')">选择图标</button>
+                <button v-if="addForm.icon" class="text-outline hover:text-error transition-colors text-body-sm" @click="addForm.icon = ''">清除</button>
+              </div>
             </div>
             <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">标签描述</label>
@@ -157,8 +169,8 @@
       <!-- Edit Dialog -->
       <div v-if="editVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="editVisible = false">
         <div class="fixed inset-0 bg-black/30"></div>
-        <div class="relative bg-container w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
-          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+        <div class="relative bg-container w-full max-w-md rounded-xl shadow-2xl flex flex-col dialog-card">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant shrink-0">
             <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">edit</span>
               编辑标签
@@ -167,7 +179,7 @@
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
-          <div class="p-5 space-y-4">
+          <div class="p-5 space-y-4 dialog-body">
             <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">标签ID</label>
               <input :value="editForm.labelId" class="w-full px-4 py-2.5 bg-surface-variant border border-outline-variant rounded font-body-md text-body-md text-on-surface-variant" disabled>
@@ -175,6 +187,14 @@
             <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">标签名称</label>
               <input v-model="editForm.labelName" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md" placeholder="请输入标签名称" maxlength="50">
+            </div>
+            <div>
+              <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">标签图标</label>
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-on-surface-variant border border-outline-variant rounded-lg p-2" :title="editForm.icon || '未选择'" style="font-size:28px;">{{ editForm.icon || 'label' }}</span>
+                <button class="px-4 py-2 border border-outline rounded-lg text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="openIconPicker('edit')">选择图标</button>
+                <button v-if="editForm.icon" class="text-outline hover:text-error transition-colors text-body-sm" @click="editForm.icon = ''">清除</button>
+              </div>
             </div>
             <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">标签描述</label>
@@ -193,6 +213,9 @@
           </div>
         </div>
       </div>
+
+      <!-- Icon Picker -->
+      <IconPicker v-model="pickerIcon" :visible="iconPickerVisible" @close="iconPickerVisible = false" @change="onIconPicked" />
     </div>
   </div>
 </template>
@@ -200,6 +223,9 @@
 <script>
 export default {
   name: 'ArticleLablePage',
+  components: {
+    IconPicker: () => import('@/components/IconPicker.vue')
+  },
   data() {
     return {
       searchLabelName: '',
@@ -207,10 +233,13 @@ export default {
       multipleSelection: [],
       addVisible: false,
       editVisible: false,
-      addForm: { labelName: '', description: '', isDisable: 0 },
-      editForm: { labelId: null, labelName: '', description: '', enabled: 0 },
+      addForm: { labelName: '', icon: '', description: '', isDisable: 0 },
+      editForm: { labelId: null, labelName: '', icon: '', description: '', enabled: 0 },
       pageParams: { pageIndex: 1, pageSize: 10 },
-      total: 0
+      total: 0,
+      pickerIcon: '',
+      iconPickerVisible: false,
+      pickerTarget: ''
     }
   },
   computed: {
@@ -264,13 +293,13 @@ export default {
     handleSearch() { this.pageParams.pageIndex = 1; this.getArticleLabelPage() },
     handleSizeChange() { this.pageParams.pageIndex = 1; this.getArticleLabelPage() },
     openAdd() {
-      this.addForm = { labelName: '', description: '', isDisable: 0 }
+      this.addForm = { labelName: '', icon: '', description: '', isDisable: 0 }
       this.addVisible = true
     },
     submitAdd() {
       const labelName = (this.addForm.labelName || '').trim()
       if (!labelName) { this.$message.warning('标签名称不能为空'); return }
-      this.postRequest('/admin/addArticleLabel', { labelName, description: this.addForm.description, enabled: this.addForm.isDisable === 1 ? 0 : 1 }).then(resp => {
+      this.postRequest('/admin/addArticleLabel', { labelName, icon: this.addForm.icon, description: this.addForm.description, enabled: this.addForm.isDisable === 1 ? 0 : 1 }).then(resp => {
         if (resp) {
           this.$message.success('添加成功')
           this.addVisible = false
@@ -283,6 +312,7 @@ export default {
       this.editForm = {
         labelId: row.labelId || row.id,
         labelName: row.labelName || '',
+        icon: row.icon || '',
         description: row.description || '',
         enabled: Number(typeof row.enabled !== 'undefined' ? row.enabled : 0)
       }
@@ -293,13 +323,26 @@ export default {
       const labelName = (this.editForm.labelName || '').trim()
       if (!labelId) { this.$message.warning('标签ID不能为空'); return }
       if (!labelName) { this.$message.warning('标签名称不能为空'); return }
-      this.postRequest('/admin/updArticleLabel', { labelId, labelName, description: this.editForm.description, enabled: this.editForm.enabled }).then(resp => {
+      this.postRequest('/admin/updArticleLabel', { labelId, labelName, icon: this.editForm.icon, description: this.editForm.description, enabled: this.editForm.enabled }).then(resp => {
         if (resp) {
           this.$message.success('修改成功')
           this.editVisible = false
           this.getArticleLabelPage()
         }
       })
+    },
+    openIconPicker(target) {
+      this.pickerTarget = target
+      this.pickerIcon = target === 'add' ? this.addForm.icon : this.editForm.icon
+      this.iconPickerVisible = true
+    },
+    onIconPicked(icon) {
+      if (this.pickerTarget === 'add') {
+        this.addForm.icon = icon
+      } else if (this.pickerTarget === 'edit') {
+        this.editForm.icon = icon
+      }
+      this.iconPickerVisible = false
     },
     handleDelete(row) {
       const labelId = row.labelId || row.id
@@ -323,3 +366,20 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.dialog-card {
+  max-height: 85vh !important;
+}
+.dialog-body {
+  overflow-y: auto !important;
+  flex: 1 1 0% !important;
+}
+.dialog-body::-webkit-scrollbar {
+  width: 5px;
+}
+.dialog-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+</style>
