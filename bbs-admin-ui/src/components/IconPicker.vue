@@ -45,13 +45,14 @@
           @scroll="updateScrollButtons"
         >
           <button
+            ref="tabButtons"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all text-[13px] font-medium shrink-0"
             :class="activeCategoryIndex === null ? 'bg-primary/10 text-primary' : 'text-outline hover:bg-surface-variant hover:text-on-surface'"
             @click="selectCategory(null)"
           >
             <span class="material-symbols-outlined" style="font-size: 16px;">apps</span>
             全部
-            <span class="text-[11px] opacity-60 ml-0.5">{{ allCount }}</span>
+            <span class="text-[11px] opacity-60 ml-0.5">{{ allIcons.length }}</span>
           </button>
           <button
             v-for="(cat, idx) in categories"
@@ -161,7 +162,6 @@ export default {
   data() {
     return {
       categories: [],
-      allCount: 0,
       activeCategoryIndex: null,
       searchInput: '',
       searchQuery: '',
@@ -189,23 +189,15 @@ export default {
     },
     /** Icons filtered by search keyword (global search always searches all) */
     searchedIcons() {
-      if (!this.searchQuery.trim()) return null // null = no filter
+      if (!this.searchQuery.trim()) return []
       const q = this.searchQuery.trim().toLowerCase()
-      const all = this.allIcons
-      const result = []
-      for (let i = 0; i < all.length; i++) {
-        const name = all[i]
-        if (name.includes(q)) { result.push(name); continue }
-        const zh = zhNames[name]
-        if (zh && zh.includes(q)) result.push(name)
-      }
-      return result
+      return this.allIcons.filter(name =>
+        name.includes(q) || (zhNames[name] && zhNames[name].includes(q))
+      )
     },
     /** Icons to show after applying category + search filters */
     filteredIcons() {
-      if (this.searchedIcons !== null) {
-        return this.searchedIcons // search overrides category filter
-      }
+      if (this.isSearching) return this.searchedIcons
       if (this.activeCategoryIndex !== null) {
         const cat = this.categories[this.activeCategoryIndex]
         return cat ? cat.names : []
@@ -226,14 +218,10 @@ export default {
     },
     visible(val) {
       if (val) {
+        this.resetPagination()
         this.$nextTick(() => {
-          this.resetPagination()
-          this.$nextTick(() => {
-            this.updateScrollButtons()
-            if (this.$refs.searchInput) {
-              this.$refs.searchInput.focus()
-            }
-          })
+          this.updateScrollButtons()
+          if (this.$refs.searchInput) this.$refs.searchInput.focus()
         })
       }
     },
@@ -248,7 +236,6 @@ export default {
   },
   created() {
     this.categories = categorizedData.categories || []
-    this.allCount = categorizedData.total || 0
   },
   mounted() {
     this.$nextTick(() => {
@@ -273,24 +260,20 @@ export default {
     },
     scrollActiveTabIntoView() {
       const container = this.$refs.tabsContainer
-      if (!container) return
-      const buttons = container.querySelectorAll('button')
+      if (!container || !this.$refs.tabButtons) return
       const activeIdx = this.activeCategoryIndex === null ? 0 : this.activeCategoryIndex + 1
-      const activeBtn = buttons[activeIdx]
+      const activeBtn = this.$refs.tabButtons[activeIdx]
       if (!activeBtn) return
       const containerRect = container.getBoundingClientRect()
       const btnRect = activeBtn.getBoundingClientRect()
-      // If the button is not fully visible, scroll to center it
       if (btnRect.left < containerRect.left || btnRect.right > containerRect.right) {
         activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
       }
-      setTimeout(() => this.updateScrollButtons(), 100)
     },
     scrollTabs(offset) {
       const container = this.$refs.tabsContainer
       if (!container) return
       container.scrollBy({ left: offset, behavior: 'smooth' })
-      setTimeout(() => this.updateScrollButtons(), 100)
     },
     updateScrollButtons() {
       const container = this.$refs.tabsContainer
