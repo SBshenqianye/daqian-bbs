@@ -123,7 +123,7 @@ public class DatabaseInitHelper {
             }
         } else {
             try (Statement stmt = conn.createStatement()) {
-                stmt.execute("CREATE DATABASE `" + dbName + "` CHARACTER SET utf8 COLLATE utf8_general_ci");
+                stmt.execute("CREATE DATABASE `" + dbName + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
             }
         }
     }

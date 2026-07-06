@@ -113,7 +113,7 @@ CREATE TABLE `bbs_article_user` (
 DROP TABLE IF EXISTS `bbs_comment`;
 CREATE TABLE `bbs_comment` (
   `comment_id`          int(11) NOT NULL AUTO_INCREMENT COMMENT '评论的id',
-  `comment_content`     varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '评论的内容',
+  `comment_content`     varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '评论的内容',
   `comment_article_id`  int(11) NULL DEFAULT NULL COMMENT '评论的文章id',
   `comment_user_id`     int(11) NULL DEFAULT NULL COMMENT '评论的用户id',
   `comment_time`        varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '评论时间',
@@ -203,7 +203,7 @@ CREATE TABLE `bbs_inventory` (
 DROP TABLE IF EXISTS `bbs_reply`;
 CREATE TABLE `bbs_reply` (
   `reply_id`         int(11) NOT NULL AUTO_INCREMENT COMMENT '回复的id',
-  `reply_content`    varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '回复的具体内容',
+  `reply_content`    varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '回复的具体内容',
   `reply_to_user_id` int(11) NULL DEFAULT NULL COMMENT '回复的对象的Id',
   `comment_id`       int(11) NULL DEFAULT NULL COMMENT '回复评论的ID',
   `reply_user_id`    int(11) NULL DEFAULT NULL COMMENT '回复的用户id',
