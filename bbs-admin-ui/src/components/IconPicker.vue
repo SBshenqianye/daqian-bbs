@@ -99,9 +99,9 @@
         </div>
 
         <!-- Pagination Footer -->
-        <div v-if="!isSearching && filteredIcons.length > 0" class="flex items-center justify-between pt-4 mt-4 border-t border-border">
+        <div v-if="filteredIcons.length > 0" class="flex items-center justify-between pt-4 mt-4 border-t border-border">
           <span class="text-body-sm text-outline">共 {{ filteredIcons.length }} 个图标</span>
-          <div class="flex items-center gap-2">
+          <div v-if="totalPages > 1" class="flex items-center gap-2">
             <button
               class="w-8 h-8 rounded border border-outline-variant flex items-center justify-center hover:bg-surface-variant transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
               :disabled="page <= 1"
@@ -118,9 +118,6 @@
               <span class="material-symbols-outlined text-[18px] text-on-surface">chevron_right</span>
             </button>
           </div>
-        </div>
-        <div v-else-if="isSearching && filteredIcons.length > 0" class="py-3 text-center text-body-sm text-outline">
-          共 {{ filteredIcons.length }} 个图标
         </div>
       </div>
 
@@ -216,7 +213,6 @@ export default {
       return this.allIcons
     },
     displayIcons() {
-      if (this.isSearching) return this.filteredIcons
       const start = (this.page - 1) * PAGE_SIZE
       return this.filteredIcons.slice(start, start + PAGE_SIZE)
     },
@@ -261,7 +257,9 @@ export default {
   },
   methods: {
     selectCategory(idx) {
+      clearTimeout(this.searchInputTimer)
       this.activeCategoryIndex = idx
+      this.searchInput = ''
       this.searchQuery = ''
       this.isSearching = false
       this.page = 1

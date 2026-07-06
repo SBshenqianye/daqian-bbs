@@ -54,7 +54,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(label, index) in labelsRaw" :key="label.labelId || index" class="border-b border-border hover:bg-surface-container-low/50 transition-colors">
+              <tr v-for="(label, index) in labelsRaw" :key="getLabelId(label) || index" class="border-b border-border hover:bg-surface-container-low/50 transition-colors">
                 <td class="p-4">
                   <input type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded" :checked="isSelected(label)" @change="toggleSelect(label)">
                 </td>
@@ -254,11 +254,15 @@ export default {
     this.getArticleLabelPage()
   },
   methods: {
+    /** 安全获取 labelId，处理字段名不一致和 0 值 */
+    getLabelId(item) {
+      return item.labelId != null ? item.labelId : item.id
+    },
     isSelected(label) {
-      return this.multipleSelection.some(s => (s.labelId || s.id) === (label.labelId || label.id))
+      return this.multipleSelection.some(s => this.getLabelId(s) === this.getLabelId(label))
     },
     toggleSelect(label) {
-      const idx = this.multipleSelection.findIndex(s => (s.labelId || s.id) === (label.labelId || label.id))
+      const idx = this.multipleSelection.findIndex(s => this.getLabelId(s) === this.getLabelId(label))
       if (idx >= 0) this.multipleSelection.splice(idx, 1)
       else this.multipleSelection.push(label)
     },
@@ -282,7 +286,7 @@ export default {
           this.labelsRaw = list.map(item => {
             if (!item) return item
             return Object.assign({}, item, {
-              labelId: item.labelId || item.id,
+              labelId: item.labelId != null ? item.labelId : item.id,
               labelName: item.labelName || item.name || '',
               isDisable: Number(typeof item.enabled !== 'undefined' ? (item.enabled === 0 ? 1 : 0) : 0)
             })
@@ -310,7 +314,7 @@ export default {
     openEdit(row) {
       if (!row) return
       this.editForm = {
-        labelId: row.labelId || row.id,
+        labelId: row.labelId != null ? row.labelId : row.id,
         labelName: row.labelName || '',
         icon: row.icon || '',
         description: row.description || '',
@@ -345,7 +349,7 @@ export default {
       this.iconPickerVisible = false
     },
     handleDelete(row) {
-      const labelId = row.labelId || row.id
+      const labelId = this.getLabelId(row)
       if (!labelId) return
       this.$confirm('确定要删除该标签吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/delArticleLabel', { labelId }).then(resp => {
@@ -356,11 +360,19 @@ export default {
     handleBatchDelete() {
       const rows = this.multipleSelection || []
       if (rows.length === 0) return
-      const labelIds = rows.map(r => r.labelId || r.id).filter(Boolean)
+      const labelIds = rows.map(r => this.getLabelId(r)).filter(Boolean)
       if (labelIds.length === 0) return
       this.$confirm(`确定要删除选中的 ${labelIds.length} 个标签吗？`, '提示', { type: 'warning' }).then(() => {
         Promise.all(labelIds.map(id => this.postRequest('/admin/delArticleLabel', { labelId: id })))
-          .then(() => { this.$message.success('批量删除完成'); this.getArticleLabelPage() })
+          .then(results => {
+            const success = results.filter(Boolean).length
+            const fail = results.length - success
+            if (success === results.length) this.$message.success(`批量删除完成（${success} 个）`)
+            else if (success > 0) this.$message.warning(`${success} 个删除成功，${fail} 个失败`)
+            else this.$message.error('批量删除失败')
+            this.multipleSelection = []
+            if (success > 0) this.getArticleLabelPage()
+          })
       }).catch(() => {})
     }
   }
