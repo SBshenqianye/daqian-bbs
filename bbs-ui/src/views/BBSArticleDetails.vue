@@ -91,7 +91,7 @@
             ref="commentInput"
             v-model="newComment"
             class="flex-grow min-w-0 py-2.5 px-4 rounded-lg border border-border focus:border-primary-container focus:ring-1 focus:ring-primary-container bg-surface font-body-md text-body-md transition-primary outline-none"
-            placeholder="请输入评论内容..."
+            :placeholder="commentPlaceholder"
             @keyup.enter="submitComment"
           />
           <button
@@ -132,7 +132,7 @@
             <input
               v-model="newComment"
               class="flex-grow min-w-0 py-2.5 px-4 rounded-lg border border-border focus:border-primary-container focus:ring-1 focus:ring-primary-container bg-surface font-body-md text-body-md transition-primary outline-none"
-              placeholder="请输入评论内容..."
+              :placeholder="commentPlaceholder"
               @keyup.enter="submitComment"
             />
             <button
@@ -224,6 +224,7 @@ export default {
       },
       showStickyBar: false,
       commentInputObserver: null,
+      commentPlaceholder: '',
     }
   },
   computed: {
@@ -260,6 +261,25 @@ export default {
     this.$nextTick(() => {
       this.initStickyBar()
     })
+    // 随机文明提示语
+    const prompts = [
+      '文明发言，理性讨论',
+      '发表你的看法...',
+      '欢迎分享你的观点',
+      '请友善评论',
+      '说点什么吧...',
+      '你的每一条评论都很重要',
+      '尊重他人，理性表达',
+      '好文值得一赞，也欢迎评论',
+      '请不要发布违规内容',
+      '聊聊你的想法？',
+      '营造良好社区氛围，从评论做起',
+      '留下你的真知灼见',
+      '你的评论是对作者最大的鼓励',
+      '用心评论，传递价值',
+      '友好交流，共同进步',
+    ]
+    this.commentPlaceholder = prompts[Math.floor(Math.random() * prompts.length)]
   },
   methods: {
     initCurrentUser() {
