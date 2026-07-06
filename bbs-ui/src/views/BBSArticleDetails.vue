@@ -103,7 +103,7 @@
         </div>
 
         <!-- Comments List -->
-        <div class="space-y-8">
+        <div class="space-y-6">
           <BBSCommentItem
             v-for="comment in comments"
             :key="comment.id"

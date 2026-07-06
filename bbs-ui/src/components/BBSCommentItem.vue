@@ -1,48 +1,48 @@
 <template>
-  <div class="flex gap-3">
-    <div class="w-8 h-8 rounded-full overflow-hidden border border-border flex-shrink-0">
+  <div class="flex gap-2.5">
+    <div class="w-7 h-7 rounded-full overflow-hidden border border-border flex-shrink-0 mt-0.5">
       <img :src="comment.avatar || require('../assets/portrait.png')" class="w-full h-full object-cover">
     </div>
-    <div class="flex-grow">
-      <div class="flex items-center justify-between mb-1">
-        <span class="font-bold text-on-surface font-body-md">{{ comment.author }}</span>
-        <div class="flex gap-3 text-on-surface-variant font-label-md">
-          <button class="hover:text-primary transition-primary flex items-center gap-1" @click="handleToggleReply">
-            <span class="material-symbols-outlined text-[16px]">reply</span> 回复
+    <div class="flex-grow min-w-0">
+      <div class="flex items-center justify-between mb-0.5">
+        <span class="font-bold text-on-surface font-body-sm">{{ comment.author }}</span>
+        <div class="flex gap-2 text-on-surface-variant font-label-sm">
+          <button class="hover:text-primary transition-primary flex items-center gap-0.5" @click="handleToggleReply">
+            <span class="material-symbols-outlined text-[14px]">reply</span> 回复
           </button>
-          <button v-if="comment.canDelete" class="hover:text-error transition-primary flex items-center gap-1" @click="$emit('delete', comment)">
-            <span class="material-symbols-outlined text-[16px]">delete</span> 删除
+          <button v-if="comment.canDelete" class="hover:text-error transition-primary flex items-center gap-0.5" @click="$emit('delete', comment)">
+            <span class="material-symbols-outlined text-[14px]">delete</span> 删除
           </button>
         </div>
       </div>
-      <p class="text-outline text-label-md mb-2">{{ comment.time }}</p>
-      <div class="bg-surface p-4 rounded-lg border border-outline-variant font-body-md text-on-surface leading-relaxed mb-4">
-        <span v-if="comment.replyTo" class="text-primary-container font-medium mr-2">回复{{ comment.replyTo }}:</span>
+      <p class="text-outline text-label-xs mb-1">{{ comment.time }}</p>
+      <div class="font-body-sm text-on-surface leading-relaxed mb-2">
+        <span v-if="comment.replyTo" class="text-primary-container font-medium mr-1.5">回复{{ comment.replyTo }}:</span>
         {{ comment.content }}
       </div>
 
       <!-- Reply Input Box (紧贴层主内容，位于楼中楼之前) -->
-      <div v-if="showReplyInput" class="mt-4 mb-4 flex gap-3 items-start">
-        <div class="w-8 h-8 rounded-full overflow-hidden border border-border flex-shrink-0">
+      <div v-if="showReplyInput" class="mt-2 mb-2 flex gap-2.5 items-start">
+        <div class="w-7 h-7 rounded-full overflow-hidden border border-border flex-shrink-0">
           <img :src="currentUserAvatar || require('../assets/portrait.png')" class="w-full h-full object-cover">
         </div>
-        <div class="flex-grow flex gap-2">
+        <div class="flex-grow flex gap-1.5">
           <input
             v-model="replyText"
-            class="flex-grow p-2 rounded-lg border border-border text-label-md bg-surface focus:border-primary-container outline-none"
+            class="flex-grow p-1.5 rounded-lg border border-border text-label-sm bg-surface focus:border-primary-container outline-none"
             :placeholder="'回复 ' + comment.author"
             type="text"
             @keyup.enter="submitReply"
           >
-          <button class="bg-primary-container/10 text-primary-container px-4 py-1.5 rounded-lg font-label-md text-label-md hover:bg-primary-container hover:text-white transition-primary" @click="submitReply">
+          <button class="bg-primary-container/10 text-primary-container px-3 py-1 rounded-lg font-label-sm text-label-sm hover:bg-primary-container hover:text-white transition-primary whitespace-nowrap" @click="submitReply">
             回复
           </button>
         </div>
       </div>
 
       <!-- Nested Replies (自动折叠) -->
-      <div v-if="comment.children && comment.children.length > 0" class="ml-10 border-l-2 border-surface-container pl-4">
-        <div class="space-y-6">
+      <div v-if="comment.children && comment.children.length > 0" class="ml-8 border-l-2 border-surface-container pl-3">
+        <div class="space-y-3">
           <BBSCommentItem
             v-for="child in displayChildren"
             :key="child.id"
@@ -55,7 +55,7 @@
         <!-- 展开/折叠按钮 -->
         <button
           v-if="comment.children.length > maxVisibleReplies"
-          class="mt-3 text-label-md font-label-md text-primary-container hover:text-primary transition-primary cursor-pointer"
+          class="mt-2 text-label-sm font-label-sm text-primary-container hover:text-primary transition-primary cursor-pointer"
           @click="expandedReplies = !expandedReplies"
         >
           <template v-if="expandedReplies">
