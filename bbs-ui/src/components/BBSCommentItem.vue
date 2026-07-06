@@ -7,7 +7,7 @@
       <div class="flex items-center justify-between mb-1">
         <span class="font-bold text-on-surface font-body-md">{{ comment.author }}</span>
         <div class="flex gap-3 text-on-surface-variant font-label-md">
-          <button class="hover:text-primary transition-primary flex items-center gap-1" @click="showReplyInput = !showReplyInput">
+          <button class="hover:text-primary transition-primary flex items-center gap-1" @click="handleToggleReply">
             <span class="material-symbols-outlined text-[16px]">reply</span> 回复
           </button>
           <button v-if="comment.canDelete" class="hover:text-error transition-primary flex items-center gap-1" @click="$emit('delete', comment)">
@@ -58,6 +58,7 @@
 <script>
 export default {
   name: 'BBSCommentItem',
+  inject: ['replyState'],
   props: {
     comment: {
       type: Object,
@@ -70,11 +71,18 @@ export default {
   },
   data() {
     return {
-      showReplyInput: false,
       replyText: '',
     }
   },
+  computed: {
+    showReplyInput() {
+      return this.replyState.activeId === this.comment.id
+    },
+  },
   methods: {
+    handleToggleReply() {
+      this.replyState.activeId = this.showReplyInput ? null : this.comment.id
+    },
     submitReply() {
       if (!this.replyText.trim()) return
       const replyToUserId = this.comment.userId != null
@@ -91,7 +99,7 @@ export default {
         replyToUserId,
       })
       this.replyText = ''
-      this.showReplyInput = false
+      this.replyState.activeId = null
     },
   },
 }
