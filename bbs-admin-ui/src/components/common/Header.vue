@@ -84,11 +84,9 @@ export default {
       return (this.adminInfo && this.adminInfo.username) || '管理员'
     },
     avatarUrl() {
-      const baseApi = process.env.VUE_APP_BBS_API || ''
       const portrait = this.adminInfo && this.adminInfo.portrait
       if (!portrait) return this.defaultPortrait
-      const path = portrait.startsWith('/') ? portrait : '/' + portrait
-      return baseApi + path
+      return portrait.startsWith('/') ? portrait : '/' + portrait
     },
   },
   created() {
