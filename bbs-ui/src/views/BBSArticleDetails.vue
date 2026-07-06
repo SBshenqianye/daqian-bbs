@@ -16,7 +16,9 @@
               </span>
               <div class="flex items-center gap-2">
                 <span>文章标签:</span>
-                <span class="px-2 py-0.5 bg-surface-container-low text-primary-container rounded border border-outline-variant font-medium">{{ articleTagName || '--' }}</span>
+                <el-tooltip :content="articleTagDescription" placement="top" effect="dark" :disabled="!articleTagDescription">
+                  <span class="px-2 py-0.5 bg-surface-container-low text-primary-container rounded border border-outline-variant font-medium">{{ articleTagName || '--' }}</span>
+                </el-tooltip>
               </div>
             </div>
             <div class="flex items-center gap-3 py-1 px-3 bg-surface-container-lowest border border-border rounded-lg">
@@ -201,6 +203,11 @@ export default {
       if (!this.article.tagId || !this.labelList.length) return ''
       const label = this.labelList.find(l => String(l.labelId) === String(this.article.tagId))
       return label ? label.labelName : ''
+    },
+    articleTagDescription() {
+      if (!this.article.tagId || !this.labelList.length) return ''
+      const label = this.labelList.find(l => String(l.labelId) === String(this.article.tagId))
+      return label ? (label.description || '') : ''
     },
   },
   mounted() {

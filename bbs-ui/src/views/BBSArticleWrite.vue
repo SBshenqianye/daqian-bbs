@@ -134,6 +134,9 @@
                 {{ label.labelName }}
               </button>
             </div>
+            <p v-if="selectedLabelDescription" class="mt-1.5 text-xs text-gray-400 ml-0.5">
+              {{ selectedLabelDescription }}
+            </p>
           </div>
         </div>
         <!-- Footer -->
@@ -215,6 +218,10 @@ export default {
     selectedLabelName() {
       const found = this.labelList.find(l => String(l.labelId) === String(this.selectedLabelId))
       return found ? found.labelName : ''
+    },
+    selectedLabelDescription() {
+      const found = this.labelList.find(l => String(l.labelId) === String(this.selectedLabelId))
+      return found ? (found.description || '') : ''
     },
   },
   mounted() {

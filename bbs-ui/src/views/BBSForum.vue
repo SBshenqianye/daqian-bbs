@@ -15,16 +15,23 @@
         <aside class="md:col-span-2 space-y-4 sticky top-20 self-start">
           <div class="bg-container border border-border rounded-lg p-2">
             <nav class="flex flex-col gap-1">
-              <button
+              <el-tooltip
                 v-for="cat in categories"
                 :key="cat.name"
-                class="flex items-center gap-3 w-full p-3 rounded-lg transition-colors font-label-md"
-                :class="cat.active ? 'bg-surface-container-low text-primary-container' : 'text-on-surface-variant hover:bg-surface-container-low'"
-                @click="selectCategory(cat)"
+                :content="cat.description"
+                placement="right"
+                effect="dark"
+                :disabled="!cat.description"
               >
-                <span class="material-symbols-outlined" :class="{ 'filled-icon': cat.active }">{{ cat.icon }}</span>
-                <span>{{ cat.name }}</span>
-              </button>
+                <button
+                  class="flex items-center gap-3 w-full p-3 rounded-lg transition-colors font-label-md"
+                  :class="cat.active ? 'bg-surface-container-low text-primary-container' : 'text-on-surface-variant hover:bg-surface-container-low'"
+                  @click="selectCategory(cat)"
+                >
+                  <span class="material-symbols-outlined" :class="{ 'filled-icon': cat.active }">{{ cat.icon }}</span>
+                  <span>{{ cat.name }}</span>
+                </button>
+              </el-tooltip>
             </nav>
           </div>
         </aside>
@@ -186,6 +193,7 @@ export default {
             icon: l.icon || 'bookmark',
             labelId: l.labelId,
             active: i === 0,
+            description: l.description || '',
           }))
           // 不默认过滤，让用户可以看到全部文章
         }
