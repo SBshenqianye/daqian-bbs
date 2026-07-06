@@ -74,7 +74,7 @@
     </section>
 
     <!-- Comment Section -->
-    <section class="bg-container rounded-lg border border-border shadow-sm overflow-hidden">
+    <section class="bg-container rounded-lg border border-border shadow-sm overflow-hidden" :class="{ 'pb-16': showStickyBar }">
       <div class="p-card-padding">
         <div class="flex items-center justify-between mb-6">
           <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
@@ -83,25 +83,23 @@
         </div>
 
         <!-- Comment Input -->
-        <div class="flex gap-4 mb-10">
-          <div class="w-10 h-10 rounded-full bg-surface-variant flex-shrink-0 overflow-hidden border border-outline-variant">
-            <img alt="Current User" :src="currentUserAvatar || require('@/assets/portrait.png')">
+        <div class="flex items-center gap-4 mb-10">
+          <div class="w-10 h-10 rounded-full overflow-hidden bg-surface-variant border border-outline-variant flex-shrink-0">
+            <img :src="currentUserAvatar || require('@/assets/portrait.png')" class="w-full h-full object-cover">
           </div>
-          <div class="flex-grow space-y-3">
-            <textarea
-              v-model="newComment"
-              class="w-full p-3 rounded-lg border border-border focus:border-primary-container focus:ring-1 focus:ring-primary-container min-h-[100px] font-body-md text-body-md bg-surface transition-primary resize-none"
-              placeholder="请输入评论内容..."
-            ></textarea>
-            <div class="flex justify-end">
-              <button
-                class="bg-primary-container text-white px-6 py-2 rounded-lg font-label-md text-label-md hover:shadow-md hover:bg-primary transition-primary active:scale-95"
-                @click="submitComment"
-              >
-                发表评论
-              </button>
-            </div>
-          </div>
+          <input
+            ref="commentInput"
+            v-model="newComment"
+            class="flex-grow min-w-0 py-2.5 px-4 rounded-lg border border-border focus:border-primary-container focus:ring-1 focus:ring-primary-container bg-surface font-body-md text-body-md transition-primary outline-none"
+            placeholder="请输入评论内容..."
+            @keyup.enter="submitComment"
+          />
+          <button
+            class="bg-primary-container text-white px-6 py-2 rounded-lg font-label-md text-label-md hover:shadow-md hover:bg-primary transition-primary active:scale-95 flex-shrink-0"
+            @click="submitComment"
+          >
+            发表评论
+          </button>
         </div>
 
         <!-- Comments List -->
@@ -117,6 +115,45 @@
         </div>
       </div>
     </section>
+
+    <!-- Sticky Reply Bar -->
+    <transition name="reply-bar-slide">
+      <div
+        v-if="showStickyBar"
+        class="bottom-bar fixed bottom-0 left-0 right-0 bg-container border-t border-border z-40"
+      >
+        <div class="max-w-5xl mx-auto px-page-margin-mobile md:px-page-margin-desktop py-3 flex items-center gap-4">
+          <!-- Avatar -->
+          <div class="w-10 h-10 rounded-full overflow-hidden bg-surface-variant border border-outline-variant flex-shrink-0">
+            <img :src="currentUserAvatar || require('@/assets/portrait.png')" class="w-full h-full object-cover">
+          </div>
+
+          <template v-if="currentUser">
+            <input
+              v-model="newComment"
+              class="flex-grow min-w-0 py-2.5 px-4 rounded-lg border border-border focus:border-primary-container focus:ring-1 focus:ring-primary-container bg-surface font-body-md text-body-md transition-primary outline-none"
+              placeholder="请输入评论内容..."
+              @keyup.enter="submitComment"
+            />
+            <button
+              class="bg-primary-container text-white px-6 py-2 rounded-lg font-label-md text-label-md hover:shadow-md hover:bg-primary transition-primary active:scale-95 flex-shrink-0"
+              @click="submitComment"
+            >
+              发表评论
+            </button>
+          </template>
+          <template v-else>
+            <span class="flex-grow text-center text-on-surface-variant font-body-md text-body-md">
+              请先
+              <router-link :to="{ path: '/login', query: { redirect: $route.fullPath } }" class="text-primary-container hover:underline">
+                登录
+              </router-link>
+              后发表评论
+            </span>
+          </template>
+        </div>
+      </div>
+    </transition>
   </main>
 </template>
 
@@ -185,6 +222,8 @@ export default {
         ishljs: true,
         externalLink: previewExternalLink,
       },
+      showStickyBar: false,
+      commentInputObserver: null,
     }
   },
   computed: {
@@ -218,6 +257,9 @@ export default {
       this.loadComments(this.articleId)
       this.loadArticleFiles(this.articleId)
     }
+    this.$nextTick(() => {
+      this.initStickyBar()
+    })
   },
   methods: {
     initCurrentUser() {
@@ -393,6 +435,22 @@ export default {
         }
       }).catch(() => {})
     },
+    initStickyBar() {
+      const input = this.$refs && this.$refs.commentInput
+      if (!input) return
+
+      this.commentInputObserver = new IntersectionObserver(
+        ([entry]) => {
+          this.showStickyBar = !entry.isIntersecting
+        },
+        {
+          rootMargin: '0px 0px -40px 0px',
+          threshold: 0,
+        }
+      )
+
+      this.commentInputObserver.observe(input)
+    },
     downloadFile(filePath, fileName) {
       if (!filePath) return
       const url = filePath.startsWith('/') ? filePath : '/' + filePath
@@ -417,6 +475,12 @@ export default {
         })
     },
   },
+  beforeDestroy() {
+    if (this.commentInputObserver) {
+      this.commentInputObserver.disconnect()
+      this.commentInputObserver = null
+    }
+  },
 }
 </script>
 
@@ -437,5 +501,15 @@ export default {
   box-shadow: none !important;
   background: transparent !important;
   z-index: 1;
+}
+
+/* Sticky reply bar slide transition */
+.reply-bar-slide-enter-active,
+.reply-bar-slide-leave-active {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.reply-bar-slide-enter,
+.reply-bar-slide-leave-to {
+  transform: translateY(100%);
 }
 </style>
