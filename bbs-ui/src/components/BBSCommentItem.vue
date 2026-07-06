@@ -21,20 +21,8 @@
         {{ comment.content }}
       </div>
 
-      <!-- Nested Replies -->
-      <div v-if="comment.children && comment.children.length > 0" class="ml-10 space-y-6 border-l-2 border-surface-container pl-4">
-        <BBSCommentItem
-          v-for="child in comment.children"
-          :key="child.id"
-          :comment="child"
-          :currentUserAvatar="currentUserAvatar"
-          @delete="$emit('delete', $event)"
-          @reply="$emit('reply', $event)"
-        />
-      </div>
-
-      <!-- Reply Input Box -->
-      <div v-if="showReplyInput" class="mt-4 ml-10 flex gap-3 items-start">
+      <!-- Reply Input Box (紧贴层主内容，位于楼中楼之前) -->
+      <div v-if="showReplyInput" class="mt-4 mb-4 flex gap-3 items-start">
         <div class="w-8 h-8 rounded-full overflow-hidden border border-border flex-shrink-0">
           <img :src="currentUserAvatar || require('../assets/portrait.png')" class="w-full h-full object-cover">
         </div>
@@ -50,6 +38,18 @@
             回复
           </button>
         </div>
+      </div>
+
+      <!-- Nested Replies -->
+      <div v-if="comment.children && comment.children.length > 0" class="ml-10 space-y-6 border-l-2 border-surface-container pl-4">
+        <BBSCommentItem
+          v-for="child in comment.children"
+          :key="child.id"
+          :comment="child"
+          :currentUserAvatar="currentUserAvatar"
+          @delete="$emit('delete', $event)"
+          @reply="$emit('reply', $event)"
+        />
       </div>
     </div>
   </div>
