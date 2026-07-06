@@ -180,6 +180,11 @@ const previewExternalLink = {
 export default {
   name: 'BBSArticleDetails',
   components: { BBSCommentItem, mavonEditor },
+  provide() {
+    return {
+      replyState: this.replyState,
+    }
+  },
   data() {
     return {
       newComment: '',
@@ -225,6 +230,7 @@ export default {
       showStickyBar: false,
       commentInputObserver: null,
       commentPlaceholder: '',
+      replyState: { activeId: null },
     }
   },
   computed: {
