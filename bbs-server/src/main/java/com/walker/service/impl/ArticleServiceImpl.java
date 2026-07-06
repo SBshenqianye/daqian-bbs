@@ -280,7 +280,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         List<Map<String, Object>> counts = commentMapper.countByArticleIds(articleIds);
         Map<Integer, Integer> countMap = counts.stream()
                 .collect(Collectors.toMap(
-                        m -> (Integer) m.get("articleId"),
+                        m -> ((Number) m.get("articleId")).intValue(),
                         m -> {
                             Object count = m.get("commentCount");
                             if (count == null) return 0;

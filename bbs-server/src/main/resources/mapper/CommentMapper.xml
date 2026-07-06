@@ -20,8 +20,8 @@
 
     <!-- 批量查询各文章的评论数（含子回复） -->
     <select id="countByArticleIds" resultType="java.util.Map">
-        SELECT "articleId", COUNT(*) AS "commentCount" FROM (
-            SELECT c.comment_article_id AS "articleId"
+        SELECT articleId, COUNT(*) AS commentCount FROM (
+            SELECT c.comment_article_id AS articleId
             FROM bbs_comment c
             WHERE c.comment_article_id IN
             <foreach collection="list" item="id" open="(" separator="," close=")">
@@ -29,7 +29,7 @@
             </foreach>
             AND c.is_delete = 0 AND c.enable = 1
             UNION ALL
-            SELECT c2.comment_article_id AS "articleId"
+            SELECT c2.comment_article_id AS articleId
             FROM bbs_reply r
             JOIN bbs_comment c2 ON r.comment_id = c2.comment_id
             WHERE c2.comment_article_id IN
@@ -39,7 +39,7 @@
             AND r.is_delete = 0 AND r.enable = 1
             AND c2.is_delete = 0
         ) t
-        GROUP BY "articleId"
+        GROUP BY articleId
     </select>
 
 </mapper>

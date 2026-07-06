@@ -145,20 +145,17 @@ CREATE TABLE `bbs_article_label`  (
   `label_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '文章标签的id',
   `label_name` varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '标签名称',
   `enabled` tinyint(4) NULL DEFAULT NULL COMMENT '标签是否禁用',
+  `icon` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '标签图标',
+  `description` varchar(200) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '标签描述',
   PRIMARY KEY (`label_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 17 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of bbs_article_label
 -- ----------------------------
-INSERT INTO `bbs_article_label` VALUES (1, '电量', 0);
-INSERT INTO `bbs_article_label` VALUES (2, '电费', 1);
-INSERT INTO `bbs_article_label` VALUES (3, '电价', 0);
-INSERT INTO `bbs_article_label` VALUES (12, '测试标签', 0);
-INSERT INTO `bbs_article_label` VALUES (13, '测试标签222', 1);
-INSERT INTO `bbs_article_label` VALUES (14, 'jjjj', 0);
-INSERT INTO `bbs_article_label` VALUES (15, '1', 0);
-INSERT INTO `bbs_article_label` VALUES (16, '22', 0);
+INSERT INTO `bbs_article_label` VALUES (1, '技术交流', 0, 'thumb_up', '');
+INSERT INTO `bbs_article_label` VALUES (2, '求助问答', 1, 'help', '');
+INSERT INTO `bbs_article_label` VALUES (3, '资源共享', 0, 'folder_open', '');
 
 -- ----------------------------
 -- Table structure for bbs_article_type

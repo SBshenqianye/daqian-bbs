@@ -47,6 +47,7 @@
                 </th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">标签ID</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[120px]">标签名称</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[160px]">标签描述</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">是否禁用</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[140px]">操作</th>
               </tr>
@@ -58,6 +59,7 @@
                 </td>
                 <td class="p-4 font-body-md text-on-surface">{{ label.labelId }}</td>
                 <td class="p-4 font-body-md text-on-surface font-medium max-w-[200px] truncate" :title="label.labelName">{{ label.labelName }}</td>
+                <td class="p-4 font-body-md text-on-surface-variant max-w-[200px] truncate" :title="label.description || ''">{{ label.description || '--' }}</td>
                 <td class="p-4">
                   <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="label.isDisable === 1 ? 'bg-error-container text-error' : 'bg-green-50 text-green-700'">
                     <span class="w-1.5 h-1.5 rounded-full" :class="label.isDisable === 1 ? 'bg-error' : 'bg-green-500'"></span>
@@ -78,7 +80,7 @@
                 </td>
               </tr>
               <tr v-if="labelsRaw.length === 0">
-                <td colspan="5" class="p-12 text-center">
+                <td colspan="6" class="p-12 text-center">
                   <div class="flex flex-col items-center gap-2 text-on-surface-variant">
                     <span class="material-symbols-outlined text-[48px] opacity-20">label_off</span>
                     <p class="text-body-md">暂无标签数据</p>
@@ -135,6 +137,10 @@
               <input v-model="addForm.labelName" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md" placeholder="请输入标签名称" maxlength="50">
             </div>
             <div>
+              <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">标签描述</label>
+              <textarea v-model="addForm.description" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md resize-none" placeholder="请输入标签描述（选填）" maxlength="200" rows="2"></textarea>
+            </div>
+            <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">是否禁用</label>
               <button class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors" :class="addForm.isDisable ? 'bg-error' : 'bg-surface-variant'" @click="addForm.isDisable = addForm.isDisable ? 0 : 1">
                 <span class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm" :class="addForm.isDisable ? 'translate-x-6' : 'translate-x-0.5'"></span>
@@ -171,6 +177,10 @@
               <input v-model="editForm.labelName" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md" placeholder="请输入标签名称" maxlength="50">
             </div>
             <div>
+              <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">标签描述</label>
+              <textarea v-model="editForm.description" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md resize-none" placeholder="请输入标签描述（选填）" maxlength="200" rows="2"></textarea>
+            </div>
+            <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">是否禁用</label>
               <button class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors" :class="editForm.enabled ? 'bg-surface-variant' : 'bg-error'" @click="editForm.enabled = editForm.enabled ? 0 : 1">
                 <span class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm" :class="editForm.enabled ? 'translate-x-0.5' : 'translate-x-6'"></span>
@@ -197,8 +207,8 @@ export default {
       multipleSelection: [],
       addVisible: false,
       editVisible: false,
-      addForm: { labelName: '', isDisable: 0 },
-      editForm: { labelId: null, labelName: '', enabled: 0 },
+      addForm: { labelName: '', description: '', isDisable: 0 },
+      editForm: { labelId: null, labelName: '', description: '', enabled: 0 },
       pageParams: { pageIndex: 1, pageSize: 10 },
       total: 0
     }
@@ -254,13 +264,13 @@ export default {
     handleSearch() { this.pageParams.pageIndex = 1; this.getArticleLabelPage() },
     handleSizeChange() { this.pageParams.pageIndex = 1; this.getArticleLabelPage() },
     openAdd() {
-      this.addForm = { labelName: '', isDisable: 0 }
+      this.addForm = { labelName: '', description: '', isDisable: 0 }
       this.addVisible = true
     },
     submitAdd() {
       const labelName = (this.addForm.labelName || '').trim()
       if (!labelName) { this.$message.warning('标签名称不能为空'); return }
-      this.postRequest('/admin/addArticleLabel', { labelName, enabled: this.addForm.isDisable === 1 ? 0 : 1 }).then(resp => {
+      this.postRequest('/admin/addArticleLabel', { labelName, description: this.addForm.description, enabled: this.addForm.isDisable === 1 ? 0 : 1 }).then(resp => {
         if (resp) {
           this.$message.success('添加成功')
           this.addVisible = false
@@ -273,6 +283,7 @@ export default {
       this.editForm = {
         labelId: row.labelId || row.id,
         labelName: row.labelName || '',
+        description: row.description || '',
         enabled: Number(typeof row.enabled !== 'undefined' ? row.enabled : 0)
       }
       this.editVisible = true
@@ -282,7 +293,7 @@ export default {
       const labelName = (this.editForm.labelName || '').trim()
       if (!labelId) { this.$message.warning('标签ID不能为空'); return }
       if (!labelName) { this.$message.warning('标签名称不能为空'); return }
-      this.postRequest('/admin/updArticleLabel', { labelId, labelName, enabled: this.editForm.enabled }).then(resp => {
+      this.postRequest('/admin/updArticleLabel', { labelId, labelName, description: this.editForm.description, enabled: this.editForm.enabled }).then(resp => {
         if (resp) {
           this.$message.success('修改成功')
           this.editVisible = false

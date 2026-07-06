@@ -178,20 +178,12 @@ export default {
         this.hotTopics = []
       })
     },
-    getLabelIcon(labelName) {
-      const iconMap = {
-        '技术交流': 'thumb_up',
-        '求助问答': 'help',
-        '资源共享': 'folder_open',
-      }
-      return iconMap[labelName] || 'bookmark'
-    },
     loadLabels() {
       this.getRequest('/common/getArticleLabel').then(resp => {
         if (resp && Array.isArray(resp)) {
           this.categories = resp.map((l, i) => ({
             name: l.labelName,
-            icon: this.getLabelIcon(l.labelName),
+            icon: l.icon || 'bookmark',
             labelId: l.labelId,
             active: i === 0,
           }))

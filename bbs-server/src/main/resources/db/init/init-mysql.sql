@@ -82,6 +82,9 @@ CREATE TABLE `bbs_article_label` (
   PRIMARY KEY (`label_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
+ALTER TABLE bbs_article_label ADD COLUMN `icon` varchar(50) DEFAULT NULL COMMENT '标签图标';
+ALTER TABLE bbs_article_label ADD COLUMN `description` varchar(200) DEFAULT NULL COMMENT '标签描述';
+
 -- ----------------------------
 -- Table: bbs_article_type
 -- ----------------------------
@@ -291,10 +294,10 @@ VALUES (1, 'asiayak', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2r
 -- ----------------------------
 -- 文章标签
 -- ----------------------------
-INSERT INTO `bbs_article_label` (`label_id`, `label_name`, `enabled`) VALUES
-(1, '电量', 0),
-(2, '电费', 1),
-(3, '电价', 0);
+INSERT INTO `bbs_article_label` (`label_id`, `label_name`, `enabled`, `icon`, `description`) VALUES
+(1, '技术交流', 0, 'thumb_up', ''),
+(2, '求助问答', 1, 'help', ''),
+(3, '资源共享', 0, 'folder_open', '');
 
 -- ----------------------------
 -- 组织机构（国网四川内江供电公司）

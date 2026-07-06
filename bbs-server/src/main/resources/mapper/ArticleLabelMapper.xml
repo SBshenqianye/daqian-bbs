@@ -7,11 +7,13 @@
         <id column="label_id" property="labelId" />
         <result column="label_name" property="labelName" />
         <result column="enabled" property="enabled" />
+        <result column="icon" property="icon" />
+        <result column="description" property="description" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        label_id, label_name, enabled
+        label_id, label_name, enabled, icon, description
     </sql>
 
 </mapper>
