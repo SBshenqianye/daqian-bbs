@@ -294,7 +294,7 @@ export default {
         }
       })
     },
-    handleSearch() { this.pageParams.pageIndex = 1; this.getArticleLabelPage() },
+    handleSearch() { this.handleSizeChange() },
     handleSizeChange() { this.pageParams.pageIndex = 1; this.getArticleLabelPage() },
     openAdd() {
       this.addForm = { labelName: '', icon: '', description: '', isDisable: 0 }
@@ -360,7 +360,7 @@ export default {
     handleBatchDelete() {
       const rows = this.multipleSelection || []
       if (rows.length === 0) return
-      const labelIds = rows.map(r => this.getLabelId(r)).filter(Boolean)
+      const labelIds = rows.map(r => this.getLabelId(r))
       if (labelIds.length === 0) return
       this.$confirm(`确定要删除选中的 ${labelIds.length} 个标签吗？`, '提示', { type: 'warning' }).then(() => {
         Promise.all(labelIds.map(id => this.postRequest('/admin/delArticleLabel', { labelId: id })))
