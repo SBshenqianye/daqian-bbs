@@ -19,6 +19,20 @@ axios.interceptors.request.use(config=>{
     return Promise.reject(error)
 })
 
+// 构建错误信息，开发环境下附带后端详情方便 debug
+function buildErrorMessage(resData) {
+    if (!resData) return ''
+    let msg = resData.message || ''
+    // 后端额外返回 detail / traceId 时，在开发环境展示（方便定位问题）
+    if (process.env.NODE_ENV !== 'production') {
+        const detail = resData.detail || resData.traceId
+        if (detail) {
+            msg = msg ? `${msg}（${detail}）` : detail
+        }
+    }
+    return msg
+}
+
 //响应拦截器
 axios.interceptors.response.use(success=>{
     //业务逻辑错误
@@ -27,7 +41,8 @@ axios.interceptors.response.use(success=>{
         if(success.data.code === 500 || success.data.code === 403){
             Message({
                 type: 'warning',
-                message: success.data.message,
+                message: buildErrorMessage(success.data),
+                showClose: true,
                 offset:54
             })
             return;
@@ -56,12 +71,16 @@ axios.interceptors.response.use(success=>{
 
 },error => {
     // 优先显示后端返回的错误信息，方便 debug；没有则兜底通用文案
-    const resMsg = error.response && error.response.data && error.response.data.message
+    const resData = error.response && error.response.data
     const status = error.response && error.response.status;
+    const resMsg = buildErrorMessage(resData)
+    // 始终将完整错误打印到控制台供排查
+    console.error('[API Error]', status, resData || error.message)
     if(status === 504 || status === 404){
         Message({
             type: 'error',
             message: resMsg || '服务器错误',
+            showClose: true,
             offset:54
         })
 
@@ -69,6 +88,7 @@ axios.interceptors.response.use(success=>{
         Message({
             type: 'error',
             message: resMsg || '权限不足，请联系管理员！',
+            showClose: true,
             offset:54
         })
 
@@ -79,6 +99,7 @@ axios.interceptors.response.use(success=>{
         Message({
             type: 'error',
             message: resMsg || '未知错误！',
+            showClose: true,
             offset:54
         })
     }

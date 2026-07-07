@@ -30,8 +30,8 @@
         </nav>
       </div>
 
-      <!-- Middle: Search Bar (only show on forum page) -->
-      <div v-if="isForumPage" class="flex-grow max-w-2xl hidden md:block">
+      <!-- Middle: Search Bar (show on all pages, redirects to forum) -->
+      <div class="flex-grow max-w-2xl hidden md:block">
         <div class="grid grid-cols-1 grid-rows-1 group">
           <span
             class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline transition-colors pointer-events-none"
@@ -209,7 +209,13 @@ export default {
         return
       }
 
-      this.$bus && this.$bus.$emit('forumSearch', keywords)
+      if (this.$route.path === '/forum') {
+        // Already on forum page, emit search event directly
+        this.$bus && this.$bus.$emit('forumSearch', keywords)
+      } else {
+        // Navigate to forum with keywords in query params
+        this.$router.push({ path: '/forum', query: { keywords } })
+      }
     },
     handleLogout() {
       removeToken()

@@ -130,13 +130,22 @@ export default {
     }
   },
   mounted() {
-    this.fetchArticles()
+    // Auto-search from URL query params if present (e.g. redirected from another page)
+    const kw = this.$route.query.keywords
+    this.fetchArticles(kw || '')
     this.fetchHotTopics()
     this.loadLabels()
     this.$bus && this.$bus.$on('forumSearch', this.handleForumSearch)
   },
   beforeDestroy() {
     this.$bus && this.$bus.$off('forumSearch', this.handleForumSearch)
+  },
+  watch: {
+    '$route.query.keywords': function (kw) {
+      if (kw) {
+        this.fetchArticles(kw)
+      }
+    },
   },
   computed: {
     filteredArticles() {
