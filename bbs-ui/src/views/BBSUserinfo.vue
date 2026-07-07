@@ -54,7 +54,7 @@
               <span class="font-body-md text-on-surface">我的资料更新</span>
             </div>
             <div class="flex gap-2">
-              <button class="px-4 py-1.5 bg-primary text-white text-label-md rounded-lg hover:bg-primary-container transition-colors" @click="saveChanges">保存</button>
+              <button class="px-4 py-1.5 bg-primary text-white text-label-md rounded-lg hover:bg-primary-container transition-colors" :disabled="saving" @click="saveChanges">{{ saving ? '保存中...' : '保存' }}</button>
               <button class="px-4 py-1.5 bg-error text-white text-label-md rounded-lg hover:bg-red-700 transition-colors" @click="cancelChanges">取消</button>
             </div>
           </div>
@@ -136,8 +136,8 @@
               >
             </div>
             <div class="flex gap-4 pt-4">
-              <button class="px-8 py-2.5 bg-primary text-white font-label-md text-label-md rounded-lg hover:bg-primary-container transition-colors shadow-md" type="submit">
-                提交修改
+              <button class="px-8 py-2.5 bg-primary text-white font-label-md text-label-md rounded-lg hover:bg-primary-container transition-colors shadow-md" type="submit" :disabled="submitting">
+                {{ submitting ? '提交中...' : '提交修改' }}
               </button>
               <button class="px-8 py-2.5 bg-white text-on-surface-variant border border-outline-variant font-label-md text-label-md rounded-lg hover:bg-surface-container-low transition-colors" type="button" @click="resetPasswordForm">
                 重置
@@ -173,7 +173,7 @@
         </div>
         <div class="px-6 py-4 bg-surface-container-low flex justify-end gap-3">
           <button class="px-4 py-2 text-label-md font-medium text-on-surface-variant hover:bg-surface-container rounded-lg" @click="showAvatarDialog = false">取消</button>
-          <button class="px-6 py-2 text-label-md font-medium bg-primary text-white rounded-lg hover:bg-primary-container shadow-sm" @click="uploadAvatar">开始上传</button>
+          <button class="px-6 py-2 text-label-md font-medium bg-primary text-white rounded-lg hover:bg-primary-container shadow-sm" :disabled="uploading" @click="uploadAvatar">{{ uploading ? '上传中...' : '开始上传' }}</button>
         </div>
       </div>
     </div>
@@ -191,6 +191,9 @@ export default {
       activeTab: 'info',
       showSaveNotification: false,
       editingPhone: false,
+      saving: false,
+      submitting: false,
+      uploading: false,
       showAvatarDialog: false,
       avatarPreview: null,
       avatarFile: null,
@@ -244,7 +247,7 @@ export default {
           this.applyUserInfo(resp)
           window.sessionStorage.setItem('user', JSON.stringify(resp))
         }
-      }).catch(() => { /* use cached */ })
+      }).catch(err => { console.warn('[BBSUserinfo] loadUserInfo', err) })
     },
     applyUserInfo(u) {
       this.userInfo.nickname = u.nickname || this.userInfo.nickname
@@ -271,11 +274,13 @@ export default {
         Message({ type: 'warning', message: '请输入正确的手机号格式（11位，1开头）', offset: 54 })
         return
       }
+      this.saving = true
       const obj = {
         id: parseInt(this.userInfo.userId),
         phone: phone,
       }
       this.putRequest('/user/updateUserinfo', obj).then(resp => {
+        this.saving = false
         if (resp) {
           this.editingPhone = false
           this.showSaveNotification = false
@@ -286,7 +291,7 @@ export default {
             if (r) window.sessionStorage.setItem('user', JSON.stringify(r))
           })
         }
-      }).catch(() => {})
+      }).catch(err => { console.warn('[BBSUserinfo] saveChanges', err); this.saving = false })
     },
     cancelChanges() {
       this.userInfo.phone = this.originalPhone
@@ -315,11 +320,13 @@ export default {
         Message({ type: 'warning', message: '新密码与重复新密码不一致！', offset: 54 })
         return
       }
+      this.submitting = true
       this.postRequest('/user/modPwd', {
         id: parseInt(this.userInfo.userId),
         password: currentPassword.trim(),
         newPassword: newPassword.trim(),
       }).then(resp => {
+        this.submitting = false
         if (resp) {
           Message({ type: 'success', message: '密码修改成功', offset: 54 })
           // 更新本地用户信息的 isFirstLogin 状态（token 仍然有效，无需重新登录）
@@ -330,7 +337,7 @@ export default {
           }
           this.$router.replace('/forum')
         }
-      }).catch(() => {})
+      }).catch(err => { console.warn('[BBSUserinfo] handlePasswordChange', err); this.submitting = false })
     },
     resetPasswordForm() {
       this.passwordForm = { ...this.originalPasswordForm }
@@ -352,10 +359,12 @@ export default {
         this.showAvatarDialog = false
         return
       }
+      this.uploading = true
       const formData = new FormData()
       formData.append('userId', parseInt(this.userInfo.userId))
       formData.append('file', this.avatarFile)
       this.putRequest('/user/updatePortrait', formData).then(resp => {
+        this.uploading = false
         if (resp) {
           this.showAvatarDialog = false
           this.avatarPreview = null
@@ -369,7 +378,7 @@ export default {
             }
           })
         }
-      }).catch(() => {})
+      }).catch(err => { console.warn('[BBSUserinfo] uploadAvatar', err); this.uploading = false })
     },
   },
 }

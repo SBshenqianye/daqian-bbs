@@ -172,7 +172,7 @@ export default {
         else if (res && Array.isArray(res.obj)) list = res.obj
         else if (res && Array.isArray(res.listBean)) list = res.listBean
         this.fileList = list
-      }).catch(() => { this.fileList = [] })
+      }).catch(err => { console.warn('[ArticleDetailsPage] getArticleFiles', err); this.fileList = [] })
     },
     downloadFile(filePath) {
       if (!filePath) return
@@ -187,7 +187,7 @@ export default {
     getCommentByArticleId(articleId) {
       this.postRequest(`/common/comment/getCommentReply/${articleId}`).then(res => {
         this.comments = (res && Array.isArray(res)) ? res : []
-      }).catch(() => { this.comments = [] })
+      }).catch(err => { console.warn('[ArticleDetailsPage] getCommentByArticleId', err); this.comments = [] })
     }
   }
 }

@@ -231,7 +231,7 @@ export default {
           this.getArticleFileByArticleId(articleId)
           this.getCommentByArticleId(articleId)
         }
-      }).catch(() => { this.detailLoading = false })
+      }).catch(err => { console.warn('[ArticlePage] getArticleById', err); this.detailLoading = false })
     },
     getArticleFileByArticleId(articleId) {
       this.postRequest(`/common/getArticleFileByArticleId/${articleId}`, {}).then(res => {
@@ -240,12 +240,12 @@ export default {
         else if (res && Array.isArray(res.obj)) list = res.obj
         else if (res && Array.isArray(res.listBean)) list = res.listBean
         this.detailFileList = list
-      }).catch(() => { this.detailFileList = [] })
+      }).catch(err => { console.warn('[ArticlePage] getArticleFileByArticleId', err); this.detailFileList = [] })
     },
     getCommentByArticleId(articleId) {
       this.postRequest(`/common/comment/getCommentReply/${articleId}`).then(res => {
         this.detailComments = (res && Array.isArray(res)) ? res : []
-      }).catch(() => { this.detailComments = [] })
+      }).catch(err => { console.warn('[ArticlePage] getCommentByArticleId', err); this.detailComments = [] })
     },
     downloadFile(filePath, fileName) {
       if (!filePath) return

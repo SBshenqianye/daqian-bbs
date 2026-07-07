@@ -109,7 +109,8 @@ export default {
           likes: a.articleGoodNum || 0,
           cover: normalizeFileUrl(a.articleImage || null),
         }))
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSStat] fetchMyArticles', err)
         this.loading = false
         this.articles = []
       })

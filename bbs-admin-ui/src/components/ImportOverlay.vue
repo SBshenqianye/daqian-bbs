@@ -237,7 +237,7 @@ export default {
               }
             }
           })
-          .catch(() => {})
+          .catch(err => { console.warn('[ImportOverlay] poll status', err) })
       }, POLL_INTERVAL)
     },
     stopPolling() {

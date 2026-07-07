@@ -160,11 +160,6 @@ export default {
         this.loading = false
         const list = Array.isArray(resp) ? resp : (resp && resp.data && Array.isArray(resp.data) ? resp.data : [])
         this.articles = list.map(a => ({
-          ...(console.log('[BBSForum] article image path', {
-            articleId: a.articleId,
-            rawArticleImage: a.articleImage || null,
-            normalizedArticleImage: normalizeFileUrl(a.articleImage || null),
-          }), {}),
           articleId: a.articleId,
           title: a.articleTitle || '',
           summary: a.articleSummary || '',
@@ -178,7 +173,8 @@ export default {
           labelId: a.articleLabelId || null,
           cover: normalizeFileUrl(a.articleImage || null),
         }))
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSForum] fetchArticles', err)
         this.loading = false
         this.articles = []
       })
@@ -190,7 +186,8 @@ export default {
           articleId: h.articleId,
           articleTitle: h.articleTitle || '',
         })).filter(h => h.articleId)
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSForum] fetchHotTopics', err)
         this.hotTopics = []
       })
     },
@@ -206,7 +203,8 @@ export default {
           }))
           // 不默认过滤，让用户可以看到全部文章
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSForum] loadLabels', err)
         this.categories = []
       })
     },

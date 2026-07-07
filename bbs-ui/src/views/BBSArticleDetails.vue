@@ -334,7 +334,7 @@ export default {
         if (resp && Array.isArray(resp)) {
           this.labelList = resp
         }
-      }).catch(() => {})
+      }).catch(err => { console.warn('[BBSArticleDetails] loadLabels', err) })
     },
     loadArticle(id) {
       this.loading = true
@@ -355,7 +355,8 @@ export default {
             this.loadAuthorInfo(resp.userId)
           }
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSArticleDetails] loadArticle', err)
         this.loading = false
       })
     },
@@ -368,7 +369,7 @@ export default {
           }
           this.article.authorTitle = resp.title || ''
         }
-      }).catch(() => {})
+      }).catch(err => { console.warn('[BBSArticleDetails] loadAuthorInfo', err) })
     },
     loadComments(articleId) {
       getCommentReply(articleId).then(resp => {
@@ -378,7 +379,8 @@ export default {
           this.comments = []
         }
         this.commentsLoaded = true
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSArticleDetails] loadComments', err)
         this.comments = []
         this.commentsLoaded = true
       })
@@ -430,7 +432,8 @@ export default {
             fileId: f.fileId || f.id,
           }))
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSArticleDetails] loadArticleFiles', err)
         this.article.attachments = []
       })
     },
@@ -455,7 +458,7 @@ export default {
           this.newComment = ''
           this.loadComments(this.articleId)
         }
-      }).catch(() => {})
+      }).catch(err => { console.warn('[BBSArticleDetails] submitComment', err) })
     },
     handleReply({ commentId, replyContent, replyToUserId }) {
       if (!this.currentUser) return
@@ -473,7 +476,7 @@ export default {
         } else {
           Message({ type: 'error', message: '回复失败', offset: 54 })
         }
-      }).catch(() => {})
+      }).catch(err => { console.warn('[BBSArticleDetails] handleReply', err) })
     },
     handleDeleteComment(comment) {
       if (!comment) return
@@ -493,13 +496,13 @@ export default {
             if (resp) {
               this.loadComments(this.articleId)
             }
-          }).catch(() => {})
+          }).catch(err => { console.warn('[BBSArticleDetails] deleteReply', err) })
         } else {
           this.postRequest('/comment/deleteCommentById', { commentId }).then(resp => {
             if (resp) {
               this.loadComments(this.articleId)
             }
-          }).catch(() => {})
+          }).catch(err => { console.warn('[BBSArticleDetails] deleteComment', err) })
         }
       }).catch(() => {})
     },
@@ -538,7 +541,8 @@ export default {
           document.body.removeChild(link)
           URL.revokeObjectURL(blobUrl)
         })
-        .catch(() => {
+        .catch(err => {
+          console.warn('[BBSArticleDetails] downloadFile', err)
           Message({ message: '下载失败，请稍后重试', type: 'warning', showClose: true, offset: 54 })
         })
     },

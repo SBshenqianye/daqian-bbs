@@ -148,7 +148,7 @@ export default {
           : (resp && resp.data && Array.isArray(resp.data)) ? resp.data
           : Array.isArray(resp) ? resp : []
         this.rankList = list
-      }).catch(() => { this.loading = false; this.rankList = [] })
+      }).catch(err => { console.warn('[AdminBBSPoints] load', err); this.loading = false; this.rankList = [] })
     },
     onRowClick(row) {
       if (row.isSelf === 1 && row.orgNo) {
@@ -169,7 +169,7 @@ export default {
           : (resp && resp.data && Array.isArray(resp.data)) ? resp.data
           : Array.isArray(resp) ? resp : []
         this.detailList = list
-      }).catch(() => { this.detailLoading = false; this.detailList = [] })
+      }).catch(err => { console.warn('[AdminBBSPoints] fetchDetail', err); this.detailLoading = false; this.detailList = [] })
     },
     onDetailRowClick(row) {
       if (row.isSelf === 1 && row.orgNo) {

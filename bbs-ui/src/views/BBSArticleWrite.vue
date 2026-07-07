@@ -246,7 +246,8 @@ export default {
             this.selectedLabelId = resp[0].labelId
           }
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSArticleWrite] loadLabels', err)
         this.labelList = []
       })
     },
@@ -264,7 +265,8 @@ export default {
           // Load attachment files
           this.loadArticleFiles(id)
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSArticleWrite] loadArticleForEdit', err)
       })
     },
     loadArticleFiles(id) {
@@ -277,7 +279,8 @@ export default {
             size: '',
           }))
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSArticleWrite] loadArticleFiles', err)
         this.attachments = []
       })
     },
@@ -292,7 +295,8 @@ export default {
         } else {
           this.$refs.mdEditor.$img2Url(pos, URL.createObjectURL(file))
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSArticleWrite] handleImgAdd', err)
         const url = URL.createObjectURL(file)
         this.$refs.mdEditor.$img2Url(pos, url)
       })
@@ -324,8 +328,7 @@ export default {
           } else {
             Message({ message: (resp && resp.message) || '上传失败', type: 'error', showClose: true, offset: 54 })
           }
-        }).catch(() => {
-        })
+        }).catch(err => { console.warn('[BBSArticleWrite] uploadAttachment', err) })
       })
       this.$refs.attachmentInput.value = ''
     },
@@ -399,7 +402,8 @@ export default {
             Message({ message: this.articleId ? '修改成功！' : '发布成功！', type: 'success', showClose: true, offset: 54 })
             this.$router.push('/stat')
           }
-        }).catch(() => {
+        }).catch(err => {
+          console.warn('[BBSArticleWrite] publish', err)
           loading.close()
         })
       }
@@ -411,7 +415,8 @@ export default {
         formData.append('image', this.coverFile)
         this.postRequest('/article/coverImg', formData).then(resp => {
           doPublish(normalizeFileUrl(resp && typeof resp === 'string' ? resp : (resp && resp.url || '')))
-        }).catch(() => {
+        }).catch(err => {
+          console.warn('[BBSArticleWrite] coverUpload', err)
           doPublish('')
         })
       } else {

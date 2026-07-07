@@ -231,7 +231,8 @@ export default {
           // 自动登录进入首页
           this.$router.replace('/forum')
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSChangePassword] handleChangePassword', err)
         this.submitting = false
       })
     },

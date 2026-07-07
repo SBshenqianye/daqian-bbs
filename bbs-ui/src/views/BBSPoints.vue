@@ -299,7 +299,8 @@ export default {
           expanded: false,
           children: [],
         }))
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSPoints] fetchItems', err)
         this.loading = false
         this.displayItems = []
       })
@@ -323,7 +324,8 @@ export default {
           score: child.points || 0,
           totalScore: child.points || 0,
         }))
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSPoints] fetchChildren', err)
         item.children = []
       })
     },
