@@ -215,7 +215,7 @@
             <div class="space-y-1">
               <label class="text-label-md text-secondary">密码（留空不修改）</label>
               <div class="grid grid-cols-1 grid-rows-1 max-w-xs">
-                <input v-model="editForm.password" class="w-full col-start-1 row-start-1 pl-3 pr-10 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" :class="{ 'password-masked': !editShowPassword }" placeholder="输入新密码" type="text">
+                <input v-model="editForm.password" class="w-full col-start-1 row-start-1 pl-3 pr-10 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入新密码" :type="editShowPassword ? 'text' : 'password'">
                 <button class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline hover:text-primary transition-colors" type="button" @click="editShowPassword = !editShowPassword">
                   <span class="material-symbols-outlined text-[18px]">{{ editShowPassword ? 'visibility_off' : 'visibility' }}</span>
                 </button>
@@ -413,7 +413,7 @@
             <div class="space-y-1">
               <label class="text-label-md text-secondary">密码（留空则默认为 1234@abcD）</label>
               <div class="grid grid-cols-1 grid-rows-1 max-w-xs">
-                <input v-model="addForm.password" class="w-full col-start-1 row-start-1 pl-3 pr-10 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" :class="{ 'password-masked': !addShowPassword }" placeholder="输入自定义密码" type="text">
+                <input v-model="addForm.password" class="w-full col-start-1 row-start-1 pl-3 pr-10 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入自定义密码" :type="addShowPassword ? 'text' : 'password'">
                 <button class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline hover:text-primary transition-colors" type="button" @click="addShowPassword = !addShowPassword">
                   <span class="material-symbols-outlined text-[18px]">{{ addShowPassword ? 'visibility_off' : 'visibility' }}</span>
                 </button>
@@ -865,7 +865,8 @@ export default {
           this.editDialogVisible = false
           this.getAllUserPage()
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[UserPage] handleSaveEdit', err)
         this.editSaving = false
       })
     },
@@ -942,7 +943,8 @@ export default {
           this.addDialogVisible = false
           this.getAllUserPage()
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[UserPage] handleSaveAdd', err)
         this.addSaving = false
       })
     },
@@ -1036,7 +1038,4 @@ export default {
 </script>
 
 <style scoped>
-.password-masked {
-  -webkit-text-security: disc;
-}
 </style>
