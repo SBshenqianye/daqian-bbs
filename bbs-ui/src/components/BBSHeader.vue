@@ -78,7 +78,6 @@
           <div
             v-show="userMenuOpen"
             class="user-popover"
-            style="display: block;"
           >
             <div class="w-64 bg-container rounded-lg shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-outline-variant p-4">
               <!-- User Info -->
@@ -229,9 +228,6 @@ export default {
     },
     isActive(path) {
       return this.$route.path === path
-    },
-    isForumPage() {
-      return this.$route.path === '/forum'
     },
   },
 }
