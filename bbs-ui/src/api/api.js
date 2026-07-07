@@ -36,7 +36,6 @@ function buildErrorMessage(resData) {
 //响应拦截器
 axios.interceptors.response.use(success=>{
     //业务逻辑错误
-    console.log("success",success)
     if(success.status && success.status === 200){
         if(success.data.code === 500 || success.data.code === 403){
             Message({

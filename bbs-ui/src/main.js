@@ -10,36 +10,8 @@ import './assets/tailwind.css'
 
 //按需引入element-ui
 import {
-    Carousel,
-    CarouselItem,
-    Button,
-    Container,
-    Col,
-    Input,
-    Main,
     MessageBox,
-    Dialog,
-    FormItem,
-    Select,
-    Option,
-    CheckboxGroup,
-    Checkbox,
-    Form,
-    Switch,
-    Radio,
-    TimePicker,
     Tooltip,
-    Upload,
-    Cascader,
-    Row,
-    RadioGroup,
-    Tag,
-    Avatar,
-    Tabs,
-    TabPane,
-    Table,
-    TableColumn,
-    Tree,
 } from 'element-ui';
 
 //引入 封装好的请求
@@ -50,9 +22,6 @@ import {deleteRequest} from "@/api/api";
 //引入 身份认证工具
 import {getToken, getUser} from "@/utils/auth";
 
-// 引入阿里矢量图标
-import './assets/iconfont/iconfont.css'
-
 
 
 //关闭生产提示
@@ -60,36 +29,7 @@ Vue.config.productionTip = false
 
 Vue.use(VueRouter)
 
-Vue.component(Carousel.name,Carousel)
-Vue.component(CarouselItem.name,CarouselItem)
-Vue.component(Button.name,Button)
-Vue.component(Container.name,Container)
-Vue.component(Col.name, Col)
-Vue.component(Input.name,Input)
-Vue.component(Main.name,Main)
-Vue.component(MessageBox.name,MessageBox),
-Vue.component(Dialog.name,Dialog)
-Vue.component(FormItem.name,FormItem)
-Vue.component(Select.name,Select)
-Vue.component(Option.name,Option)
-Vue.component(CheckboxGroup.name,CheckboxGroup)
-Vue.component(Checkbox.name,Checkbox)
-Vue.component(Form.name,Form)
-Vue.component(Switch.name,Switch)
-Vue.component(Radio.name,Radio)
-Vue.component(TimePicker.name,TimePicker)
 Vue.component(Tooltip.name,Tooltip)
-Vue.component(Upload.name,Upload)
-Vue.component(Cascader.name,Cascader)
-Vue.component(Row.name,Row)
-Vue.component(RadioGroup.name,RadioGroup)
-Vue.component(Tag.name,Tag)
-Vue.component(Avatar.name,Avatar)
-Vue.component(Tabs.name,Tabs)
-Vue.component(TabPane.name,TabPane)
-Vue.component(Table.name,Table)
-Vue.component(TableColumn.name,TableColumn)
-Vue.component(Tree.name,Tree)
 
 
 Vue.prototype.$confirm = MessageBox.confirm;

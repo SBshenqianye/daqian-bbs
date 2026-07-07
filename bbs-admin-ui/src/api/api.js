@@ -34,19 +34,7 @@ axios.interceptors.response.use(success=>{
     //业务逻辑错误
     if(success.status && success.status == 200){
         if( success.data.code == 401 || success.data.code == 403){
-            /*Message({
-                type: 'error',
-                message: success.data.message,
-                //offset:50
-            })*/
             return;
-        }
-        if(success.data.message){
-            /*Message({
-                type: 'success',
-                message: success.data.message,
-                //offset:50
-            })*/
         }
     }
     return success.data;
