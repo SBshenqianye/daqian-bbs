@@ -399,7 +399,7 @@ export default {
         this.postRequest(endpoint, article).then(resp => {
           loading.close()
           if (resp) {
-            Message({ message: this.articleId ? '修改成功！' : '发布成功！', type: 'success', showClose: true, offset: 54 })
+            // 成功提示由 axios 响应拦截器（api.js）统一处理
             this.$router.push('/stat')
           }
         }).catch(err => {
