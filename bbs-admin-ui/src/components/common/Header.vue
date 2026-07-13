@@ -90,7 +90,8 @@ export default {
     },
   },
   created() {
-    this.loadAdminInfo()
+    this.loadAdminInfo()   // 立即显示缓存
+    this.refreshUserInfo() // 异步拉取最新用户信息（含头像）覆盖更新
     bus.$on('collapse', (msg) => {
       this.localCollapse = msg
     })
@@ -103,6 +104,18 @@ export default {
       } catch (e) {
         this.adminInfo = null
       }
+    },
+    refreshUserInfo() {
+      this.getRequestUrl('/common/user/info').then(resp => {
+        if (resp && resp.portrait) {
+          // /common/user/info 返回扁平 Map（非 ResultBean），resp 即用户信息
+          this.adminInfo = resp
+          window.sessionStorage.setItem('admin', JSON.stringify(resp))
+        }
+      }).catch(err => {
+        console.warn('[Header] refreshUserInfo failed, using cached', err)
+        this.loadAdminInfo()
+      })
     },
     toggleCollapse() {
       this.localCollapse = !this.localCollapse
