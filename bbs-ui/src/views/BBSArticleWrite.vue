@@ -36,7 +36,7 @@
       <div class="mt-8">
         <div class="flex items-center justify-between mb-4">
           <h4 class="text-sm font-semibold text-gray-700">附件上传 (最多5个)</h4>
-          <span class="text-xs text-gray-400">不允许上传 .exe, .bat, .sh 格式</span>
+          <span class="text-xs text-gray-400">不允许上传 .exe, .bat, .sh 格式，单文件不超过 50MB</span>
         </div>
         <button
           class="inline-flex items-center px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:opacity-90 transition-colors shadow-sm"
@@ -310,9 +310,15 @@ export default {
         return
       }
       const userId = JSON.parse(userStr).id
+      const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
       const allowed = Array.from(files).filter(f => {
         const ext = f.name.split('.').pop().toLowerCase()
-        return !['exe', 'bat', 'sh', 'cmd', 'com', 'scr', 'msi', 'vbs', 'ps1'].includes(ext)
+        if (['exe', 'bat', 'sh', 'cmd', 'com', 'scr', 'msi', 'vbs', 'ps1'].includes(ext)) return false
+        if (f.size > MAX_FILE_SIZE) {
+          Message({ message: `"${f.name}" 超过 50MB 大小限制`, type: 'warning', showClose: true, offset: 54 })
+          return false
+        }
+        return true
       })
       const remaining = 5 - this.attachments.length
       const toUpload = allowed.slice(0, remaining)
