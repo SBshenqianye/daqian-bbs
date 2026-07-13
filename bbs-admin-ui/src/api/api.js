@@ -64,7 +64,8 @@ axios.interceptors.response.use(success=>{
             message: resMsg || '尚未登录，请登录！',
             showClose: true,
         })
-        router.replace('/');
+        const currentPath = router.currentRoute.fullPath
+        router.replace(currentPath !== '/login' ? `/login?redirect=${encodeURIComponent(currentPath)}` : '/login');
     }else{
         Message({
             type: 'error',
