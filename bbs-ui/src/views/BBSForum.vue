@@ -38,6 +38,48 @@
 
         <!-- Center Feed: Articles -->
         <section class="md:col-span-7 space-y-4">
+          <!-- Featured Top: 置顶精华帖（最新3条） -->
+          <div v-if="featuredTop.length > 0" class="bg-amber-50 border border-amber-200 rounded-lg overflow-hidden">
+            <div class="flex items-center gap-2 px-card-padding py-3 bg-amber-100/60 border-b border-amber-200">
+              <span class="material-symbols-outlined text-rank-gold text-[18px]">stars</span>
+              <span class="font-headline-sm text-headline-sm text-amber-800">精华置顶</span>
+              <span class="text-body-md text-amber-600 ml-1">最新 3 条</span>
+            </div>
+            <div class="divide-y divide-amber-100">
+              <article
+                v-for="(article, index) in featuredTop"
+                :key="'ft-' + (article.articleId || index)"
+                class="p-card-padding hover:bg-amber-50/50 transition-colors cursor-pointer"
+                @click="goToArticle(article)"
+              >
+                <div class="flex items-start gap-3">
+                  <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-[11px] font-bold"
+                    :class="index === 0 ? 'bg-rank-gold text-white' : index === 1 ? 'bg-rank-silver text-white' : 'bg-rank-bronze text-white'">
+                    {{ index + 1 }}
+                  </span>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-rank-gold/10 text-rank-gold rounded-full">
+                        <span class="material-symbols-outlined text-[10px]">stars</span>
+                        精华
+                      </span>
+                      <span v-if="article.labelName || getLabelName(article.labelId)" class="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-primary/10 text-primary rounded-full">
+                        {{ article.labelName || getLabelName(article.labelId) }}
+                      </span>
+                    </div>
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface hover:text-primary-container transition-colors">{{ article.title }}</h3>
+                    <div class="flex items-center gap-3 mt-1.5 text-label-md text-outline">
+                      <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">person</span>{{ article.author }}</span>
+                      <span>{{ article.time }}</span>
+                      <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">visibility</span>{{ article.views }}</span>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <!-- Regular Article List -->
           <article
             v-for="(article, index) in filteredArticles"
             :key="index"
@@ -46,6 +88,17 @@
           >
             <div class="flex flex-col md:flex-row gap-6">
               <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                  <!-- 精华帖标识 -->
+                  <span v-if="article.isFeatured" class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-rank-gold/10 text-rank-gold rounded-full">
+                    <span class="material-symbols-outlined text-[12px]">stars</span>
+                    精华
+                  </span>
+                  <!-- 标签标识 -->
+                  <span v-if="getLabelName(article.labelId)" class="inline-flex items-center px-2 py-0.5 text-[11px] font-medium bg-primary/10 text-primary rounded-full">
+                    {{ getLabelName(article.labelId) }}
+                  </span>
+                </div>
                 <h3 class="font-headline-sm text-on-surface mb-2 hover:text-primary-container transition-colors">{{ article.title }}</h3>
                 <p class="text-body-md text-secondary mb-4 line-clamp-2">{{ article.summary }}</p>
                 <div class="flex items-center justify-between text-label-md text-outline">
@@ -76,8 +129,9 @@
           </div>
         </section>
 
-        <!-- Right Sidebar: Hot Topics -->
+        <!-- Right Sidebar: Hot Topics + Featured -->
         <aside class="md:col-span-3 space-y-4 sticky top-20 self-start">
+          <!-- Hot Topics -->
           <div class="bg-container border border-border rounded-lg p-card-padding">
             <div class="flex items-center justify-between mb-4">
               <h2 class="font-headline-sm flex items-center gap-2">
@@ -97,6 +151,37 @@
                   :class="getRankClass(index + 1)"
                 >{{ index + 1 }}</span>
                 <span class="font-body-md text-on-surface group-hover:text-primary-container transition-colors line-clamp-1">{{ topic.articleTitle }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Featured Posts Section (max one page) -->
+          <div v-if="featuredSidebar.length > 0" class="bg-container border border-border rounded-lg p-card-padding">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="font-headline-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-rank-gold filled-icon">stars</span>
+                精华帖
+              </h2>
+              <button
+                class="text-label-md text-primary hover:text-primary-container transition-colors flex items-center gap-1"
+                @click="goToFeaturedArticles"
+              >
+                全部
+                <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+              </button>
+            </div>
+            <ul class="space-y-3">
+              <li
+                v-for="(item, index) in featuredSidebar"
+                :key="item.articleId || index"
+                class="flex items-start gap-2 cursor-pointer group"
+                @click="goToArticle(item)"
+              >
+                <span class="material-symbols-outlined text-rank-gold text-[14px] mt-0.5">stars</span>
+                <div class="flex-1 min-w-0">
+                  <span class="font-body-md text-on-surface group-hover:text-primary-container transition-colors line-clamp-1">{{ item.articleTitle }}</span>
+                  <span class="text-label-md text-outline">{{ item.labelName ? item.labelName + ' · ' : '' }}{{ item.time }}</span>
+                </div>
               </li>
             </ul>
           </div>
@@ -126,14 +211,17 @@ export default {
       categories: [],
       articles: [],
       hotTopics: [],
+      featuredTop: [],
+      featuredSidebar: [],
       filteredLabelId: null,
     }
   },
   mounted() {
-    // Auto-search from URL query params if present (e.g. redirected from another page)
     const kw = this.$route.query.keywords
     this.fetchArticles(kw || '')
     this.fetchHotTopics()
+    this.fetchFeaturedTop()
+    this.fetchFeaturedSidebar()
     this.loadLabels()
     this.$bus && this.$bus.$on('forumSearch', this.handleForumSearch)
   },
@@ -166,11 +254,12 @@ export default {
           author: a.articleAuthor || '',
           userId: a.userId,
           authorAvatar: normalizeFileUrl(a.portrait || ''),
+          isFeatured: a.isFeatured === 1 || a.isFeatured === '1',
+          labelId: a.articleLabelId || null,
           time: a.createTime || a.articleCreateTime || '',
           views: a.articleViewNum || 0,
-          comments: a.articleCommentNum || a.commentNum || 0,
+          comments: a.commentNum || 0,
           likes: a.articleGoodNum || 0,
-          labelId: a.articleLabelId || null,
           cover: normalizeFileUrl(a.articleImage || null),
         }))
       }).catch(err => {
@@ -191,6 +280,42 @@ export default {
         this.hotTopics = []
       })
     },
+    fetchFeaturedTop() {
+      this.getRequest('/common/article/getFeaturedTop').then(resp => {
+        const data = resp && resp.obj
+        const list = Array.isArray(data) ? data : []
+        this.featuredTop = list.map(a => ({
+          articleId: a.articleId,
+          title: a.articleTitle || '',
+          author: a.articleAuthor || '',
+          time: a.createTime || '',
+          views: a.articleViewNum || 0,
+          labelName: a.articleLabelName || '',
+          articleLabelName: a.articleLabelName || '',
+        })).filter(a => a.articleId)
+      }).catch(err => {
+        console.warn('[BBSForum] fetchFeaturedTop', err)
+        this.featuredTop = []
+      })
+    },
+    fetchFeaturedSidebar() {
+      this.getRequest('/common/article/getFeatured?page=1&size=10').then(resp => {
+        if (resp && resp.obj) {
+          const list = Array.isArray(resp.obj.list) ? resp.obj.list : []
+          this.featuredSidebar = list.map(a => ({
+            articleId: a.articleId,
+            articleTitle: a.articleTitle || '',
+            labelName: a.articleLabelName || '',
+            time: a.createTime || '',
+          })).filter(a => a.articleId)
+        } else {
+          this.featuredSidebar = []
+        }
+      }).catch(err => {
+        console.warn('[BBSForum] fetchFeaturedSidebar', err)
+        this.featuredSidebar = []
+      })
+    },
     loadLabels() {
       this.getRequest('/common/getArticleLabel').then(resp => {
         if (resp && Array.isArray(resp)) {
@@ -201,7 +326,6 @@ export default {
             active: i === 0,
             description: l.description || '',
           }))
-          // 不默认过滤，让用户可以看到全部文章
         }
       }).catch(err => {
         console.warn('[BBSForum] loadLabels', err)
@@ -209,7 +333,6 @@ export default {
       })
     },
     selectCategory(cat) {
-      // 再次点击已激活的类别 → 取消过滤，显示全部
       if (cat.active) {
         cat.active = false
         this.filteredLabelId = null
@@ -228,6 +351,14 @@ export default {
       if (topic.articleId) {
         this.$router.push({ name: 'BBSArticleDetails', params: { articleId: topic.articleId } })
       }
+    },
+    goToFeaturedArticles() {
+      this.$router.push({ name: 'BBSFeaturedArticles' })
+    },
+    getLabelName(labelId) {
+      if (!labelId) return ''
+      const cat = this.categories.find(c => String(c.labelId) === String(labelId))
+      return cat ? cat.name : ''
     },
     handleForumSearch(keywords) {
       this.fetchArticles(keywords || '')
