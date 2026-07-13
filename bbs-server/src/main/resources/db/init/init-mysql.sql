@@ -55,7 +55,9 @@ CREATE TABLE `bbs_article` (
   `recommend`           tinyint(1) UNSIGNED ZEROFILL NULL DEFAULT NULL COMMENT '是否推荐该文章',
   `enable`              int(11) NULL DEFAULT 0 COMMENT '是否审核通过',
   `is_delete`           int(11) NULL DEFAULT 0 COMMENT '逻辑删除',
-  PRIMARY KEY (`article_id`) USING BTREE
+  `is_featured`         tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否为精华帖(0=否,1=是)',
+  PRIMARY KEY (`article_id`) USING BTREE,
+  KEY `idx_article_featured_time` (`is_featured`, `create_time`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -77,13 +79,12 @@ CREATE TABLE `bbs_article_file` (
 DROP TABLE IF EXISTS `bbs_article_label`;
 CREATE TABLE `bbs_article_label` (
   `label_id`   int(11) NOT NULL AUTO_INCREMENT COMMENT '文章标签的id',
-  `label_name` varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '标签名称',
-  `enabled`    tinyint(4) NULL DEFAULT NULL COMMENT '标签是否禁用',
+  `label_name`  varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '标签名称',
+  `enabled`     tinyint(4) NULL DEFAULT NULL COMMENT '标签是否禁用',
+  `icon`        varchar(50) DEFAULT NULL COMMENT '标签图标',
+  `description` varchar(200) DEFAULT NULL COMMENT '标签描述',
   PRIMARY KEY (`label_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
-ALTER TABLE bbs_article_label ADD COLUMN `icon` varchar(50) DEFAULT NULL COMMENT '标签图标';
-ALTER TABLE bbs_article_label ADD COLUMN `description` varchar(200) DEFAULT NULL COMMENT '标签描述';
 
 -- ----------------------------
 -- Table: bbs_article_type
@@ -342,7 +343,8 @@ INSERT INTO `bbs_sa_org` (`id`, `org_no`, `org_name`, `p_org_no`, `org_tree`, `i
 INSERT INTO `bbs_dict` (`id`, `dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`) VALUES
 (1, 'post', '3', '发帖积分', 1, '系统', '2026-06-26 00:00:00', '发一个帖子所得积分'),
 (2, 'reply', '1', '回帖积分', 0, '系统', '2026-06-26 00:00:00', '回帖一次所得积分'),
-(3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）');
+(3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）'),
+(4, 'featured', '10', '精华帖积分', 2, '系统', '2026-07-13 00:00:00', '被设为精华帖额外获得的积分');
 
 -- ----------------------------
 -- 敏感词

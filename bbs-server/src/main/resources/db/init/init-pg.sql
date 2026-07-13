@@ -48,8 +48,10 @@ CREATE TABLE IF NOT EXISTS bbs_article (
     create_time          varchar(20),
     recommend            smallint,
     enable               integer DEFAULT 0,
-    is_delete            integer DEFAULT 0
+    is_delete            integer DEFAULT 0,
+    is_featured          smallint NOT NULL DEFAULT 0
 );
+CREATE INDEX IF NOT EXISTS idx_article_featured_time ON bbs_article (is_featured, create_time);
 
 -- ----------------------------
 -- Table: bbs_article_file
@@ -66,13 +68,12 @@ CREATE TABLE IF NOT EXISTS bbs_article_file (
 -- Table: bbs_article_label
 -- ----------------------------
 CREATE TABLE IF NOT EXISTS bbs_article_label (
-    label_id   SERIAL PRIMARY KEY,
-    label_name varchar(10),
-    enabled    smallint
+    label_id    SERIAL PRIMARY KEY,
+    label_name  varchar(10),
+    enabled     smallint,
+    icon        varchar(50),
+    description varchar(200)
 );
-
-ALTER TABLE bbs_article_label ADD COLUMN IF NOT EXISTS icon varchar(50);
-ALTER TABLE bbs_article_label ADD COLUMN IF NOT EXISTS description varchar(200);
 
 -- ----------------------------
 -- Table: bbs_article_type
@@ -311,7 +312,8 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO bbs_dict (id, dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark) VALUES
 (1, 'post', '3', '发帖积分', 1, '系统', '2026-06-26 00:00:00', '发一个帖子所得积分'),
 (2, 'reply', '1', '回帖积分', 0, '系统', '2026-06-26 00:00:00', '回帖一次所得积分'),
-(3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）')
+(3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）'),
+(4, 'featured', '10', '精华帖积分', 2, '系统', '2026-07-13 00:00:00', '被设为精华帖额外获得的积分')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------
