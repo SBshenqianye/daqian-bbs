@@ -107,7 +107,7 @@
             </div>
             <!-- Right: Summary -->
             <div class="flex-grow">
-              <label class="block text-sm font-medium text-gray-700 mb-2">文章摘要</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">文章摘要 <span class="text-red-400">（必填）</span></label>
               <div class="relative">
                 <textarea
                   v-model="articleSummary"
