@@ -174,7 +174,6 @@ export default {
       articleId: this.$route.query.articleId || null,
       articleTitle: '',
       markdownContent: '',
-      markdownHtml: '',
       articleSummary: '',
       showPublishModal: false,
       coverPreview: null,
@@ -256,7 +255,6 @@ export default {
         if (resp) {
           this.articleTitle = resp.articleTitle || ''
           this.markdownContent = normalizeUrls(resp.articleContent || '')
-          this.markdownHtml = normalizeUrls(resp.articleContentHtml || '')
           this.articleSummary = resp.articleSummary || ''
           this.selectedLabelId = resp.articleLabelId
           if (resp.articleImage) {
@@ -375,7 +373,7 @@ export default {
       const article = {
         articleTitle: this.articleTitle,
         articleContent: this.markdownContent,
-        articleContentHtml: this.markdownHtml || this.markdownContent,
+        articleContentHtml: this.markdownContent,
         articleSummary: this.articleSummary,
         articleTypeId: 0,
         articleCommunityId: 0,
