@@ -54,3 +54,6 @@ bbs-offline-latest.tar.gz
 
 # Build output directories
 bbs/
+
+# Test runner output (Playwright, etc.)
+test-results/
