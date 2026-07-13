@@ -684,11 +684,14 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
-    public ResultBean getFeaturedByPage(Integer page, Integer size) {
+    public ResultBean getFeaturedByPage(Integer page, Integer size, Integer labelId) {
         if (page == null || page < 1) page = 1;
         if (size == null || size < 1) size = 10;
 
         Map<String, Object> params = new HashMap<>();
+        if (labelId != null && labelId > 0) {
+            params.put("labelId", labelId);
+        }
         int total = articleMapper.countFeaturedByPage(params);
         int offset = (page - 1) * size;
         params.put("offset", offset);

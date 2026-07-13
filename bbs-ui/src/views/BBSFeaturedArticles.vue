@@ -11,6 +11,24 @@
       </div>
     </section>
 
+    <!-- Label Tabs -->
+    <div class="max-w-5xl mx-auto px-page-margin-desktop pt-4">
+      <div class="bg-container border border-border rounded-lg p-1 flex flex-wrap gap-1">
+        <button
+          class="px-3 py-1.5 text-[13px] font-medium rounded-md transition-colors"
+          :class="selectedLabelId === null ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'"
+          @click="selectLabel(null)"
+        >全部</button>
+        <button
+          v-for="label in labels"
+          :key="label.labelId"
+          class="px-3 py-1.5 text-[13px] font-medium rounded-md transition-colors"
+          :class="selectedLabelId === label.labelId ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'"
+          @click="selectLabel(label.labelId)"
+        >{{ label.labelName }}</button>
+      </div>
+    </div>
+
     <!-- Content -->
     <div class="max-w-5xl mx-auto px-page-margin-desktop py-8">
       <!-- Loading -->
@@ -22,7 +40,7 @@
       <div v-else-if="articles.length === 0" class="flex flex-col items-center justify-center py-20 text-on-surface-variant">
         <span class="material-symbols-outlined text-[64px] opacity-20">stars</span>
         <p class="text-body-lg mt-4">暂无精华帖</p>
-        <p class="text-body-md text-outline mt-1">管理员还没有设置任何精华帖</p>
+        <p class="text-body-md text-outline mt-1">{{ selectedLabelId ? '该标签下还没有精华帖' : '管理员还没有设置任何精华帖' }}</p>
       </div>
 
       <!-- Article List -->
@@ -120,6 +138,8 @@ export default {
     return {
       loading: false,
       articles: [],
+      labels: [],
+      selectedLabelId: null,
       pagination: {
         total: 0,
         page: 1,
@@ -144,12 +164,16 @@ export default {
     },
   },
   mounted() {
+    this.loadLabels()
     this.fetchFeatured()
   },
   methods: {
     fetchFeatured() {
       this.loading = true
-      const url = `/common/article/getFeatured?page=${this.pagination.page}&size=${this.pagination.size}`
+      let url = `/common/article/getFeatured?page=${this.pagination.page}&size=${this.pagination.size}`
+      if (this.selectedLabelId) {
+        url += `&labelId=${this.selectedLabelId}`
+      }
       this.getRequest(url).then(resp => {
         this.loading = false
         if (resp && resp.obj) {
@@ -190,6 +214,24 @@ export default {
       if (article.articleId) {
         this.$router.push({ name: 'BBSArticleDetails', params: { articleId: article.articleId } })
       }
+    },
+    loadLabels() {
+      this.getRequest('/common/getArticleLabel').then(resp => {
+        if (resp && Array.isArray(resp)) {
+          this.labels = resp.map(l => ({
+            labelId: l.labelId,
+            labelName: l.labelName,
+          }))
+        }
+      }).catch(err => {
+        console.warn('[BBSFeaturedArticles] loadLabels', err)
+        this.labels = []
+      })
+    },
+    selectLabel(labelId) {
+      this.selectedLabelId = labelId
+      this.pagination.page = 1
+      this.fetchFeatured()
     },
   },
 }

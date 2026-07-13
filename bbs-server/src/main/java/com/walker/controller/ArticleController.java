@@ -13,6 +13,7 @@ import com.walker.vo.param.ArticleStatisticParam;
 import com.walker.vo.param.PointsRankParam;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -418,11 +419,12 @@ public class ArticleController {
         return articleService.getFeaturedTop(3);
     }
 
-    @ApiOperation(value = "获取精华帖列表（用户端分页）")
+    @ApiOperation(value = "获取精华帖列表（用户端分页，可指定标签）")
     @GetMapping("/common/article/getFeatured")
     public ResultBean getFeatured(@RequestParam(value = "page", defaultValue = "1") Integer page,
-                                  @RequestParam(value = "size", defaultValue = "10") Integer size) {
-        return articleService.getFeaturedByPage(page, size);
+                                  @RequestParam(value = "size", defaultValue = "10") Integer size,
+                                  @RequestParam(value = "labelId", required = false) Integer labelId) {
+        return articleService.getFeaturedByPage(page, size, labelId);
     }
 
 }

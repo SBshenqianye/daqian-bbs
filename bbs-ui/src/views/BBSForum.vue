@@ -141,7 +141,7 @@
             </div>
             <ul class="space-y-4">
               <li
-                v-for="(topic, index) in hotTopics"
+                v-for="(topic, index) in visibleHotTopics"
                 :key="topic.articleId || index"
                 class="flex items-start gap-3 group cursor-pointer"
                 @click="goToHotTopic(topic)"
@@ -153,6 +153,14 @@
                 <span class="font-body-md text-on-surface group-hover:text-primary-container transition-colors line-clamp-1">{{ topic.articleTitle }}</span>
               </li>
             </ul>
+            <button
+              v-if="hotTopics.length > 3"
+              class="mt-2 w-full text-center text-label-md text-primary hover:text-primary-container transition-colors py-1"
+              @click="hotTopicsExpand = !hotTopicsExpand"
+            >
+              {{ hotTopicsExpand ? '收起' : '展开更多' }}
+              <span class="material-symbols-outlined text-[14px] align-middle">{{ hotTopicsExpand ? 'expand_less' : 'expand_more' }}</span>
+            </button>
           </div>
 
           <!-- Featured Posts Section (max one page) -->
@@ -172,7 +180,7 @@
             </div>
             <ul class="space-y-3">
               <li
-                v-for="(item, index) in featuredSidebar"
+                v-for="(item, index) in visibleFeaturedSidebar"
                 :key="item.articleId || index"
                 class="flex items-start gap-2 cursor-pointer group"
                 @click="goToArticle(item)"
@@ -184,6 +192,14 @@
                 </div>
               </li>
             </ul>
+            <button
+              v-if="featuredSidebar.length > 3"
+              class="mt-2 w-full text-center text-label-md text-primary hover:text-primary-container transition-colors py-1"
+              @click="featuredSidebarExpand = !featuredSidebarExpand"
+            >
+              {{ featuredSidebarExpand ? '收起' : '展开更多' }}
+              <span class="material-symbols-outlined text-[14px] align-middle">{{ featuredSidebarExpand ? 'expand_less' : 'expand_more' }}</span>
+            </button>
           </div>
 
           <!-- Side Promotion Card -->
@@ -211,8 +227,10 @@ export default {
       categories: [],
       articles: [],
       hotTopics: [],
-      featuredTop: [],
+      hotTopicsExpand: false,
       featuredSidebar: [],
+      featuredSidebarExpand: false,
+      featuredTop: [],
       filteredLabelId: null,
     }
   },
@@ -239,6 +257,12 @@ export default {
     filteredArticles() {
       if (!this.filteredLabelId) return this.articles
       return this.articles.filter(a => String(a.labelId) === String(this.filteredLabelId))
+    },
+    visibleHotTopics() {
+      return this.hotTopicsExpand ? this.hotTopics : this.hotTopics.slice(0, 3)
+    },
+    visibleFeaturedSidebar() {
+      return this.featuredSidebarExpand ? this.featuredSidebar : this.featuredSidebar.slice(0, 3)
     },
   },
   methods: {

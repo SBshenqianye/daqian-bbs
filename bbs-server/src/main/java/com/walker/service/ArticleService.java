@@ -227,7 +227,7 @@ public interface ArticleService extends IService<Article> {
     /**
      * 查询精华帖列表（用户端，分页）
      */
-    ResultBean getFeaturedByPage(Integer page, Integer size);
+    ResultBean getFeaturedByPage(Integer page, Integer size, Integer labelId);
 
     /**
      * 获取最新精华帖（置顶用）

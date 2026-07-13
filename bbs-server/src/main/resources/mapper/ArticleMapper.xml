@@ -202,7 +202,7 @@
         LIMIT #{size} OFFSET #{offset}
     </select>
 
-    <!-- 查询全部精华帖（用户端，分页） -->
+    <!-- 查询全部精华帖（用户端，分页，可指定标签） -->
     <select id="selectFeaturedByPage" parameterType="map" resultType="com.walker.pojo.Article">
         SELECT a.*, l.label_name AS articleLabelName
         FROM bbs_article a
@@ -210,6 +210,9 @@
         WHERE a.is_delete = 0
           AND a.enable = 1
           AND a.is_featured = 1
+        <if test="labelId != null and labelId != ''">
+            AND a.article_label_id = #{labelId}
+        </if>
         ORDER BY a.create_time DESC
         LIMIT #{size} OFFSET #{offset}
     </select>
@@ -247,12 +250,15 @@
         </if>
     </select>
 
-    <!-- 查询精华帖总数（用户端） -->
+    <!-- 查询精华帖总数（用户端，可指定标签） -->
     <select id="countFeaturedByPage" parameterType="map" resultType="int">
         SELECT COUNT(1)
         FROM bbs_article a
         WHERE a.is_delete = 0
           AND a.enable = 1
           AND a.is_featured = 1
+        <if test="labelId != null and labelId != ''">
+            AND a.article_label_id = #{labelId}
+        </if>
     </select>
 </mapper>
