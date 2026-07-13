@@ -142,7 +142,7 @@
         <!-- Footer -->
         <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
           <button class="px-6 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors" @click="showPublishModal = false">取消</button>
-          <button class="px-8 py-2 text-white text-sm font-bold rounded-lg hover:opacity-90 transition-all shadow-sm bg-red-500" @click="handlePublish">确认发布</button>
+          <button class="px-8 py-2 text-white text-sm font-bold rounded-lg hover:opacity-90 transition-all shadow-sm bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed" :disabled="publishing" @click="handlePublish">{{ publishing ? '发布中...' : '确认发布' }}</button>
         </div>
       </div>
     </div>
@@ -183,6 +183,7 @@ export default {
       // Attachments: { fileId, fileName } after server upload
       attachments: [],
       uploading: false,
+      publishing: false,
       toolbars: {
         bold: true,
         italic: true,
@@ -351,6 +352,7 @@ export default {
       }
     },
     handlePublish() {
+      if (this.publishing) return
       if (!this.articleTitle.trim()) {
         Message({ message: '标题不能为空', type: 'warning', showClose: true, offset: 54 })
         return
@@ -394,6 +396,7 @@ export default {
       }
 
       this.showPublishModal = false
+      this.publishing = true
       const loading = Loading.service({ lock: true, text: '发布中，请稍后...' })
 
       const doPublish = (imageUrl) => {
@@ -401,6 +404,7 @@ export default {
         const endpoint = this.articleId ? '/article/editArticle' : '/article/publish'
         this.postRequest(endpoint, article).then(resp => {
           loading.close()
+          this.publishing = false
           if (resp) {
             // 成功提示由 axios 响应拦截器（api.js）统一处理
             this.$router.push('/stat')
@@ -408,6 +412,7 @@ export default {
         }).catch(err => {
           console.warn('[BBSArticleWrite] publish', err)
           loading.close()
+          this.publishing = false
         })
       }
 
