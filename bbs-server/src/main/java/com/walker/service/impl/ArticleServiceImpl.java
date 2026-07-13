@@ -548,6 +548,13 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
         pointsRankParam.setPost(Integer.parseInt(postList.get(0).getDictValue()));
         pointsRankParam.setReply(Integer.parseInt(replyList.get(0).getDictValue()));
+        // 查询配置中-精华帖积分
+        List<Dict> featuredList = dictService.listDictByType(ConstantUtil.MANA_FEATURED);
+        if (!CollectionUtils.isEmpty(featuredList)) {
+            pointsRankParam.setFeatured(Integer.parseInt(featuredList.get(0).getDictValue()));
+        } else {
+            pointsRankParam.setFeatured(0);
+        }
         // 01：本月，02：累计，获取配置的开始和结束日期
         if (ConstantUtil.MANA_ZERO_ONE.equals(pointsRankParam.getRankType())) {
             pointsRankParam.setStartTime(DateUtil.formatDate(DateUtil.beginOfMonth(new Date())));
@@ -596,6 +603,120 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
 
         return ResultBean.success("查询成功", resultList);
+    }
+
+    @Override
+    public ResultBean getAdminArticleList(String keywords, String labelId, String startTime, String endTime, Integer enable, Integer page, Integer size) {
+        if (page == null || page < 1) page = 1;
+        if (size == null || size < 1) size = 10;
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("keywords", keywords);
+        params.put("labelId", labelId);
+        params.put("startTime", startTime);
+        params.put("endTime", endTime);
+        params.put("enable", enable);
+
+        int total = articleMapper.countAdminArticleList(params);
+        int offset = (page - 1) * size;
+        params.put("offset", offset);
+        params.put("size", size);
+
+        List<Article> list = articleMapper.selectAdminArticleList(params);
+        if (list == null) list = new ArrayList<>();
+
+        enrichWithPortraits(list);
+        enrichWithCommentCounts(list);
+
+        // 脱敏处理
+        SensitiveWordUtil.desensitizeArticles(list);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
+        result.put("pages", (int) Math.ceil((double) total / size));
+        return ResultBean.success("查询成功", result);
+    }
+
+    @Override
+    public ResultBean setFeatured(Integer articleId, Integer isFeatured) {
+        if (articleId == null) {
+            return ResultBean.error("文章ID不能为空");
+        }
+        Article article = new Article();
+        article.setArticleId(articleId).setIsFeatured(isFeatured);
+        articleMapper.updateById(article);
+        return ResultBean.success(isFeatured == 1 ? "已设为精华帖" : "已取消精华帖");
+    }
+
+    @Override
+    public ResultBean getFeaturedList(String keywords, String labelId, String startTime, String endTime, Integer page, Integer size) {
+        if (page == null || page < 1) page = 1;
+        if (size == null || size < 1) size = 10;
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("keywords", keywords);
+        params.put("labelId", labelId);
+        params.put("startTime", startTime);
+        params.put("endTime", endTime);
+
+        int total = articleMapper.countFeaturedList(params);
+        int offset = (page - 1) * size;
+        params.put("offset", offset);
+        params.put("size", size);
+
+        List<Article> list = articleMapper.selectFeaturedList(params);
+        if (list == null) list = new ArrayList<>();
+
+        // 补充用户头像
+        enrichWithPortraits(list);
+        // 补充评论数
+        enrichWithCommentCounts(list);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
+        return ResultBean.success("查询成功", result);
+    }
+
+    @Override
+    public ResultBean getFeaturedByPage(Integer page, Integer size) {
+        if (page == null || page < 1) page = 1;
+        if (size == null || size < 1) size = 10;
+
+        Map<String, Object> params = new HashMap<>();
+        int total = articleMapper.countFeaturedByPage(params);
+        int offset = (page - 1) * size;
+        params.put("offset", offset);
+        params.put("size", size);
+
+        List<Article> list = articleMapper.selectFeaturedByPage(params);
+        if (list == null) list = new ArrayList<>();
+
+        enrichWithPortraits(list);
+        enrichWithCommentCounts(list);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
+        result.put("pages", (int) Math.ceil((double) total / size));
+        return ResultBean.success("查询成功", result);
+    }
+
+    @Override
+    public ResultBean getFeaturedTop(int limit) {
+        if (limit <= 0) limit = 3;
+        List<Article> list = articleMapper.selectFeaturedTop(limit);
+        if (list == null) list = new ArrayList<>();
+        enrichWithPortraits(list);
+        enrichWithCommentCounts(list);
+        return ResultBean.success("查询成功", list);
     }
 
 }

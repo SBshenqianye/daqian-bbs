@@ -57,4 +57,9 @@ public class ConstantUtil {
      * 魔法值-2
      */
     public static final String MANA_TWO = "2";
+
+    /**
+     * 魔法值-精华帖积分-键
+     */
+    public static final String MANA_FEATURED = "featured";
 }

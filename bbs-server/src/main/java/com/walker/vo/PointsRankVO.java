@@ -27,6 +27,11 @@ public class PointsRankVO {
      * 回帖数
      */
     private Integer replies;
+
+    /**
+     * 精华帖数
+     */
+    private Integer featuredPosts;
     /**
      * 积分
      */

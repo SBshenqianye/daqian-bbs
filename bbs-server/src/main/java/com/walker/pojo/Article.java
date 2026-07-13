@@ -97,6 +97,14 @@ public class Article implements Serializable {
     @TableLogic
     private Integer isDelete;
 
+    @ApiModelProperty("是否为精华帖(0=否,1=是)")
+    @TableField("is_featured")
+    private Integer isFeatured;
+
+    @ApiModelProperty("标签名称（关联查询，非数据库字段）")
+    @TableField(exist = false)
+    private String articleLabelName;
+
     @ApiModelProperty("用户头像")
     @TableField(exist = false)
     private String portrait;

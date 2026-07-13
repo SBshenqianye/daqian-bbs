@@ -21,11 +21,12 @@
         <result column="recommend" property="recommend" />
         <result column="enable" property="enable" />
         <result column="is_delete" property="isDelete" />
+        <result column="is_featured" property="isFeatured" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        article_id, article_label_id, article_author, article_title, article_summary, article_type_id, article_content, article_content_html, article_image, user_id, article_good_num, article_view_num, article_community_id, create_time, recommend, enable, is_delete
+        article_id, article_label_id, article_author, article_title, article_summary, article_type_id, article_content, article_content_html, article_image, user_id, article_good_num, article_view_num, article_community_id, create_time, recommend, enable, is_delete, is_featured
     </sql>
 
     <!--按单位统计查询文章数-->
@@ -61,7 +62,8 @@
             SELECT t1.org_no AS orgNo, t1.org_name AS orgName,
                    coalesce(t2.posts, 0) AS posts,
                    coalesce(t3.replies, 0) AS replies,
-                   (coalesce(t2.posts, 0) * #{post} + coalesce(t3.replies, 0) * #{reply}) AS points
+                   coalesce(t4.featuredPosts, 0) AS featuredPosts,
+                   (coalesce(t2.posts, 0) * #{post} + coalesce(t3.replies, 0) * #{reply} + coalesce(t4.featuredPosts, 0) * #{featured}) AS points
             FROM (
                 SELECT s.org_no, s.org_name
                 FROM bbs_sa_org s
@@ -105,7 +107,152 @@
                     </choose>
                 GROUP BY substr(u.org_no, 1, ${orgLength})
             ) t3 ON t1.org_no = t3.org_no
+            LEFT JOIN (
+                SELECT substr(u.org_no, 1, ${orgLength}) AS org_no,
+                       count(1) AS featuredPosts
+                FROM bbs_article t
+                JOIN bbs_user u ON t.user_id = u.id
+                WHERE t.is_delete = 0
+                  AND t.enable = 1
+                  AND t.is_featured = 1
+                  AND u.org_no LIKE concat(#{orgNo}, '%')
+                  AND <choose>
+                        <when test="_databaseId == 'mysql'">t.create_time >= STR_TO_DATE(#{startTime}, '%Y-%m-%d')</when>
+                        <otherwise>to_date(t.create_time, 'YYYY-MM-DD HH24:MI:SS') >= to_date(#{startTime}, 'YYYY-MM-DD')</otherwise>
+                    </choose>
+                  AND <choose>
+                        <when test="_databaseId == 'mysql'">t.create_time <![CDATA[<]]> STR_TO_DATE(#{endTime}, '%Y-%m-%d') + INTERVAL 1 DAY</when>
+                        <otherwise>to_date(t.create_time, 'YYYY-MM-DD HH24:MI:SS') <![CDATA[<]]> to_date(#{endTime}, 'YYYY-MM-DD') + interval '1 day'</otherwise>
+                    </choose>
+                GROUP BY substr(u.org_no, 1, ${orgLength})
+            ) t4 ON t1.org_no = t4.org_no
         ) t
         ORDER BY t.points DESC, t.orgNo
+    </select>
+
+    <!-- 管理员查询全部文章列表（支持搜索过滤分页，含标签名） -->
+    <select id="selectAdminArticleList" parameterType="map" resultType="com.walker.pojo.Article">
+        SELECT a.*, l.label_name AS articleLabelName
+        FROM bbs_article a
+        LEFT JOIN bbs_article_label l ON a.article_label_id = l.label_id
+        WHERE a.is_delete = 0
+        <if test="enable != null and enable != ''">
+            AND a.enable = #{enable}
+        </if>
+        <if test="keywords != null and keywords != ''">
+            AND (a.article_title LIKE concat('%', #{keywords}, '%')
+                 OR a.article_author LIKE concat('%', #{keywords}, '%'))
+        </if>
+        <if test="labelId != null and labelId != ''">
+            AND a.article_label_id = #{labelId}
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND a.create_time >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND a.create_time &lt;= #{endTime}
+        </if>
+        ORDER BY a.create_time DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminArticleList" parameterType="map" resultType="int">
+        SELECT COUNT(1)
+        FROM bbs_article a
+        WHERE a.is_delete = 0
+        <if test="enable != null and enable != ''">
+            AND a.enable = #{enable}
+        </if>
+        <if test="keywords != null and keywords != ''">
+            AND (a.article_title LIKE concat('%', #{keywords}, '%')
+                 OR a.article_author LIKE concat('%', #{keywords}, '%'))
+        </if>
+        <if test="labelId != null and labelId != ''">
+            AND a.article_label_id = #{labelId}
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND a.create_time >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND a.create_time &lt;= #{endTime}
+        </if>
+    </select>
+
+    <!-- 查询精华帖列表（分页 + 搜索 + 过滤） -->
+    <select id="selectFeaturedList" parameterType="map" resultType="com.walker.pojo.Article">
+        SELECT a.*, l.label_name AS articleLabelName
+        FROM bbs_article a
+        LEFT JOIN bbs_article_label l ON a.article_label_id = l.label_id
+        WHERE a.is_delete = 0
+          AND a.is_featured = 1
+        <if test="keywords != null and keywords != ''">
+            AND (a.article_title LIKE concat('%', #{keywords}, '%')
+                 OR a.article_author LIKE concat('%', #{keywords}, '%'))
+        </if>
+        <if test="labelId != null and labelId != ''">
+            AND a.article_label_id = #{labelId}
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND a.create_time >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND a.create_time &lt;= #{endTime}
+        </if>
+        ORDER BY a.create_time DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <!-- 查询全部精华帖（用户端，分页） -->
+    <select id="selectFeaturedByPage" parameterType="map" resultType="com.walker.pojo.Article">
+        SELECT a.*, l.label_name AS articleLabelName
+        FROM bbs_article a
+        LEFT JOIN bbs_article_label l ON a.article_label_id = l.label_id
+        WHERE a.is_delete = 0
+          AND a.enable = 1
+          AND a.is_featured = 1
+        ORDER BY a.create_time DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <!-- 查询最新 N 条精华帖（置顶用） -->
+    <select id="selectFeaturedTop" parameterType="int" resultType="com.walker.pojo.Article">
+        SELECT a.*, l.label_name AS articleLabelName
+        FROM bbs_article a
+        LEFT JOIN bbs_article_label l ON a.article_label_id = l.label_id
+        WHERE a.is_delete = 0
+          AND a.enable = 1
+          AND a.is_featured = 1
+        ORDER BY a.create_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 查询精华帖总数（管理端） -->
+    <select id="countFeaturedList" parameterType="map" resultType="int">
+        SELECT COUNT(1)
+        FROM bbs_article a
+        WHERE a.is_delete = 0
+          AND a.is_featured = 1
+        <if test="keywords != null and keywords != ''">
+            AND (a.article_title LIKE concat('%', #{keywords}, '%')
+                 OR a.article_author LIKE concat('%', #{keywords}, '%'))
+        </if>
+        <if test="labelId != null and labelId != ''">
+            AND a.article_label_id = #{labelId}
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND a.create_time >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND a.create_time &lt;= #{endTime}
+        </if>
+    </select>
+
+    <!-- 查询精华帖总数（用户端） -->
+    <select id="countFeaturedByPage" parameterType="map" resultType="int">
+        SELECT COUNT(1)
+        FROM bbs_article a
+        WHERE a.is_delete = 0
+          AND a.enable = 1
+          AND a.is_featured = 1
     </select>
 </mapper>
