@@ -291,12 +291,11 @@ export default {
         } else if (res && typeof res === 'string') {
           this.$refs.mdEditor.$img2Url(pos, res)
         } else {
-          this.$refs.mdEditor.$img2Url(pos, URL.createObjectURL(file))
+          this.$refs.mdEditor.$img2Url(pos, '')
         }
       }).catch(err => {
         console.warn('[BBSArticleWrite] handleImgAdd', err)
-        const url = URL.createObjectURL(file)
-        this.$refs.mdEditor.$img2Url(pos, url)
+        this.$refs.mdEditor.$img2Url(pos, '')
       })
     },
     triggerAttachment() {
