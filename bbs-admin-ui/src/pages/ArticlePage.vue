@@ -16,14 +16,14 @@
       <div class="bg-container border border-border rounded-xl p-card-padding mb-6">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <!-- 搜索框 -->
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+          <div class="grid grid-cols-1 grid-rows-1">
             <input
               v-model="searchForm.keywords"
-              class="w-full h-10 pl-9 pr-4 bg-surface rounded-lg border border-outline-variant text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-all"
+              class="w-full col-start-1 row-start-1 pl-9 pr-4 py-2.5 bg-surface rounded-lg border border-outline-variant text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-all"
               placeholder="搜索用户名、标题..."
               @keyup.enter="handleSearch"
             />
+            <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline text-[18px] pointer-events-none">search</span>
           </div>
           <!-- 标签筛选 -->
           <select
