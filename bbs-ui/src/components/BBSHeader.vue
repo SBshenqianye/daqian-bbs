@@ -21,6 +21,16 @@
             论坛
           </router-link>
           <router-link
+            to="/featured"
+            class="font-label-md text-label-md pb-1 border-b-2 transition-colors"
+            :class="isActive('/featured') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
+          >
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined text-[18px]">stars</span>
+              精华帖
+            </span>
+          </router-link>
+          <router-link
             to="/points"
             class="font-label-md text-label-md pb-1 border-b-2 transition-colors"
             :class="isActive('/points') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
