@@ -79,41 +79,30 @@
         <!-- Center Feed: Articles -->
         <section class="md:col-span-7 space-y-4">
           <!-- Featured Top: 置顶精华帖（最新3条） -->
-          <div v-if="featuredTop.length > 0" class="bg-amber-50 border border-amber-200 rounded-lg overflow-hidden">
-            <div class="flex items-center gap-2 px-card-padding py-3 bg-amber-100/60 border-b border-amber-200">
-              <span class="material-symbols-outlined text-rank-gold text-[18px]">stars</span>
-              <span class="font-headline-sm text-headline-sm text-amber-800">精华置顶</span>
-              <span class="text-body-md text-amber-600 ml-1">最新 3 条</span>
+          <div v-if="featuredTop.length > 0" class="bg-surface-container-low border border-outline-variant rounded-lg overflow-hidden">
+            <div class="flex items-center gap-1.5 px-4 py-1.5 bg-primary-fixed-dim/20 border-b border-outline-variant">
+              <span class="material-symbols-outlined text-rank-gold text-[15px]">stars</span>
+              <span class="text-[13px] font-semibold text-on-surface">精华置顶</span>
+              <span class="text-[10px] text-on-surface-variant ml-auto">最新 3 条</span>
             </div>
-            <div class="divide-y divide-amber-100">
+            <div class="divide-y divide-outline-variant/40">
               <article
                 v-for="(article, index) in featuredTop"
                 :key="'ft-' + (article.articleId || index)"
-                class="p-card-padding hover:bg-amber-50/50 transition-colors cursor-pointer"
+                class="px-4 py-1.5 hover:bg-primary-fixed-dim/10 transition-colors cursor-pointer"
                 @click="goToArticle(article)"
               >
-                <div class="flex items-start gap-3">
-                  <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-[11px] font-bold"
+                <div class="flex items-center gap-2">
+                  <span class="flex-shrink-0 w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold"
                     :class="index === 0 ? 'bg-rank-gold text-white' : index === 1 ? 'bg-rank-silver text-white' : 'bg-rank-bronze text-white'">
                     {{ index + 1 }}
                   </span>
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1">
-                      <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-rank-gold/10 text-rank-gold rounded-full">
-                        <span class="material-symbols-outlined text-[10px]">stars</span>
-                        精华
-                      </span>
-                      <span v-if="article.labelName || getLabelName(article.labelId)" class="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-primary/10 text-primary rounded-full">
-                        {{ article.labelName || getLabelName(article.labelId) }}
-                      </span>
-                    </div>
-                    <h3 class="font-headline-sm text-headline-sm text-on-surface hover:text-primary-container transition-colors">{{ article.title }}</h3>
-                    <div class="flex items-center gap-3 mt-1.5 text-label-md text-outline">
-                      <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">person</span>{{ article.author }}</span>
-                      <span>{{ article.time }}</span>
-                      <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">visibility</span>{{ article.views }}</span>
-                    </div>
-                  </div>
+                  <h3 class="flex-1 text-[13px] font-medium text-on-surface hover:text-primary transition-colors truncate">{{ article.title }}</h3>
+                  <span class="flex items-center gap-1.5 shrink-0 text-[10px] text-on-surface-variant">
+                    <span class="truncate max-w-[70px]">{{ article.author }}</span>
+                    <span class="text-outline-variant">·</span>
+                    <span>{{ article.time }}</span>
+                  </span>
                 </div>
               </article>
             </div>
