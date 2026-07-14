@@ -11,8 +11,8 @@
     <!-- Main Layout Container -->
     <div class="max-w-7xl mx-auto px-page-margin-desktop py-8">
       <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-        <!-- Left Sidebar: Categories -->
-        <aside class="md:col-span-2 space-y-4 sticky top-20 self-start">
+        <!-- Left Sidebar: Categories + Featured Posts -->
+        <aside class="md:col-span-2 space-y-4">
           <div class="bg-container border border-border rounded-lg p-2">
             <nav class="flex flex-col gap-1">
               <el-tooltip
@@ -33,6 +33,46 @@
                 </button>
               </el-tooltip>
             </nav>
+          </div>
+
+          <!-- Featured Posts Sidebar (below labels) -->
+          <div v-if="featuredSidebar.length > 0" class="bg-container border border-border rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <h2 class="font-headline-sm flex items-center gap-1 text-[15px]">
+                <span class="material-symbols-outlined text-rank-gold text-[18px]">stars</span>
+                精华帖
+              </h2>
+              <button
+                class="text-[12px] text-primary hover:text-primary-container transition-colors flex items-center gap-0.5"
+                @click="goToFeaturedArticles"
+              >
+                全部
+                <span class="material-symbols-outlined text-[12px]">arrow_forward</span>
+              </button>
+            </div>
+            <ul class="space-y-2">
+              <li
+                v-for="(item, index) in visibleFeaturedSidebar"
+                :key="item.articleId || index"
+                class="flex items-start gap-1.5 cursor-pointer group"
+                @click="goToArticle(item)"
+              >
+                <span class="material-symbols-outlined text-rank-gold text-[13px] shrink-0">stars</span>
+                <div class="flex-1 min-w-0">
+                  <span class="text-[13px] text-on-surface group-hover:text-primary-container transition-colors line-clamp-1 block">{{ item.articleTitle }}</span>
+                  <span v-if="item.labelName" class="text-[11px] text-outline truncate block">{{ item.labelName }}</span>
+                  <span class="text-[11px] text-outline block">{{ item.time }}</span>
+                </div>
+              </li>
+            </ul>
+            <button
+              v-if="featuredSidebar.length > 3"
+              class="mt-1.5 w-full text-center text-[12px] text-primary hover:text-primary-container transition-colors py-0.5"
+              @click="featuredSidebarExpand = !featuredSidebarExpand"
+            >
+              {{ featuredSidebarExpand ? '收起' : '展开更多' }}
+              <span class="material-symbols-outlined text-[12px] align-middle">{{ featuredSidebarExpand ? 'expand_less' : 'expand_more' }}</span>
+            </button>
           </div>
         </aside>
 
@@ -154,51 +194,12 @@
               </li>
             </ul>
             <button
-              v-if="hotTopics.length > 3"
+              v-if="hotTopics.length > 10"
               class="mt-2 w-full text-center text-label-md text-primary hover:text-primary-container transition-colors py-1"
               @click="hotTopicsExpand = !hotTopicsExpand"
             >
               {{ hotTopicsExpand ? '收起' : '展开更多' }}
               <span class="material-symbols-outlined text-[14px] align-middle">{{ hotTopicsExpand ? 'expand_less' : 'expand_more' }}</span>
-            </button>
-          </div>
-
-          <!-- Featured Posts Section (max one page) -->
-          <div v-if="featuredSidebar.length > 0" class="bg-container border border-border rounded-lg p-card-padding">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="font-headline-sm flex items-center gap-2">
-                <span class="material-symbols-outlined text-rank-gold filled-icon">stars</span>
-                精华帖
-              </h2>
-              <button
-                class="text-label-md text-primary hover:text-primary-container transition-colors flex items-center gap-1"
-                @click="goToFeaturedArticles"
-              >
-                全部
-                <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
-              </button>
-            </div>
-            <ul class="space-y-3">
-              <li
-                v-for="(item, index) in visibleFeaturedSidebar"
-                :key="item.articleId || index"
-                class="flex items-start gap-2 cursor-pointer group"
-                @click="goToArticle(item)"
-              >
-                <span class="material-symbols-outlined text-rank-gold text-[14px] mt-0.5">stars</span>
-                <div class="flex-1 min-w-0">
-                  <span class="font-body-md text-on-surface group-hover:text-primary-container transition-colors line-clamp-1">{{ item.articleTitle }}</span>
-                  <span class="text-label-md text-outline">{{ item.labelName ? item.labelName + ' · ' : '' }}{{ item.time }}</span>
-                </div>
-              </li>
-            </ul>
-            <button
-              v-if="featuredSidebar.length > 3"
-              class="mt-2 w-full text-center text-label-md text-primary hover:text-primary-container transition-colors py-1"
-              @click="featuredSidebarExpand = !featuredSidebarExpand"
-            >
-              {{ featuredSidebarExpand ? '收起' : '展开更多' }}
-              <span class="material-symbols-outlined text-[14px] align-middle">{{ featuredSidebarExpand ? 'expand_less' : 'expand_more' }}</span>
             </button>
           </div>
 
@@ -259,7 +260,7 @@ export default {
       return this.articles.filter(a => String(a.labelId) === String(this.filteredLabelId))
     },
     visibleHotTopics() {
-      return this.hotTopicsExpand ? this.hotTopics : this.hotTopics.slice(0, 3)
+      return this.hotTopicsExpand ? this.hotTopics : this.hotTopics.slice(0, 10)
     },
     visibleFeaturedSidebar() {
       return this.featuredSidebarExpand ? this.featuredSidebar : this.featuredSidebar.slice(0, 3)
