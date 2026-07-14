@@ -100,7 +100,7 @@ export default {
           : (resp && resp.data && Array.isArray(resp.data)) ? resp.data
           : Array.isArray(resp) ? resp : []
         this.rankList = list
-      }).catch(() => { this.loading = false; this.rankList = [] })
+      }).catch(err => { console.warn('[BBSPointsDetail] load', err); this.loading = false; this.rankList = [] })
     },
     onRowClick(row) {
       if (row.isSelf === 1 && row.orgNo) {

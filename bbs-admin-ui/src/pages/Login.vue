@@ -18,7 +18,6 @@
                 class="w-full col-start-1 row-start-1 pl-10 pr-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
                 placeholder="请输入用户名"
                 type="text"
-                @keyup.enter="submitForm"
               >
               <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline text-[20px] pointer-events-none">person</span>
             </div>
@@ -29,10 +28,8 @@
               <input
                 v-model="param.password"
                 class="w-full col-start-1 row-start-1 pl-10 pr-10 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
-                :class="{ 'password-masked': !showPassword }"
                 placeholder="请输入密码"
-                type="text"
-                @keyup.enter="submitForm"
+                :type="showPassword ? 'text' : 'password'"
               >
               <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline text-[20px] pointer-events-none">lock</span>
               <button class="col-start-1 row-start-1 self-center justify-self-end mr-3 text-outline hover:text-primary" type="button" @click="showPassword = !showPassword">
@@ -78,6 +75,7 @@ export default {
   },
   methods: {
     submitForm() {
+      if (this.loading) return
       this.errorMsg = ''
       if (!this.param.username || !this.param.username.trim()) {
         this.errorMsg = '请输入用户名'
@@ -91,6 +89,7 @@ export default {
       this.postRequest('/common/login', { ...this.param, channel: '02' }).then(resp => {
         this.loading = false
         if (resp && resp.obj) {
+          this.loading = false
           const tokenStr = resp.obj.tokenHead + resp.obj.token
           window.sessionStorage.setItem('tokenStr', tokenStr)
           window.sessionStorage.setItem('admin', JSON.stringify(resp.obj.user))
@@ -112,7 +111,4 @@ export default {
 </script>
 
 <style scoped>
-.password-masked {
-  -webkit-text-security: disc;
-}
 </style>

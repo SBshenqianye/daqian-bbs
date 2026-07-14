@@ -65,6 +65,12 @@ const router = new VueRouter({
             component: () => import('@/views/BBSChangePassword.vue'),
             meta: { auth: true }
         },
+        {
+            name: 'BBSFeaturedArticles',
+            path: '/featured',
+            component: () => import('@/views/BBSFeaturedArticles.vue'),
+            meta: { auth: false }
+        },
 
     ]
 })

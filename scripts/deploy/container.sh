@@ -1,12 +1,11 @@
 #!/bin/bash
 # ============================================
-# BBS 容器部署脚本（适用于 WSL2 + Podman）
+# BBS 容器部署脚本
 # 前置条件:
 #   1. PostgreSQL 数据库已运行并可访问
 #   2. 先运行 bash scripts/build/build.sh
 # 用法:
 #   bash scripts/deploy/container.sh              # 部署后端 + Nginx
-#   bash scripts/deploy/container.sh --no-pg      # 兼容旧参数，已无实际作用
 # ============================================
 set -e
 
@@ -27,7 +26,6 @@ BBS_DB_USER="${BBS_DB_USER:-work_flow}"
 BBS_DB_PASSWORD="${BBS_DB_PASSWORD:-work_flow123}"
 BBS_SERVER_PORT="${BBS_SERVER_PORT:-9083}"
 NGINX_PORT="${NGINX_PORT:-19848}"
-BBS_NET_NAME="${BBS_NET_NAME:-bbs-net}"
 BBS_SERVER_CONTAINER="${BBS_SERVER_CONTAINER:-bbs-server}"
 BBS_NGINX_CONTAINER="${BBS_NGINX_CONTAINER:-bbs-nginx}"
 BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR:-/data/bbs/bbsUpload}"
@@ -45,18 +43,6 @@ warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 # --------------- 进度指示库 ---------------
 source scripts/lib/progress.sh
 
-# --------------- 网络 ---------------
-ensure_network() {
-    show_step "$1" "$2" "容器网络"
-    if $RUNNER network exists "$BBS_NET_NAME" 2>/dev/null; then
-        ok "网络 $BBS_NET_NAME 已存在"
-    else
-        info "创建网络 $BBS_NET_NAME..."
-        $RUNNER network create "$BBS_NET_NAME"
-        ok "网络 $BBS_NET_NAME 已创建"
-    fi
-}
-
 # --------------- 后端 ---------------
 start_backend() {
     show_step "$1" "$2" "后端服务 (bbs-server)"
@@ -67,7 +53,7 @@ start_backend() {
         $RUNNER rm -f "$BBS_SERVER_CONTAINER" 2>/dev/null || true
     fi
 
-    info "启动 bbs-server 容器..."
+    info "启动 bbs-server 容器（host 网络）..."
 
     # 确保上传目录存在
     if [ ! -d "$BBS_UPLOAD_DIR" ]; then
@@ -76,7 +62,7 @@ start_backend() {
 
     $RUNNER run -d \
         --name "$BBS_SERVER_CONTAINER" \
-        --network "$BBS_NET_NAME" \
+        --network host \
         -e BBS_DB_HOST="$BBS_DB_HOST" \
         -e BBS_DB_PORT="$BBS_DB_PORT" \
         -e BBS_DB_NAME="$BBS_DB_NAME" \
@@ -99,7 +85,7 @@ start_backend() {
     local max_attempts=30
     for i in $(seq 1 "$max_attempts"); do
         polling_spinner "等待后端就绪" "$i" "$max_attempts" "$health_start"
-        if $RUNNER exec "$BBS_SERVER_CONTAINER" wget -q --spider http://localhost:$BBS_SERVER_PORT/bbs-server/ 2>/dev/null; then
+        if curl -s http://127.0.0.1:$BBS_SERVER_PORT/bbs-server/ >/dev/null 2>&1; then
             polling_clear
             local now; now=$(date +%s)
             ok "后端就绪！($(( now - health_start ))s/${i}次)"
@@ -126,11 +112,10 @@ start_nginx() {
         exit 1
     fi
 
-    info "启动 Nginx 容器..."
+    info "启动 Nginx 容器（host 网络）..."
     $RUNNER run -d \
         --name "$BBS_NGINX_CONTAINER" \
-        --network "$BBS_NET_NAME" \
-        -p ${NGINX_PORT}:${NGINX_PORT} \
+        --network host \
         -e NGINX_PORT="$NGINX_PORT" \
         -e BBS_SERVER_PORT="$BBS_SERVER_PORT" \
         bbs-nginx
@@ -143,18 +128,10 @@ start_nginx() {
 }
 
 # --------------- 主流程 ---------------
-MODE="${1:-all}"
-
 show_header "BBS 容器部署"
 
-# 兼容旧版 --no-pg 参数（现在默认就不启动 PG，此参数无实际作用）
-if [[ "$MODE" == "--no-pg" || "$MODE" == "no-pg" ]]; then
-    ok "已接受 --no-pg（PostgreSQL 由外部管理，脚本不再启动）"
-fi
-
-ensure_network 1 3
-start_backend 2 3
-start_nginx 3 3
+start_backend 1 2
+start_nginx 2 2
 
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
@@ -171,20 +148,9 @@ echo -e "${GREEN}║${NC}"
 echo -e "${YELLOW}╔══════════════════════════════════════════════╗${NC}"
 echo -e "${YELLOW}║${NC}  ⚠ 请确保 PostgreSQL 已启动并正常运行"
 echo -e "${YELLOW}║${NC}"
-echo -e "${YELLOW}║${NC}    默认端口:  ${BBS_DB_PORT}  |  数据库: ${BBS_DB_NAME}"
+echo -e "${YELLOW}║${NC}  使用 host 网络，容器通过 127.0.0.1:${BBS_DB_PORT} 连接数据库"
 echo -e "${YELLOW}║${NC}"
-echo -e "${YELLOW}║${NC}  BBS_DB_HOST 配置方式（按实际情况选一种）:"
-echo -e "${YELLOW}║${NC}"
-echo -e "${YELLOW}║${NC}  方案 A) PG 是容器且加入 bbs-net 网络:"
-echo -e "${YELLOW}║${NC}      podman network connect bbs-net <PG容器名>"
-echo -e "${YELLOW}║${NC}      然后 BBS_DB_HOST=<PG容器名>"
-echo -e "${YELLOW}║${NC}"
-echo -e "${YELLOW}║${NC}  方案 B) PG 是同宿主机原生服务:"
-echo -e "${YELLOW}║${NC}      确保 PG 监听 0.0.0.0 或宿主机 IP"
-echo -e "${YELLOW}║${NC}      BBS_DB_HOST=host.docker.internal 或宿主机 IP"
-echo -e "${YELLOW}║${NC}"
-echo -e "${YELLOW}║${NC}  方案 C) PG 在远程服务器:"
-echo -e "${YELLOW}║${NC}      BBS_DB_HOST=<远程服务器 IP>"
+echo -e "${YELLOW}║${NC}  默认端口:  ${BBS_DB_PORT}  |  数据库: ${BBS_DB_NAME}"
 echo -e "${YELLOW}║${NC}"
 echo -e "${YELLOW}║${NC}  PostgreSQL 需自行管理，脚本不会自动启动或关闭"
 echo -e "${YELLOW}╚══════════════════════════════════════════════╝${NC}"

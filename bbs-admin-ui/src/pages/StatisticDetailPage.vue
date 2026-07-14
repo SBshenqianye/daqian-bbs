@@ -49,7 +49,7 @@ export default {
         orgNo: this.orgNo || '', startTime: this.startTime || '', endTime: this.endTime || ''
       }).then(resp => {
         this.tableData = (resp && resp.obj && Array.isArray(resp.obj)) ? resp.obj : []
-      }).catch(() => { this.tableData = [] })
+      }).catch(err => { console.warn('[StatisticDetailPage] loadTable', err); this.tableData = [] })
     },
     handleRowClick(row) {
       if (row && row.orgNo) this.$emit('drillDown', row)

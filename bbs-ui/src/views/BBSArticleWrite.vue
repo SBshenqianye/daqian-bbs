@@ -36,7 +36,7 @@
       <div class="mt-8">
         <div class="flex items-center justify-between mb-4">
           <h4 class="text-sm font-semibold text-gray-700">附件上传 (最多5个)</h4>
-          <span class="text-xs text-gray-400">不允许上传 .exe, .bat, .sh 格式</span>
+          <span class="text-xs text-gray-400">不允许上传 .exe, .bat, .sh 格式，单文件不超过 50MB</span>
         </div>
         <button
           class="inline-flex items-center px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:opacity-90 transition-colors shadow-sm"
@@ -107,7 +107,7 @@
             </div>
             <!-- Right: Summary -->
             <div class="flex-grow">
-              <label class="block text-sm font-medium text-gray-700 mb-2">文章摘要</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">文章摘要 <span class="text-red-400">（必填）</span></label>
               <div class="relative">
                 <textarea
                   v-model="articleSummary"
@@ -134,12 +134,15 @@
                 {{ label.labelName }}
               </button>
             </div>
+            <p v-if="selectedLabelDescription" class="mt-1.5 text-xs text-gray-400 ml-0.5">
+              {{ selectedLabelDescription }}
+            </p>
           </div>
         </div>
         <!-- Footer -->
         <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
           <button class="px-6 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors" @click="showPublishModal = false">取消</button>
-          <button class="px-8 py-2 text-white text-sm font-bold rounded-lg hover:opacity-90 transition-all shadow-sm bg-red-500" @click="handlePublish">确认发布</button>
+          <button class="px-8 py-2 text-white text-sm font-bold rounded-lg hover:opacity-90 transition-all shadow-sm bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed" :disabled="publishing" @click="handlePublish">{{ publishing ? '发布中...' : '确认发布' }}</button>
         </div>
       </div>
     </div>
@@ -171,7 +174,6 @@ export default {
       articleId: this.$route.query.articleId || null,
       articleTitle: '',
       markdownContent: '',
-      markdownHtml: '',
       articleSummary: '',
       showPublishModal: false,
       coverPreview: null,
@@ -181,6 +183,7 @@ export default {
       // Attachments: { fileId, fileName } after server upload
       attachments: [],
       uploading: false,
+      publishing: false,
       toolbars: {
         bold: true,
         italic: true,
@@ -216,6 +219,10 @@ export default {
       const found = this.labelList.find(l => String(l.labelId) === String(this.selectedLabelId))
       return found ? found.labelName : ''
     },
+    selectedLabelDescription() {
+      const found = this.labelList.find(l => String(l.labelId) === String(this.selectedLabelId))
+      return found ? (found.description || '') : ''
+    },
   },
   mounted() {
     this.loadLabels()
@@ -239,7 +246,8 @@ export default {
             this.selectedLabelId = resp[0].labelId
           }
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSArticleWrite] loadLabels', err)
         this.labelList = []
       })
     },
@@ -248,7 +256,6 @@ export default {
         if (resp) {
           this.articleTitle = resp.articleTitle || ''
           this.markdownContent = normalizeUrls(resp.articleContent || '')
-          this.markdownHtml = normalizeUrls(resp.articleContentHtml || '')
           this.articleSummary = resp.articleSummary || ''
           this.selectedLabelId = resp.articleLabelId
           if (resp.articleImage) {
@@ -257,8 +264,8 @@ export default {
           // Load attachment files
           this.loadArticleFiles(id)
         }
-      }).catch(() => {
-        Message({ message: '加载文章失败', type: 'error', showClose: true, offset: 54 })
+      }).catch(err => {
+        console.warn('[BBSArticleWrite] loadArticleForEdit', err)
       })
     },
     loadArticleFiles(id) {
@@ -271,7 +278,8 @@ export default {
             size: '',
           }))
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.warn('[BBSArticleWrite] loadArticleFiles', err)
         this.attachments = []
       })
     },
@@ -284,11 +292,11 @@ export default {
         } else if (res && typeof res === 'string') {
           this.$refs.mdEditor.$img2Url(pos, res)
         } else {
-          this.$refs.mdEditor.$img2Url(pos, URL.createObjectURL(file))
+          this.$refs.mdEditor.$img2Url(pos, '')
         }
-      }).catch(() => {
-        const url = URL.createObjectURL(file)
-        this.$refs.mdEditor.$img2Url(pos, url)
+      }).catch(err => {
+        console.warn('[BBSArticleWrite] handleImgAdd', err)
+        this.$refs.mdEditor.$img2Url(pos, '')
       })
     },
     triggerAttachment() {
@@ -302,9 +310,15 @@ export default {
         return
       }
       const userId = JSON.parse(userStr).id
+      const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
       const allowed = Array.from(files).filter(f => {
         const ext = f.name.split('.').pop().toLowerCase()
-        return !['exe', 'bat', 'sh', 'cmd', 'com', 'scr', 'msi', 'vbs', 'ps1'].includes(ext)
+        if (['exe', 'bat', 'sh', 'cmd', 'com', 'scr', 'msi', 'vbs', 'ps1'].includes(ext)) return false
+        if (f.size > MAX_FILE_SIZE) {
+          Message({ message: `"${f.name}" 超过 50MB 大小限制`, type: 'warning', showClose: true, offset: 54 })
+          return false
+        }
+        return true
       })
       const remaining = 5 - this.attachments.length
       const toUpload = allowed.slice(0, remaining)
@@ -318,9 +332,7 @@ export default {
           } else {
             Message({ message: (resp && resp.message) || '上传失败', type: 'error', showClose: true, offset: 54 })
           }
-        }).catch(() => {
-          Message({ message: '上传失败', type: 'error', showClose: true, offset: 54 })
-        })
+        }).catch(err => { console.warn('[BBSArticleWrite] uploadAttachment', err) })
       })
       this.$refs.attachmentInput.value = ''
     },
@@ -340,6 +352,7 @@ export default {
       }
     },
     handlePublish() {
+      if (this.publishing) return
       if (!this.articleTitle.trim()) {
         Message({ message: '标题不能为空', type: 'warning', showClose: true, offset: 54 })
         return
@@ -367,7 +380,7 @@ export default {
       const article = {
         articleTitle: this.articleTitle,
         articleContent: this.markdownContent,
-        articleContentHtml: this.markdownHtml || this.markdownContent,
+        articleContentHtml: this.markdownContent,
         articleSummary: this.articleSummary,
         articleTypeId: 0,
         articleCommunityId: 0,
@@ -383,6 +396,7 @@ export default {
       }
 
       this.showPublishModal = false
+      this.publishing = true
       const loading = Loading.service({ lock: true, text: '发布中，请稍后...' })
 
       const doPublish = (imageUrl) => {
@@ -390,13 +404,15 @@ export default {
         const endpoint = this.articleId ? '/article/editArticle' : '/article/publish'
         this.postRequest(endpoint, article).then(resp => {
           loading.close()
+          this.publishing = false
           if (resp) {
-            Message({ message: this.articleId ? '修改成功！' : '发布成功！', type: 'success', showClose: true, offset: 54 })
+            // 成功提示由 axios 响应拦截器（api.js）统一处理
             this.$router.push('/stat')
           }
-        }).catch(() => {
+        }).catch(err => {
+          console.warn('[BBSArticleWrite] publish', err)
           loading.close()
-          Message({ message: '发布失败', type: 'error', showClose: true, offset: 54 })
+          this.publishing = false
         })
       }
 
@@ -407,7 +423,8 @@ export default {
         formData.append('image', this.coverFile)
         this.postRequest('/article/coverImg', formData).then(resp => {
           doPublish(normalizeFileUrl(resp && typeof resp === 'string' ? resp : (resp && resp.url || '')))
-        }).catch(() => {
+        }).catch(err => {
+          console.warn('[BBSArticleWrite] coverUpload', err)
           doPublish('')
         })
       } else {

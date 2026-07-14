@@ -17,6 +17,9 @@ module.exports = {
 }
 */
 
+// 后端地址，可通过 .env 中 DEV_BACKEND_URL 覆盖，默认 127.0.0.1:9083
+const DEV_BACKEND_URL = process.env.DEV_BACKEND_URL || 'http://127.0.0.1:9083'
+
 module.exports = {
     publicPath: process.env.NODE_ENV === "development" ? "/" : "/bbs-admin/",
     pages: {
@@ -38,6 +41,17 @@ module.exports = {
                 }
             },
 
+        },
+        // /bbs-server/ 开头的文件请求直接转发到后端（用于头像、附件等静态资源）
+        before(app) {
+            const proxy = require('http-proxy-middleware');
+            app.use(
+                '/bbs-server/',
+                proxy({
+                    target: DEV_BACKEND_URL,
+                    changeOrigin: true,
+                })
+            );
         },
     }
 }

@@ -142,7 +142,7 @@ export default {
       if (typeof this.getRequestUrl !== 'function') { this.orgTreeData = []; return }
       this.getRequestUrl('/common/saOrgTree').then(resp => {
         this.orgTreeData = resp && resp.obj ? this.normalizeOrgTree(resp.obj) : []
-      }).catch(() => { this.orgTreeData = [] })
+      }).catch(err => { console.warn('[StatisticPage] loadOrgTree', err); this.orgTreeData = [] })
     },
     normalizeOrgTree(nodes) {
       if (!nodes || !Array.isArray(nodes)) return []

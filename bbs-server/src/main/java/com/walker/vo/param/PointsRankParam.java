@@ -40,4 +40,9 @@ public class PointsRankParam {
      * 回帖积分
      */
     private Integer reply;
+
+    /**
+     * 精华帖加分
+     */
+    private Integer featured;
 }

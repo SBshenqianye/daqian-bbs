@@ -208,4 +208,29 @@ public interface ArticleService extends IService<Article> {
      * @return ResultBean 返回结果
      */
     ResultBean pointsRank(PointsRankParam pointsRankParam);
+
+    /**
+     * 管理员获取文章列表（支持搜索过滤分页，含标签名）
+     */
+    ResultBean getAdminArticleList(String keywords, String labelId, String startTime, String endTime, Integer enable, Integer page, Integer size);
+
+    /**
+     * 设置/取消精华帖
+     */
+    ResultBean setFeatured(Integer articleId, Integer isFeatured);
+
+    /**
+     * 查询精华帖列表（管理端，支持搜索过滤分页）
+     */
+    ResultBean getFeaturedList(String keywords, String labelId, String startTime, String endTime, Integer page, Integer size);
+
+    /**
+     * 查询精华帖列表（用户端，分页）
+     */
+    ResultBean getFeaturedByPage(Integer page, Integer size, Integer labelId);
+
+    /**
+     * 获取最新精华帖（置顶用）
+     */
+    ResultBean getFeaturedTop(int limit);
 }

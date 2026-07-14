@@ -209,18 +209,24 @@ case "$MODE" in
         show_header "BBS 容器镜像构建 + 打包"
         check_prereqs
         # 1. 先串行安装依赖（输出整洁）
-        install_frontend_deps 1 5
+        install_frontend_deps 1 6
         # 2. 再并行构建
-        build_frontend 2 5 &
+        build_frontend 2 6 &
         pid_fe=$!
-        build_backend 3 5 &
+        build_backend 3 6 &
         pid_be=$!
         wait $pid_fe || { err "前端构建失败"; exit 1; }
         wait $pid_be || { err "后端构建失败"; exit 1; }
-        build_nginx 4 5
-        # 3. 自动打包
-        show_step 5 5 "自动打包"
+        build_nginx 4 6
+        # 3. 部署容器 + 自动打包（并行）
+        show_step 5 6 "部署容器"
+        bash scripts/deploy/container.sh &
+        pid_deploy=$!
+
+        show_step 6 6 "自动打包"
         run_with_spinner "创建容器离线包" bash scripts/dist/package.sh
+
+        wait $pid_deploy 2>/dev/null || true
         ;;
 esac
 

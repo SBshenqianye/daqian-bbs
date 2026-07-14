@@ -55,4 +55,7 @@ public class ArticleParam {
 
     @ApiModelProperty(value = "文章附件Ids",required = true)
     private Integer [] files;
+
+    @ApiModelProperty(value = "是否为精华帖(0=否,1=是)", required = false)
+    private Integer isFeatured;
 }

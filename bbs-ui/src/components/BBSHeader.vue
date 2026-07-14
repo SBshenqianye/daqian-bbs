@@ -21,6 +21,16 @@
             论坛
           </router-link>
           <router-link
+            to="/featured"
+            class="font-label-md text-label-md pb-1 border-b-2 transition-colors"
+            :class="isActive('/featured') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
+          >
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined text-[18px]">stars</span>
+              精华帖
+            </span>
+          </router-link>
+          <router-link
             to="/points"
             class="font-label-md text-label-md pb-1 border-b-2 transition-colors"
             :class="isActive('/points') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
@@ -30,8 +40,8 @@
         </nav>
       </div>
 
-      <!-- Middle: Search Bar (only show on forum page) -->
-      <div v-if="isForumPage" class="flex-grow max-w-2xl hidden md:block">
+      <!-- Middle: Search Bar (show on all pages, redirects to forum) -->
+      <div class="flex-grow max-w-2xl hidden md:block">
         <div class="grid grid-cols-1 grid-rows-1 group">
           <span
             class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline transition-colors pointer-events-none"
@@ -78,7 +88,6 @@
           <div
             v-show="userMenuOpen"
             class="user-popover"
-            style="display: block;"
           >
             <div class="w-64 bg-container rounded-lg shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-outline-variant p-4">
               <!-- User Info -->
@@ -110,13 +119,14 @@
                   我的发布
                 </router-link>
                 <div class="h-[1px] bg-outline-variant my-1"></div>
-                <a
-                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-error-container/20 text-error hover:text-error transition-colors font-body-md text-body-md cursor-pointer"
+                <button
+                  type="button"
+                  class="flex items-center gap-3 w-full px-3 py-2 rounded-lg hover:bg-error-container/20 text-error hover:text-error transition-colors font-body-md text-body-md"
                   @click="handleLogout"
                 >
                   <span class="material-symbols-outlined text-[20px]">logout</span>
                   退出登录
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -177,10 +187,13 @@ export default {
       this.isLogin = data
       this.checkLoginState()
     })
+    // Listen for avatar update
+    this.$bus && this.$bus.$on('portraitUpdated', this.checkLoginState)
   },
   beforeDestroy() {
     window.removeEventListener('scroll', this.handleScroll)
     this.$bus && this.$bus.$off('isLogin')
+    this.$bus && this.$bus.$off('portraitUpdated')
   },
   methods: {
     checkLoginState() {
@@ -205,20 +218,26 @@ export default {
         return
       }
 
-      this.$bus && this.$bus.$emit('forumSearch', keywords)
+      if (this.$route.path === '/forum') {
+        // Already on forum page, emit search event directly
+        this.$bus && this.$bus.$emit('forumSearch', keywords)
+      } else {
+        // Navigate to forum with keywords in query params
+        this.$router.push({ path: '/forum', query: { keywords } })
+      }
     },
     handleLogout() {
       removeToken()
       removeUser()
       this.user = null
       this.isLogin = false
-      this.$router.push('/login')
+      this.$bus && this.$bus.$emit('isLogin', false)
+      this.$nextTick(() => {
+        this.$router.replace('/login')
+      })
     },
     isActive(path) {
       return this.$route.path === path
-    },
-    isForumPage() {
-      return this.$route.path === '/forum'
     },
   },
 }

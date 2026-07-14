@@ -55,7 +55,9 @@ CREATE TABLE `bbs_article` (
   `recommend`           tinyint(1) UNSIGNED ZEROFILL NULL DEFAULT NULL COMMENT '是否推荐该文章',
   `enable`              int(11) NULL DEFAULT 0 COMMENT '是否审核通过',
   `is_delete`           int(11) NULL DEFAULT 0 COMMENT '逻辑删除',
-  PRIMARY KEY (`article_id`) USING BTREE
+  `is_featured`         tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否为精华帖(0=否,1=是)',
+  PRIMARY KEY (`article_id`) USING BTREE,
+  KEY `idx_article_featured_time` (`is_featured`, `create_time`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -77,8 +79,10 @@ CREATE TABLE `bbs_article_file` (
 DROP TABLE IF EXISTS `bbs_article_label`;
 CREATE TABLE `bbs_article_label` (
   `label_id`   int(11) NOT NULL AUTO_INCREMENT COMMENT '文章标签的id',
-  `label_name` varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '标签名称',
-  `enabled`    tinyint(4) NULL DEFAULT NULL COMMENT '标签是否禁用',
+  `label_name`  varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '标签名称',
+  `enabled`     tinyint(4) NULL DEFAULT NULL COMMENT '标签是否禁用',
+  `icon`        varchar(50) DEFAULT NULL COMMENT '标签图标',
+  `description` varchar(200) DEFAULT NULL COMMENT '标签描述',
   PRIMARY KEY (`label_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
@@ -110,7 +114,7 @@ CREATE TABLE `bbs_article_user` (
 DROP TABLE IF EXISTS `bbs_comment`;
 CREATE TABLE `bbs_comment` (
   `comment_id`          int(11) NOT NULL AUTO_INCREMENT COMMENT '评论的id',
-  `comment_content`     varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '评论的内容',
+  `comment_content`     varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '评论的内容',
   `comment_article_id`  int(11) NULL DEFAULT NULL COMMENT '评论的文章id',
   `comment_user_id`     int(11) NULL DEFAULT NULL COMMENT '评论的用户id',
   `comment_time`        varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '评论时间',
@@ -200,7 +204,7 @@ CREATE TABLE `bbs_inventory` (
 DROP TABLE IF EXISTS `bbs_reply`;
 CREATE TABLE `bbs_reply` (
   `reply_id`         int(11) NOT NULL AUTO_INCREMENT COMMENT '回复的id',
-  `reply_content`    varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '回复的具体内容',
+  `reply_content`    varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '回复的具体内容',
   `reply_to_user_id` int(11) NULL DEFAULT NULL COMMENT '回复的对象的Id',
   `comment_id`       int(11) NULL DEFAULT NULL COMMENT '回复评论的ID',
   `reply_user_id`    int(11) NULL DEFAULT NULL COMMENT '回复的用户id',
@@ -291,10 +295,10 @@ VALUES (1, 'asiayak', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2r
 -- ----------------------------
 -- 文章标签
 -- ----------------------------
-INSERT INTO `bbs_article_label` (`label_id`, `label_name`, `enabled`) VALUES
-(1, '电量', 0),
-(2, '电费', 1),
-(3, '电价', 0);
+INSERT INTO `bbs_article_label` (`label_id`, `label_name`, `enabled`, `icon`, `description`) VALUES
+(1, '技术交流', 0, 'thumb_up', ''),
+(2, '求助问答', 1, 'help', ''),
+(3, '资源共享', 0, 'folder_open', '');
 
 -- ----------------------------
 -- 组织机构（国网四川内江供电公司）
@@ -339,7 +343,8 @@ INSERT INTO `bbs_sa_org` (`id`, `org_no`, `org_name`, `p_org_no`, `org_tree`, `i
 INSERT INTO `bbs_dict` (`id`, `dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`) VALUES
 (1, 'post', '3', '发帖积分', 1, '系统', '2026-06-26 00:00:00', '发一个帖子所得积分'),
 (2, 'reply', '1', '回帖积分', 0, '系统', '2026-06-26 00:00:00', '回帖一次所得积分'),
-(3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）');
+(3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）'),
+(4, 'featured', '10', '精华帖积分', 2, '系统', '2026-07-13 00:00:00', '被设为精华帖额外获得的积分');
 
 -- ----------------------------
 -- 敏感词

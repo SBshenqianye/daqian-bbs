@@ -75,8 +75,7 @@ function Package-Standard {
         @{Name="bbs-server.jar";   Path="$ROOT_DIR/bbs-server/target/bbs-server.jar"; Dest="$OUTPUT_DIR/";      IsDir=$false},
         @{Name="Nginx 配置";        Path="$ROOT_DIR/nginx/nginx.conf.template"; Dest="$OUTPUT_DIR/nginx/";        IsDir=$false},
         @{Name="Nginx Dockerfile";  Path="$ROOT_DIR/nginx/Dockerfile";        Dest="$OUTPUT_DIR/nginx/";          IsDir=$false},
-        @{Name="数据库初始化 SQL";   Path="$ROOT_DIR/bbs-server/src/main/resources/db/init/init-pg.sql"; Dest="$OUTPUT_DIR/db/init/"; IsDir=$false},
-        @{Name="部署脚本";          Path="$ROOT_DIR/scripts";                 Dest="$OUTPUT_DIR/scripts/";       IsDir=$true}
+        @{Name="数据库初始化 SQL";   Path="$ROOT_DIR/bbs-server/src/main/resources/db/init/init-pg.sql"; Dest="$OUTPUT_DIR/db/init/"; IsDir=$false}
     )
 
     $total = $steps.Count
@@ -98,10 +97,6 @@ function Package-Standard {
         }
     }
 
-    # build.sh 额外判断
-    if (Test-Path "$ROOT_DIR/scripts/build/build.sh") {
-        Copy-Item "$ROOT_DIR/scripts/build/build.sh" "$OUTPUT_DIR/scripts/"
-    }
     # 文档
     if (Test-Path "$ROOT_DIR/DEPLOY.md") {
         Copy-Item "$ROOT_DIR/DEPLOY.md" "$OUTPUT_DIR/"
@@ -121,20 +116,16 @@ function Package-Standard {
      cp scripts/.env.example .env
      vi .env         # 修改数据库密码等配置
 
-  2. 选择部署方式:
+  2. 部署后端 (需要 JDK 8+):
+     nohup java -jar bbs-server.jar --server.port=9083 &
 
-     方式 A - 容器部署（需要 Podman/Docker）:
-       bash scripts/deploy/container.sh
+  3. 配置 Nginx:
+     将 bbs-ui/dist 和 bbs-admin-ui/dist 部署到 Nginx html 目录
+     参考 nginx/nginx.conf.template 配置反向代理
 
-     方式 B - 原生部署（RHEL 7 / CentOS 7）:
-       bash scripts/deploy/native.sh
-
-  3. 访问:
+  4. 访问:
      用户前端:  http://<服务器IP>:19848/bbs-user/
      管理后台:  http://<服务器IP>:19848/bbs-admin/
-
-  4. 清理:
-     bash scripts/ops/teardown.sh
 
 详细文档请参见 DEPLOY.md
 ========================================
@@ -151,7 +142,6 @@ function Package-Minimal {
         @{Name="bbs-admin-ui/dist";  Path="$ROOT_DIR/bbs-admin-ui/dist/*";                Dest="$OUTPUT_DIR/bbs-admin-ui/"; Type="dir"},
         @{Name="Nginx 配置";          Path="$ROOT_DIR/nginx/nginx.conf.template";         Dest="$OUTPUT_DIR/nginx/";    Type="file"},
         @{Name="数据库初始化 SQL";    Path="$ROOT_DIR/bbs-server/src/main/resources/db/init/init-pg.sql"; Dest="$OUTPUT_DIR/db/init/"; Type="file"},
-        @{Name="部署脚本";            Path="$ROOT_DIR/scripts/deploy/native.sh";           Dest="$OUTPUT_DIR/";          Type="file"},
         @{Name="环境变量模板";        Path="$ROOT_DIR/scripts/.env.example";               Dest="$OUTPUT_DIR/";          Type="file"}
     )
 

@@ -13,6 +13,7 @@ import com.walker.vo.param.ArticleStatisticParam;
 import com.walker.vo.param.PointsRankParam;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -374,6 +375,56 @@ public class ArticleController {
     @PostMapping("/common/pointsRank")
     public ResultBean pointsRank(@RequestBody PointsRankParam pointsRankParam){
         return articleService.pointsRank(pointsRankParam);
+    }
+
+    @ApiOperation(value = "管理员获取文章列表（支持搜索过滤分页，含标签名）")
+    @PostMapping("/admin/article/list")
+    public ResultBean getAdminArticleList(@RequestBody Map<String, Object> params) {
+        String keywords = (String) params.getOrDefault("keywords", "");
+        String labelId = (String) params.getOrDefault("labelId", "");
+        String startTime = (String) params.getOrDefault("startTime", "");
+        String endTime = (String) params.getOrDefault("endTime", "");
+        Integer enable = params.get("enable") != null ? Integer.parseInt(params.get("enable").toString()) : null;
+        Integer page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;
+        Integer size = params.get("size") != null ? Integer.parseInt(params.get("size").toString()) : 10;
+        return articleService.getAdminArticleList(keywords, labelId, startTime, endTime, enable, page, size);
+    }
+
+    // ==================== 精华帖接口 ====================
+
+    @ApiOperation(value = "设置/取消精华帖")
+    @PostMapping("/admin/featured/set")
+    public ResultBean setFeatured(@RequestBody ArticleParam articleParam) {
+        if (articleParam.getArticleId() == null) {
+            return ResultBean.error("文章ID不能为空");
+        }
+        return articleService.setFeatured(articleParam.getArticleId(), articleParam.getIsFeatured());
+    }
+
+    @ApiOperation(value = "精华帖管理列表（支持搜索过滤分页）")
+    @PostMapping("/admin/featured/list")
+    public ResultBean getFeaturedList(@RequestBody Map<String, Object> params) {
+        String keywords = (String) params.getOrDefault("keywords", "");
+        String labelId = (String) params.getOrDefault("labelId", "");
+        String startTime = (String) params.getOrDefault("startTime", "");
+        String endTime = (String) params.getOrDefault("endTime", "");
+        Integer page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;
+        Integer size = params.get("size") != null ? Integer.parseInt(params.get("size").toString()) : 10;
+        return articleService.getFeaturedList(keywords, labelId, startTime, endTime, page, size);
+    }
+
+    @ApiOperation(value = "获取最新精华帖（用户端置顶用）")
+    @GetMapping("/common/article/getFeaturedTop")
+    public ResultBean getFeaturedTop() {
+        return articleService.getFeaturedTop(3);
+    }
+
+    @ApiOperation(value = "获取精华帖列表（用户端分页，可指定标签）")
+    @GetMapping("/common/article/getFeatured")
+    public ResultBean getFeatured(@RequestParam(value = "page", defaultValue = "1") Integer page,
+                                  @RequestParam(value = "size", defaultValue = "10") Integer size,
+                                  @RequestParam(value = "labelId", required = false) Integer labelId) {
+        return articleService.getFeaturedByPage(page, size, labelId);
     }
 
 }

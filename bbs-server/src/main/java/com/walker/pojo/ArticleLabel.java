@@ -38,5 +38,12 @@ public class ArticleLabel implements Serializable {
     @ApiModelProperty("标签是否禁用")
     private Integer enabled;
 
+    @ApiModelProperty("标签图标")
+    @TableField("icon")
+    private String icon;
+
+    @ApiModelProperty("标签描述")
+    @TableField("description")
+    private String description;
 
 }

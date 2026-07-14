@@ -8,7 +8,6 @@
 </template>
 
 <script>
-    import './assets/iconfont/iconfont.js'
     import BBSHeader from "@/components/BBSHeader";
     export default {
         name: 'App',
