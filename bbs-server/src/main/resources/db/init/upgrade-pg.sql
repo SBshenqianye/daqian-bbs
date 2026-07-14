@@ -13,5 +13,5 @@ CREATE INDEX IF NOT EXISTS idx_article_featured_time ON bbs_article (is_featured
 
 -- 2026-07-13: 精华帖积分配置（存在则跳过）
 INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark)
-SELECT 'featured', '10', '精华帖积分', 2, '系统', NOW(), '被设为精华帖额外获得的积分'
+SELECT 'featured', '10', '精华帖积分', 2, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '被设为精华帖额外获得的积分'
 WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'featured');
