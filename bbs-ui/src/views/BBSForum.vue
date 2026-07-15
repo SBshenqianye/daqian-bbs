@@ -61,7 +61,7 @@
                 <div class="flex-1 min-w-0">
                   <span class="text-[13px] text-on-surface group-hover:text-primary-container transition-colors line-clamp-1 block">{{ item.articleTitle }}</span>
                   <span v-if="item.labelName" class="text-[11px] text-outline truncate block">{{ item.labelName }}</span>
-                  <span class="text-[11px] text-outline block">{{ item.time }}</span>
+                  <span class="text-[11px] text-outline block">{{ formatTime(item.time) }}</span>
                 </div>
               </li>
             </ul>
@@ -101,7 +101,7 @@
                   <span class="flex items-center gap-1.5 shrink-0 text-[10px] text-on-surface-variant">
                     <span class="truncate max-w-[70px]">{{ article.author }}</span>
                     <span class="text-outline-variant">·</span>
-                    <span>{{ article.time }}</span>
+                    <span>{{ formatTime(article.time) }}</span>
                   </span>
                 </div>
               </article>
@@ -135,9 +135,9 @@
                     <div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">
                       <img :src="article.authorAvatar || require('@/assets/portrait.png')" alt="Avatar" class="w-full h-full object-cover">
                     </div>
-                    <span class="truncate max-w-[150px]">作者：{{ article.author }}</span>
+                    <span class="truncate max-w-[150px]">{{ article.author }}</span>
                     <span class="mx-1">•</span>
-                    <span>{{ article.time }}</span>
+                    <span>{{ formatTime(article.time) }}</span>
                   </div>
                   <div class="flex items-center gap-4">
                     <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">visibility</span> {{ article.views }}</span>
@@ -208,6 +208,7 @@
 
 <script>
 import { normalizeFileUrl } from '@/utils/utils'
+import { dateStr } from '@/utils/time'
 
 export default {
   name: 'BBSForum',
@@ -256,6 +257,9 @@ export default {
     },
   },
   methods: {
+    formatTime(val) {
+      return dateStr(val)
+    },
     fetchArticles(keywords = '') {
       this.loading = true
       this.getRequest(`/common/article/getArticle?keywords=${encodeURIComponent(keywords)}`).then(resp => {
@@ -272,7 +276,7 @@ export default {
           labelId: a.articleLabelId || null,
           time: a.createTime || a.articleCreateTime || '',
           views: a.articleViewNum || 0,
-          comments: a.commentNum || 0,
+          comments: a.commentNum ?? a.comment_num ?? 0,
           likes: a.articleGoodNum || 0,
           cover: normalizeFileUrl(a.articleImage || null),
         }))

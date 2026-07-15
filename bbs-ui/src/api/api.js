@@ -54,9 +54,9 @@ axios.interceptors.response.use(success=>{
             return;
         }
         if(success.data.message){
-            const url = (success.config && success.config.url) || ''
-            const noSuccessTip = url.indexOf('listDictByType') !== -1 || url.indexOf('saOrgTree') !== -1 || url.indexOf('login') !== -1
-            if (!noSuccessTip) {
+            // GET 请求属于查询操作，不弹出成功提示
+            const method = (success.config && success.config.method) || ''
+            if (method.toLowerCase() !== 'get') {
                 Message({
                     type: 'success',
                     message: success.data.message,

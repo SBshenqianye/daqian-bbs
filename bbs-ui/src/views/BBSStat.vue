@@ -105,7 +105,7 @@ export default {
           authorAvatar: userAvatar,
           time: a.createTime || a.articleCreateTime || '',
           views: a.articleViewNum || 0,
-          comments: a.commentNum || a.articleCommentNum || 0,
+          comments: a.commentNum ?? a.comment_num ?? a.articleCommentNum ?? 0,
           likes: a.articleGoodNum || 0,
           cover: normalizeFileUrl(a.articleImage || null),
         }))

@@ -54,9 +54,9 @@
                     <div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">
                       <img :src="article.authorAvatar || require('@/assets/portrait.png')" alt="Avatar" class="w-full h-full object-cover">
                     </div>
-                    <span class="truncate max-w-[150px]">作者：{{ article.author }}</span>
+                    <span class="truncate max-w-[150px]">{{ article.author }}</span>
                     <span class="mx-1">•</span>
-                    <span>{{ article.time }}</span>
+                    <span>{{ formatTime(article.time) }}</span>
                   </div>
                   <div class="flex items-center gap-4">
                     <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">visibility</span> {{ article.views }}</span>
@@ -113,6 +113,7 @@
 
 <script>
 import { normalizeFileUrl } from '@/utils/utils'
+import { dateStr } from '@/utils/time'
 
 export default {
   name: 'BBSFeaturedArticles',
@@ -147,6 +148,9 @@ export default {
     this.fetchFeatured()
   },
   methods: {
+    formatTime(val) {
+      return dateStr(val)
+    },
     fetchFeatured() {
       this.loading = true
       this.getRequest(`/common/article/getFeatured?page=${this.pagination.page}&size=${this.pagination.size}`).then(resp => {
@@ -162,7 +166,7 @@ export default {
             authorAvatar: normalizeFileUrl(a.portrait || ''),
             time: a.createTime || '',
             views: a.articleViewNum || 0,
-            comments: a.commentNum || 0,
+            comments: a.commentNum ?? a.comment_num ?? 0,
             likes: a.articleGoodNum || 0,
             articleLabelName: a.articleLabelName || '',
             cover: normalizeFileUrl(a.articleImage || null),
