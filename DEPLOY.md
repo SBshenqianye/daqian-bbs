@@ -7,7 +7,9 @@
 3. [快速开始](#3-快速开始)
 4. [容器部署](#4-容器部署)
 5. [打包分发](#5-打包分发)
-6. [数据库初始化说明](#6-数据库初始化说明)
+6. [WSL 开发部署](#9-wsl-开发部署bind-mount-模式)
+7. [离线内网部署](#10-离线内网部署bind-mount-模式)
+8. [数据库初始化说明](#6-数据库初始化说明)
 7. [故障排查](#7-故障排查)
 8. [本次部署总结](#8-本次部署总结)
 
@@ -151,10 +153,12 @@ bash scripts/build.sh --backend
 
 ### 4.2 部署
 
-部署脚本单独使用（`build.sh` 已自动调用，通常无需手动执行）：
+构建完成后容器会自动运行，通常无需手动部署。
+如需单独管理容器：
 
 ```bash
-bash scripts/deploy/container.sh              # 部署后端 + Nginx
+bash scripts/ops/teardown.sh                  # 停止容器
+podman start bbs-server bbs-nginx             # 启动容器
 ```
 
 容器使用 **host 网络**模式：
@@ -242,10 +246,7 @@ wget http://build-server/bbs-deploy-latest.tar.gz
 
 ### 6.3 手动初始化
 
-```bash
-# 如果自动初始化失败，或需要重新执行
-bash scripts/init-db.sh
-```
+无需手动执行——`DatabaseInitHelper.java` 在 Spring Boot 启动前自动完成建表和初始数据导入。
 
 ---
 
@@ -267,10 +268,7 @@ NODE_OPTIONS="--openssl-legacy-provider" npm run build
 **原因**: 数据库已存在（如通过 `POSTGRES_DB` 自动创建），但表结构未初始化
 **解决**: 
 1. 新版本已自动处理（SQL 安全模式始终执行）
-2. 如仍未解决，手动运行:
-```bash
-bash scripts/init-db.sh
-```
+2. `DatabaseInitHelper.java` 会在 Spring Boot 启动前自动执行 init-pg.sql
 
 ### 7.3 容器内连接不上 PostgreSQL
 
@@ -369,3 +367,126 @@ location = "docker.m.daocloud.io"
 | `BBS_SUPER_ADMIN_PASSWORD` | `1234@abcD` | 超级管理员密码 |
 | `BBS_SERVER_CONTAINER` | `bbs-server` | 后端容器名 |
 | `BBS_NGINX_CONTAINER` | `bbs-nginx` | Nginx 容器名 |
+
+---
+
+## 9. WSL 开发部署（bind-mount 模式）
+
+> 新流程：应用代码（JAR + dist）通过 bind mount 挂载到容器，不烘焙进镜像。
+> 更新只需重新编译产物 + 重启容器，秒级完成。
+
+### 9.1 前置条件
+
+```bash
+# 确保基础镜像已构建（仅首次需要，或依赖变更时）
+bash scripts/build/base.sh --save
+```
+
+### 9.2 工作流 A：开发机 Build，WSL 只 Deploy（推荐）
+
+在开发机（Windows，有完整 Node.js/Maven）上构建，产物同步到 WSL 后秒级部署：
+
+```bash
+# 开发机 Windows 上执行
+cd bbs-ui && npm run build
+cd bbs-admin-ui && NODE_OPTIONS="--openssl-legacy-provider" npm run build
+cd bbs-server && mvn package -DskipTests
+
+# 代码（含 dist + JAR）同步到 WSL 后
+cd /path/to/daqian-bbs
+bash scripts/deploy/wsl.sh                 # 5-10 秒完成
+```
+
+### 9.3 工作流 B：全自动 WSL 构建 + 部署
+
+```bash
+# 一步完成：安装依赖 → 构建 → bind-mount 部署
+bash scripts/build/build.sh --wsl          # 检测已有产物，缺失才编译
+```
+
+### 9.4 WSL 热更新
+
+改代码后最快更新方式：
+
+```bash
+# 只重启容器（假设 JAR/dist 已通过 bind-mount 挂载）
+bash scripts/deploy/wsl.sh --restart-only
+# 或直接
+podman restart bbs-server bbs-nginx
+```
+
+---
+
+## 10. 离线内网部署（bind-mount 模式）
+
+### 10.1 概念
+
+- **基础镜像**（`bbs-server-base`、`bbs-nginx-base`）：仅含运行时环境，不包含应用代码。
+  首次部署时加载到服务器即可，后续不变。
+- **升级包**（`bbs-upgrade-*.tar.gz`）：仅含 JAR + dist，轻量（~10-50MB），每次迭代只传这个。
+- **版本管理**：服务器端以时间戳快照保留每个版本，通过软链切换。
+
+### 10.2 构建离线包
+
+```bash
+# 轻量升级包（不含基础镜像，日常迭代用）
+bash scripts/build/build.sh --offline
+# 输出: dist/bbs-upgrade-20260715_143025.tar.gz
+
+# 完整环境包（含基础镜像，首次部署或基础镜像变更时用）
+bash scripts/build/build.sh --offline --with-base
+# 输出: dist/bbs-full-20260715_143025.tar.gz
+```
+
+### 10.3 首次安装
+
+目标服务器需安装 Podman/Docker 和可访问的 PostgreSQL。
+
+```bash
+# 解压完整环境包
+sudo mkdir -p /data
+sudo tar -xzf bbs-split-*.tar.gz -C /data
+cd /data/bbs-split-*
+
+# 首次安装（加载基础镜像 + 创建版本目录 + 启动容器）
+sudo bash deploy-offline.sh --install
+
+# 按提示检查 .env 中的数据库密码等配置
+# （注意：包内的部署脚本是 deploy-offline.sh，不是 scripts/deploy/offline.sh）
+```
+
+### 10.4 日常升级
+
+```bash
+# 将轻量升级包传到目标服务器
+scp dist/bbs-upgrade-20260715_143025.tar.gz user@server:/tmp/
+
+# 在服务器上执行升级
+sudo bash /data/bbs/deploy-offline.sh --upgrade /tmp/bbs-upgrade-20260715_143025.tar.gz
+```
+
+### 10.5 回滚
+
+```bash
+cd /data/bbs
+ls versions/                        # 查看所有版本
+sudo ln -snf versions/<旧版本> versions/latest
+sudo podman restart bbs-server bbs-nginx
+```
+
+### 10.6 服务器目录结构
+
+```
+/data/bbs/
+├── versions/
+│   ├── 20260715_142530/            # 每个版本一个目录
+│   │   ├── bbs-server.jar
+│   │   ├── bbs-ui/dist/
+│   │   └── bbs-admin-ui/dist/
+│   ├── 20260715_143025/
+│   └── latest -> 20260715_143025/  # 软链：当前运行版本
+├── current -> versions/latest      # 容器 bind-mount 目标
+├── base-images/                    # 基础镜像 tar 缓存
+├── .env
+└── logs/
+```

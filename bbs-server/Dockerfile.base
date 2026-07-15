@@ -1,0 +1,19 @@
+# ============================================
+# BBS Server — 基础镜像（仅运行时）
+# 不包含应用代码，JAR 在运行时通过 bind mount 挂载：
+#   podman run -v /path/to/bbs-server.jar:/app/app.jar
+#
+# 构建方式：
+#   podman build -t bbs-server-base -f bbs-server/Dockerfile.base bbs-server
+# ============================================
+FROM eclipse-temurin:8-jre
+
+WORKDIR /app
+
+EXPOSE 8083
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -q --spider http://localhost:${SERVER_PORT:-8083}/bbs-server/ || exit 1
+
+# JAR 由上层调用方 bind-mount 到 /app/app.jar
+ENTRYPOINT ["java", "-jar", "/app/app.jar", "--spring.profiles.active=podman"]

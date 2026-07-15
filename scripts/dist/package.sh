@@ -3,434 +3,64 @@
 # BBS 离线打包脚本
 # 将构建产物打包为可分发的 tar.gz 文件
 # 用法:
-#   bash scripts/dist/package.sh                      # 容器离线包（默认）
-#   bash scripts/dist/package.sh --native             # 原生部署包（JAR + 前端）
-#   bash scripts/dist/package.sh --minimal            # 仅最小运行文件（原生）
-#   bash scripts/dist/package.sh --with-source        # 含源代码（原生）
+#   bash scripts/dist/package.sh                      # 轻量升级包（默认，输出到 dist/）
+#   bash scripts/dist/package.sh --upgrade            # 轻量升级包
+#   bash scripts/dist/package.sh --full              # 完整环境包（含基础镜像）
 # ============================================
 set -e
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-MODE="${1:-container}"  # container(默认) | native | minimal | with-source
+MODE="${1:-upgrade}"  # upgrade(默认) | full
 
 # --------------- 颜色 ---------------
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; RED='\033[0;31m'; NC='\033[0m'
-info()  { echo -e "${CYAN}[INFO]${NC} $1"; }
-ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
-warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
-err()   { echo -e "${RED}[ERR]${NC} $1"; }
+info()  { echo -e "${CYAN}[INFO]${NC} $1" >&2; }
+ok()    { echo -e "${GREEN}[OK]${NC} $1" >&2; }
+warn()  { echo -e "${YELLOW}[WARN]${NC} $1" >&2; }
+err()   { echo -e "${RED}[ERR]${NC} $1" >&2; }
 
 # --------------- 进度指示库 ---------------
 source "$ROOT_DIR/scripts/lib/progress.sh"
 
-# --------------- 检测容器运行时 ---------------
-detect_runner() {
-    if command -v podman >/dev/null 2>&1; then
-        echo "podman"
-    elif command -v docker >/dev/null 2>&1; then
-        echo "docker"
-    else
-        echo ""
-    fi
-}
-
-# --------------- 检查构建产物（原生模式） ---------------
-check_artifacts_native() {
+# --------------- 检查构建产物 ---------------
+check_artifacts() {
     local missing=0
     if [ ! -d "bbs-ui/dist" ];           then warn "bbs-ui/dist 不存在";         missing=1; fi
     if [ ! -d "bbs-admin-ui/dist" ];     then warn "bbs-admin-ui/dist 不存在";   missing=1; fi
     if [ ! -f "bbs-server/target/bbs-server.jar" ]; then warn "bbs-server.jar 不存在"; missing=1; fi
 
     if [ "$missing" -ne 0 ]; then
-        echo ""; warn "部分构建产物缺失，请先运行: bash scripts/build/build.sh --native"; echo ""
+        echo ""; warn "部分构建产物缺失，请先运行: bash scripts/build/build.sh --wsl"; echo ""
         read -p "是否继续打包？(y/N) " -n 1 -r; echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then exit 1; fi
     fi
 }
 
-# --------------- 检查构建产物（容器模式） ---------------
-check_artifacts_container() {
-    local RUNNER=$(detect_runner)
-    if [ -z "$RUNNER" ]; then
-        err "未找到 podman 或 docker，无法导出镜像"
-        err "请先安装 Podman 或 Docker，或使用 --native 模式打包"
-        exit 1
-    fi
-    info "使用容器引擎: $RUNNER"
 
-    local missing=0
-    for img in bbs-server:latest bbs-nginx:latest; do
-        if $RUNNER image exists "$img" 2>/dev/null; then
-            ok "镜像 $img 已存在"
-        else
-            err "镜像 $img 不存在"
-            missing=1
-        fi
-    done
-    if [ "$missing" -ne 0 ]; then
-        err "缺少容器镜像，请先运行: bash scripts/build/build.sh"
-        exit 1
-    fi
-}
-
-# --------------- 容器离线分发包 ---------------
-package_container() {
-    local RUNNER=$(detect_runner)
-    local OUTPUT_DIR="$ROOT_DIR/bbs"
-
-    rm -rf "$OUTPUT_DIR"
-    mkdir -p "$OUTPUT_DIR"
-
-    # 1. 导出镜像
-    info "===== 导出容器镜像 ====="
-    for img in bbs-server:latest bbs-nginx:latest; do
-        local name="${img%%:*}"
-        run_with_spinner "导出 ${img}" "$RUNNER" save -o "$OUTPUT_DIR/${name}.tar" "$img"
-        local size
-        size=$(du -h "$OUTPUT_DIR/${name}.tar" | cut -f1)
-        ok "${name}.tar 导出完成 (${size})"
-    done
-
-    # 2. Dockerfile（可选，方便内网重编）
-    info "===== 复制 Dockerfile ====="
-    mkdir -p "$OUTPUT_DIR/docker"
-    cp nginx/Dockerfile             "$OUTPUT_DIR/docker/"
-    cp bbs-server/Dockerfile        "$OUTPUT_DIR/docker/" 2>/dev/null || true
-
-    # 3. 环境变量模板
-    cp scripts/.env.example "$OUTPUT_DIR/"
-
-    # 4. 顶层一键部署脚本
-    info "===== 生成一键部署脚本 ====="
-    cat > "$OUTPUT_DIR/deploy.sh" << 'DEPLOYEOF'
-#!/bin/bash
-# ============================================
-# BBS 一键部署（离线包入口）
-# 用法:
-#   cd /data/bbs && bash deploy.sh
-# ============================================
-set -e
-
-RUNNER=""
-if command -v podman >/dev/null 2>&1; then
-    RUNNER=podman
-elif command -v docker >/dev/null 2>&1; then
-    RUNNER=docker
-else
-    echo "[ERR] 未找到 podman 或 docker"
-    exit 1
-fi
-echo "[INFO] 使用容器引擎: $RUNNER"
-
-# 默认配置
-BBS_DB_HOST="${BBS_DB_HOST:-127.0.0.1}"
-BBS_DB_PORT="${BBS_DB_PORT:-15432}"
-BBS_DB_NAME="${BBS_DB_NAME:-bbs}"
-BBS_DB_USER="${BBS_DB_USER:-work_flow}"
-BBS_DB_PASSWORD="${BBS_DB_PASSWORD:-work_flow123}"
-BBS_SERVER_PORT="${BBS_SERVER_PORT:-9083}"
-NGINX_PORT="${NGINX_PORT:-19848}"
-BBS_SERVER_CONTAINER="${BBS_SERVER_CONTAINER:-bbs-server}"
-BBS_NGINX_CONTAINER="${BBS_NGINX_CONTAINER:-bbs-nginx}"
-BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR:-/data/bbs/bbsUpload}"
-BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR%/}/"
-BBS_SUPER_ADMIN_PASSWORD="${BBS_SUPER_ADMIN_PASSWORD:-1234@abcD}"
-
-# 1. 加载镜像
-cd "$(dirname "$0")"
-for img_file in bbs-server.tar bbs-nginx.tar; do
-    img_name="${img_file%.tar}"
-    if $RUNNER image exists "$img_name:latest" 2>/dev/null; then
-        echo "[OK] $img_name 镜像已存在，跳过加载"
-    else
-        echo "[INFO] 加载 $img_file ..."
-        $RUNNER load -i "$img_file"
-        echo "[OK] $img_file 加载完成"
-    fi
-done
-
-# 2. 环境变量
-if [ ! -f ".env" ]; then
-    echo "[INFO] 创建 .env（使用默认配置）..."
-    cp .env.example .env
-    echo "[WARN] 请检查 .env 中的数据库密码等配置：vi .env"
-    echo "      按 Enter 使用默认配置继续，或 Ctrl+C 修改后重试"
-    read -r
-fi
-set -a; source .env; set +a
-
-# 3. 确认 PostgreSQL 已就绪
-echo ""
-echo "============================================"
-echo "  ⚠ 请确保 PostgreSQL 已启动并正常运行"
-echo ""
-echo "  容器使用 host 网络，通过 127.0.0.1:${BBS_DB_PORT} 连接数据库"
-echo ""
-echo "  PostgreSQL 需自行管理，脚本不会自动启动或关闭"
-echo "  默认端口: 15432"
-echo "============================================"
-echo ""
-
-# 4. 启动后端
-echo "[INFO] 启动 bbs-server..."
-if $RUNNER container exists "$BBS_SERVER_CONTAINER" 2>/dev/null; then
-    $RUNNER rm -f "$BBS_SERVER_CONTAINER" 2>/dev/null || true
-fi
-
-if [ ! -d "$BBS_UPLOAD_DIR" ]; then
-    mkdir -p "$BBS_UPLOAD_DIR"
-fi
-
-$RUNNER run -d \
-    --name "$BBS_SERVER_CONTAINER" \
-    --network host \
-    -e BBS_DB_HOST="$BBS_DB_HOST" \
-    -e BBS_DB_PORT="$BBS_DB_PORT" \
-    -e BBS_DB_NAME="$BBS_DB_NAME" \
-    -e BBS_DB_USER="$BBS_DB_USER" \
-    -e BBS_DB_PASSWORD="$BBS_DB_PASSWORD" \
-    -e BBS_SUPER_ADMIN_PASSWORD="$BBS_SUPER_ADMIN_PASSWORD" \
-    -e BBS_UPLOAD_DIR="$BBS_UPLOAD_DIR" \
-    -v "$BBS_UPLOAD_DIR:$BBS_UPLOAD_DIR" \
-    bbs-server
-
-echo "[OK] bbs-server 已启动"
-
-# 5. 启动 Nginx
-echo "[INFO] 启动 bbs-nginx..."
-if $RUNNER container exists "$BBS_NGINX_CONTAINER" 2>/dev/null; then
-    $RUNNER rm -f "$BBS_NGINX_CONTAINER" 2>/dev/null || true
-fi
-
-$RUNNER run -d \
-    --name "$BBS_NGINX_CONTAINER" \
-    --network host \
-    -e NGINX_PORT="$NGINX_PORT" \
-    -e BBS_SERVER_PORT="$BBS_SERVER_PORT" \
-    bbs-nginx
-
-echo "[OK] bbs-nginx 已启动"
-
-echo ""
-echo "============================================"
-echo "  部署完成！"
-echo ""
-echo "  用户前端:  http://localhost:${NGINX_PORT}/bbs-user/"
-echo "  管理后台:  http://localhost:${NGINX_PORT}/bbs-admin/"
-echo "  后端 API:  http://localhost:${NGINX_PORT}/bbs-server/"
-echo ""
-echo "  停止容器:  ${RUNNER} stop bbs-server bbs-nginx"
-echo "============================================"
-DEPLOYEOF
-    chmod +x "$OUTPUT_DIR/deploy.sh"
-
-    # 5. README
-    cat > "$OUTPUT_DIR/README.md" << 'READMEEOF'
-# BBS 离线部署包（容器模式）
-
-## 前置条件
-
-目标服务器需安装 **Podman**（推荐）或 **Docker**，以及可访问的 **PostgreSQL** 数据库（默认端口 15432）。
-
-## 一键部署
-
-```bash
-# 解压
-sudo mkdir -p /data
-sudo tar -xzf bbs-offline-*.tar.gz -C /data
-cd /data/bbs
-
-# 编辑数据库配置
-cp .env.example .env
-vi .env
-
-# 部署
-sudo bash deploy.sh
-```
-
-`deploy.sh` 会自动完成：加载镜像 → 启动后端和 Nginx 容器（host 网络模式）。
-
-> PostgreSQL 需自行管理，部署脚本不会自动启动数据库。
-> 部署前请确保 PG 已运行并在 `.env` 中正确配置 `BBS_DB_HOST`。
-
-## 清理
-
-```bash
-sudo podman stop bbs-server bbs-nginx
-sudo podman rm bbs-server bbs-nginx
-```
-
-## 目录结构
-
-```
-/data/bbs/
-├── deploy.sh                # 一键部署入口
-├── bbs-server.tar           # 后端镜像
-├── bbs-nginx.tar            # Nginx 镜像（含前端静态文件）
-├── .env.example             # 配置模板
-├── docker/                  # Dockerfile（内网重编用）
-│   ├── Dockerfile.nginx
-│   └── Dockerfile.server
-└── README.md
-```
-READMEEOF
-    ok "README.md 已生成"
-
-    # 返回输出目录路径供上层使用
-    echo "$OUTPUT_DIR"
-}
-
-# --------------- 原生部署包（标准模式） ---------------
-package_native() {
-    local OUTPUT_DIR="$ROOT_DIR/bbs-deploy"
-    rm -rf "$OUTPUT_DIR"
-    mkdir -p "$OUTPUT_DIR"
-
-    info "===== 原生部署包（标准） ====="
-
-    # 前端 dist
-    if [ -d "bbs-ui/dist" ]; then
-        cp -r bbs-ui/dist "$OUTPUT_DIR/bbs-ui"
-    fi
-    if [ -d "bbs-admin-ui/dist" ]; then
-        cp -r bbs-admin-ui/dist "$OUTPUT_DIR/bbs-admin-ui"
-    fi
-
-    # 后端 JAR
-    if [ -f "bbs-server/target/bbs-server.jar" ]; then
-        cp bbs-server/target/bbs-server.jar "$OUTPUT_DIR/"
-    fi
-
-    # Nginx 配置
-    mkdir -p "$OUTPUT_DIR/nginx"
-    cp nginx/nginx.conf.template "$OUTPUT_DIR/nginx/"
-    cp nginx/Dockerfile "$OUTPUT_DIR/nginx/"
-
-    # 数据库初始化 SQL
-    mkdir -p "$OUTPUT_DIR/db/init"
-    cp bbs-server/src/main/resources/db/init/init-pg.sql "$OUTPUT_DIR/db/init/"
-
-    # 脚本
-    rm -rf "$OUTPUT_DIR/scripts"
-    cp -r scripts "$OUTPUT_DIR/scripts"
-    rm -f "$OUTPUT_DIR/scripts/.env.example"  # 单独处理
-
-    # 文档
-    cp DEPLOY.md "$OUTPUT_DIR/" 2>/dev/null || true
-
-    # README
-    cat > "$OUTPUT_DIR/README.txt" <<'EOF'
-========================================
- BBS 部署包
-========================================
-
-部署步骤:
-
-  1. 复制环境变量配置:
-     cp scripts/.env.example .env
-     vi .env         # 修改数据库密码等配置
-
-  2. 确保 PostgreSQL 已运行并可在 .env 中配置的地址访问
-
-  3. 选择部署方式:
-
-     方式 A - 容器部署（需要 Podman/Docker）:
-       bash scripts/deploy/container.sh
-
-     方式 B - 原生部署（RHEL 7 / CentOS 7）:
-       bash scripts/deploy/native.sh
-
-  4. 访问:
-     用户前端:  http://<服务器IP>:19848/bbs-user/
-     管理后台:  http://<服务器IP>:19848/bbs-admin/
-
-  5. 清理:
-     bash scripts/ops/teardown.sh
-
-详细文档请参见 DEPLOY.md
-========================================
-EOF
-
-    echo "$OUTPUT_DIR"
-}
-
-# --------------- 最小打包（仅运行所需） ---------------
-package_minimal() {
-    local OUTPUT_DIR="$ROOT_DIR/bbs-deploy"
-    rm -rf "$OUTPUT_DIR"
-    mkdir -p "$OUTPUT_DIR"
-
-    info "===== 最小运行文件包 ====="
-
-    if [ -f "bbs-server/target/bbs-server.jar" ]; then
-        cp bbs-server/target/bbs-server.jar "$OUTPUT_DIR/"
-    fi
-    if [ -d "bbs-ui/dist" ]; then
-        mkdir -p "$OUTPUT_DIR/bbs-ui"
-        cp -r bbs-ui/dist/* "$OUTPUT_DIR/bbs-ui/"
-    fi
-    if [ -d "bbs-admin-ui/dist" ]; then
-        mkdir -p "$OUTPUT_DIR/bbs-admin-ui"
-        cp -r bbs-admin-ui/dist/* "$OUTPUT_DIR/bbs-admin-ui/"
-    fi
-
-    mkdir -p "$OUTPUT_DIR/nginx"
-    cp nginx/nginx.conf.template "$OUTPUT_DIR/nginx/"
-
-    mkdir -p "$OUTPUT_DIR/db/init"
-    cp bbs-server/src/main/resources/db/init/init-pg.sql "$OUTPUT_DIR/db/init/"
-
-    cp scripts/deploy/native.sh "$OUTPUT_DIR/"
-    cp scripts/.env.example "$OUTPUT_DIR/"
-
-    echo "$OUTPUT_DIR"
-}
-
-# --------------- 含源代码打包 ---------------
-package_with_source() {
-    info "===== 构建产物 + 源代码包 ====="
-
-    local OUTPUT_DIR
-    OUTPUT_DIR=$(package_native)
-
-    mkdir -p "$OUTPUT_DIR/source"
-    cp -r bbs-server/src "$OUTPUT_DIR/source/bbs-server/src"
-    cp bbs-server/pom.xml "$OUTPUT_DIR/source/bbs-server/"
-    cp -r bbs-ui/src        "$OUTPUT_DIR/source/bbs-ui/src"        2>/dev/null || true
-    cp bbs-ui/package.json  "$OUTPUT_DIR/source/bbs-ui/"           2>/dev/null || true
-    cp -r bbs-admin-ui/src       "$OUTPUT_DIR/source/bbs-admin-ui/src"       2>/dev/null || true
-    cp bbs-admin-ui/package.json "$OUTPUT_DIR/source/bbs-admin-ui/"          2>/dev/null || true
-    cp -r nginx "$OUTPUT_DIR/source/nginx/" 2>/dev/null || true
-
-    echo "$OUTPUT_DIR"
-}
-
-# --------------- 创建压缩包 ---------------
+# --------------- 创建压缩包（输出到 dist/） ---------------
 create_tarball() {
     local dir_name="$1"        # 压缩包内目录名
     local file_prefix="$2"     # 文件名前缀
-    local OUTPUT_DIR="$ROOT_DIR/$dir_name"
-    local VERSION=$(date +%Y%m%d-%H%M%S)
+    local OUTPUT_DIR="$ROOT_DIR/tmp/$dir_name"
+    local VERSION; VERSION=$(date +%Y%m%d-%H%M%S)
     local PACKAGE_NAME="${file_prefix}-${VERSION}.tar.gz"
 
     info "===== 创建压缩包 ====="
 
+    # 输出到 dist/ 目录
+    mkdir -p "$ROOT_DIR/dist"
     run_with_spinner "正在压缩 $(basename "$OUTPUT_DIR")" \
-        tar -czf "$PACKAGE_NAME" -C "$ROOT_DIR" "$(basename "$OUTPUT_DIR")"
+        tar -czf "$ROOT_DIR/dist/$PACKAGE_NAME" -C "$ROOT_DIR/tmp" "$dir_name"
 
     local size
-    size=$(du -h "$PACKAGE_NAME" | cut -f1)
-    ok "打包完成: $ROOT_DIR/$PACKAGE_NAME (${size})"
-
-    # latest 软链接
-    ln -sf "$PACKAGE_NAME" "$ROOT_DIR/${file_prefix}-latest.tar.gz"
+    size=$(du -h "$ROOT_DIR/dist/$PACKAGE_NAME" | cut -f1)
+    ok "打包完成: $ROOT_DIR/dist/$PACKAGE_NAME (${size})"
 
     echo ""
     info "分发文件:"
-    echo "  $ROOT_DIR/$PACKAGE_NAME"
-    echo "  $ROOT_DIR/${file_prefix}-latest.tar.gz (软链接)"
+    echo "  $ROOT_DIR/dist/$PACKAGE_NAME"
     echo ""
 
     # 清理临时目录
@@ -438,46 +68,210 @@ create_tarball() {
     rm -rf "$OUTPUT_DIR"
 }
 
+# --------------- 轻量升级包（不含基础镜像） ---------------
+package_upgrade() {
+    local TIMESTAMP; TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    local DIR_NAME="upgrade-${TIMESTAMP}"
+    local OUTPUT_DIR="$ROOT_DIR/tmp/$DIR_NAME"
+
+    rm -rf "$OUTPUT_DIR"
+    mkdir -p "$OUTPUT_DIR"
+
+    info "===== 轻量升级包（时间戳: $TIMESTAMP） ====="
+
+    # 1. 复制构建产物
+    if [ -f "bbs-server/target/bbs-server.jar" ]; then
+        cp bbs-server/target/bbs-server.jar "$OUTPUT_DIR/"
+    else
+        warn "bbs-server.jar 不存在，跳过"
+    fi
+
+    if [ -d "bbs-ui/dist" ]; then
+        mkdir -p "$OUTPUT_DIR/bbs-ui"
+        cp -r bbs-ui/dist "$OUTPUT_DIR/bbs-ui/"
+    else
+        warn "bbs-ui/dist 不存在，跳过"
+    fi
+
+    if [ -d "bbs-admin-ui/dist" ]; then
+        mkdir -p "$OUTPUT_DIR/bbs-admin-ui"
+        cp -r bbs-admin-ui/dist "$OUTPUT_DIR/bbs-admin-ui/"
+    else
+        warn "bbs-admin-ui/dist 不存在，跳过"
+    fi
+
+    # 2. .env.example
+    cp scripts/.env.example "$OUTPUT_DIR/" 2>/dev/null || true
+
+    # 3. 生成 upgrade.sh（时间戳已硬编码）
+    cat > "$OUTPUT_DIR/upgrade.sh" << UPGRADEEOF
+#!/bin/bash
+# ============================================
+# BBS 升级脚本 — 由 package.sh 在 ${TIMESTAMP} 生成
+# 创建版本快照 + 切换软链 + 重启容器
+# 用法:
+#   bash upgrade.sh [/data/bbs]
+# ============================================
+set -e
+TIMESTAMP="${TIMESTAMP}"
+BBS_HOME="\${1:-/data/bbs}"
+SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
+
+RUNNER="podman"; command -v podman >/dev/null 2>&1 || RUNNER="docker"
+
+info()  { echo -e "\033[0;36m[INFO]\033[0m \$*"; }
+ok()    { echo -e "\033[0;32m[OK]\033[0m \$*"; }
+warn()  { echo -e "\033[1;33m[WARN]\033[0m \$*"; }
+
+# 1. 创建版本目录
+mkdir -p "\$BBS_HOME/versions/\$TIMESTAMP/bbs-ui" "\$BBS_HOME/versions/\$TIMESTAMP/bbs-admin-ui"
+
+# 2. 复制新产物
+info "复制构建产物..."
+[ -f "\$SCRIPT_DIR/bbs-server.jar" ] && cp "\$SCRIPT_DIR/bbs-server.jar" "\$BBS_HOME/versions/\$TIMESTAMP/"
+[ -d "\$SCRIPT_DIR/bbs-ui/dist" ] && cp -r "\$SCRIPT_DIR/bbs-ui/dist" "\$BBS_HOME/versions/\$TIMESTAMP/bbs-ui/"
+[ -d "\$SCRIPT_DIR/bbs-admin-ui/dist" ] && cp -r "\$SCRIPT_DIR/bbs-admin-ui/dist" "\$BBS_HOME/versions/\$TIMESTAMP/bbs-admin-ui/"
+
+# 3. 更新软链
+ln -snf "\$TIMESTAMP" "\$BBS_HOME/versions/latest"
+ok "已切换版本: \$TIMESTAMP"
+
+# 4. 重启容器
+info "重启容器..."
+for container in bbs-server bbs-nginx; do
+    if \$RUNNER container exists "\$container" 2>/dev/null; then
+        \$RUNNER restart "\$container"
+        ok "\$container 已重启"
+    else
+        warn "\$container 容器不存在，跳过"
+    fi
+done
+
+echo ""
+echo -e "\033[0;32m╔══════════════════════════════════════════════╗\033[0m"
+echo -e "\033[0;32m║\033[0m  升级完成！版本: \$TIMESTAMP"
+echo -e "\033[0;32m║\033[0m  回滚: cd \$BBS_HOME && ls versions/ && ln -snf versions/<旧版本> versions/latest && \$RUNNER restart bbs-server bbs-nginx"
+echo -e "\033[0;32m╚══════════════════════════════════════════════╝\033[0m"
+UPGRADEEOF
+    chmod +x "$OUTPUT_DIR/upgrade.sh"
+    ok "upgrade.sh 已生成"
+
+    echo "$OUTPUT_DIR"
+}
+
+# --------------- 完整环境包（含基础镜像） ---------------
+package_full() {
+    local TIMESTAMP; TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    local DIR_NAME="bbs-full-${TIMESTAMP}"
+    local OUTPUT_DIR="$ROOT_DIR/tmp/$DIR_NAME"
+
+    rm -rf "$OUTPUT_DIR"
+    mkdir -p "$OUTPUT_DIR"
+
+    info "===== 完整环境包（时间戳: $TIMESTAMP） ====="
+
+    # 1. 基础镜像
+    if [ -d "dist/base-images" ] && ls dist/base-images/*.tar 2>/dev/null | grep -q .; then
+        mkdir -p "$OUTPUT_DIR/base"
+        cp dist/base-images/*.tar "$OUTPUT_DIR/base/"
+        ok "基础镜像已复制"
+    else
+        warn "dist/base-images/ 目录为空，请先运行 build/base.sh --save"
+    fi
+
+    # 2. 构建产物（复用 package_upgrade 的逻辑）
+    local upgrade_dir
+    upgrade_dir=$(package_upgrade)
+    if [ -n "$upgrade_dir" ] && [ -d "$upgrade_dir" ]; then
+        local ts_name; ts_name=$(basename "$upgrade_dir")
+        mv "$upgrade_dir" "$OUTPUT_DIR/$ts_name"
+        ok "构建产物已复制"
+    fi
+
+    # 3. deploy-offline.sh
+    if [ -f "scripts/deploy/offline.sh" ]; then
+        cp scripts/deploy/offline.sh "$OUTPUT_DIR/deploy-offline.sh"
+        chmod +x "$OUTPUT_DIR/deploy-offline.sh"
+        ok "deploy-offline.sh 已复制"
+    else
+        warn "scripts/deploy/offline.sh 不存在，跳过"
+    fi
+
+    # 4. .env.example
+    cp scripts/.env.example "$OUTPUT_DIR/" 2>/dev/null || true
+
+    # 5. README
+    cat > "$OUTPUT_DIR/README.md" << READMEEOF
+# BBS 完整环境包（bind-mount 模式）
+
+## 目录结构
+
+\`\`\`
+.
+├── deploy-offline.sh              # 安装/升级入口
+├── base/                          # 基础镜像（首次部署用）
+│   ├── bbs-server-base.tar
+│   └── bbs-nginx-base.tar
+├── upgrade-${TIMESTAMP}/     # 初始构建产物 + upgrade 脚本
+│   ├── upgrade.sh
+│   ├── bbs-server.jar
+│   ├── bbs-ui/dist/
+│   └── bbs-admin-ui/dist/
+├── .env.example
+└── README.md
+\`\`\`
+
+## 首次安装
+
+\`\`\`bash
+sudo mkdir -p /data
+sudo tar -xzf bbs-full-*.tar.gz -C /data
+cd /data/bbs-full-*
+sudo bash deploy-offline.sh --install
+\`\`\`
+
+## 升级
+
+将 upgrade tar 包传到服务器后：
+
+\`\`\`bash
+sudo bash /data/bbs/deploy-offline.sh --upgrade bbs-upgrade-*.tar.gz
+\`\`\`
+
+## 回滚
+
+\`\`\`bash
+cd /data/bbs && ls versions/
+ln -snf versions/<旧版本> versions/latest
+podman restart bbs-server bbs-nginx
+\`\`\`
+READMEEOF
+    ok "README.md 已生成"
+
+    echo "$OUTPUT_DIR"
+}
+
 # --------------- 主流程 ---------------
 show_header "BBS 打包分发"
 
 case "$MODE" in
-    --native|native)
-        show_step 1 3 "检查构建产物"
-        check_artifacts_native
-        show_step 2 3 "打包原生部署文件"
-        package_native
-        show_step 3 3 "创建压缩包"
-        create_tarball "bbs-deploy" "bbs-deploy"
+    --upgrade|upgrade)
+        show_step 1 2 "准备构建产物"
+        check_artifacts
+        show_step 2 2 "打包轻量升级包"
+        up_dir=$(package_upgrade)
+        create_tarball "$(basename "$up_dir")" "bbs-upgrade"
         ;;
-    --minimal|minimal)
-        show_step 1 3 "检查构建产物"
-        check_artifacts_native
-        show_step 2 3 "打包最小运行文件"
-        package_minimal
-        show_step 3 3 "创建压缩包"
-        create_tarball "bbs-deploy" "bbs-deploy"
-        ;;
-    --with-source|with-source)
-        show_step 1 3 "检查构建产物"
-        check_artifacts_native
-        show_step 2 3 "打包构建产物 + 源代码"
-        package_with_source
-        show_step 3 3 "创建压缩包"
-        create_tarball "bbs-deploy" "bbs-deploy"
-        ;;
-    *)  # container（默认）
-        show_step 1 3 "检查容器镜像"
-        check_artifacts_container
-        show_step 2 3 "打包容器离线文件"
-        package_container
-        show_step 3 3 "创建压缩包"
-        create_tarball "bbs" "bbs-offline"
+    --full|full)
+        show_step 1 2 "打包完整环境"
+        sp_dir=$(package_full)
+        show_step 2 2 "创建压缩包"
+        create_tarball "$(basename "$sp_dir")" "bbs-full"
         ;;
 esac
 
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║${NC}  打包成功！"
-echo -e "${GREEN}║${NC}  输出文件: $(ls -t bbs-*.tar.gz 2>/dev/null | head -1)"
-echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"
+echo -e "${GREEN}║${NC}  输出文件: $(ls -t dist/bbs-*.tar.gz 2>/dev/null | head -1)"
+echo -e "${GREEN}║${NC}  （输出目录: dist/）"
