@@ -69,6 +69,7 @@
       <div
         ref="editorDiv"
         contenteditable="true"
+        data-placeholder="请输入正文内容"
         class="editor-content w-full border border-t-0 border-gray-200 rounded-b-lg p-4 text-sm text-gray-800 leading-normal outline-none transition-colors min-h-[500px] focus:border-gray-300"
         @blur="syncContent"
         @paste="handlePaste"
@@ -295,6 +296,10 @@ export default {
       if (!this.$refs.editorDiv || this.syncingContent) return
       this.syncingContent = true
       this.markdownContent = this.htmlToMd(this.$refs.editorDiv.innerHTML)
+      // 清除内容为空的 <br>，使 :empty 伪类能匹配，显示 placeholder
+      if (!this.$refs.editorDiv.textContent.trim()) {
+        this.$refs.editorDiv.innerHTML = ''
+      }
       this.$nextTick(() => { this.syncingContent = false })
     },
     insertHtml(html) {
@@ -540,6 +545,12 @@ textarea:focus {
 
 <!-- 非 scoped：编辑区内动态插入的 <a> 不受 scoped 影响，需要全局样式 -->
 <style>
+.editor-content[data-placeholder]:empty:before {
+  content: attr(data-placeholder);
+  color: #c0c4cc;
+  pointer-events: none;
+}
+
 .editor-content a {
   color: #2563eb !important;
   text-decoration: underline !important;
