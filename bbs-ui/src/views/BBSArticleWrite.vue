@@ -32,7 +32,7 @@
         >
           <span class="material-symbols-outlined text-[18px]">image</span>
         </button>
-        <input ref="imgInput" type="file" accept="image/*" hidden @change="handleImgUpload">
+        <input ref="imgInput" type="file" accept="image/jpeg,image/png,image/gif,image/bmp,image/webp" hidden @change="handleImgUpload">
       </div>
 
       <!-- 链接弹窗（点击周围不会关闭，避免误触丢失编辑） -->
