@@ -331,7 +331,7 @@ export default {
       detailContent: '',
       detailComments: [],
       detailFileList: [],
-      avatarBase: process.env.VUE_APP_BBS_API || ''
+      defaultAvatar: require('../assets/img/img.jpeg'),
     }
   },
   computed: {
@@ -365,9 +365,9 @@ export default {
   },
   methods: {
     getAvatarUrl(portrait) {
-      if (!portrait) return require('../assets/img/img.jpeg')
-      const path = portrait.startsWith('/') ? portrait : `/${portrait}`
-      return `${this.avatarBase}${path}`
+      if (!portrait) return this.defaultAvatar
+      // portrait 已含 /bbs-server/files/...，直接使用
+      return portrait.startsWith('/') ? portrait : `/${portrait}`
     },
     switchTab(tab) {
       this.activeTab = tab

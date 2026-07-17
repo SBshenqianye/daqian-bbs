@@ -50,7 +50,7 @@
         <div v-if="comments.length > 0" class="space-y-4">
           <div v-for="(item, index) in comments" :key="item.commentId || index" class="bg-surface-container-low rounded-lg p-4 border border-outline-variant/50">
             <div class="flex items-center gap-3 mb-2">
-              <img class="w-9 h-9 rounded-full bg-surface-variant object-cover" :src="getAvatarUrl(item.portrait)" alt="">
+              <img class="w-9 h-9 rounded-full bg-surface-variant object-cover" :src="item.portrait || defaultAvatar" alt="">
               <div>
                 <span class="font-headline-sm text-headline-sm text-on-surface">{{ item.nickname || '未知用户' }}</span>
                 <span class="text-body-md text-on-surface-variant ml-2">{{ item.commentTime }}</span>
@@ -60,7 +60,7 @@
             <div v-if="item.reply && item.reply.length" class="ml-12 mt-3 pl-4 border-l-2 border-outline-variant/30 space-y-3">
               <div v-for="(reply, rIdx) in item.reply" :key="reply.replyId || rIdx" class="bg-surface-container rounded-lg p-3">
                 <div class="flex items-center gap-2 mb-1.5">
-                  <img class="w-7 h-7 rounded-full bg-surface-variant object-cover" :src="getAvatarUrl(reply.portrait)" alt="">
+                  <img class="w-7 h-7 rounded-full bg-surface-variant object-cover" :src="reply.portrait || defaultAvatar" alt="">
                   <span class="font-headline-sm text-headline-sm text-on-surface text-[13px]">{{ reply.nickname || '未知用户' }}</span>
                   <span class="text-body-md text-on-surface-variant text-[12px]">{{ reply.replyTime }}</span>
                 </div>
@@ -107,7 +107,7 @@ export default {
       },
       comments: [],
       fileList: [],
-      avatarBase: process.env.VUE_APP_BBS_API || ''
+      defaultAvatar: require('../assets/img/img.jpeg'),
     }
   },
   computed: {
@@ -127,11 +127,6 @@ export default {
   methods: {
     goBack() {
       this.$router.go(-1)
-    },
-    getAvatarUrl(portrait) {
-      if (!portrait) return require('../assets/img/img.jpeg')
-      const path = portrait.startsWith('/') ? portrait : `/${portrait}`
-      return `${this.avatarBase}${path}`
     },
     normalizeUrls(content) {
       if (!content) return content
@@ -186,7 +181,17 @@ export default {
     },
     getCommentByArticleId(articleId) {
       this.postRequest(`/common/comment/getCommentReply/${articleId}`).then(res => {
-        this.comments = (res && Array.isArray(res)) ? res : []
+        const raw = (res && Array.isArray(res)) ? res : []
+        console.log('[ArticleDetailsPage] comments raw sample:', raw[0] && raw[0].portrait) // debug: 看 portrait 原始值
+        this.comments = raw.map(c => ({
+          ...c,
+          // portrait 已含 /bbs-server/files/...，直接使用，不拼任何前缀
+          portrait: c.portrait || '',
+          reply: (c.reply || []).map(r => ({
+            ...r,
+            portrait: r.portrait || '',
+          }))
+        }))
       }).catch(err => { console.warn('[ArticleDetailsPage] getCommentByArticleId', err); this.comments = [] })
     }
   }
