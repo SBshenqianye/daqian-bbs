@@ -170,6 +170,27 @@ CREATE TABLE `bbs_dict` (
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- Table: bbs_system_config
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_system_config`;
+CREATE TABLE `bbs_system_config` (
+  `id`           int(11) NOT NULL AUTO_INCREMENT COMMENT '唯一标识',
+  `config_key`   varchar(100) NOT NULL COMMENT '配置键',
+  `config_value` longtext COMMENT '配置值（支持任意长度文本/JSON）',
+  `config_label` varchar(255) DEFAULT NULL COMMENT '配置名称/说明',
+  `config_group` varchar(100) DEFAULT 'default' COMMENT '配置分组（如 contact/points/system）',
+  `config_type`  varchar(20) DEFAULT 'text' COMMENT '输入类型（text/textarea/json）',
+  `sort_order`   int(11) DEFAULT 0 COMMENT '排序序号',
+  `remark`       varchar(500) DEFAULT NULL COMMENT '备注说明',
+  `create_by`    varchar(50) DEFAULT NULL COMMENT '创建人',
+  `create_time`  varchar(20) DEFAULT NULL COMMENT '创建时间',
+  `update_by`    varchar(50) DEFAULT NULL COMMENT '修改人',
+  `update_time`  varchar(20) DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_config_key` (`config_key`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表';
+
+-- ----------------------------
 -- Table: bbs_fans
 -- ----------------------------
 DROP TABLE IF EXISTS `bbs_fans`;
@@ -345,6 +366,13 @@ INSERT INTO `bbs_dict` (`id`, `dict_type`, `dict_value`, `dict_label`, `dict_sor
 (2, 'reply', '1', '回帖积分', 0, '系统', '2026-06-26 00:00:00', '回帖一次所得积分'),
 (3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）'),
 (4, 'featured', '10', '精华帖积分', 2, '系统', '2026-07-13 00:00:00', '被设为精华帖额外获得的积分');
+
+-- ----------------------------
+-- 系统配置（使用反馈联系方式）
+-- ----------------------------
+INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
+SELECT 'feedback_contact', '{\"name\":\"\",\"email\":\"\"}', '使用反馈联系方式', 'contact', 'json', 0, '配置使用反馈弹窗中的联系人信息，格式：{"name":"联系人姓名","email":"联系邮箱"}', '系统', '2026-07-15 00:00:00'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'feedback_contact');
 
 -- ----------------------------
 -- 敏感词

@@ -69,6 +69,7 @@
           发布
         </router-link>
 
+
         <!-- User Profile Section (logged in) -->
         <div
           v-if="isLogin && user"
@@ -142,6 +143,59 @@
         </router-link>
       </div>
     </div>
+
+    <!-- Feedback FAB (bottom-right floating button) -->
+    <button
+      class="fixed bottom-6 right-6 z-[100] w-14 h-14 bg-brand-blue text-white rounded-full shadow-lg hover:shadow-xl hover:opacity-90 transition-all active:scale-95 flex items-center justify-center"
+      :class="{ 'animate-bounce-once': !feedbackContact }"
+      @click="showFeedback = true"
+      title="使用反馈"
+    >
+      <span class="material-symbols-outlined text-[28px]">feedback</span>
+    </button>
+
+    <!-- Feedback Dialog -->
+    <div v-if="showFeedback" class="fixed inset-0 z-[100] flex items-center justify-center p-4" @click.self="showFeedback = false">
+      <div class="fixed inset-0 bg-black/30"></div>
+      <div class="relative bg-container w-full max-w-sm rounded-xl shadow-2xl overflow-hidden">
+        <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+          <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">feedback</span>
+            使用反馈
+          </h3>
+          <button class="text-outline hover:text-error transition-colors" @click="showFeedback = false">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="p-5">
+          <!-- Loading -->
+          <div v-if="feedbackLoading" class="flex items-center justify-center py-8">
+            <span class="inline-block w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
+          </div>
+          <!-- Loaded -->
+          <div v-else-if="feedbackContact" class="space-y-3">
+            <div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg">
+              <span class="material-symbols-outlined text-primary text-[22px]">person</span>
+              <span class="font-body-md text-on-surface">{{ feedbackContact.name || '未设置' }}</span>
+            </div>
+            <div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg">
+              <span class="material-symbols-outlined text-primary text-[22px]">mail</span>
+              <a v-if="feedbackContact.email" :href="'mailto:' + feedbackContact.email" class="font-body-md text-primary hover:underline break-all">{{ feedbackContact.email }}</a>
+              <span v-else class="font-body-md text-on-surface-variant">未设置</span>
+            </div>
+          </div>
+          <!-- Fallback -->
+          <div v-else class="text-center py-6 text-on-surface-variant">
+            <span class="material-symbols-outlined text-[40px] opacity-30">info</span>
+            <p class="text-body-md mt-2">暂无联系信息</p>
+            <p class="text-body-sm text-outline mt-1">请联系系统管理员配置</p>
+          </div>
+        </div>
+        <div class="px-5 py-4 bg-surface-container-lowest border-t border-outline-variant flex justify-end">
+          <button class="px-6 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md" @click="showFeedback = false">我知道了</button>
+        </div>
+      </div>
+    </div>
   </header>
 </template>
 
@@ -158,6 +212,9 @@ export default {
       userMenuOpen: false,
       isLogin: false,
       user: null,
+      showFeedback: false,
+      feedbackLoading: false,
+      feedbackContact: null,
     }
   },
   computed: {
@@ -189,6 +246,11 @@ export default {
     })
     // Listen for avatar update
     this.$bus && this.$bus.$on('portraitUpdated', this.checkLoginState)
+  },
+  watch: {
+    showFeedback(val) {
+      if (val) this.fetchFeedbackContact()
+    }
   },
   beforeDestroy() {
     window.removeEventListener('scroll', this.handleScroll)
@@ -238,6 +300,25 @@ export default {
     },
     isActive(path) {
       return this.$route.path === path
+    },
+    fetchFeedbackContact() {
+      this.feedbackLoading = true
+      this.feedbackContact = null
+      this.postRequest('/common/systemConfig/listByGroup', { configGroup: 'contact' }).then(resp => {
+        this.feedbackLoading = false
+        if (resp && resp.obj && Array.isArray(resp.obj)) {
+          const contactItem = resp.obj.find(item => item.configKey === 'feedback_contact')
+          if (contactItem && contactItem.configValue) {
+            try {
+              this.feedbackContact = JSON.parse(contactItem.configValue)
+            } catch (e) {
+              this.feedbackContact = { name: contactItem.configValue, email: '' }
+            }
+          }
+        }
+      }).catch(() => {
+        this.feedbackLoading = false
+      })
     },
   },
 }

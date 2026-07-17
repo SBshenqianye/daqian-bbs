@@ -49,3 +49,30 @@ DEALLOCATE PREPARE idx_stmt;
 INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `remark`)
 SELECT 'featured', '10', '精华帖积分', 2, '被设为精华帖额外获得的积分'
 WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'featured');
+
+-- 2026-07-15: 新增系统配置表（bbs_system_config），通过 information_schema 判断，幂等安全
+SELECT COUNT(*) INTO @tbl_sc_exists FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_system_config';
+SET @sql_sc = IF(@tbl_sc_exists = 0, 'CREATE TABLE `bbs_system_config` (
+  `id`           int(11) NOT NULL AUTO_INCREMENT COMMENT ''唯一标识'',
+  `config_key`   varchar(100) NOT NULL COMMENT ''配置键'',
+  `config_value` longtext COMMENT ''配置值（支持任意长度文本/JSON）'',
+  `config_label` varchar(255) DEFAULT NULL COMMENT ''配置名称/说明'',
+  `config_group` varchar(100) DEFAULT ''default'' COMMENT ''配置分组（如 contact/points/system）'',
+  `config_type`  varchar(20) DEFAULT ''text'' COMMENT ''输入类型（text/textarea/json）'',
+  `sort_order`   int(11) DEFAULT 0 COMMENT ''排序序号'',
+  `remark`       varchar(500) DEFAULT NULL COMMENT ''备注说明'',
+  `create_by`    varchar(50) DEFAULT NULL COMMENT ''创建人'',
+  `create_time`  varchar(20) DEFAULT NULL COMMENT ''创建时间'',
+  `update_by`    varchar(50) DEFAULT NULL COMMENT ''修改人'',
+  `update_time`  varchar(20) DEFAULT NULL COMMENT ''修改时间'',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_config_key` (`config_key`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT=''系统配置表''', 'SELECT 1');
+PREPARE stmt_sc FROM @sql_sc;
+EXECUTE stmt_sc;
+DEALLOCATE PREPARE stmt_sc;
+
+-- 2026-07-15: 使用反馈联系方式初始配置
+INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
+SELECT 'feedback_contact', '{\"name\":\"\",\"email\":\"\"}', '使用反馈联系方式', 'contact', 'json', 0, '配置使用反馈弹窗中的联系人信息，格式：{"name":"联系人姓名","email":"联系邮箱"}', '系统', '2026-07-15 00:00:00'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'feedback_contact');

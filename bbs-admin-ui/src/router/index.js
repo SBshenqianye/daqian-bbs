@@ -78,6 +78,11 @@ export default new Router({
                     meta: { title: '敏感词管理' }
                 },
                 {
+                    path: '/systemConfig',
+                    component: () => import('../pages/SystemConfigPage.vue'),
+                    meta: { title: '系统配置' }
+                },
+                {
                     path: '/404',
                     component: () => import('../pages/404.vue'),
                     meta: { title: '404' }

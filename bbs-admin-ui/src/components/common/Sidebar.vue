@@ -113,6 +113,7 @@ export default {
         { icon: 'emoji_events', label: '积分排名', path: '/points' },
         { icon: 'business', label: '单位管理', path: '/unitManage' },
         { icon: 'block', label: '敏感词管理', path: '/sensitiveWord' },
+        { icon: 'settings_suggest', label: '系统配置', path: '/systemConfig' },
         // { icon: 'view_carousel', label: '轮播图管理', path: '/slideshow' },
         // { icon: 'bar_chart', label: '文章统计', path: '/statistic' },
         // { icon: 'edit_note', label: '写文章', path: '/write' },
