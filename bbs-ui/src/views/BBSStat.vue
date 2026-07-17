@@ -17,7 +17,7 @@
         <div class="flex-grow flex flex-col justify-between min-w-0">
           <div>
             <h2 class="font-headline-sm text-headline-sm text-on-surface mb-2 truncate">{{ article.title }}</h2>
-            <p class="font-body-md text-body-md text-on-surface-variant mb-6 line-clamp-2">{{ article.summary }}</p>
+            <p class="font-body-md text-body-md text-on-surface-variant mb-6 line-clamp-2" style="white-space: pre-line">{{ article.summary }}</p>
           </div>
           <!-- Metadata Bar -->
           <div class="flex items-center flex-wrap gap-4 font-label-md text-label-md text-on-surface-variant">

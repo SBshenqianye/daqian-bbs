@@ -48,7 +48,7 @@
                   </span>
                 </div>
                 <h3 class="font-headline-sm text-headline-sm text-on-surface mb-2 hover:text-primary-container transition-colors">{{ article.articleTitle }}</h3>
-                <p class="text-body-md text-secondary mb-4 line-clamp-2">{{ article.articleSummary }}</p>
+                <p class="text-body-md text-secondary mb-4 line-clamp-2" style="white-space: pre-line">{{ article.articleSummary }}</p>
                 <div class="flex items-center justify-between text-label-md text-outline">
                   <div class="flex items-center gap-2">
                     <div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">

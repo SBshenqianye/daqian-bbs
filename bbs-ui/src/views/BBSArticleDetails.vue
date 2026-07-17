@@ -35,14 +35,7 @@
         <hr class="border-border mb-8">
 
         <!-- Article Content -->
-        <section class="markdown-body" v-if="mdContent">
-          <mavon-editor
-            ref="previewMd"
-            v-model="mdContent"
-            v-bind="previewEditor"
-            class="me-preview-editor"
-          />
-        </section>
+        <section class="markdown-body" v-if="renderedHtml" v-html="renderedHtml"></section>
         <section class="markdown-body font-body-lg text-body-lg text-on-surface" v-else>
           <p class="text-on-surface-variant">暂无内容</p>
         </section>
@@ -182,30 +175,21 @@
 
 <script>
 import BBSCommentItem from '@/components/BBSCommentItem.vue'
-import { mavonEditor } from 'mavon-editor'
-import 'mavon-editor/dist/css/index.css'
-import 'mavon-editor/dist/markdown/github-markdown.min.css'
 import { getArticleById, getUserinfoById, getArticleFileByArticleId } from '@/api/article'
 import { getCommentReply } from '@/api/comment'
 import { normalizeFileUrl, normalizeUrls } from '@/utils/utils'
+import { mdToHtml } from '@/utils/markdown'
 import { Message } from 'element-ui'
+
+// 保持 github-markdown 样式用于 v-html 渲染的 markdown-body
+import 'mavon-editor/dist/markdown/github-markdown.min.css'
 
 // 评论区域空白填充阈值：评论数低于此值时显示空状态，避免头重脚轻
 const MIN_COMMENT_FILLER = 3
 
-// mavon-editor 预览模式的外部资源链接（仅引用编译时常量，提升到模块级避免重复创建）
-const previewExternalLink = {
-  hljs_js: () => process.env.BASE_URL + 'lib/highlight/highlight.min.js',
-  hljs_css: (css) => process.env.BASE_URL + `lib/highlight/styles/${css}.min.css`,
-  hljs_lang: (lang) => process.env.BASE_URL + `lib/highlight/languages/${lang}.min.js`,
-  markdown_css: false,
-  katex_js: () => process.env.BASE_URL + 'lib/katex/katex.min.js',
-  katex_css: () => process.env.BASE_URL + 'lib/katex/katex.min.css',
-}
-
 export default {
   name: 'BBSArticleDetails',
-  components: { BBSCommentItem, mavonEditor },
+  components: { BBSCommentItem },
   provide() {
     return {
       replyState: this.replyState,
@@ -241,19 +225,8 @@ export default {
       // Comment & reply
       comments: [],
       commentsLoaded: false,
-      // Markdown content for preview
-      mdContent: '',
-      // Markdown editor preview config
-      previewEditor: {
-        toolbarsFlag: false,
-        subfield: false,
-        defaultOpen: 'preview',
-        editable: false,
-        scrollStyle: true,
-        boxShadow: false,
-        ishljs: true,
-        externalLink: previewExternalLink,
-      },
+      // Raw markdown content (converted to HTML via computed)
+      rawContent: '',
       showStickyBar: false,
       commentInputObserver: null,
       commentPlaceholder: '',
@@ -284,6 +257,9 @@ export default {
       if (!this.article.tagId || !this.labelList.length) return ''
       const label = this.labelList.find(l => String(l.labelId) === String(this.article.tagId))
       return label ? (label.description || '') : ''
+    },
+    renderedHtml() {
+      return mdToHtml(this.rawContent)
     },
   },
   mounted() {
@@ -348,7 +324,7 @@ export default {
           const rawContent = resp.articleContentHtml || resp.articleContent || ''
           const normalized = normalizeUrls(rawContent)
           this.article.contentHtml = normalized
-          this.mdContent = normalized
+          this.rawContent = normalized
           this.article.articleImage = normalizeFileUrl(resp.articleImage || '')
           // Fetch author info
           if (resp.userId) {
@@ -556,25 +532,14 @@ export default {
 }
 </script>
 
+<style>
+/* 覆盖 github-markdown CSS 默认的 p 16px margin */
+.markdown-body p {
+  margin: 0;
+  line-height: 1.5;
+}
+</style>
 <style scoped>
-.me-preview-editor {
-  min-height: 100px !important;
-  z-index: 1 !important;
-}
-.me-preview-editor .v-note-op {
-  display: none !important;
-}
-.me-preview-editor .v-note-panel {
-  border: none !important;
-  box-shadow: none !important;
-}
-.me-preview-editor .v-note-wrapper {
-  border: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  z-index: 1;
-}
-
 /* Sticky reply bar slide transition */
 .reply-bar-slide-enter-active,
 .reply-bar-slide-leave-active {
