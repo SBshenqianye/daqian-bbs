@@ -144,8 +144,9 @@
       </div>
     </div>
 
-    <!-- Feedback FAB (bottom-right floating button) -->
+    <!-- Feedback FAB (仅论坛和登录页显示) -->
     <button
+      v-if="$route.path === '/forum' || $route.path === '/login'"
       class="fixed bottom-6 right-6 z-[100] w-14 h-14 bg-brand-blue text-white rounded-full shadow-lg hover:shadow-xl hover:opacity-90 transition-all active:scale-95 flex items-center justify-center"
       :class="{ 'animate-bounce-once': !feedbackContact }"
       @click="showFeedback = true"
