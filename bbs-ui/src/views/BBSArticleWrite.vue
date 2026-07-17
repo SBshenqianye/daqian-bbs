@@ -20,8 +20,7 @@
         <button
           class="inline-flex items-center gap-1 px-2.5 py-1 text-sm text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
           title="插入链接"
-          @mousedown="saveSelection"
-          @click="showLinkDialog = true"
+          @click="openLinkDialog"
         >
           <span class="material-symbols-outlined text-[18px]">link</span>
         </button>
@@ -36,10 +35,10 @@
         <input ref="imgInput" type="file" accept="image/*" hidden @change="handleImgUpload">
       </div>
 
-      <!-- 链接弹窗 -->
-      <div v-if="showLinkDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20" @click.self="showLinkDialog = false">
+      <!-- 链接弹窗（点击周围不会关闭，避免误触丢失编辑） -->
+      <div v-if="showLinkDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
         <div class="bg-white rounded-lg shadow-xl p-5 w-80">
-          <h4 class="text-sm font-semibold text-gray-700 mb-4">插入链接</h4>
+          <h4 class="text-sm font-semibold text-gray-700 mb-4">{{ editingLink ? '编辑链接' : '插入链接' }}</h4>
           <div class="space-y-3">
             <input
               v-model="linkText"
@@ -56,8 +55,12 @@
             >
           </div>
           <div class="flex justify-end gap-2 mt-4">
-            <button class="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700" @click="showLinkDialog = false">取消</button>
-            <button class="px-4 py-1.5 text-sm bg-primary text-white rounded hover:opacity-90" @click="confirmLink">确定</button>
+            <button class="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700" @click="closeLinkDialog">取消</button>
+            <button
+              class="px-4 py-1.5 text-sm rounded transition-all"
+              :class="editingLink ? 'bg-orange-500 text-white hover:opacity-90' : 'bg-primary text-white hover:opacity-90'"
+              @click="confirmLink"
+            >{{ editingLink ? '保存修改' : '确定' }}</button>
           </div>
         </div>
       </div>
@@ -69,6 +72,7 @@
         class="editor-content w-full border border-t-0 border-gray-200 rounded-b-lg p-4 text-sm text-gray-800 leading-normal outline-none transition-colors min-h-[500px] focus:border-gray-300"
         @blur="syncContent"
         @paste="handlePaste"
+        @click="handleEditorClick"
       ></div>
 
       <!-- Tags Section -->
@@ -154,6 +158,7 @@ export default {
       // Attachments: { fileId, fileName } after server upload
       attachments: [],
       showLinkDialog: false,
+      editingLink: false,  // true=编辑已有链接, false=新建链接
       linkText: '',
       linkUrl: '',
       uploading: false,
@@ -314,6 +319,26 @@ export default {
       document.execCommand('insertText', false, text)
       this.syncContent()
     },
+    handleEditorClick(e) {
+      // 点击编辑区内的超链接直接打开编辑弹窗
+      let node = e.target
+      while (node && node !== this.$refs.editorDiv) {
+        if (node.nodeName === 'A') {
+          e.preventDefault()
+          // 将光标移到链接内
+          const sel = window.getSelection()
+          if (sel) {
+            const range = document.createRange()
+            range.selectNodeContents(node)
+            sel.removeAllRanges()
+            sel.addRange(range)
+          }
+          this.openLinkDialog()
+          return
+        }
+        node = node.parentNode
+      }
+    },
     triggerImgUpload() {
       this.$refs.imgInput.click()
     },
@@ -331,6 +356,44 @@ export default {
       }).catch(err => { console.warn('[BBSArticleWrite] imgUpload', err) })
       this.$refs.imgInput.value = ''
     },
+    // --- 链接插入/编辑 ---
+    openLinkDialog() {
+      // 打开弹窗前保存光标位置、检测是否在已有链接上
+      this.saveSelection()
+
+      // 检测光标是否在已有 <a> 上
+      const sel = window.getSelection()
+      if (sel && sel.rangeCount) {
+        let node = sel.getRangeAt(0).startContainer
+        while (node && node !== this.$refs.editorDiv) {
+          if (node.nodeName === 'A') {
+            this.linkText = node.textContent || ''
+            this.linkUrl = node.getAttribute('href') || ''
+            this.editingLink = true
+            this.showLinkDialog = true
+            this.$nextTick(() => {
+              this.$refs.linkUrlInput && this.$refs.linkUrlInput.focus()
+            })
+            return
+          }
+          node = node.parentNode
+        }
+      }
+      // 新建链接
+      this.linkText = ''
+      this.linkUrl = ''
+      this.editingLink = false
+      this.showLinkDialog = true
+      this.$nextTick(() => {
+        this.$refs.linkUrlInput && this.$refs.linkUrlInput.focus()
+      })
+    },
+    closeLinkDialog() {
+      this.showLinkDialog = false
+      this.linkText = ''
+      this.linkUrl = ''
+      this.editingLink = false
+    },
     confirmLink() {
       const text = this.linkText.trim() || '链接'
       const url = this.linkUrl.trim()
@@ -338,11 +401,33 @@ export default {
         Message({ message: '请输入链接地址', type: 'warning', showClose: true, offset: 54 })
         return
       }
+
+      // 恢复光标（弹窗打开前保存的位置）
       this.restoreSelection()
-      this.insertHtml(`<a href="${url}">${text}</a>`)
-      this.showLinkDialog = false
-      this.linkText = ''
-      this.linkUrl = ''
+
+      try {
+        const sel = window.getSelection()
+
+        if (this.editingLink && sel && sel.rangeCount) {
+          // 编辑已有链接：从光标向上找 <a> 并更新
+          let node = sel.getRangeAt(0).startContainer
+          while (node && node.nodeName !== 'A' && node !== this.$refs.editorDiv) {
+            node = node.parentNode
+          }
+          if (node && node.nodeName === 'A') {
+            node.setAttribute('href', url)
+            node.textContent = text
+            this.syncContent()
+          }
+        } else if (sel && sel.rangeCount) {
+          // 新建链接：插入到光标处
+          this.insertHtml(`<a href="${url}">${text}</a>`)
+        }
+      } catch (e) {
+        console.warn('[BBSArticleWrite] confirmLink error', e)
+      } finally {
+        this.closeLinkDialog()
+      }
     },
     saveSelection() {
       const sel = window.getSelection()
@@ -450,5 +535,19 @@ export default {
 textarea:focus {
   outline: none !important;
   box-shadow: none !important;
+}
+</style>
+
+<!-- 非 scoped：编辑区内动态插入的 <a> 不受 scoped 影响，需要全局样式 -->
+<style>
+.editor-content a {
+  color: #2563eb !important;
+  text-decoration: underline !important;
+  font-weight: 500;
+  cursor: pointer;
+}
+.editor-content a:hover {
+  color: #1d4ed8 !important;
+  background-color: rgba(37, 99, 235, 0.06);
 }
 </style>
