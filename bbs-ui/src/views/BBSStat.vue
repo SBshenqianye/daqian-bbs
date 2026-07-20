@@ -130,7 +130,6 @@ export default {
       }).then(() => {
         this.postRequest('/article/deleteArticleByArticleId', { articleId: article.articleId }).then(resp => {
           if (resp) {
-            Message({ type: 'success', message: '删除成功', offset: 54 })
             this.fetchMyArticles()
           }
         })
