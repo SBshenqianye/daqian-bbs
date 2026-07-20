@@ -59,6 +59,13 @@ public class UserController {
         User user = userService.getUserByUsername(username);
         user.setPassword(null);
 
+        // 查询带组织信息的完整用户
+        User resolvedUser = userService.queryUserinfoById(user.getId());
+        if (resolvedUser != null) {
+            user.setOrgName(resolvedUser.getOrgName());
+            user.setDeptName(resolvedUser.getDeptName());
+        }
+
         // 手动构建返回Map，确保所有新字段被传递
         Map<String, Object> map = new HashMap<>();
         map.put("id", user.getId());
@@ -78,6 +85,8 @@ public class UserController {
         map.put("phone", user.getPhone());
         map.put("idCard", user.getIdCard());
         map.put("orgNo", user.getOrgNo());
+        map.put("orgName", user.getOrgName());
+        map.put("deptName", user.getDeptName());
         map.put("userType", user.getUserType());
         map.put("personnelId", user.getPersonnelId());
         map.put("isFirstLogin", user.getIsFirstLogin());

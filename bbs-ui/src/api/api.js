@@ -55,7 +55,15 @@ axios.interceptors.response.use(success=>{
         }
         if(success.data.message){
             const url = (success.config && success.config.url) || ''
-            const noSuccessTip = url.indexOf('listDictByType') !== -1 || url.indexOf('saOrgTree') !== -1 || url.indexOf('login') !== -1
+            const method = (success.config && success.config.method) || ''
+            // GET 请求都是查询操作，不弹出成功提示
+            // 同样排除 POST 的查询类接口
+            const noSuccessTip = method.toLowerCase() === 'get'
+                || url.indexOf('listDictByType') !== -1
+                || url.indexOf('saOrgTree') !== -1
+                || url.indexOf('listByGroup') !== -1
+                || url.indexOf('login') !== -1
+                || url.indexOf('pointsRank') !== -1
             if (!noSuccessTip) {
                 Message({
                     type: 'success',

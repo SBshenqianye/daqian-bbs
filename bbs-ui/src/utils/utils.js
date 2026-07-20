@@ -100,6 +100,49 @@ export function normalizeFileUrls(content) {
 }
 
 /**
+ * 友好时间展示
+ * @param {string|number} time 时间字符串（如 "2026-07-20 08:47:15"）或 13 位时间戳
+ * @returns {string}
+ *   - 刚刚（< 1 分钟）
+ *   - xx分钟前（< 1 小时）
+ *   - xx小时xx分钟前（当天内）
+ *   - xx天前（7 天内）
+ *   - xx月xx日（今年）
+ *   - xxxx年xx月xx日（往年）
+ */
+export function friendlyTime(time) {
+  if (!time && time !== 0) return ''
+  const date = new Date(typeof time === 'string' ? time.replace(/-/g, '/') : time)
+  if (isNaN(date.getTime())) return String(time)
+
+  const now = new Date()
+  const diffMs = now - date
+  const diffMinutes = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMinutes < 1) return '刚刚'
+  if (diffMinutes < 60) return `${diffMinutes}分钟前`
+
+  if (diffHours < 24) {
+    const remainMinutes = diffMinutes - diffHours * 60
+    if (remainMinutes === 0) return `${diffHours}小时前`
+    return `${diffHours}小时${remainMinutes}分钟前`
+  }
+
+  if (diffDays < 7) return `${diffDays}天前`
+
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+
+  if (date.getFullYear() === now.getFullYear()) {
+    return `${month}月${day}日`
+  }
+
+  return `${date.getFullYear()}年${month}月${day}日`
+}
+
+/**
  * 距当前时间点的时长
  * @prama time 13位时间戳
  * @return str x秒 / x分钟 / x小时

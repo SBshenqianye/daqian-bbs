@@ -7,7 +7,7 @@
         <textarea
           ref="titleInput"
           v-model="articleTitle"
-          class="w-full bg-transparent border-b border-transparent hover:border-gray-200 focus:border-primary focus:ring-0 text-4xl font-bold text-gray-800 placeholder-gray-300 p-0 pb-2 resize-none overflow-hidden transition-all duration-200"
+          class="title-textarea w-full bg-transparent border-b border-transparent hover:border-gray-200 focus:border-transparent focus:ring-0 text-4xl font-bold text-gray-800 placeholder-gray-300 p-0 pb-2 resize-none overflow-hidden transition-all duration-200"
           placeholder="请输入文章标题"
           rows="1"
           @input="autoResizeTitle"
@@ -15,21 +15,81 @@
         <span class="material-symbols-outlined absolute right-0 text-gray-300 pointer-events-none group-hover:text-gray-400">edit</span>
       </div>
 
-      <!-- Markdown Editor (using mavon-editor) -->
-      <div class="bg-white border border-gray-200 rounded-lg flex flex-col flex-grow shadow-sm overflow-hidden">
-        <mavon-editor
-          ref="mdEditor"
-          v-model="markdownContent"
-          :toolbars="toolbars"
-          :subfield="true"
-          :default-open="'edit'"
-          :placeholder="'从这里开始你的创作...'"
-          :box-shadow="false"
-          :ishljs="true"
-          :externalLink="localExternalLink"
-          style="min-height: 500px; position: relative; z-index: 1;"
-          @imgAdd="handleImgAdd"
-        />
+      <!-- 操作栏：链接/图片 -->
+      <div class="flex items-center gap-1 px-3 py-2 border border-gray-200 rounded-t-lg bg-gray-50/50">
+        <button
+          class="inline-flex items-center gap-1 px-2.5 py-1 text-sm text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          title="插入链接"
+          @click="openLinkDialog"
+        >
+          <span class="material-symbols-outlined text-[18px]">link</span>
+        </button>
+        <button
+          class="inline-flex items-center gap-1 px-2.5 py-1 text-sm text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          title="插入图片"
+          @mousedown="saveSelection"
+          @click="triggerImgUpload"
+        >
+          <span class="material-symbols-outlined text-[18px]">image</span>
+        </button>
+        <input ref="imgInput" type="file" accept="image/jpeg,image/png,image/gif,image/bmp,image/webp" hidden @change="handleImgUpload">
+      </div>
+
+      <!-- 链接弹窗（点击周围不会关闭，避免误触丢失编辑） -->
+      <div v-if="showLinkDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
+        <div class="bg-white rounded-lg shadow-xl p-5 w-80">
+          <h4 class="text-sm font-semibold text-gray-700 mb-4">{{ editingLink ? '编辑链接' : '插入链接' }}</h4>
+          <div class="space-y-3">
+            <input
+              v-model="linkText"
+              class="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none"
+              placeholder="链接文本"
+              @keyup.enter="$refs.linkUrlInput.focus()"
+            >
+            <input
+              ref="linkUrlInput"
+              v-model="linkUrl"
+              class="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none"
+              placeholder="链接地址"
+              @keyup.enter="confirmLink"
+            >
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+            <button class="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700" @click="closeLinkDialog">取消</button>
+            <button
+              class="px-4 py-1.5 text-sm rounded transition-all"
+              :class="editingLink ? 'bg-orange-500 text-white hover:opacity-90' : 'bg-primary text-white hover:opacity-90'"
+              @click="confirmLink"
+            >{{ editingLink ? '保存修改' : '确定' }}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 可视化编辑器 (contenteditable) -->
+      <div
+        ref="editorDiv"
+        contenteditable="true"
+        data-placeholder="请输入正文内容"
+        class="editor-content w-full border border-t-0 border-gray-200 rounded-b-lg p-4 text-sm text-gray-800 leading-normal outline-none transition-colors min-h-[500px] focus:border-gray-300"
+        @blur="syncContent"
+        @paste="handlePaste"
+        @click="handleEditorClick"
+      ></div>
+
+      <!-- Tags Section -->
+      <div class="mt-8">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-sm font-semibold text-gray-700 mr-1">标签：</span>
+          <button
+            v-for="label in labelList"
+            :key="label.labelId"
+            class="px-3 py-1 rounded-full border text-sm transition-colors"
+            :class="String(selectedLabelId) === String(label.labelId) ? 'border-primary bg-blue-50 text-primary' : 'border-gray-200 text-gray-500 hover:border-primary hover:text-primary'"
+            @click="selectedLabelId = label.labelId"
+          >
+            {{ label.labelName }}
+          </button>
+        </div>
       </div>
 
       <!-- Attachment Section -->
@@ -71,147 +131,41 @@
 
     <!-- Bottom Action Bar -->
     <div class="bottom-bar fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-4 px-10 flex justify-center space-x-4 z-40">
-      <button class="px-10 py-2.5 bg-primary text-white font-medium rounded-full hover:opacity-90 transition-all shadow-md active:scale-95" @click="showPublishModal = true">
-        发布文章
+      <button class="px-10 py-2.5 bg-primary text-white font-medium rounded-full hover:opacity-90 transition-all shadow-md active:scale-95" @click="handlePublish" :disabled="publishing">
+        {{ publishing ? '发布中...' : '发布' }}
       </button>
       <button class="px-10 py-2.5 font-medium rounded-full hover:bg-gray-200 transition-all active:scale-95 bg-red-500 text-white" @click="$router.back()">
-        取消发布
+        取消
       </button>
-    </div>
-
-    <!-- Publish Modal -->
-    <div v-if="showPublishModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showPublishModal = false">
-      <div class="modal-overlay absolute inset-0"></div>
-      <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl relative z-10 overflow-hidden">
-        <!-- Header -->
-        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-          <h3 class="text-lg font-semibold text-gray-800">发布文章</h3>
-          <button class="text-gray-400 hover:text-gray-600 p-1" @click="showPublishModal = false">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        <div class="p-6 space-y-6">
-          <div class="flex flex-col md:flex-row gap-6">
-            <!-- Left: Cover Upload -->
-            <div class="w-full md:w-1/3">
-              <label class="block text-sm font-medium text-gray-700 mb-2">文章封面</label>
-              <div
-                class="aspect-[4/3] w-full bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:border-primary hover:bg-blue-50/50 transition-all group"
-                @click="triggerCoverUpload"
-              >
-                <span v-if="!coverPreview" class="material-symbols-outlined text-3xl group-hover:text-primary transition-colors">add</span>
-                <span v-if="!coverPreview" class="text-xs mt-2">上传封面图</span>
-                <img v-if="coverPreview" :src="coverPreview" class="w-full h-full object-cover rounded-lg">
-              </div>
-              <input ref="coverInput" accept="image/*" class="hidden" type="file" @change="handleCoverChange">
-            </div>
-            <!-- Right: Summary -->
-            <div class="flex-grow">
-              <label class="block text-sm font-medium text-gray-700 mb-2">文章摘要 <span class="text-red-400">（必填）</span></label>
-              <div class="relative">
-                <textarea
-                  v-model="articleSummary"
-                  class="w-full border-gray-200 rounded-lg focus:ring-primary/20 focus:border-primary text-sm p-3 placeholder-gray-300 resize-none"
-                  maxlength="250"
-                  placeholder="请输入摘要，吸引更多读者..."
-                  rows="5"
-                ></textarea>
-                <span class="absolute bottom-2 right-2 text-xs text-gray-400">{{ articleSummary.length }}/250</span>
-              </div>
-            </div>
-          </div>
-          <!-- Tags -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-3">选择标签</label>
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="label in labelList"
-                :key="label.labelId"
-                class="px-4 py-1.5 rounded-full border text-sm transition-colors"
-                :class="String(selectedLabelId) === String(label.labelId) ? 'border-primary bg-blue-50 text-primary' : 'border-gray-200 text-gray-600 hover:border-primary hover:text-primary hover:bg-blue-50'"
-                @click="selectedLabelId = label.labelId"
-              >
-                {{ label.labelName }}
-              </button>
-            </div>
-            <p v-if="selectedLabelDescription" class="mt-1.5 text-xs text-gray-400 ml-0.5">
-              {{ selectedLabelDescription }}
-            </p>
-          </div>
-        </div>
-        <!-- Footer -->
-        <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
-          <button class="px-6 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors" @click="showPublishModal = false">取消</button>
-          <button class="px-8 py-2 text-white text-sm font-bold rounded-lg hover:opacity-90 transition-all shadow-sm bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed" :disabled="publishing" @click="handlePublish">{{ publishing ? '发布中...' : '确认发布' }}</button>
-        </div>
-      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { mavonEditor } from 'mavon-editor'
-import 'mavon-editor/dist/css/index.css'
-import 'mavon-editor/dist/markdown/github-markdown.min.css'
 import { Message, Loading } from 'element-ui'
 import { getArticleById, getArticleFileByArticleId } from '@/api/article'
-import { normalizeFileUrl, normalizeUrls } from '@/utils/utils'
+import { mdToHtml, htmlToMd } from '@/utils/markdown'
 
 export default {
   name: 'BBSArticleWrite',
-  components: { mavonEditor },
   data() {
     return {
-      // 离线环境：mavon-editor 外链钩子指向本地 /public/lib/ 资源
-      localExternalLink: {
-        hljs_js: () => process.env.BASE_URL + 'lib/highlight/highlight.min.js',
-        hljs_css: (css) => process.env.BASE_URL + `lib/highlight/styles/${css}.min.css`,
-        hljs_lang: (lang) => process.env.BASE_URL + `lib/highlight/languages/${lang}.min.js`,
-        markdown_css: false,  // 已通过 import 本地导入
-        katex_js: () => process.env.BASE_URL + 'lib/katex/katex.min.js',
-        katex_css: () => process.env.BASE_URL + 'lib/katex/katex.min.css',
-      },
       articleId: this.$route.query.articleId || null,
       articleTitle: '',
       markdownContent: '',
       articleSummary: '',
-      showPublishModal: false,
-      coverPreview: null,
-      coverFile: null,
       selectedLabelId: null,
       labelList: [],
       // Attachments: { fileId, fileName } after server upload
       attachments: [],
+      showLinkDialog: false,
+      editingLink: false,  // true=编辑已有链接, false=新建链接
+      linkText: '',
+      linkUrl: '',
       uploading: false,
       publishing: false,
-      toolbars: {
-        bold: true,
-        italic: true,
-        header: true,
-        underline: true,
-        strikethrough: true,
-        mark: true,
-        superscript: true,
-        subscript: true,
-        quote: true,
-        ol: true,
-        ul: true,
-        link: true,
-        imagelink: true,
-        code: true,
-        table: true,
-        fullscreen: true,
-        readmodel: true,
-        htmlcode: false,
-        help: true,
-        undo: true,
-        redo: true,
-        trash: true,
-        save: false,
-        navigation: true,
-        subfield: true,
-        preview: true,
-      },
+      syncingContent: false,
+      savedRange: null,
     }
   },
   computed: {
@@ -224,10 +178,24 @@ export default {
       return found ? (found.description || '') : ''
     },
   },
+  watch: {
+    markdownContent(val) {
+      // 外部修改（加载文章时）同步到编辑区
+      if (!this.syncingContent && this.$refs.editorDiv) {
+        const html = this.mdToHtml(val)
+        if (html !== this.$refs.editorDiv.innerHTML) {
+          this.$refs.editorDiv.innerHTML = html
+        }
+      }
+    },
+  },
   mounted() {
     this.loadLabels()
     if (this.articleId) {
       this.loadArticleForEdit(this.articleId)
+    } else {
+      // 新文章：初始化空内容
+      this.$nextTick(() => { if (this.$refs.editorDiv) this.$refs.editorDiv.innerHTML = '' })
     }
   },
   methods: {
@@ -255,12 +223,9 @@ export default {
       getArticleById(id).then(resp => {
         if (resp) {
           this.articleTitle = resp.articleTitle || ''
-          this.markdownContent = normalizeUrls(resp.articleContent || '')
+          this.markdownContent = resp.articleContent || ''
           this.articleSummary = resp.articleSummary || ''
           this.selectedLabelId = resp.articleLabelId
-          if (resp.articleImage) {
-            this.coverPreview = normalizeFileUrl(resp.articleImage)
-          }
           // Load attachment files
           this.loadArticleFiles(id)
         }
@@ -281,22 +246,6 @@ export default {
       }).catch(err => {
         console.warn('[BBSArticleWrite] loadArticleFiles', err)
         this.attachments = []
-      })
-    },
-    handleImgAdd(pos, file) {
-      const formData = new FormData()
-      formData.append('file', file)
-      this.postRequest('/common/upload', formData).then(res => {
-        if (res && res.url) {
-          this.$refs.mdEditor.$img2Url(pos, res.url)
-        } else if (res && typeof res === 'string') {
-          this.$refs.mdEditor.$img2Url(pos, res)
-        } else {
-          this.$refs.mdEditor.$img2Url(pos, '')
-        }
-      }).catch(err => {
-        console.warn('[BBSArticleWrite] handleImgAdd', err)
-        this.$refs.mdEditor.$img2Url(pos, '')
       })
     },
     triggerAttachment() {
@@ -339,20 +288,190 @@ export default {
     removeAttachment(index) {
       this.attachments.splice(index, 1)
     },
-    triggerCoverUpload() {
-      this.$refs.coverInput.click()
-    },
-    handleCoverChange(e) {
-      const file = e.target.files[0]
-      if (file) {
-        this.coverFile = file
-        const reader = new FileReader()
-        reader.onload = (ev) => { this.coverPreview = ev.target.result }
-        reader.readAsDataURL(file)
+    // --- Markdown ⇄ HTML 转换（共用函数在 utils/markdown.js） ---
+    mdToHtml(md) { return mdToHtml(md) },
+    htmlToMd(html) { return htmlToMd(html) },
+    syncContent() {
+      // 编辑区内容同步回 markdownContent
+      if (!this.$refs.editorDiv || this.syncingContent) return
+      this.syncingContent = true
+      this.markdownContent = this.htmlToMd(this.$refs.editorDiv.innerHTML)
+      // 清除内容为空的 <br>，使 :empty 伪类能匹配，显示 placeholder
+      if (!this.$refs.editorDiv.textContent.trim()) {
+        this.$refs.editorDiv.innerHTML = ''
       }
+      this.$nextTick(() => { this.syncingContent = false })
+    },
+    insertHtml(html) {
+      // 在光标处插入 HTML
+      const sel = window.getSelection()
+      if (!sel || !sel.rangeCount) return
+      const range = sel.getRangeAt(0)
+      range.deleteContents()
+      const frag = range.createContextualFragment(html)
+      range.insertNode(frag)
+      // 光标移到插入内容末尾
+      range.setStartAfter(frag)
+      range.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(range)
+      this.syncContent()
+    },
+    handlePaste(e) {
+      // 粘贴时阻止带格式粘贴，只保留纯文本
+      e.preventDefault()
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain')
+      document.execCommand('insertText', false, text)
+      this.syncContent()
+    },
+    handleEditorClick(e) {
+      // 点击编辑区内的超链接直接打开编辑弹窗
+      let node = e.target
+      while (node && node !== this.$refs.editorDiv) {
+        if (node.nodeName === 'A') {
+          e.preventDefault()
+          // 将光标移到链接内
+          const sel = window.getSelection()
+          if (sel) {
+            const range = document.createRange()
+            range.selectNodeContents(node)
+            sel.removeAllRanges()
+            sel.addRange(range)
+          }
+          this.openLinkDialog()
+          return
+        }
+        node = node.parentNode
+      }
+    },
+    triggerImgUpload() {
+      this.$refs.imgInput.click()
+    },
+    handleImgUpload(e) {
+      const file = e.target.files[0]
+      if (!file) return
+      const formData = new FormData()
+      formData.append('file', file)
+      this.postRequest('/common/upload', formData).then(res => {
+        const url = typeof res === 'string' ? res : (res && res.url ? res.url : '')
+        if (url) {
+          this.restoreSelection()
+          this.insertHtml(`<img src="${url}" alt="图片" style="max-width:100%;display:block;margin:8px 0">`)
+        }
+      }).catch(err => { console.warn('[BBSArticleWrite] imgUpload', err) })
+      this.$refs.imgInput.value = ''
+    },
+    // --- 链接插入/编辑 ---
+    openLinkDialog() {
+      // 打开弹窗前保存光标位置、检测是否在已有链接上
+      this.saveSelection()
+
+      // 检测光标是否在已有 <a> 上
+      const sel = window.getSelection()
+      if (sel && sel.rangeCount) {
+        let node = sel.getRangeAt(0).startContainer
+        while (node && node !== this.$refs.editorDiv) {
+          if (node.nodeName === 'A') {
+            this.linkText = node.textContent || ''
+            this.linkUrl = node.getAttribute('href') || ''
+            this.editingLink = true
+            this.showLinkDialog = true
+            this.$nextTick(() => {
+              this.$refs.linkUrlInput && this.$refs.linkUrlInput.focus()
+            })
+            return
+          }
+          node = node.parentNode
+        }
+      }
+      // 新建链接
+      this.linkText = ''
+      this.linkUrl = ''
+      this.editingLink = false
+      this.showLinkDialog = true
+      this.$nextTick(() => {
+        this.$refs.linkUrlInput && this.$refs.linkUrlInput.focus()
+      })
+    },
+    closeLinkDialog() {
+      this.showLinkDialog = false
+      this.linkText = ''
+      this.linkUrl = ''
+      this.editingLink = false
+    },
+    confirmLink() {
+      const text = this.linkText.trim() || '链接'
+      const url = this.linkUrl.trim()
+      if (!url) {
+        Message({ message: '请输入链接地址', type: 'warning', showClose: true, offset: 54 })
+        return
+      }
+
+      // 恢复光标（弹窗打开前保存的位置）
+      this.restoreSelection()
+
+      try {
+        const sel = window.getSelection()
+
+        if (this.editingLink && sel && sel.rangeCount) {
+          // 编辑已有链接：从光标向上找 <a> 并更新
+          let node = sel.getRangeAt(0).startContainer
+          while (node && node.nodeName !== 'A' && node !== this.$refs.editorDiv) {
+            node = node.parentNode
+          }
+          if (node && node.nodeName === 'A') {
+            node.setAttribute('href', url)
+            node.textContent = text
+            this.syncContent()
+          }
+        } else if (sel && sel.rangeCount) {
+          // 新建链接：插入到光标处
+          this.insertHtml(`<a href="${url}">${text}</a>`)
+        }
+      } catch (e) {
+        console.warn('[BBSArticleWrite] confirmLink error', e)
+      } finally {
+        this.closeLinkDialog()
+      }
+    },
+    saveSelection() {
+      const sel = window.getSelection()
+      if (sel && sel.rangeCount) {
+        this.savedRange = sel.getRangeAt(0)
+      }
+    },
+    restoreSelection() {
+      if (this.savedRange) {
+        try {
+          const sel = window.getSelection()
+          sel.removeAllRanges()
+          sel.addRange(this.savedRange)
+        } catch (e) {
+          // range 可能已失效，忽略
+        }
+        this.savedRange = null
+      }
+    },
+    // --- 自动提取封面 & 摘要 ---
+    extractFirstImage(markdown) {
+      const regex = /!\[.*?\]\((.*?)\)/
+      const match = markdown.match(regex)
+      return match ? match[1] : ''
+    },
+    extractSummary(markdown) {
+      const plainText = markdown
+        .replace(/!\[.*?\]\(.*?\)/g, '')      // 图片
+        .replace(/\[([^\]]*)\]\(.*?\)/g, '$1') // 链接
+        .replace(/[#*`>~\-\+]/g, '')           // 标记符号
+        .replace(/\n{2,}/g, '\n')              // 多余空行
+        .trim()
+      const lines = plainText.split('\n').filter(l => l.trim())
+      return lines.slice(0, 2).join('\n').substring(0, 250)
     },
     handlePublish() {
       if (this.publishing) return
+      // 先把编辑区内容同步过来
+      this.syncContent()
       if (!this.articleTitle.trim()) {
         Message({ message: '标题不能为空', type: 'warning', showClose: true, offset: 54 })
         return
@@ -365,10 +484,6 @@ export default {
         Message({ message: '内容不能为空', type: 'warning', showClose: true, offset: 54 })
         return
       }
-      if (!this.articleSummary.trim()) {
-        Message({ message: '摘要不能为空', type: 'warning', showClose: true, offset: 54 })
-        return
-      }
 
       const userStr = window.sessionStorage.getItem('user')
       if (!userStr) {
@@ -377,17 +492,21 @@ export default {
       }
       const user = JSON.parse(userStr)
 
+      // 自动提取封面和摘要
+      const articleImage = this.extractFirstImage(this.markdownContent)
+      const articleSummary = this.extractSummary(this.markdownContent)
+
       const article = {
         articleTitle: this.articleTitle,
         articleContent: this.markdownContent,
         articleContentHtml: this.markdownContent,
-        articleSummary: this.articleSummary,
+        articleSummary,
+        articleImage,
         articleTypeId: 0,
         articleCommunityId: 0,
         articleLabelId: isNaN(parseInt(this.selectedLabelId)) ? 0 : parseInt(this.selectedLabelId),
         userId: user.id,
         articleAuthor: user.nickname,
-        articleImage: '',
         files: this.attachments.map(a => a.fileId),
       }
 
@@ -395,42 +514,51 @@ export default {
         article.articleId = this.articleId
       }
 
-      this.showPublishModal = false
       this.publishing = true
       const loading = Loading.service({ lock: true, text: '发布中，请稍后...' })
 
-      const doPublish = (imageUrl) => {
-        if (imageUrl) article.articleImage = imageUrl
-        const endpoint = this.articleId ? '/article/editArticle' : '/article/publish'
-        this.postRequest(endpoint, article).then(resp => {
-          loading.close()
-          this.publishing = false
-          if (resp) {
-            // 成功提示由 axios 响应拦截器（api.js）统一处理
-            this.$router.push('/stat')
-          }
-        }).catch(err => {
-          console.warn('[BBSArticleWrite] publish', err)
-          loading.close()
-          this.publishing = false
-        })
-      }
-
-      // Upload cover if exists
-      if (this.coverFile) {
-        const formData = new FormData()
-        formData.append('userId', user.id)
-        formData.append('image', this.coverFile)
-        this.postRequest('/article/coverImg', formData).then(resp => {
-          doPublish(normalizeFileUrl(resp && typeof resp === 'string' ? resp : (resp && resp.url || '')))
-        }).catch(err => {
-          console.warn('[BBSArticleWrite] coverUpload', err)
-          doPublish('')
-        })
-      } else {
-        doPublish(this.coverPreview && typeof this.coverPreview === 'string' && !this.coverPreview.startsWith('data:') ? normalizeFileUrl(this.coverPreview) : '')
-      }
+      const endpoint = this.articleId ? '/article/editArticle' : '/article/publish'
+      this.postRequest(endpoint, article).then(resp => {
+        loading.close()
+        this.publishing = false
+        if (resp) {
+          this.$router.push('/stat')
+        }
+      }).catch(err => {
+        console.warn('[BBSArticleWrite] publish', err)
+        loading.close()
+        this.publishing = false
+      })
     },
   },
 }
 </script>
+
+<style scoped>
+/* 去掉所有输入框蓝色焦点框 */
+.title-textarea:focus,
+textarea:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+</style>
+
+<!-- 非 scoped：编辑区内动态插入的 <a> 不受 scoped 影响，需要全局样式 -->
+<style>
+.editor-content[data-placeholder]:empty:before {
+  content: attr(data-placeholder);
+  color: #c0c4cc;
+  pointer-events: none;
+}
+
+.editor-content a {
+  color: #2563eb !important;
+  text-decoration: underline !important;
+  font-weight: 500;
+  cursor: pointer;
+}
+.editor-content a:hover {
+  color: #1d4ed8 !important;
+  background-color: rgba(37, 99, 235, 0.06);
+}
+</style>

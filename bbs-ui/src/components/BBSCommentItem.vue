@@ -1,11 +1,8 @@
 <template>
   <div class="flex gap-2.5">
-    <div class="w-7 h-7 rounded-full overflow-hidden border border-border flex-shrink-0 mt-0.5">
-      <img :src="comment.avatar || require('../assets/portrait.png')" class="w-full h-full object-cover">
-    </div>
     <div class="flex-grow min-w-0">
       <div class="flex items-center justify-between mb-0.5">
-        <span class="font-bold text-on-surface font-body-sm">{{ comment.author }}</span>
+        <bbs-user-badge :avatar="comment.avatar" :nickname="comment.author" :org-name="comment.orgName" size="xs" layout="inline" />
         <div class="flex gap-2 text-on-surface-variant font-label-sm">
           <button class="hover:text-primary transition-primary flex items-center gap-0.5" @click="handleToggleReply">
             <span class="material-symbols-outlined text-[14px]">reply</span> 回复
@@ -72,8 +69,11 @@
 </template>
 
 <script>
+import BBSUserBadge from '@/components/BBSUserBadge'
+
 export default {
   name: 'BBSCommentItem',
+  components: { BBSUserBadge },
   inject: ['replyState'],
   props: {
     comment: {

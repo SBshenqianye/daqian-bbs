@@ -18,9 +18,21 @@
         comment_id, comment_content, comment_article_id, comment_user_id, comment_time, enable, is_delete
     </sql>
 
-    <!-- 批量查询各文章的评论数（含子回复） -->
+    <!-- 批量查询各文章的评论数（含子回复）
+         注意：PostgreSQL 对未加引号的标识符强制小写，而 MySQL 保留原大小写。
+         因此外层 SELECT 的列名在 PostgreSQL 中需要用双引号包裹以保留大小写，
+         确保 Java 端 m.get("articleId") / m.get("commentCount") 能正确读取。 -->
     <select id="countByArticleIds" resultType="java.util.Map">
-        SELECT articleId, COUNT(*) AS commentCount FROM (
+        SELECT
+        <choose>
+            <when test="_databaseId == 'postgresql'">
+                articleId AS "articleId", COUNT(*) AS "commentCount"
+            </when>
+            <otherwise>
+                articleId, COUNT(*) AS commentCount
+            </otherwise>
+        </choose>
+        FROM (
             SELECT c.comment_article_id AS articleId
             FROM bbs_comment c
             WHERE c.comment_article_id IN

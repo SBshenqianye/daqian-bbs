@@ -17,15 +17,12 @@
         <div class="flex-grow flex flex-col justify-between min-w-0">
           <div>
             <h2 class="font-headline-sm text-headline-sm text-on-surface mb-2 truncate">{{ article.title }}</h2>
-            <p class="font-body-md text-body-md text-on-surface-variant mb-6 line-clamp-2">{{ article.summary }}</p>
+            <p class="font-body-md text-body-md text-on-surface-variant mb-6 line-clamp-2" style="white-space: pre-line">{{ article.summary }}</p>
           </div>
           <!-- Metadata Bar -->
           <div class="flex items-center flex-wrap gap-4 font-label-md text-label-md text-on-surface-variant">
             <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center overflow-hidden">
-                <img alt="Avatar" class="w-full h-full object-cover" :src="article.authorAvatar || require('@/assets/portrait.png')">
-              </div>
-              <span>{{ article.author }}</span>
+              <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" size="sm" layout="inline" />
             </div>
             <span class="text-outline">•</span>
             <span>{{ article.time }}</span>
@@ -70,10 +67,12 @@
 <script>
 import { Message } from 'element-ui'
 import { getUser } from '@/utils/auth'
-import { normalizeFileUrl } from '@/utils/utils'
+import { normalizeFileUrl, friendlyTime } from '@/utils/utils'
+import BBSUserBadge from '@/components/BBSUserBadge'
 
 export default {
   name: 'BBSStat',
+  components: { BBSUserBadge },
   data() {
     return {
       loading: false,
@@ -103,9 +102,10 @@ export default {
           summary: a.articleSummary || '',
           author: a.articleAuthor || '',
           authorAvatar: userAvatar,
-          time: a.createTime || a.articleCreateTime || '',
+          authorOrgName: user.orgName || '',
+          time: friendlyTime(a.createTime || a.articleCreateTime || ''),
           views: a.articleViewNum || 0,
-          comments: a.commentNum || a.articleCommentNum || 0,
+          comments: a.commentNum ?? a.comment_num ?? a.articleCommentNum ?? 0,
           likes: a.articleGoodNum || 0,
           cover: normalizeFileUrl(a.articleImage || null),
         }))
@@ -130,7 +130,6 @@ export default {
       }).then(() => {
         this.postRequest('/article/deleteArticleByArticleId', { articleId: article.articleId }).then(resp => {
           if (resp) {
-            Message({ type: 'success', message: '删除成功', offset: 54 })
             this.fetchMyArticles()
           }
         })

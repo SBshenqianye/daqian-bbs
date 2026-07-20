@@ -3,10 +3,12 @@ package com.walker.controller;
 import com.walker.pojo.ArticleFile;
 import com.walker.service.ArticleFileService;
 import com.walker.utils.FilePathNormalizer;
-import com.walker.vo.CommentReplyVO;
+import com.walker.utils.FileValidationUtil;
 import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +33,9 @@ import java.util.List;
 @Api(tags = "ArticleFileController")
 @RestController
 public class ArticleFileController {
+
+    private static final Logger log = LoggerFactory.getLogger(ArticleFileController.class);
+
     @Autowired
     private ArticleFileService articleFileService;
 
@@ -50,13 +55,20 @@ public class ArticleFileController {
     @ApiOperation(value = "保存文章中的附件并返回附件id")
     @PostMapping("/articleFile/upload")
     public ResultBean articleFile(@RequestParam("userId") Integer id, @RequestParam("file") MultipartFile file) throws Exception {
-        // 附件完整名称，如：xxx.txt
+        // 1. 文件校验（扩展名白名单 + 大小）
+        String err = FileValidationUtil.validateAttachment(file);
+        if (err != null) {
+            log.warn("附件上传校验不通过: {}", err);
+            return ResultBean.error(err);
+        }
+
+        // 2. 附件完整名称，如：xxx.txt
         String fileName = file.getOriginalFilename();
         // 防止路径遍历：过滤掉文件名中的目录分隔符
         if (fileName != null) {
             fileName = new File(fileName).getName();
         }
-        // 附件完整类型，如："image/jpeg" 或 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        // 3. 附件完整类型，如："image/jpeg" 或 "application/pdf"
         String contentType = file.getContentType();
         Date date = new Date();
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
@@ -88,7 +100,7 @@ public class ArticleFileController {
                 return  ResultBean.success(articleFile);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("附件保存失败", e);
         }
         return ResultBean.error("上传失败");
     }
