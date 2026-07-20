@@ -14,6 +14,10 @@ import {
     Tooltip,
 } from 'element-ui';
 
+// 引入公共组件
+import BBSUserBadge from '@/components/BBSUserBadge'
+Vue.component('bbs-user-badge', BBSUserBadge)
+
 //引入 封装好的请求
 import {postRequest} from "@/api/api";
 import {putRequest} from "@/api/api";

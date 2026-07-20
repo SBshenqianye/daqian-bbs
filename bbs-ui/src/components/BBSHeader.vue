@@ -100,6 +100,7 @@
                 >
                 <div class="overflow-hidden">
                   <h3 class="font-headline-sm text-headline-sm break-words text-on-surface">{{ username }}</h3>
+                  <p v-if="orgName" class="font-label-md text-label-md text-on-surface-variant truncate">{{ orgName }}</p>
                   <p class="font-label-md text-label-md text-on-surface-variant truncate">人员编号: {{ personnelId }}</p>
                 </div>
               </div>
@@ -230,6 +231,9 @@ export default {
     },
     personnelId() {
       return this.user && this.user.personnelId ? this.user.personnelId : '-'
+    },
+    orgName() {
+      return this.user && this.user.orgName ? this.user.orgName : ''
     },
   },
   mounted() {

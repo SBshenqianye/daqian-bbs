@@ -155,6 +155,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
+            // 解析单位名称
+            resolveOrgInfo(Collections.singletonList(user));
+
             // 生成token
             String token = jwtTokenUtil.generateToken(userDetails);
             HashMap<String, Object> tokenMap = new HashMap<>();
@@ -163,6 +166,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             JSONObject jsonObject = (JSONObject) JSON.toJSON(user);
             jsonObject.put("password", null);
             jsonObject.put("isFirstLogin", user.getIsFirstLogin());
+            // 显式设置瞬态组织字段（确保序列化到前端）
+            jsonObject.put("orgName", user.getOrgName());
+            jsonObject.put("deptName", user.getDeptName());
             tokenMap.put("user", jsonObject);
 
             return ResultBean.success("登录成功！",tokenMap);
@@ -251,6 +257,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public User getUserInfoByUserId(Integer userId) {
         return userMapper.selectById(userId);
+    }
+
+    @Override
+    public List<User> listUsersWithOrgInfo(Collection<Integer> userIds) {
+        if (CollectionUtils.isEmpty(userIds)) return new ArrayList<>();
+        List<User> users = this.listByIds(userIds);
+        resolveOrgInfo(users);
+        return users;
     }
 
     @Override

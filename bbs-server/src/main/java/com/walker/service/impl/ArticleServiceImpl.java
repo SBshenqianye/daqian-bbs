@@ -246,26 +246,34 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 );
             }
         }
-        // 批量填充用户头像
-        enrichWithPortraits(articles);
+        // 批量填充用户头像和组织信息
+        enrichWithUserInfo(articles);
         // 批量填充评论数量
         enrichWithCommentCounts(articles);
         return articles;
     }
 
-    private void enrichWithPortraits(List<Article> articles) {
+    private void enrichWithUserInfo(List<Article> articles) {
         Set<Integer> userIds = articles.stream()
                 .map(Article::getUserId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         if (userIds.isEmpty()) return;
-        List<User> users = userService.listByIds(userIds);
-        Map<Integer, String> portraitMap = users.stream()
-                .filter(u -> u.getPortrait() != null)
-                .collect(Collectors.toMap(User::getId, User::getPortrait, (a, b) -> a));
+
+        // 批量查询用户并解析组织信息
+        List<User> users = userService.listUsersWithOrgInfo(userIds);
+        Map<Integer, User> userMap = users.stream()
+                .filter(u -> u.getPortrait() != null || u.getOrgName() != null)
+                .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+
         articles.forEach(a -> {
-            if (a.getUserId() != null && portraitMap.containsKey(a.getUserId())) {
-                a.setPortrait(portraitMap.get(a.getUserId()));
+            if (a.getUserId() != null && userMap.containsKey(a.getUserId())) {
+                User u = userMap.get(a.getUserId());
+                if (u.getPortrait() != null) {
+                    a.setPortrait(u.getPortrait());
+                }
+                a.setAuthorOrgName(u.getOrgName());
+                a.setAuthorDeptName(u.getDeptName());
             }
         });
     }
@@ -353,6 +361,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .eq(Article::getUserId, userId)
                 .orderByDesc(Article::getCreateTime);
         List<Article> articles = articleMapper.selectList(lambdaQueryWrapper);
+        enrichWithUserInfo(articles);
         enrichWithCommentCounts(articles);
         return articles;
     }
@@ -625,7 +634,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         List<Article> list = articleMapper.selectAdminArticleList(params);
         if (list == null) list = new ArrayList<>();
 
-        enrichWithPortraits(list);
+        enrichWithUserInfo(list);
         enrichWithCommentCounts(list);
 
         // 脱敏处理
@@ -671,7 +680,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (list == null) list = new ArrayList<>();
 
         // 补充用户头像
-        enrichWithPortraits(list);
+        enrichWithUserInfo(list);
         // 补充评论数
         enrichWithCommentCounts(list);
 
@@ -700,7 +709,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         List<Article> list = articleMapper.selectFeaturedByPage(params);
         if (list == null) list = new ArrayList<>();
 
-        enrichWithPortraits(list);
+        enrichWithUserInfo(list);
         enrichWithCommentCounts(list);
 
         Map<String, Object> result = new HashMap<>();
@@ -717,7 +726,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (limit <= 0) limit = 3;
         List<Article> list = articleMapper.selectFeaturedTop(limit);
         if (list == null) list = new ArrayList<>();
-        enrichWithPortraits(list);
+        enrichWithUserInfo(list);
         enrichWithCommentCounts(list);
         return ResultBean.success("查询成功", list);
     }

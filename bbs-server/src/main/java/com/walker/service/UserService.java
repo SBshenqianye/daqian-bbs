@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -198,6 +199,13 @@ public interface UserService extends IService<User> {
      * @param param 用户更新参数（昵称、手机号、单位、角色、状态等）
      * @return 操作结果
      */
+    /**
+     * 批量查询用户并解析单位名称和部门名称
+     * @param userIds 用户ID集合
+     * @return 已填充 orgName/deptName 的用户列表
+     */
+    List<User> listUsersWithOrgInfo(Collection<Integer> userIds);
+
     /**
      * 管理员新增用户
      * @param param 新增用户参数（用户名、昵称、手机号、单位、角色、状态）

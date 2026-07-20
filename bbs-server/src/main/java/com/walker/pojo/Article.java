@@ -112,4 +112,12 @@ public class Article implements Serializable {
     @ApiModelProperty("评论数量")
     @TableField(exist = false)
     private Integer commentNum;
+
+    @ApiModelProperty("作者单位名称（关联查询，非数据库字段）")
+    @TableField(exist = false)
+    private String authorOrgName;
+
+    @ApiModelProperty("作者部门名称（关联查询，非数据库字段）")
+    @TableField(exist = false)
+    private String authorDeptName;
 }
