@@ -221,7 +221,6 @@ export default {
       }).then(resp => {
         this.submitting = false
         if (resp) {
-          Message({ type: 'success', message: '密码修改成功', offset: 54 })
           // 更新本地用户信息的 isFirstLogin 状态（token 仍然有效，无需重新登录）
           const user = getUser()
           if (user) {
