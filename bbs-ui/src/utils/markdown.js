@@ -66,7 +66,10 @@ export function htmlToMd(html) {
   // 3. <br> → 换行（段内换行，多行段落用）
   md = md.replace(/<br\s*\/?>/gi, '\n')
 
-  // 4. 逐个处理 <p> 元素
+  // 4. 统一块级标签：contenteditable 浏览器常用 <div> 包裹，统一转 <p> 处理
+  md = md.replace(/<div>/gi, '<p>').replace(/<\/div>/gi, '</p>')
+
+  // 5. 逐个处理 <p> 元素
   const lines = []
   const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi
   let match
@@ -85,10 +88,18 @@ export function htmlToMd(html) {
     }
   }
 
-  // 5. 组装
+  // 5b. 兜底：如果没匹配到任何 <p>（纯文本无包裹元素的情况），直接取纯文本
+  if (lines.length === 0) {
+    const text = html.replace(/<[^>]*>/g, '').trim()
+    if (text) {
+      lines.push(text)
+    }
+  }
+
+  // 6. 组装
   md = lines.join('\n')
 
-  // 6. 清理
+  // 7. 清理
   md = md.replace(/&nbsp;/g, ' ')
   md = md.replace(/<[^>]*>/g, '')     // 移除漏网的 HTML 标签
   md = md.replace(/^\n+|\n+$/g, '')   // 去首尾空行
