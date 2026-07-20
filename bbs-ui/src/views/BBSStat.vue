@@ -22,10 +22,7 @@
           <!-- Metadata Bar -->
           <div class="flex items-center flex-wrap gap-4 font-label-md text-label-md text-on-surface-variant">
             <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center overflow-hidden">
-                <img alt="Avatar" class="w-full h-full object-cover" :src="article.authorAvatar || require('@/assets/portrait.png')">
-              </div>
-              <span>{{ article.author }}</span>
+              <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" size="sm" layout="inline" />
             </div>
             <span class="text-outline">•</span>
             <span>{{ article.time }}</span>
@@ -71,9 +68,11 @@
 import { Message } from 'element-ui'
 import { getUser } from '@/utils/auth'
 import { normalizeFileUrl } from '@/utils/utils'
+import BBSUserBadge from '@/components/BBSUserBadge'
 
 export default {
   name: 'BBSStat',
+  components: { BBSUserBadge },
   data() {
     return {
       loading: false,
@@ -103,6 +102,7 @@ export default {
           summary: a.articleSummary || '',
           author: a.articleAuthor || '',
           authorAvatar: userAvatar,
+          authorOrgName: user.orgName || '',
           time: a.createTime || a.articleCreateTime || '',
           views: a.articleViewNum || 0,
           comments: a.commentNum ?? a.comment_num ?? a.articleCommentNum ?? 0,

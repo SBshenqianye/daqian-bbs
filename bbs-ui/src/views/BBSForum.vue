@@ -132,10 +132,7 @@
                 <p class="text-body-md text-secondary mb-4 line-clamp-2" style="white-space: pre-line">{{ article.summary }}</p>
                 <div class="flex items-center justify-between text-label-md text-outline">
                   <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">
-                      <img :src="article.authorAvatar || require('@/assets/portrait.png')" alt="Avatar" class="w-full h-full object-cover">
-                    </div>
-                    <span class="truncate max-w-[150px]">{{ article.author }}</span>
+                    <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" size="sm" layout="inline" />
                     <span class="mx-1">•</span>
                     <span>{{ formatTime(article.time) }}</span>
                   </div>
@@ -209,9 +206,11 @@
 <script>
 import { normalizeFileUrl } from '@/utils/utils'
 import { dateStr } from '@/utils/time'
+import BBSUserBadge from '@/components/BBSUserBadge'
 
 export default {
   name: 'BBSForum',
+  components: { BBSUserBadge },
   data() {
     return {
       loading: false,
@@ -272,6 +271,7 @@ export default {
           author: a.articleAuthor || '',
           userId: a.userId,
           authorAvatar: normalizeFileUrl(a.portrait || ''),
+          authorOrgName: a.authorOrgName || '',
           isFeatured: a.isFeatured === 1 || a.isFeatured === '1',
           labelId: a.articleLabelId || null,
           time: a.createTime || a.articleCreateTime || '',

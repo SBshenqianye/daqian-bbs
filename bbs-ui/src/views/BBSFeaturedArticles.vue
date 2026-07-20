@@ -51,10 +51,7 @@
                 <p class="text-body-md text-secondary mb-4 line-clamp-2" style="white-space: pre-line">{{ article.articleSummary }}</p>
                 <div class="flex items-center justify-between text-label-md text-outline">
                   <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">
-                      <img :src="article.authorAvatar || require('@/assets/portrait.png')" alt="Avatar" class="w-full h-full object-cover">
-                    </div>
-                    <span class="truncate max-w-[150px]">{{ article.author }}</span>
+                    <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" size="sm" layout="inline" />
                     <span class="mx-1">•</span>
                     <span>{{ formatTime(article.time) }}</span>
                   </div>
@@ -114,9 +111,11 @@
 <script>
 import { normalizeFileUrl } from '@/utils/utils'
 import { dateStr } from '@/utils/time'
+import BBSUserBadge from '@/components/BBSUserBadge'
 
 export default {
   name: 'BBSFeaturedArticles',
+  components: { BBSUserBadge },
   data() {
     return {
       loading: false,
@@ -164,6 +163,7 @@ export default {
             author: a.articleAuthor || '',
             userId: a.userId,
             authorAvatar: normalizeFileUrl(a.portrait || ''),
+            authorOrgName: a.authorOrgName || '',
             time: a.createTime || '',
             views: a.articleViewNum || 0,
             comments: a.commentNum ?? a.comment_num ?? 0,

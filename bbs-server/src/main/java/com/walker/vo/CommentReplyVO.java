@@ -33,6 +33,12 @@ public class CommentReplyVO {
     @ApiModelProperty("是否显示输入框")
     private boolean inputShow;
 
+    @ApiModelProperty("评论人的单位名称")
+    private String orgName;
+
+    @ApiModelProperty("评论人的部门名称")
+    private String deptName;
+
     @ApiModelProperty("回复")
     private List<ReplyVO> reply;
 

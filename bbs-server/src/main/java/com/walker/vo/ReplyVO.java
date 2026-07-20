@@ -34,6 +34,12 @@ public class ReplyVO {
     @ApiModelProperty("回复的内容")
     private String replyContent;
 
+    @ApiModelProperty("回复人的单位名称")
+    private String orgName;
+
+    @ApiModelProperty("回复人的部门名称")
+    private String deptName;
+
     @ApiModelProperty("是否显示输入框")
     private boolean inputShow;
 }
