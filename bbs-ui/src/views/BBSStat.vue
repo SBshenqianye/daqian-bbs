@@ -67,7 +67,7 @@
 <script>
 import { Message } from 'element-ui'
 import { getUser } from '@/utils/auth'
-import { normalizeFileUrl } from '@/utils/utils'
+import { normalizeFileUrl, friendlyTime } from '@/utils/utils'
 import BBSUserBadge from '@/components/BBSUserBadge'
 
 export default {
@@ -103,7 +103,7 @@ export default {
           author: a.articleAuthor || '',
           authorAvatar: userAvatar,
           authorOrgName: user.orgName || '',
-          time: a.createTime || a.articleCreateTime || '',
+          time: friendlyTime(a.createTime || a.articleCreateTime || ''),
           views: a.articleViewNum || 0,
           comments: a.commentNum ?? a.comment_num ?? a.articleCommentNum ?? 0,
           likes: a.articleGoodNum || 0,
