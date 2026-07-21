@@ -1,6 +1,9 @@
 202605-RPA小助手归档模板/
 归档/
 
+# tmp
+tmp/
+
 # Dependencies
 node_modules/
 
