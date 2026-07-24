@@ -1,6 +1,7 @@
 package com.walker.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.SaOrgMapper;
 import com.walker.mapper.UserMapper;
@@ -51,6 +52,7 @@ public class SaOrgServiceImpl extends ServiceImpl<SaOrgMapper, SaOrg> implements
             vo.setLabel(org.getOrgName());
             vo.setPOrgNo(org.getPOrgNo());
             vo.setIsRankingSelected(org.getIsRankingSelected());
+            vo.setIsDisplaySelected(org.getIsDisplaySelected());
             orgMap.put(org.getOrgNo(), vo);
         }
 
@@ -145,5 +147,17 @@ public class SaOrgServiceImpl extends ServiceImpl<SaOrgMapper, SaOrg> implements
             return ResultBean.success("操作成功！");
         }
         return ResultBean.error("入库失败！");
+    }
+
+    @Override
+    public void batchUpdateDisplay(Map<String, Boolean> displayMap) {
+        for (Map.Entry<String, Boolean> entry : displayMap.entrySet()) {
+            SaOrg org = new SaOrg();
+            org.setIsDisplaySelected(entry.getValue() ? 1 : 0);
+            saOrgMapper.update(org,
+                    new LambdaUpdateWrapper<SaOrg>()
+                            .eq(SaOrg::getOrgNo, entry.getKey())
+            );
+        }
     }
 }

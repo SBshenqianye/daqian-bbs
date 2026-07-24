@@ -92,4 +92,14 @@ public class SaOrgController {
         return ResultBean.success("更新成功");
     }
 
+    @ApiOperation("批量更新显示选中状态")
+    @PostMapping("/common/saOrg/batchUpdateDisplay")
+    public ResultBean batchUpdateDisplay(@RequestBody Map<String, Boolean> displayMap) {
+        if (displayMap == null || displayMap.isEmpty()) {
+            return ResultBean.error("参数不能为空");
+        }
+        saOrgService.batchUpdateDisplay(displayMap);
+        return ResultBean.success("更新成功");
+    }
+
 }

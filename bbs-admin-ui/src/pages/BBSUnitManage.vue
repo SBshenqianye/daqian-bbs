@@ -6,60 +6,167 @@
         <div>
           <h1 class="font-headline-lg text-headline-lg text-on-surface flex items-center gap-2">
             <span class="material-symbols-outlined text-primary">account_tree</span>
-            单位管理
+            组织管理
           </h1>
-          <p class="text-body-md text-secondary mt-1">管理组织单位结构</p>
+          <p class="text-body-md text-secondary mt-1">管理组织单位结构、配置排名参与和用户前台显示</p>
         </div>
-        <div v-if="orgTree.length" class="flex items-center gap-2">
+        <div class="flex items-center gap-2">
+          <!-- Search -->
+          <div class="relative">
+            <input
+              v-model="filterText"
+              class="w-52 h-9 pl-8 pr-3 bg-surface border border-outline-variant rounded-lg text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-all"
+              placeholder="搜索单位名称..."
+            />
+            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline pointer-events-none" style="font-size:16px">search</span>
+            <button
+              v-if="filterText"
+              class="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded text-outline hover:text-on-surface hover:bg-surface-variant transition-all"
+              @click="filterText = ''"
+            >
+              <span class="material-symbols-outlined" style="font-size:12px">close</span>
+            </button>
+          </div>
+          <div v-if="orgTree.length" class="flex items-center gap-1">
+            <button
+              class="inline-flex items-center gap-1 px-2.5 py-1.5 font-medium text-primary bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors"
+              style="font-size: 12px;"
+              @click="$refs.orgTree.expandAll()"
+            >
+              <span class="material-symbols-outlined" style="font-size: 14px;">unfold_more</span>
+              展开全部
+            </button>
+            <button
+              class="inline-flex items-center gap-1 px-2.5 py-1.5 font-medium text-primary bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors"
+              style="font-size: 12px;"
+              @click="$refs.orgTree.collapseAll()"
+            >
+              <span class="material-symbols-outlined" style="font-size: 14px;">unfold_less</span>
+              收起全部
+            </button>
+          </div>
           <button
-            class="inline-flex items-center gap-1 px-3 py-1.5 font-medium text-primary bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors"
-            style="font-size: 12px;"
-            @click="$refs.orgTree.expandAll()"
+            class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="!hasChanges || saving"
+            @click="handleSave"
           >
-            <span class="material-symbols-outlined" style="font-size: 14px;">unfold_more</span>
-            全部展开
-          </button>
-          <button
-            class="inline-flex items-center gap-1 px-3 py-1.5 font-medium text-primary bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors"
-            style="font-size: 12px;"
-            @click="$refs.orgTree.collapseAll()"
-          >
-            <span class="material-symbols-outlined" style="font-size: 14px;">unfold_less</span>
-            全部折叠
+            <span class="material-symbols-outlined text-[18px]">save</span>
+            {{ saving ? '保存中...' : '保存配置' }}
           </button>
         </div>
       </div>
 
+      <!-- Selected summary -->
+      <div v-if="orgTree.length && (rankingSelectedCount > 0 || displaySelectedCount > 0)" class="mb-4 flex items-center gap-4 text-body-md">
+        <div v-if="rankingSelectedCount > 0" class="px-3 py-1.5 bg-primary/5 border border-primary/15 rounded-lg flex items-center gap-1.5 text-primary">
+          <span class="material-symbols-outlined" style="font-size:16px">emoji_events</span>
+          排名：<strong>{{ rankingSelectedCount }}</strong> 个单位
+        </div>
+        <div v-if="displaySelectedCount > 0" class="px-3 py-1.5 bg-primary/5 border border-primary/15 rounded-lg flex items-center gap-1.5 text-primary">
+          <span class="material-symbols-outlined" style="font-size:16px">visibility</span>
+          显示：<strong>{{ displaySelectedCount }}</strong> 个节点
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div v-if="loading" class="flex items-center justify-center py-16">
+        <span class="inline-block w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
+      </div>
+
       <!-- Tree Card -->
-      <div class="bg-container border border-border rounded-xl p-card-padding">
-        <OrgTree
-          ref="orgTree"
-          :nodes="orgTree"
-          :loading="loading"
-          @node-click="onNodeClick"
-        >
-          <template #node-actions="{ node }">
-            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0 ml-2">
-              <button
-                class="inline-flex items-center gap-0.5 px-2 py-1 font-medium text-primary hover:bg-primary/10 rounded-md transition-colors"
-                style="font-size: 11px;"
-                @click.stop="openAdd(node)"
-              >
-                <span class="material-symbols-outlined" style="font-size: 12px;">add</span>
-                新增
-              </button>
-              <button
-                v-if="node.id && node.id.length !== 5"
-                class="inline-flex items-center gap-0.5 px-2 py-1 font-medium text-error hover:bg-error/10 rounded-md transition-colors"
-                style="font-size: 11px;"
-                @click.stop="handleRemove(node)"
-              >
-                <span class="material-symbols-outlined" style="font-size: 12px;">delete</span>
-                删除
-              </button>
-            </div>
-          </template>
-        </OrgTree>
+      <div v-else class="bg-container border border-border rounded-xl p-card-padding">
+        <template v-if="!orgTree.length">
+          <div class="text-center py-12 text-on-surface-variant flex flex-col items-center gap-2">
+            <span class="material-symbols-outlined opacity-20" style="font-size:48px">account_tree</span>
+            <p class="text-body-md">暂无组织数据</p>
+          </div>
+        </template>
+        <template v-else>
+          <OrgTree
+            ref="orgTree"
+            :nodes="orgTree"
+            :filter-text="filterText"
+            :loading="false"
+            @node-click="onNodeClick"
+          >
+            <template #node-actions="{ node }">
+              <div class="flex items-center gap-0.5" style="flex-shrink:0">
+                <!-- 级联排名操作按钮（仅父节点） -->
+                <template v-if="node._hasChildren">
+                  <button
+                    class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-primary hover:bg-primary/10 transition-all"
+                    title="勾选所有子级单位参与排名"
+                    @click.stop="cascadeRanking(node, true)"
+                  >
+                    <span class="material-symbols-outlined" style="font-size:14px">done_all</span>
+                  </button>
+                  <button
+                    class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-error hover:bg-error/10 transition-all"
+                    title="取消所有子级单位排名"
+                    @click.stop="cascadeRanking(node, false)"
+                  >
+                    <span class="material-symbols-outlined" style="font-size:14px">indeterminate_check_box</span>
+                  </button>
+                </template>
+
+                <!-- 排名开关 -->
+                <div class="flex items-center gap-1 ml-1">
+                  <span class="text-[11px] text-on-surface-variant whitespace-nowrap">排名</span>
+                  <button
+                    class="relative w-9 h-4.5 rounded-full transition-all duration-200 flex-shrink-0"
+                    style="height:18px;width:36px"
+                    :class="getRankingVal(node.id) ? 'bg-primary' : 'bg-gray-300'"
+                    :title="getRankingVal(node.id) ? '取消参与排名' : '参与排名'"
+                    @click.stop="toggleRanking(node)"
+                  >
+                    <span
+                      class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200"
+                      :style="getRankingVal(node.id) ? 'left:19px' : 'left:2px'"
+                    ></span>
+                  </button>
+                </div>
+
+                <!-- 显示开关 -->
+                <div class="flex items-center gap-1 ml-1">
+                  <span class="text-[11px] text-on-surface-variant whitespace-nowrap">显示</span>
+                  <button
+                    class="relative w-9 h-4.5 rounded-full transition-all duration-200 flex-shrink-0"
+                    style="height:18px;width:36px"
+                    :class="getDisplayVal(node.id) ? 'bg-primary' : 'bg-gray-300'"
+                    :title="getDisplayVal(node.id) ? '不在前台显示' : '在前台显示'"
+                    @click.stop="toggleDisplay(node)"
+                  >
+                    <span
+                      class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200"
+                      :style="getDisplayVal(node.id) ? 'left:19px' : 'left:2px'"
+                    ></span>
+                  </button>
+                </div>
+
+                <!-- CRUD（hover 显示） -->
+                <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ml-1">
+                  <button
+                    class="inline-flex items-center gap-0.5 px-1.5 py-1 font-medium text-primary hover:bg-primary/10 rounded-md transition-colors"
+                    style="font-size: 11px;"
+                    @click.stop="openAdd(node)"
+                  >
+                    <span class="material-symbols-outlined" style="font-size: 12px;">add</span>
+                    新增
+                  </button>
+                  <button
+                    v-if="node.id && node.id.length !== 5"
+                    class="inline-flex items-center gap-0.5 px-1.5 py-1 font-medium text-error hover:bg-error/10 rounded-md transition-colors"
+                    style="font-size: 11px;"
+                    @click.stop="handleRemove(node)"
+                  >
+                    <span class="material-symbols-outlined" style="font-size: 12px;">delete</span>
+                    删除
+                  </button>
+                </div>
+              </div>
+            </template>
+          </OrgTree>
+        </template>
       </div>
 
       <!-- Add Dialog -->
@@ -105,27 +212,69 @@
 <script>
 import OrgTree from '../components/OrgTree.vue'
 
+function walkTree(nodes, fn) {
+  if (!nodes || !Array.isArray(nodes)) return
+  for (const n of nodes) {
+    fn(n)
+    if (n.children && n.children.length) walkTree(n.children, fn)
+  }
+}
+
 export default {
   name: 'BBSUnitManage',
   components: { OrgTree },
   data() {
     return {
       loading: false,
+      saving: false,
       orgTree: [],
+      filterText: '',
+      // 排名开关
+      rankingMap: {},
+      originalRanking: {},
+      // 显示开关
+      displayMap: {},
+      originalDisplay: {},
+      // 新增弹窗
       dialogVisible: false,
       addPOrgNo: '',
       addParentLabel: '',
-      addOrgName: ''
+      addOrgName: '',
     }
   },
-  mounted() { this.getAllOrgTree() },
+  computed: {
+    rankingSelectedCount() {
+      return Object.values(this.rankingMap).filter(Boolean).length
+    },
+    displaySelectedCount() {
+      return Object.values(this.displayMap).filter(Boolean).length
+    },
+    hasChanges() {
+      return Object.keys(this.rankingMap).some(k => this.rankingMap[k] !== this.originalRanking[k])
+          || Object.keys(this.displayMap).some(k => this.displayMap[k] !== this.originalDisplay[k])
+    },
+  },
+  mounted() { this.loadData() },
   methods: {
-    async getAllOrgTree() {
+    async loadData() {
       this.loading = true
       try {
         const res = await this.getRequestUrl('/common/saOrgTree')
         if (res.code == 200) {
           this.orgTree = res.obj || []
+          // 初始化 maps
+          this.rankingMap = {}
+          this.originalRanking = {}
+          this.displayMap = {}
+          this.originalDisplay = {}
+          walkTree(this.orgTree, n => {
+            const rankVal = n.isRankingSelected === 1 || n.isRankingSelected === true
+            this.$set(this.rankingMap, n.id, rankVal)
+            this.$set(this.originalRanking, n.id, rankVal)
+            const dispVal = n.isDisplaySelected === 1 || n.isDisplaySelected === true
+            this.$set(this.displayMap, n.id, dispVal)
+            this.$set(this.originalDisplay, n.id, dispVal)
+          })
         } else {
           this.orgTree = []
         }
@@ -133,12 +282,80 @@ export default {
       this.loading = false
     },
 
+    // ---- 树交互 ----
     onNodeClick(node) {
       if (node._hasChildren) {
         this.$refs.orgTree.toggleNode(node)
       }
     },
 
+    // ---- 排名开关 ----
+    getRankingVal(id) {
+      return this.rankingMap[id] === true
+    },
+    toggleRanking(node) {
+      const val = !(this.rankingMap[node.id] === true)
+      this.$set(this.rankingMap, node.id, val)
+      node.isRankingSelected = val ? 1 : 0
+    },
+    cascadeRanking(node, selected) {
+      walkTree(node.children, child => {
+        const val = selected ? 1 : 0
+        this.$set(this.rankingMap, child.id, !!val)
+        child.isRankingSelected = val
+      })
+    },
+
+    // ---- 显示开关 ----
+    getDisplayVal(id) {
+      return this.displayMap[id] === true
+    },
+    toggleDisplay(node) {
+      const val = !(this.displayMap[node.id] === true)
+      this.$set(this.displayMap, node.id, val)
+      node.isDisplaySelected = val ? 1 : 0
+    },
+
+    // ---- 保存 ----
+    async handleSave() {
+      if (!this.hasChanges) {
+        this.$message.info('没有需要保存的变更')
+        return
+      }
+      this.saving = true
+      try {
+        const rankingChanged = Object.keys(this.rankingMap).some(k => this.rankingMap[k] !== this.originalRanking[k])
+        const displayChanged = Object.keys(this.displayMap).some(k => this.displayMap[k] !== this.originalDisplay[k])
+
+        const promises = []
+        if (rankingChanged) {
+          promises.push(this.postRequest('/common/saOrg/batchUpdateRanking', this.rankingMap))
+        }
+        if (displayChanged) {
+          promises.push(this.postRequest('/common/saOrg/batchUpdateDisplay', this.displayMap))
+        }
+
+        const results = await Promise.all(promises)
+        const allOk = results.every(r => r && r.code === 200)
+
+        if (allOk) {
+          this.$message.success('保存成功')
+          // 更新原始状态
+          Object.keys(this.rankingMap).forEach(k => { this.originalRanking[k] = this.rankingMap[k] })
+          Object.keys(this.displayMap).forEach(k => { this.originalDisplay[k] = this.displayMap[k] })
+        } else {
+          // 部分失败时重新加载数据以恢复真实状态
+          this.$message.error('部分配置保存失败，已重置')
+          this.loadData()
+        }
+      } catch (e) {
+        this.$message.error('保存失败')
+        this.loadData()
+      }
+      this.saving = false
+    },
+
+    // ---- 新增单位 ----
     openAdd(data) {
       this.addPOrgNo = data.id
       this.addParentLabel = data.label
@@ -148,7 +365,6 @@ export default {
         if (this.$refs.orgNameInput) this.$refs.orgNameInput.focus()
       })
     },
-
     async onSubmit() {
       if (!this.addOrgName.trim()) { this.$message.warning('请输入单位名称'); return }
       try {
@@ -157,22 +373,23 @@ export default {
           this.$message.success('新增成功')
           this.dialogVisible = false
           this.addOrgName = ''
-          this.getAllOrgTree()
+          this.loadData()
         } else {
           this.$message.error(res.message || '新增失败')
         }
       } catch (e) { this.$message.error('新增失败') }
     },
 
+    // ---- 删除单位 ----
     handleRemove(data) {
       this.$confirm('确定删除该单位吗？', '提示', { type: 'warning' }).then(async () => {
         try {
           const res = await this.getRequestUrl(`/saOrg/deleteSaOrgByOrgNo?orgNo=${data.id}`)
-          if (res.code == 200) { this.$message.success('删除成功'); this.getAllOrgTree() }
+          if (res.code == 200) { this.$message.success('删除成功'); this.loadData() }
           else { this.$message.error(res.message || '删除失败') }
         } catch (e) { this.$message.error('删除失败') }
       }).catch(() => {})
-    }
-  }
+    },
+  },
 }
 </script>

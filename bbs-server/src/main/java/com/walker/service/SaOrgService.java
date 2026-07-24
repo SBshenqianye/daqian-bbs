@@ -6,6 +6,7 @@ import com.walker.vo.ResultBean;
 import com.walker.vo.SaOrgTreeVO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @Author chengQing
@@ -43,4 +44,10 @@ public interface SaOrgService extends IService<SaOrg> {
      * @return ResultBean 返回封装结果
      */
     ResultBean addSaOrg(String pOrgNo, String orgName);
+
+    /**
+     * 批量更新显示选中状态
+     * @param displayMap orgNo → 是否显示
+     */
+    void batchUpdateDisplay(Map<String, Boolean> displayMap);
 }
