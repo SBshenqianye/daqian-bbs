@@ -37,6 +37,9 @@ public class ReplyVO {
     @ApiModelProperty("回复人的单位名称")
     private String orgName;
 
+    @ApiModelProperty("回复人的完整单位名称")
+    private String orgNameFull;
+
     @ApiModelProperty("回复人的部门名称")
     private String deptName;
 

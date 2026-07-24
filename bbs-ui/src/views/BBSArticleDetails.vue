@@ -27,7 +27,7 @@
               </div>
               <div class="flex flex-col">
                 <span class="font-bold text-on-surface">{{ article.author }}</span>
-                <span v-if="article.authorOrgName" class="text-[10px] text-outline">{{ article.authorOrgName }}</span>
+                <span v-if="article.authorOrgName" class="text-[10px] text-outline" :title="article.authorOrgNameFull || article.authorOrgName">{{ article.authorOrgName }}</span>
                 <span v-else class="text-[10px] text-outline">{{ article.authorTitle }}</span>
               </div>
             </div>
@@ -215,6 +215,7 @@ export default {
         authorTitle: '',
         authorAvatar: '',
         authorOrgName: '',
+        authorOrgNameFull: '',
         contentHtml: '',
         articleImage: '',
         contentParagraphs: [],
@@ -346,6 +347,7 @@ export default {
             this.article.authorAvatar = normalizeFileUrl(resp.portrait)
           }
           this.article.authorOrgName = resp.orgName || ''
+          this.article.authorOrgNameFull = resp.orgNameFull || ''
           this.article.authorTitle = resp.title || ''
         }
       }).catch(err => { console.warn('[BBSArticleDetails] loadAuthorInfo', err) })
@@ -376,6 +378,7 @@ export default {
         author: c.nickname || '',
         avatar: normalizeFileUrl(c.portrait || ''),
         orgName: c.orgName || '',
+        orgNameFull: c.orgNameFull || '',
         time: c.commentTime || '',
         content: c.commentContent || '',
         canDelete: myId != null && String(c.userId) === String(myId),
@@ -390,6 +393,7 @@ export default {
             author: r.nickname || '',
             avatar: normalizeFileUrl(r.portrait || ''),
             orgName: r.orgName || '',
+            orgNameFull: r.orgNameFull || '',
             time: r.replyTime || '',
             content: r.replyContent || '',
             replyTo: r.replyToNickname || '',

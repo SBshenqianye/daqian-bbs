@@ -36,6 +36,9 @@ public class CommentReplyVO {
     @ApiModelProperty("评论人的单位名称")
     private String orgName;
 
+    @ApiModelProperty("评论人的完整单位名称")
+    private String orgNameFull;
+
     @ApiModelProperty("评论人的部门名称")
     private String deptName;
 

@@ -22,7 +22,7 @@
           <!-- Metadata Bar -->
           <div class="flex items-center flex-wrap gap-4 font-label-md text-label-md text-on-surface-variant">
             <div class="flex items-center gap-2">
-              <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" size="sm" layout="inline" />
+              <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" :org-name-full="article.authorOrgNameFull" size="sm" layout="inline" />
             </div>
             <span class="text-outline">•</span>
             <span>{{ article.time }}</span>
@@ -103,6 +103,7 @@ export default {
           author: a.articleAuthor || '',
           authorAvatar: userAvatar,
           authorOrgName: user.orgName || '',
+          authorOrgNameFull: user.orgNameFull || '',
           time: friendlyTime(a.createTime || a.articleCreateTime || ''),
           views: a.articleViewNum || 0,
           comments: a.commentNum ?? a.comment_num ?? a.articleCommentNum ?? 0,

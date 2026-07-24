@@ -2,7 +2,7 @@
   <div class="flex gap-2.5">
     <div class="flex-grow min-w-0">
       <div class="flex items-center justify-between mb-0.5">
-        <bbs-user-badge :avatar="comment.avatar" :nickname="comment.author" :org-name="comment.orgName" size="xs" layout="inline" />
+        <bbs-user-badge :avatar="comment.avatar" :nickname="comment.author" :org-name="comment.orgName" :org-name-full="comment.orgNameFull" size="xs" layout="inline" />
         <div class="flex gap-2 text-on-surface-variant font-label-sm">
           <button class="hover:text-primary transition-primary flex items-center gap-0.5" @click="handleToggleReply">
             <span class="material-symbols-outlined text-[14px]">reply</span> 回复

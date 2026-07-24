@@ -169,6 +169,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             // 显式设置瞬态组织字段（确保序列化到前端）
             jsonObject.put("orgName", user.getOrgName());
             jsonObject.put("deptName", user.getDeptName());
+            // 从组织表查询完整组织名称（可能被 display 过滤覆盖）
+            SaOrg fullOrg = user.getOrgNo() != null ? saOrgMapper.selectOne(
+                    new LambdaQueryWrapper<SaOrg>()
+                            .eq(SaOrg::getOrgNo, user.getOrgNo())
+                            .eq(SaOrg::getIsDelete, 0)
+            ) : null;
+            jsonObject.put("orgNameFull", fullOrg != null ? fullOrg.getOrgName() : user.getOrgName());
             tokenMap.put("user", jsonObject);
 
             return ResultBean.success("登录成功！",tokenMap);
@@ -780,9 +787,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     }
                     detail.setUsername(username);
 
-                    // 匹配组织
-                    String orgNo = orgImportService.findBestOrgNo(row,
-                            orgResult.orgNoMap, orgResult.deptNoMap);
+                    // 匹配组织（用 orgName+deptName 复合键精确定位）
+                    String orgNo = orgImportService.findBestOrgNo(row, orgResult.orgNoByPair);
 
                     // (personnel_id, id_card) 双键匹配
                     User existingUser = userMapper.selectOne(
