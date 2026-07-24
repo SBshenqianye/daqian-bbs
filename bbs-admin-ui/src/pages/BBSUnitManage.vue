@@ -93,88 +93,17 @@
         <template v-else>
           <OrgTree
             ref="orgTree"
+            mode="unit-manage"
             :nodes="orgTree"
             :filter-text="filterText"
             :loading="false"
             @node-click="onNodeClick"
-          >
-            <template #node-actions="{ node }">
-              <div class="flex items-center gap-0.5" style="flex-shrink:0">
-                <!-- 级联排名操作按钮（仅父节点） -->
-                <template v-if="node._hasChildren">
-                  <button
-                    class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-primary hover:bg-primary/10 transition-all"
-                    title="勾选所有子级单位参与排名"
-                    @click.stop="cascadeRanking(node, true)"
-                  >
-                    <span class="material-symbols-outlined" style="font-size:14px">done_all</span>
-                  </button>
-                  <button
-                    class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-error hover:bg-error/10 transition-all"
-                    title="取消所有子级单位排名"
-                    @click.stop="cascadeRanking(node, false)"
-                  >
-                    <span class="material-symbols-outlined" style="font-size:14px">indeterminate_check_box</span>
-                  </button>
-                </template>
-
-                <!-- 排名开关 -->
-                <div class="flex items-center gap-1 ml-1">
-                  <span class="text-[11px] text-on-surface-variant whitespace-nowrap">排名</span>
-                  <button
-                    class="relative w-9 h-4.5 rounded-full transition-all duration-200 flex-shrink-0"
-                    style="height:18px;width:36px"
-                    :class="getRankingVal(node.id) ? 'bg-primary' : 'bg-gray-300'"
-                    :title="getRankingVal(node.id) ? '取消参与排名' : '参与排名'"
-                    @click.stop="toggleRanking(node)"
-                  >
-                    <span
-                      class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200"
-                      :style="getRankingVal(node.id) ? 'left:19px' : 'left:2px'"
-                    ></span>
-                  </button>
-                </div>
-
-                <!-- 显示开关 -->
-                <div class="flex items-center gap-1 ml-1">
-                  <span class="text-[11px] text-on-surface-variant whitespace-nowrap">显示</span>
-                  <button
-                    class="relative w-9 h-4.5 rounded-full transition-all duration-200 flex-shrink-0"
-                    style="height:18px;width:36px"
-                    :class="getDisplayVal(node.id) ? 'bg-primary' : 'bg-gray-300'"
-                    :title="getDisplayVal(node.id) ? '不在前台显示' : '在前台显示'"
-                    @click.stop="toggleDisplay(node)"
-                  >
-                    <span
-                      class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200"
-                      :style="getDisplayVal(node.id) ? 'left:19px' : 'left:2px'"
-                    ></span>
-                  </button>
-                </div>
-
-                <!-- CRUD（hover 显示） -->
-                <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ml-1">
-                  <button
-                    class="inline-flex items-center gap-0.5 px-1.5 py-1 font-medium text-primary hover:bg-primary/10 rounded-md transition-colors"
-                    style="font-size: 11px;"
-                    @click.stop="openAdd(node)"
-                  >
-                    <span class="material-symbols-outlined" style="font-size: 12px;">add</span>
-                    新增
-                  </button>
-                  <button
-                    v-if="node.id && node.id.length !== 5"
-                    class="inline-flex items-center gap-0.5 px-1.5 py-1 font-medium text-error hover:bg-error/10 rounded-md transition-colors"
-                    style="font-size: 11px;"
-                    @click.stop="handleRemove(node)"
-                  >
-                    <span class="material-symbols-outlined" style="font-size: 12px;">delete</span>
-                    删除
-                  </button>
-                </div>
-              </div>
-            </template>
-          </OrgTree>
+            @toggle-ranking="toggleRanking"
+            @toggle-display="toggleDisplay"
+            @cascade-ranking="cascadeRanking"
+            @add-node="openAdd"
+            @delete-node="handleRemove"
+          />
         </template>
       </div>
 
