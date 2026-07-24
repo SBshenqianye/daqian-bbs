@@ -1,32 +1,36 @@
 <template>
   <div class="bg-surface min-h-screen">
-    <div class="max-w-7xl mx-auto px-page-margin-desktop py-6">
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="font-headline-lg text-headline-lg text-on-surface flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary">account_tree</span>
-            组织管理
-          </h1>
-          <p class="text-body-md text-secondary mt-1">管理组织单位结构、配置排名参与和用户前台显示</p>
-        </div>
-        <div class="flex items-center gap-2">
-          <!-- Search -->
-          <div class="relative">
-            <input
-              v-model="filterText"
-              class="w-52 h-9 pl-8 pr-3 bg-surface border border-outline-variant rounded-lg text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-all"
-              placeholder="搜索单位名称..."
-            />
-            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline pointer-events-none" style="font-size:16px">search</span>
-            <button
-              v-if="filterText"
-              class="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded text-outline hover:text-on-surface hover:bg-surface-variant transition-all"
-              @click="filterText = ''"
-            >
-              <span class="material-symbols-outlined" style="font-size:12px">close</span>
-            </button>
+    <!-- Sticky Header -->
+    <div class="sticky top-0 z-20 bg-surface border-b border-outline-variant/30 shadow-sm">
+      <div class="max-w-7xl mx-auto px-page-margin-desktop py-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="font-headline-lg text-headline-lg text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">account_tree</span>
+              组织管理
+            </h1>
+            <p class="text-body-md text-secondary mt-1">管理组织单位结构、配置排名参与和用户前台显示</p>
           </div>
+          <div class="flex items-center gap-2">
+            <!-- Search -->
+            <div class="relative">
+              <input
+                v-model="filterText"
+                class="w-52 h-9 pl-8 pr-3 bg-surface border border-outline-variant rounded-lg text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-all"
+                placeholder="搜索单位名称..."
+              />
+              <!-- 居中搜索图标：用 flex items-center 替代 top-1/2 translate 避免字体垂直偏移 -->
+              <div class="absolute left-2.5 inset-y-0 flex items-center pointer-events-none">
+                <span class="material-symbols-outlined text-outline leading-none" style="font-size:16px">search</span>
+              </div>
+              <button
+                v-if="filterText"
+                class="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded text-outline hover:text-on-surface hover:bg-surface-variant transition-all"
+                @click="filterText = ''"
+              >
+                <span class="material-symbols-outlined" style="font-size:12px">close</span>
+              </button>
+            </div>
           <div v-if="orgTree.length" class="flex items-center gap-1">
             <button
               class="inline-flex items-center gap-1 px-2.5 py-1.5 font-medium text-primary bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors"
@@ -55,6 +59,11 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="max-w-7xl mx-auto px-page-margin-desktop py-6">
 
       <!-- Selected summary -->
       <div v-if="orgTree.length && (rankingSelectedCount > 0 || displaySelectedCount > 0)" class="mb-4 flex items-center gap-4 text-body-md">
