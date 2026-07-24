@@ -357,6 +357,58 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 }
             }
         }
+
+        // 根据 is_display_selected 字段，将 orgName 解析为 org_tree 路径上最深层被勾选的组织名称
+        applyDisplayOrg(users);
+    }
+
+    /**
+     * 根据 is_display_selected 字段，将用户的 orgName 解析为
+     * org_tree 路径上最深层被勾选的组织名称。
+     * 若路径上无勾选节点，保持原有 orgName 不变（fallback）。
+     */
+    private void applyDisplayOrg(List<User> users) {
+        if (CollectionUtils.isEmpty(users)) return;
+
+        Set<String> userOrgNos = users.stream()
+                .map(User::getOrgNo)
+                .filter(Objects::nonNull)
+                .filter(no -> !ROOT_ORG_NO.equals(no))
+                .collect(Collectors.toSet());
+        if (userOrgNos.isEmpty()) return;
+
+        // 查询所有非删除组织，建立 orgNo → SaOrg 映射
+        List<SaOrg> allOrgs = saOrgMapper.selectList(
+                new LambdaQueryWrapper<SaOrg>()
+                        .eq(SaOrg::getIsDelete, 0)
+        );
+        if (CollectionUtils.isEmpty(allOrgs)) return;
+
+        Map<String, SaOrg> orgMap = allOrgs.stream()
+                .collect(Collectors.toMap(SaOrg::getOrgNo, o -> o, (a, b) -> a));
+
+        for (User user : users) {
+            String orgNo = user.getOrgNo();
+            if (orgNo == null || ROOT_ORG_NO.equals(orgNo)) continue;
+
+            SaOrg userOrg = orgMap.get(orgNo);
+            if (userOrg == null || userOrg.getOrgTree() == null) continue;
+
+            // 从 org_tree 路径自底向上遍历，找第一个 is_display_selected=1 的祖先
+            String[] path = userOrg.getOrgTree().split("\\|");
+            String resolvedName = null;
+            for (int i = path.length - 1; i >= 0; i--) {
+                SaOrg ancestor = orgMap.get(path[i]);
+                if (ancestor != null && Integer.valueOf(1).equals(ancestor.getIsDisplaySelected())) {
+                    resolvedName = ancestor.getOrgName();
+                    break;
+                }
+            }
+            if (resolvedName != null) {
+                user.setOrgName(resolvedName);
+            }
+            // resolvedName == null → 路径上无勾选节点，保持原有 orgName 不变
+        }
     }
 
     @Override

@@ -35,4 +35,9 @@ public class SaOrgTreeVO {
      */
     private Integer isRankingSelected;
 
+    /**
+     * 是否显示在用户前台:0=否,1=是
+     */
+    private Integer isDisplaySelected;
+
 }

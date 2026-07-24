@@ -111,7 +111,7 @@ export default {
         { icon: 'label', label: '标签管理', path: '/articleLable' },
         { icon: 'tune', label: '配置管理', path: '/dict' },
         { icon: 'emoji_events', label: '积分排名', path: '/points' },
-        { icon: 'business', label: '单位管理', path: '/unitManage' },
+        { icon: 'account_tree', label: '组织管理', path: '/unitManage' },
         { icon: 'block', label: '敏感词管理', path: '/sensitiveWord' },
         { icon: 'settings_suggest', label: '系统配置', path: '/systemConfig' },
         // { icon: 'view_carousel', label: '轮播图管理', path: '/slideshow' },

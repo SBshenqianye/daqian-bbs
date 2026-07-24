@@ -214,7 +214,8 @@ CREATE TABLE IF NOT EXISTS bbs_sa_org (
     p_org_no           varchar(20),
     org_tree           varchar(255),
     is_delete          smallint,
-    is_ranking_selected smallint DEFAULT 0
+    is_ranking_selected smallint DEFAULT 0,
+    is_display_selected smallint DEFAULT 1
 );
 
 -- ----------------------------

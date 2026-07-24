@@ -64,8 +64,7 @@ export default new Router({
                 },
                 {
                     path: '/points/config',
-                    component: () => import('../pages/BBSPointsConfig.vue'),
-                    meta: { title: '排名单位配置' }
+                    redirect: '/unitManage'
                 },
                 {
                     path: '/unitManage',

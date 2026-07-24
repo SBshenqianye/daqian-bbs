@@ -76,3 +76,10 @@ DEALLOCATE PREPARE stmt_sc;
 INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
 SELECT 'feedback_contact', '{\"name\":\"\",\"email\":\"\"}', '使用反馈联系方式', 'contact', 'json', 0, '配置使用反馈弹窗中的联系人信息，格式：{"name":"联系人姓名","email":"联系邮箱"}', '系统', '2026-07-15 00:00:00'
 WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'feedback_contact');
+
+-- 2026-07-24: 组织管理 — bbs_sa_org 增加 is_display_selected 字段
+SELECT COUNT(*) INTO @col_display_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_sa_org' AND COLUMN_NAME = 'is_display_selected';
+SET @sql_display = IF(@col_display_exists = 0, 'ALTER TABLE `bbs_sa_org` ADD COLUMN `is_display_selected` tinyint(1) DEFAULT 1 COMMENT ''是否显示在用户前台(0=否,1=是)''', 'SELECT 1');
+PREPARE stmt_display FROM @sql_display;
+EXECUTE stmt_display;
+DEALLOCATE PREPARE stmt_display;
