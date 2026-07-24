@@ -132,7 +132,7 @@
                 <p class="text-body-md text-secondary mb-4 line-clamp-2" style="white-space: pre-line">{{ article.summary }}</p>
                 <div class="flex items-center justify-between text-label-md text-outline">
                   <div class="flex items-center gap-2">
-                    <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" size="sm" layout="inline" />
+                    <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" :org-name-full="article.authorOrgNameFull" size="sm" layout="inline" />
                     <span class="mx-1">•</span>
                     <span>{{ formatTime(article.time) }}</span>
                   </div>
@@ -272,6 +272,7 @@ export default {
           userId: a.userId,
           authorAvatar: normalizeFileUrl(a.portrait || ''),
           authorOrgName: a.authorOrgName || '',
+          authorOrgNameFull: a.authorOrgNameFull || '',
           isFeatured: a.isFeatured === 1 || a.isFeatured === '1',
           labelId: a.articleLabelId || null,
           time: a.createTime || a.articleCreateTime || '',

@@ -266,6 +266,23 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .filter(u -> u.getPortrait() != null || u.getOrgName() != null)
                 .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
+        // 批量查询组织表，构建 orgNo → orgName 映射（用于 display 过滤后的完整名称）
+        Map<String, String> orgNameMap = new HashMap<>();
+        Set<String> orgNos = users.stream()
+                .map(User::getOrgNo)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (!orgNos.isEmpty()) {
+            List<SaOrg> orgs = saOrgMapper.selectList(
+                    new LambdaQueryWrapper<SaOrg>()
+                            .in(SaOrg::getOrgNo, orgNos)
+                            .eq(SaOrg::getIsDelete, 0)
+            );
+            for (SaOrg org : orgs) {
+                orgNameMap.put(org.getOrgNo(), org.getOrgName());
+            }
+        }
+
         articles.forEach(a -> {
             if (a.getUserId() != null && userMap.containsKey(a.getUserId())) {
                 User u = userMap.get(a.getUserId());
@@ -273,6 +290,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     a.setPortrait(u.getPortrait());
                 }
                 a.setAuthorOrgName(u.getOrgName());
+                String fullOrgName = orgNameMap.get(u.getOrgNo());
+                a.setAuthorOrgNameFull(fullOrgName != null ? fullOrgName : u.getOrgName());
                 a.setAuthorDeptName(u.getDeptName());
             }
         });

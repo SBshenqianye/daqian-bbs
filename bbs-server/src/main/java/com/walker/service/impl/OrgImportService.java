@@ -47,14 +47,14 @@ public class OrgImportService {
                 preview.setAction("created");
             }
 
-            // 如果单位已匹配到 or 被创建，检测部门
+            // 检测部门
             if (pair.deptName != null && !pair.deptName.isEmpty()) {
-                String unitOrgNo = existingOrg != null ? existingOrg.getOrgNo() : "AUTO";
-                SaOrg existingDept = findDeptByName(pair.deptName, unitOrgNo);
-                if (existingDept != null || existingOrg == null) {
+                if (existingOrg != null) {
+                    SaOrg existingDept = findDeptByName(pair.deptName, existingOrg.getOrgNo());
                     preview.setDeptName(pair.deptName);
-                    preview.setAction(preview.getAction() + ",dept_matched");
+                    preview.setAction(preview.getAction() + (existingDept != null ? ",dept_matched" : ",dept_created"));
                 } else {
+                    // 单位不存在则部门也需创建
                     preview.setDeptName(pair.deptName);
                     preview.setAction(preview.getAction() + ",dept_created");
                 }
@@ -66,47 +66,45 @@ public class OrgImportService {
     }
 
     /**
-     * 执行组织导入：创建不存在的组织，返回 org_name → org_no 映射
+     * 执行组织导入：创建不存在的组织，返回 (orgName, deptName) → org_no 映射
      *
      * @param rows Excel行数据
-     * @return Map<orgName, orgNo> 以及 Map<deptName, orgNo>
+     * @return OrgImportResult，包含 orgNoByPair 复合键映射
      */
     public OrgImportResult importOrgs(List<UserExcelRow> rows) {
         // 提取唯一 (orgName, deptName) 组合
         Set<OrgPair> uniquePairs = extractOrgPairs(rows);
 
-        Map<String, String> orgNoMap = new HashMap<>();  // orgName → orgNo
-        Map<String, String> deptNoMap = new HashMap<>(); // deptName → orgNo
+        // 复合键 (orgName, deptName) → 最终分配的组织编号
+        // 若有部门则用部门编号，若仅有单位则用单位编号
+        Map<OrgPair, String> orgNoByPair = new HashMap<>();
         int createdCount = 0;
 
-        // 先导入全部单位
         for (OrgPair pair : uniquePairs) {
-            String unitOrgNo;
-
             // 1. 查找或创建单位（单位名称）
             SaOrg existingOrg = findOrgByName(pair.orgName);
+            final String unitOrgNo;
             if (existingOrg != null) {
                 unitOrgNo = existingOrg.getOrgNo();
             } else {
-                // 创建新单位
-                unitOrgNo = generateOrgNo(ROOT_ORG_NO, 7);
+                String newUnitNo = generateOrgNo(ROOT_ORG_NO, 7);
                 SaOrg newOrg = new SaOrg();
                 newOrg.setId(getNextId());
-                newOrg.setOrgNo(unitOrgNo);
+                newOrg.setOrgNo(newUnitNo);
                 newOrg.setOrgName(pair.orgName);
                 newOrg.setPOrgNo(ROOT_ORG_NO);
-                newOrg.setOrgTree(ROOT_ORG_NO + "|" + unitOrgNo);
+                newOrg.setOrgTree(ROOT_ORG_NO + "|" + newUnitNo);
                 newOrg.setIsDelete(0);
                 saOrgMapper.insert(newOrg);
+                unitOrgNo = newUnitNo;
                 createdCount++;
             }
-            orgNoMap.put(pair.orgName, unitOrgNo);
 
-            // 2. 查找或创建部门（部门名称）
+            // 2. 查找或创建部门，用复合键存储最终结果
             if (pair.deptName != null && !pair.deptName.isEmpty()) {
                 SaOrg existingDept = findDeptByName(pair.deptName, unitOrgNo);
                 if (existingDept != null) {
-                    deptNoMap.put(pair.deptName, existingDept.getOrgNo());
+                    orgNoByPair.put(pair, existingDept.getOrgNo());
                 } else {
                     String deptOrgNo = generateOrgNo(unitOrgNo, 9);
                     SaOrg newDept = new SaOrg();
@@ -117,33 +115,31 @@ public class OrgImportService {
                     newDept.setOrgTree(ROOT_ORG_NO + "|" + unitOrgNo + "|" + deptOrgNo);
                     newDept.setIsDelete(0);
                     saOrgMapper.insert(newDept);
-                    deptNoMap.put(pair.deptName, deptOrgNo);
+                    orgNoByPair.put(pair, deptOrgNo);
                     createdCount++;
                 }
+            } else {
+                // 无部门，直接使用单位编号
+                orgNoByPair.put(pair, unitOrgNo);
             }
         }
 
         OrgImportResult result = new OrgImportResult();
-        result.orgNoMap = orgNoMap;
-        result.deptNoMap = deptNoMap;
+        result.orgNoByPair = orgNoByPair;
         result.createdCount = createdCount;
         return result;
     }
 
     /**
      * 根据用户行数据查找最匹配的 org_no
-     * 优先用部门名，其次用单位名
+     * 使用 (orgName, deptName) 复合键精确定位
      */
-    public String findBestOrgNo(UserExcelRow row, Map<String, String> orgNoMap, Map<String, String> deptNoMap) {
-        // 优先匹配部门
-        if (row.getDeptName() != null && deptNoMap.containsKey(row.getDeptName())) {
-            return deptNoMap.get(row.getDeptName());
-        }
-        // 其次匹配单位
-        if (row.getOrgName() != null && orgNoMap.containsKey(row.getOrgName())) {
-            return orgNoMap.get(row.getOrgName());
-        }
-        return ROOT_ORG_NO; // 兜底
+    public String findBestOrgNo(UserExcelRow row, Map<OrgPair, String> orgNoByPair) {
+        OrgPair key = new OrgPair();
+        key.orgName = row.getOrgName();
+        key.deptName = row.getDeptName();
+        String orgNo = orgNoByPair.get(key);
+        return orgNo != null ? orgNo : ROOT_ORG_NO;
     }
 
     // ==================== 内部辅助方法 ====================
@@ -206,8 +202,8 @@ public class OrgImportService {
                 .collect(Collectors.toSet());
     }
 
-    /** (单位, 部门) 组合，用于去重 */
-    private static class OrgPair {
+    /** (单位, 部门) 组合，用于去重和复合键查找 */
+    public static class OrgPair {
         String orgName;
         String deptName;
 
@@ -228,8 +224,8 @@ public class OrgImportService {
 
     /** 组织导入结果 */
     public static class OrgImportResult {
-        public Map<String, String> orgNoMap;
-        public Map<String, String> deptNoMap;
+        /** 复合键 (orgName, deptName) → 最终分配的组织编号 */
+        public Map<OrgPair, String> orgNoByPair;
         public int createdCount;
     }
 }

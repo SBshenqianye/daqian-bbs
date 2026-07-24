@@ -42,7 +42,9 @@
             </div>
             <div>
               <h1 class="font-headline-lg text-headline-lg text-on-surface">{{ userInfo.nickname }}</h1>
-              <p v-if="userInfo.orgName" class="font-body-md text-body-md text-on-surface-variant mt-1">{{ userInfo.orgName }}</p>
+              <p v-if="userInfo.orgNameFull || userInfo.orgName" class="font-body-md text-body-md text-on-surface-variant mt-1">
+                {{ userInfo.orgNameFull || userInfo.orgName }}
+              </p>
               <p v-else-if="userInfo.username" class="font-body-md text-body-md text-on-surface-variant mt-1">{{ userInfo.username }}</p>
             </div>
           </div>
@@ -205,6 +207,7 @@ export default {
         username: '',
         portrait: '',
         orgName: '',
+        orgNameFull: '',
       },
       passwordForm: {
         currentPassword: '',
@@ -255,6 +258,7 @@ export default {
       this.userInfo.username = u.username || ''
       this.userInfo.portrait = u.portrait || ''
       this.userInfo.orgName = u.orgName || ''
+      this.userInfo.orgNameFull = u.orgNameFull || ''
       this.originalPhone = u.phone || ''
       this.originalPasswordForm = { ...this.passwordForm }
     },

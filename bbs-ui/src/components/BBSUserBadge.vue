@@ -9,7 +9,7 @@
     >
     <div :class="layout === 'inline' ? 'inline-flex items-baseline gap-1 min-w-0' : 'flex flex-col min-w-0'">
       <span class="font-semibold text-on-surface truncate" :class="nameClass">{{ nickname }}</span>
-      <span v-if="showOrg && orgName" class="text-outline truncate" :class="orgClass">
+      <span v-if="showOrg && orgName" class="text-outline truncate" :class="orgClass" :title="orgNameFull || orgName">
         {{ layout === 'inline' ? '· ' + orgName : orgName }}
       </span>
     </div>
@@ -23,6 +23,7 @@ export default {
     avatar: { type: String, default: '' },
     nickname: { type: String, default: '未知用户' },
     orgName: { type: String, default: '' },
+    orgNameFull: { type: String, default: '' },
     size: { type: String, default: 'sm' },      // xs | sm | md | lg
     layout: { type: String, default: 'inline' }, // inline | stacked
     showAvatar: { type: Boolean, default: true },

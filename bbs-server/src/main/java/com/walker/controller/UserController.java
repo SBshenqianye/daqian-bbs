@@ -5,8 +5,11 @@ import com.alibaba.fastjson.JSONObject;
 import com.walker.vo.excel.ImportPreviewVO;
 import com.walker.vo.excel.ImportResultVO;
 import com.github.pagehelper.PageInfo;
+import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
+import com.walker.service.SaOrgService;
 import com.walker.utils.FilePathNormalizer;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.walker.vo.ResultBean;
 import com.walker.service.UserService;
 import com.walker.vo.param.*;
@@ -43,6 +46,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private SaOrgService saOrgService;
 
     @Value("${storage.path}")
     private String basePath;
@@ -86,6 +92,7 @@ public class UserController {
         map.put("idCard", user.getIdCard());
         map.put("orgNo", user.getOrgNo());
         map.put("orgName", user.getOrgName());
+        map.put("orgNameFull", resolveFullOrgName(user.getOrgNo(), user.getOrgName()));
         map.put("deptName", user.getDeptName());
         map.put("userType", user.getUserType());
         map.put("personnelId", user.getPersonnelId());
@@ -140,11 +147,42 @@ public class UserController {
 
     @ApiOperation(value = "通过用户ID获取用户信息")
     @PostMapping("/common/user/getUserinfoById/{id}")
-    public User getUserinfoById(@PathVariable("id") Integer id){
+    public Map<String, Object> getUserinfoById(@PathVariable("id") Integer id){
         User user = userService.queryUserinfoById(id);
         user.setPassword(null);
         user.setPortrait(FilePathNormalizer.normalizeFieldUrl(user.getPortrait(), contextPath));
-        return user;
+        // 由于 User POJO 不存储 orgNameFull，将其放入扩展属性
+        // 前端通过 JSON 序列化可获取，此处用 User 的瞬态字段已移除，
+        // 所以用 JSONString 方式附加（通过 customizer）或直接返回 User（前端取不到 orgNameFull）
+        // 改用 Map 返回以确保包含 orgNameFull
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", user.getId());
+        result.put("username", user.getUsername());
+        result.put("nickname", user.getNickname());
+        result.put("portrait", user.getPortrait());
+        result.put("gender", user.getGender());
+        result.put("introduce", user.getIntroduce());
+        result.put("city", user.getCity());
+        result.put("orgNo", user.getOrgNo());
+        result.put("orgName", user.getOrgName());
+        result.put("deptName", user.getDeptName());
+        result.put("userType", user.getUserType());
+        result.put("personnelId", user.getPersonnelId());
+        result.put("orgNameFull", resolveFullOrgName(user.getOrgNo(), user.getOrgName()));
+        return result;
+    }
+
+    /**
+     * 从 bbs_sa_org 查询组织的完整名称（用户 orgName 可能已被 display 过滤覆盖）
+     */
+    private String resolveFullOrgName(String orgNo, String fallbackName) {
+        if (orgNo == null) return fallbackName;
+        SaOrg org = saOrgService.getOne(
+                new LambdaQueryWrapper<SaOrg>()
+                        .eq(SaOrg::getOrgNo, orgNo)
+                        .eq(SaOrg::getIsDelete, 0)
+        );
+        return org != null ? org.getOrgName() : fallbackName;
     }
 
     @ApiOperation(value = "获取所有用户(搜索 + 分页)")

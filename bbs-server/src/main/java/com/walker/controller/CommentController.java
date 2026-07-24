@@ -3,15 +3,18 @@ package com.walker.controller;
 
 import com.walker.pojo.Comment;
 import com.walker.pojo.Reply;
+import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.service.CommentService;
 import com.walker.service.ReplyService;
+import com.walker.service.SaOrgService;
 import com.walker.service.UserService;
 import com.walker.vo.CommentReplyVO;
 import com.walker.vo.ResultBean;
 import com.walker.vo.param.CommentParam;
 import com.walker.vo.ReplyVO;
 import com.walker.vo.param.ReplyParam;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +44,9 @@ public class CommentController {
 
     @Autowired
     private ReplyService replyService;
+
+    @Autowired
+    private SaOrgService saOrgService;
 
     @ApiOperation(value = "保存用户的评论(一级评论)")
     @PutMapping("/comment/userComment")
@@ -79,6 +85,7 @@ public class CommentController {
                 commentReplyVO.setPortrait(user.getPortrait());
                 commentReplyVO.setNickname(user.getNickname());
                 commentReplyVO.setOrgName(user.getOrgName());
+                commentReplyVO.setOrgNameFull(resolveFullOrgName(user.getOrgNo(), user.getOrgName()));
                 commentReplyVO.setDeptName(user.getDeptName());
 
                 //通过回复的Id去获取回复内容
@@ -106,6 +113,7 @@ public class CommentController {
                         replyVO.setPortrait(userVO1.getPortrait());
                         replyVO.setNickname(userVO1.getNickname());
                         replyVO.setOrgName(userVO1.getOrgName());
+                        replyVO.setOrgNameFull(resolveFullOrgName(userVO1.getOrgNo(), userVO1.getOrgName()));
                         replyVO.setDeptName(userVO1.getDeptName());
 
                         Integer toUserId = reply.getReplyToUserId();
@@ -137,5 +145,18 @@ public class CommentController {
     @PostMapping("/comment/deleteCommentById")
     public ResultBean deleteCommentById(@RequestBody ReplyParam replyParam){
         return commentService.deleteCommentById(replyParam.getCommentId());
+    }
+
+    /**
+     * 从 bbs_sa_org 查询组织的完整名称（user.orgName 可能已被 display 过滤覆盖）
+     */
+    private String resolveFullOrgName(String orgNo, String fallbackName) {
+        if (orgNo == null) return fallbackName;
+        SaOrg org = saOrgService.getOne(
+                new LambdaQueryWrapper<SaOrg>()
+                        .eq(SaOrg::getOrgNo, orgNo)
+                        .eq(SaOrg::getIsDelete, 0)
+        );
+        return org != null ? org.getOrgName() : fallbackName;
     }
 }
