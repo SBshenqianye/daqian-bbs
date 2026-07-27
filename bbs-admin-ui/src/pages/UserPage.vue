@@ -181,8 +181,8 @@
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">所属单位</label>
                 <button class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md text-left flex items-center justify-between hover:border-primary transition-colors" @click="orgPickerVisible = true" type="button">
-                  <span :class="editForm.orgName ? 'text-on-surface' : 'text-on-surface-variant'">{{ editForm.orgName || '请选择单位' }}</span>
-                  <span class="material-symbols-outlined text-[18px] text-outline">search</span>
+                  <span :class="editForm.orgName ? 'text-on-surface' : 'text-on-surface-variant'" :title="editForm.orgPath || editForm.orgName" class="truncate">{{ editForm.orgPath || editForm.orgName || '请选择单位' }}</span>
+                  <span class="material-symbols-outlined text-[18px] text-outline flex-shrink-0">search</span>
                 </button>
               </div>
             </div>
@@ -379,8 +379,8 @@
                   <span class="text-error">*</span>
                 </label>
                 <button class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md text-left flex items-center justify-between hover:border-primary transition-colors" @click="addOrgPickerVisible = true" type="button">
-                  <span :class="addForm.orgName ? 'text-on-surface' : 'text-on-surface-variant'">{{ addForm.orgName || '请选择单位' }}</span>
-                  <span class="material-symbols-outlined text-[18px] text-outline">search</span>
+                  <span :class="addForm.orgName ? 'text-on-surface' : 'text-on-surface-variant'" :title="addForm.orgPath || addForm.orgName" class="truncate">{{ addForm.orgPath || addForm.orgName || '请选择单位' }}</span>
+                  <span class="material-symbols-outlined text-[18px] text-outline flex-shrink-0">search</span>
                 </button>
               </div>
             </div>
@@ -502,6 +502,7 @@ export default {
         phone: '',
         orgNo: '',
         orgName: '',
+        orgPath: '',
         userType: '1',
         isAlive: 0,
         personnelId: '',
@@ -524,6 +525,7 @@ export default {
         phone: '',
         orgNo: '',
         orgName: '',
+        orgPath: '',
         userType: '1',
         isAlive: 0,
         personnelId: '',
@@ -811,6 +813,7 @@ export default {
         phone: user.phone || '',
         orgNo: user.orgNo || '',
         orgName: user.orgName || '',
+        orgPath: user.orgName || '',
         userType: user.userType || '1',
         isAlive: user.isAlive != null ? user.isAlive : 0,
         personnelId: user.personnelId || '',
@@ -825,6 +828,7 @@ export default {
       if (org && org.id) {
         this.editForm.orgNo = org.id
         this.editForm.orgName = org.label
+        this.editForm.orgPath = org.path || org.label
       }
       this.orgPickerVisible = false
     },
@@ -891,6 +895,7 @@ export default {
         phone: '',
         orgNo: '',
         orgName: '',
+        orgPath: '',
         userType: '1',
         isAlive: 0,
         personnelId: '',
@@ -904,6 +909,7 @@ export default {
       if (org && org.id) {
         this.addForm.orgNo = org.id
         this.addForm.orgName = org.label
+        this.addForm.orgPath = org.path || org.label
       }
       this.addOrgPickerVisible = false
     },

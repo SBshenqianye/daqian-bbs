@@ -126,6 +126,13 @@
             </template>
           </div>
 
+          <!-- 当前组织标签（数据库原值，与新选区分） -->
+          <span
+            v-if="node.id === currentValueId && node.id !== selectedId"
+            class="text-outline/60 ml-1 flex-shrink-0 whitespace-nowrap"
+            style="font-size: 10px; line-height: 14px;"
+          >当前组织</span>
+
           <!-- slot：非 unit-manage 模式向后兼容（BBSPointsConfig 等） -->
           <slot v-if="mode !== 'unit-manage' && node._visible" name="node-actions" :node="node" />
         </div>
@@ -141,6 +148,8 @@ export default {
     nodes: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
     selectedId: { type: String, default: '' },
+    /** 数据库中当前保存的组织 ID（与新选中的 selectedId 区分，做黯淡高亮） */
+    currentValueId: { type: String, default: '' },
     filterText: { type: String, default: '' },
     indent: { type: Number, default: 24 },
     defaultExpanded: { type: Boolean, default: true },
@@ -182,7 +191,7 @@ export default {
     filterText() {
       this._syncVisibility()
       this.$forceUpdate()
-    }
+    },
   },
   methods: {
     /* ===================== 节点装饰 ===================== */
@@ -339,7 +348,33 @@ export default {
       this.$forceUpdate()
     },
 
-    /* ===================== mode=unit-manage 按钮事件 ===================== */
+    /** 展开到指定节点（向上展开所有祖先），确保节点可见。
+     *  返回 true 如果找到并展开，false 如果未找到。 */
+    expandToNode(id) {
+      const findNode = (nodes, targetId) => {
+        for (const n of nodes) {
+          if (n.id === targetId) return n
+          if (n.children && n.children.length) {
+            const found = findNode(n.children, targetId)
+            if (found) return found
+          }
+        }
+        return null
+      }
+      const node = findNode(this.treeData, id)
+      if (!node) return false
+      // 向上展开所有祖先
+      let current = node
+      while (current._parent) {
+        current = current._parent
+        if (!current._expanded) current._expanded = true
+      }
+      this._syncVisibility()
+      this.$forceUpdate()
+      return true
+    },
+
+    /** 展开到指定节点（向上展开所有祖先），确保节点可见。
 
     emitToggleRanking(node) {
       this.$emit('toggle-ranking', node)
@@ -417,7 +452,11 @@ export default {
       if (!node._visible) c.push('th')
       c.push('d' + Math.min(node._depth, 6))
       if (node.id === this.selectedId) {
-        c.push('bg-primary/10 border-primary/30 text-primary font-semibold')
+        // ⭐ 新选中的组织（明亮）
+        c.push('bg-primary/15 border-primary text-primary font-semibold')
+      } else if (node.id === this.currentValueId) {
+        // ⭐ 数据库中当前保存的组织（黯淡 + 灰色 "当前组织" 标签）
+        c.push('bg-surface-variant/30 border-outline-variant/40 text-on-surface-variant/60')
       } else {
         c.push('bg-surface-container-low border-transparent hover:border-outline-variant/30 hover:bg-surface-container-low/80')
       }
