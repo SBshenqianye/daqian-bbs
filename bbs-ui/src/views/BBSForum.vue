@@ -189,14 +189,6 @@
             </button>
           </div>
 
-          <!-- Side Promotion Card -->
-          <div class="bg-primary-container text-white rounded-lg p-card-padding relative overflow-hidden">
-            <div class="relative z-10">
-              <h4 class="font-headline-sm mb-1">智荟专题</h4>
-              <p class="text-body-md opacity-80">探索最前沿的电力行业技术专题。</p>
-            </div>
-            <span class="material-symbols-outlined absolute -bottom-4 -right-4 text-white/20 text-[100px] select-none pointer-events-none">lightbulb</span>
-          </div>
         </aside>
       </div>
     </div>
