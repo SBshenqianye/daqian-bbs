@@ -27,7 +27,7 @@ public class ImportPreviewVO {
     public static class OrgPreview {
         private String orgName;
         private String deptName;
-        /** matched/created */
+        /** matched / unmatched / matched,dept_matched / unmatched,dept_unmatched */
         private String action;
     }
 

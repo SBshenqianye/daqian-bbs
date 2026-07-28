@@ -747,9 +747,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             task.total = total;
             result.setTotalCount(total);
 
-            // 1. 先导入组织
+            // 1. 匹配组织（只从已有架构中查找，不创建）
             OrgImportService.OrgImportResult orgResult = orgImportService.importOrgs(rows);
-            result.setOrgCreatedCount(orgResult.createdCount);
+            result.setOrgUnmatchedCount(orgResult.getUnmatchedCount());
 
             int newCount = 0, updateCount = 0, skipCount = 0, failCount = 0;
 
@@ -789,6 +789,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
                     // 匹配组织（用 orgName+deptName 复合键精确定位）
                     String orgNo = orgImportService.findBestOrgNo(row, orgResult.orgNoByPair);
+
+                    // 组织匹配不到时跳过该行
+                    if (orgNo == null) {
+                        detail.setAction("跳过");
+                        detail.setSuccess(false);
+                        detail.setMessage("无法匹配组织：单位名称「" + row.getOrgName()
+                                + (row.getDeptName() != null && !row.getDeptName().isEmpty()
+                                        ? "」下部门「" + row.getDeptName() : "")
+                                + "」不存在于当前组织架构中，请先导入组织架构或修正Excel数据");
+                        skipCount++;
+                        details.add(detail);
+                        task.setProgress(i + 1);
+                        continue;
+                    }
 
                     // (personnel_id, id_card) 双键匹配
                     User existingUser = userMapper.selectOne(
