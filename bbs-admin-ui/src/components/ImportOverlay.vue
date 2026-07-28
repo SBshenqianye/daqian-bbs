@@ -99,9 +99,9 @@
                 <p class="text-2xl font-bold text-red-700">{{ store.result.userFailCount || 0 }}</p>
                 <p class="text-sm text-red-600">导入失败/跳过</p>
               </div>
-              <div class="flex-1 bg-blue-50 rounded-lg p-4 text-center">
-                <p class="text-2xl font-bold text-blue-700">{{ store.result.orgCreatedCount || 0 }}</p>
-                <p class="text-sm text-blue-600">新建组织</p>
+              <div class="flex-1 bg-amber-50 rounded-lg p-4 text-center">
+                <p class="text-2xl font-bold text-amber-700">{{ store.result.orgUnmatchedCount || 0 }}</p>
+                <p class="text-sm text-amber-600">未匹配组织</p>
               </div>
             </div>
 

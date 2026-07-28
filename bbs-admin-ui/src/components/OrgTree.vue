@@ -174,7 +174,7 @@ export default {
       immediate: true,
       handler(val) {
         if (val && val.length) {
-          this.treeData = val.map(n => this._decorate(n, null, this.defaultExpanded, 0))
+          this.treeData = val.map(n => this._decorate(n, null, this.defaultExpanded ? 2 : false, 0))
           this.initialized = true
         } else {
           this.treeData = []
@@ -186,6 +186,7 @@ export default {
         this._buildFlatList()
         this._syncVisibility()
         this.$forceUpdate()
+        this.$nextTick(() => this._syncChevrons())
       }
     },
     filterText() {
@@ -197,19 +198,18 @@ export default {
     /* ===================== 节点装饰 ===================== */
 
     /** 创建节点对象。
-     *  先 spread 原始属性（枚举），再覆写内部属性为非枚举。
-     *  这样 Vue 2 的 observe() 只处理枚举属性，跳过后台属性，
-     *  避免 200+ 节点的深层响应式追踪。
-     *  修改 _expanded/_visible 后须手动 $forceUpdate()。 */
-    _decorate(node, parent, expanded, depth) {
+     *  @param {number|boolean} expandDepth - false=全折叠, true=全展开, 数字=展开到该深度
+     */
+    _decorate(node, parent, expandDepth, depth) {
       const hasChildren = !!(node.children && Array.isArray(node.children) && node.children.length)
       const id = node.orgNo != null ? String(node.orgNo) : (node.id != null ? String(node.id) : '')
       const label = node.orgName != null ? node.orgName : (node.label || '')
       // 1. 先复制原始枚举属性（包括 id, label, pOrgNo, isRankingSelected …）
       const out = { ...node, id, label }
       // 2. 内部属性全部非枚举 → Vue 跳过
+      const initiallyExpanded = expandDepth === true ? true : expandDepth === false ? false : depth < expandDepth
       const priv = {
-        _expanded: expanded,
+        _expanded: initiallyExpanded,
         _depth: depth,
         _hasChildren: hasChildren,
         _visible: false,
@@ -223,7 +223,7 @@ export default {
       }
       // 3. children 也非枚举（不触发 reactive 递归）
       const childArr = hasChildren
-        ? node.children.map(c => this._decorate(c, out, expanded, depth + 1))
+        ? node.children.map(c => this._decorate(c, out, expandDepth, depth + 1))
         : []
       Object.defineProperty(out, 'children', {
         value: childArr, enumerable: false, writable: true, configurable: true
@@ -340,12 +340,14 @@ export default {
       this._walkTree(this.treeData, n => { n._expanded = true })
       this._syncVisibility()
       this.$forceUpdate()
+      this.$nextTick(() => this._syncChevrons())
     },
 
     collapseAll() {
       this._walkTree(this.treeData, n => { n._expanded = false })
       this._syncVisibility()
       this.$forceUpdate()
+      this.$nextTick(() => this._syncChevrons())
     },
 
     /** 展开到指定节点（向上展开所有祖先），确保节点可见。
@@ -371,10 +373,21 @@ export default {
       }
       this._syncVisibility()
       this.$forceUpdate()
+      this.$nextTick(() => this._syncChevrons())
       return true
     },
 
-    /** 展开到指定节点（向上展开所有祖先），确保节点可见。
+    /** 同步所有节点的 chevron 旋转状态（v-once 冻结了模板，须 DOM 操作） */
+    _syncChevrons() {
+      if (!this.$el || !this.flatList) return
+      for (const node of this.flatList) {
+        if (!node._hasChildren) continue
+        const row = this.$el.querySelector(`[data-nid="${node.id}"]`)
+        if (!row) continue
+        const chevron = row.querySelector('.tree-chevron')
+        if (chevron) chevron.classList.toggle('tree-copen', node._expanded)
+      }
+    },
 
     emitToggleRanking(node) {
       this.$emit('toggle-ranking', node)
