@@ -10,6 +10,7 @@ import com.walker.vo.ResultBean;
 import com.walker.service.ArticleService;
 import com.walker.vo.param.ArticleParam;
 import com.walker.vo.param.ArticleStatisticParam;
+import com.walker.vo.param.PersonalPointsRankParam;
 import com.walker.vo.param.PointsRankParam;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -375,6 +376,12 @@ public class ArticleController {
     @PostMapping("/common/pointsRank")
     public ResultBean pointsRank(@RequestBody PointsRankParam pointsRankParam){
         return articleService.pointsRank(pointsRankParam);
+    }
+
+    @ApiOperation(value = "获取个人积分排名（Top 20 + 当前用户信息）")
+    @PostMapping("/common/personalPointsRank")
+    public ResultBean personalPointsRank(@RequestBody PersonalPointsRankParam param){
+        return articleService.personalPointsRank(param);
     }
 
     @ApiOperation(value = "管理员获取文章列表（支持搜索过滤分页，含标签名）")

@@ -19,6 +19,8 @@ import com.walker.vo.param.ArticleParam;
 import com.walker.vo.param.ArticleStatisticParam;
 import com.walker.vo.ArticleStatisticVO;
 import com.walker.vo.param.PointsRankParam;
+import com.walker.vo.param.PersonalPointsRankParam;
+import com.walker.vo.PersonalPointsRankVO;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -584,18 +586,21 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             pointsRankParam.setFeatured(0);
         }
         // 01：本月，02：累计，获取配置的开始和结束日期
-        if (ConstantUtil.MANA_ZERO_ONE.equals(pointsRankParam.getRankType())) {
-            pointsRankParam.setStartTime(DateUtil.formatDate(DateUtil.beginOfMonth(new Date())));
-            pointsRankParam.setEndTime(DateUtil.formatDate(DateUtil.endOfMonth(new Date())));
-        } else {
-            // 查询累计排名配置的开始和结束时间
-            List<Dict> startTimeList = dictService.listDictByType(ConstantUtil.MANA_POINTS_START_TIME);
-            List<Dict> endTimeList = dictService.listDictByType(ConstantUtil.MANA_POINTS_END_TIME);
-            if (CollectionUtils.isEmpty(startTimeList) || CollectionUtils.isEmpty(endTimeList) || CollectionUtils.isEmpty(postList) || CollectionUtils.isEmpty(replyList)) {
-                return ResultBean.error("累积排名日期配置不全，请联系管理员");
+        // 如果前端已传 startTime 和 endTime，直接使用；否则按 rankType 计算默认值
+        if (StringUtils.isEmpty(pointsRankParam.getStartTime()) || StringUtils.isEmpty(pointsRankParam.getEndTime())) {
+            if (ConstantUtil.MANA_ZERO_ONE.equals(pointsRankParam.getRankType())) {
+                pointsRankParam.setStartTime(DateUtil.formatDate(DateUtil.beginOfMonth(new Date())));
+                pointsRankParam.setEndTime(DateUtil.formatDate(DateUtil.endOfMonth(new Date())));
+            } else {
+                // 查询累计排名配置的开始和结束时间
+                List<Dict> startTimeList = dictService.listDictByType(ConstantUtil.MANA_POINTS_START_TIME);
+                List<Dict> endTimeList = dictService.listDictByType(ConstantUtil.MANA_POINTS_END_TIME);
+                if (CollectionUtils.isEmpty(startTimeList) || CollectionUtils.isEmpty(endTimeList) || CollectionUtils.isEmpty(postList) || CollectionUtils.isEmpty(replyList)) {
+                    return ResultBean.error("累积排名日期配置不全，请联系管理员");
+                }
+                pointsRankParam.setStartTime(startTimeList.get(0).getDictValue());
+                pointsRankParam.setEndTime(endTimeList.get(0).getDictValue());
             }
-            pointsRankParam.setStartTime(startTimeList.get(0).getDictValue());
-            pointsRankParam.setEndTime(endTimeList.get(0).getDictValue());
         }
 
         List<PointsRankVO> resultList = articleMapper.pointsRank(pointsRankParam);
@@ -611,14 +616,18 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             });
         }
 
-        // 排名单位过滤：如果 bbs_sa_org 中有勾选了参与排名的单位，只显示这些单位
+        // 排名单位过滤：只显示在 admin-ui 中勾选了"参与排名"的单位
         if (!CollectionUtils.isEmpty(resultList)) {
             List<SaOrg> rankingOrgs = saOrgMapper.selectList(
                     new LambdaQueryWrapper<SaOrg>()
                             .eq(SaOrg::getIsRankingSelected, 1)
                             .eq(SaOrg::getIsDelete, 0)
             );
-            if (!CollectionUtils.isEmpty(rankingOrgs)) {
+            if (CollectionUtils.isEmpty(rankingOrgs)) {
+                // 没有勾选任何排名单位 → 返回空列表
+                resultList = new ArrayList<>();
+            } else {
+                // 有勾选的 → 只显示勾选的那些
                 List<String> allowedOrgNos = rankingOrgs.stream()
                         .map(SaOrg::getOrgNo)
                         .collect(Collectors.toList());
@@ -631,6 +640,95 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
 
         return ResultBean.success("查询成功", resultList);
+    }
+
+    /**
+     * 获取积分配置（发帖/回帖/精华帖分值）
+     */
+    private int[] getPointsConfig() {
+        List<Dict> postList = dictService.listDictByType(ConstantUtil.MANA_POST);
+        List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
+        int post = Integer.parseInt(postList.get(0).getDictValue());
+        int reply = Integer.parseInt(replyList.get(0).getDictValue());
+        int featured = 0;
+        List<Dict> featuredList = dictService.listDictByType(ConstantUtil.MANA_FEATURED);
+        if (!CollectionUtils.isEmpty(featuredList)) {
+            featured = Integer.parseInt(featuredList.get(0).getDictValue());
+        }
+        return new int[]{post, reply, featured};
+    }
+
+    @Override
+    public ResultBean personalPointsRank(PersonalPointsRankParam param) {
+        // 默认时间：当月
+        if (StringUtils.isEmpty(param.getStartTime()) || StringUtils.isEmpty(param.getEndTime())) {
+            param.setStartTime(DateUtil.formatDate(DateUtil.beginOfMonth(new Date())));
+            param.setEndTime(DateUtil.formatDate(DateUtil.endOfMonth(new Date())));
+        }
+        // 默认 size = 20
+        if (param.getSize() == null || param.getSize() < 1) {
+            param.setSize(20);
+        }
+
+        // 获取积分配置
+        int[] config = getPointsConfig();
+        param.setPost(config[0]);
+        param.setReply(config[1]);
+
+        // 查询 Top N
+        List<PersonalPointsRankVO> list = articleMapper.personalPointsRank(param);
+
+        // === [预留] 点 8：统计排除 ===
+        // 后续从配置读取需排除的 orgNo 列表，过滤掉统计单位
+        // List<String> excludeOrgNos = getExcludeOrgNos();
+        // if (!excludeOrgNos.isEmpty() && !CollectionUtils.isEmpty(list)) {
+        //     list = list.stream()
+        //         .filter(item -> !excludeOrgNos.contains(item.getOrgNo()))
+        //         .collect(Collectors.toList());
+        // }
+
+        // 分配排名序号
+        if (!CollectionUtils.isEmpty(list)) {
+            int[] rank = {1};
+            list.forEach(item -> item.setRankNum(rank[0]++));
+        }
+
+        // 查询当前用户排名
+        PersonalPointsRankVO currentUser = null;
+        if (param.getCurrentUserId() != null) {
+            param.setUserId(param.getCurrentUserId());
+            currentUser = articleMapper.getUserPersonalRank(param);
+            // === [预留] 点 8：如果当前用户所在单位被排除，则不展示
+
+            // 如果用户 0 积分（不在排名中），也返回基础信息卡
+            if (currentUser == null) {
+                User user = userService.getById(param.getCurrentUserId());
+                if (user != null) {
+                    currentUser = new PersonalPointsRankVO();
+                    currentUser.setUserId(user.getId());
+                    currentUser.setNickName(user.getNickname());
+                    currentUser.setPortrait(user.getPortrait());
+                    currentUser.setOrgNo(user.getOrgNo());
+                    if (user.getOrgNo() != null) {
+                        SaOrg org = saOrgMapper.selectOne(
+                            new LambdaQueryWrapper<SaOrg>().eq(SaOrg::getOrgNo, user.getOrgNo())
+                        );
+                        if (org != null) {
+                            currentUser.setOrgName(org.getOrgName());
+                        }
+                    }
+                    currentUser.setPosts(0);
+                    currentUser.setReplies(0);
+                    currentUser.setPoints(0);
+                    currentUser.setRankNum(null); // 未上榜
+                }
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("currentUser", currentUser);
+        return ResultBean.success("查询成功", result);
     }
 
     @Override
