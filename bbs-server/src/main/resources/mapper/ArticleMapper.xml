@@ -168,7 +168,7 @@
             GROUP BY comment_user_id
         ) t3 ON u.id = t3.comment_user_id
         WHERE u.is_delete = 0
-        HAVING points > 0
+          AND (COALESCE(t2.posts, 0) * #{post} + COALESCE(t3.replies, 0) * #{reply}) > 0
         ORDER BY points DESC, u.id
         LIMIT #{size}
     </select>
@@ -206,7 +206,7 @@
                 WHERE is_delete = 0 AND enable = 1
                   AND <choose>
                         <when test="_databaseId == 'mysql'">comment_time >= STR_TO_DATE(#{startTime}, '%Y-%m-%d')</when>
-                        <otherwise>to_date(comment_time, 'YYYY-MM-DD HH24:MI:SS') >= to_date(#{startTime}, '%Y-%m-%d')</otherwise>
+                        <otherwise>to_date(comment_time, 'YYYY-MM-DD HH24:MI:SS') >= to_date(#{startTime}, 'YYYY-MM-DD')</otherwise>
                     </choose>
                   AND <choose>
                         <when test="_databaseId == 'mysql'">comment_time <![CDATA[<]]> STR_TO_DATE(#{endTime}, '%Y-%m-%d') + INTERVAL 1 DAY</when>
@@ -215,7 +215,7 @@
                 GROUP BY comment_user_id
             ) t3 ON u.id = t3.comment_user_id
             WHERE u.is_delete = 0
-            HAVING points > 0
+              AND (COALESCE(t2.posts, 0) * #{post} + COALESCE(t3.replies, 0) * #{reply}) > 0
         ) ranked
         WHERE ranked.userId = #{userId}
     </select>
