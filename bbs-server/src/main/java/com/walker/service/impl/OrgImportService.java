@@ -123,29 +123,85 @@ public class OrgImportService {
 
     // ==================== 内部辅助方法 ====================
 
-    /** 按单位名称查找（精确匹配） */
+    /** 按单位名称查找（精确匹配，支持兼容性降级） */
     private SaOrg findOrgByName(String orgName) {
         if (orgName == null || orgName.trim().isEmpty()) return null;
+        String name = orgName.trim();
+
+        // 1. 精确匹配
         List<SaOrg> list = saOrgMapper.selectList(
                 new LambdaQueryWrapper<SaOrg>()
-                        .eq(SaOrg::getOrgName, orgName.trim())
+                        .eq(SaOrg::getOrgName, name)
                         .eq(SaOrg::getIsDelete, 0)
                         .last("LIMIT 1")
         );
-        return CollectionUtils.isEmpty(list) ? null : list.get(0);
+        if (!CollectionUtils.isEmpty(list)) return list.get(0);
+
+        // 2. 兼容：Excel 中可能带"国网"前缀而 DB 中不带（如 "国网内江供电公司本部" → "内江供电公司本部"）
+        String stripped = name.replaceFirst("^国网", "").trim();
+        if (!stripped.equals(name)) {
+            list = saOrgMapper.selectList(
+                    new LambdaQueryWrapper<SaOrg>()
+                            .eq(SaOrg::getOrgName, stripped)
+                            .eq(SaOrg::getIsDelete, 0)
+                            .last("LIMIT 1")
+            );
+            if (!CollectionUtils.isEmpty(list)) return list.get(0);
+        }
+
+        // 3. 兼容：DB 中可能带"国网"前缀而 Excel 中不带
+        String prefixed = "国网" + name;
+        list = saOrgMapper.selectList(
+                new LambdaQueryWrapper<SaOrg>()
+                        .eq(SaOrg::getOrgName, prefixed)
+                        .eq(SaOrg::getIsDelete, 0)
+                        .last("LIMIT 1")
+        );
+        if (!CollectionUtils.isEmpty(list)) return list.get(0);
+
+        return null;
     }
 
-    /** 按部门名称和父级编号查找 */
+    /** 按部门名称和父级编号查找（精确匹配，支持兼容性降级） */
     private SaOrg findDeptByName(String deptName, String pOrgNo) {
         if (deptName == null || deptName.trim().isEmpty()) return null;
+        String name = deptName.trim();
+
+        // 1. 精确匹配
         List<SaOrg> list = saOrgMapper.selectList(
                 new LambdaQueryWrapper<SaOrg>()
-                        .eq(SaOrg::getOrgName, deptName.trim())
+                        .eq(SaOrg::getOrgName, name)
                         .eq(SaOrg::getPOrgNo, pOrgNo)
                         .eq(SaOrg::getIsDelete, 0)
                         .last("LIMIT 1")
         );
-        return CollectionUtils.isEmpty(list) ? null : list.get(0);
+        if (!CollectionUtils.isEmpty(list)) return list.get(0);
+
+        // 2. 兼容："国网" 前缀差异
+        String stripped = name.replaceFirst("^国网", "").trim();
+        if (!stripped.equals(name)) {
+            list = saOrgMapper.selectList(
+                    new LambdaQueryWrapper<SaOrg>()
+                            .eq(SaOrg::getOrgName, stripped)
+                            .eq(SaOrg::getPOrgNo, pOrgNo)
+                            .eq(SaOrg::getIsDelete, 0)
+                            .last("LIMIT 1")
+            );
+            if (!CollectionUtils.isEmpty(list)) return list.get(0);
+        }
+        String prefixed = "国网" + name;
+        if (!prefixed.equals(name)) {
+            list = saOrgMapper.selectList(
+                    new LambdaQueryWrapper<SaOrg>()
+                            .eq(SaOrg::getOrgName, prefixed)
+                            .eq(SaOrg::getPOrgNo, pOrgNo)
+                            .eq(SaOrg::getIsDelete, 0)
+                            .last("LIMIT 1")
+            );
+            if (!CollectionUtils.isEmpty(list)) return list.get(0);
+        }
+
+        return null;
     }
 
     /** 提取唯一 (单位名称, 部门名称) 组合 */
