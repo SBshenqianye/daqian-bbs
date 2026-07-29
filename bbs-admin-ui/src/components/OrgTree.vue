@@ -23,9 +23,8 @@
           :class="rowCls(node)"
         >
           <!--
-            v-once：整个行内容（静态结构 + mode=unit-manage 按钮）只创建一次 VNode，
-            后续 $forceUpdate 完全跳过。chevron 旋转/高亮和 toggle 开关状态通过
-            直接 DOM 操作更新。
+            v-once：仅包含树结构静态部分（箭头、图标、标签），
+            toggle 按钮在其外，通过 Vue 响应式直接更新。
           -->
           <div v-once class="flex items-center gap-1 min-w-0 flex-1 w-full">
             <!-- Chevron -->
@@ -44,87 +43,67 @@
             <!-- Label -->
             <span class="flex-1 font-body-md truncate min-w-0 ml-1">{{ node.label }}</span>
             <span class="material-symbols-outlined text-primary flex-shrink-0" style="font-size: 16px; display:none;">check_circle</span>
-
-            <!-- ────── mode=unit-manage：按钮组（全量） ────── -->
-            <template v-if="mode === 'unit-manage'">
-              <div class="flex items-center gap-0.5 flex-shrink-0">
-                <!-- 级联排名操作（仅父节点） -->
-                <template v-if="node._hasChildren">
-                  <button
-                    class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-primary hover:bg-primary/10 transition-all"
-                    title="勾选所有子级单位参与排名"
-                    @click.stop="emitCascadeRanking(node, true)"
-                  >
-                    <span class="material-symbols-outlined" style="font-size:14px">done_all</span>
-                  </button>
-                  <button
-                    class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-error hover:bg-error/10 transition-all"
-                    title="取消所有子级单位排名"
-                    @click.stop="emitCascadeRanking(node, false)"
-                  >
-                    <span class="material-symbols-outlined" style="font-size:14px">indeterminate_check_box</span>
-                  </button>
-                </template>
-
-                <!-- 排名开关 -->
-                <div class="flex items-center gap-1 ml-1">
-                  <span class="text-[11px] text-on-surface-variant whitespace-nowrap">排名</span>
-                  <button
-                    class="relative rounded-full transition-all duration-200 flex-shrink-0"
-                    :class="node.isRankingSelected == 1 || node.isRankingSelected === true ? 'bg-primary' : 'bg-gray-300'"
-                    style="height:18px;width:36px"
-                    :title="(node.isRankingSelected == 1 || node.isRankingSelected === true) ? '取消参与排名' : '参与排名'"
-                    data-track="ranking"
-                    @click.stop="emitToggleRanking(node)"
-                  >
-                    <span
-                      class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200 toggle-dot"
-                      :style="(node.isRankingSelected == 1 || node.isRankingSelected === true) ? 'left:19px' : 'left:2px'"
-                    ></span>
-                  </button>
-                </div>
-
-                <!-- 显示开关 -->
-                <div class="flex items-center gap-1 ml-1">
-                  <span class="text-[11px] text-on-surface-variant whitespace-nowrap">显示</span>
-                  <button
-                    class="relative rounded-full transition-all duration-200 flex-shrink-0"
-                    :class="node.isDisplaySelected == 1 || node.isDisplaySelected === true ? 'bg-primary' : 'bg-gray-300'"
-                    style="height:18px;width:36px"
-                    :title="(node.isDisplaySelected == 1 || node.isDisplaySelected === true) ? '不在前台显示' : '在前台显示'"
-                    data-track="display"
-                    @click.stop="emitToggleDisplay(node)"
-                  >
-                    <span
-                      class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200 toggle-dot"
-                      :style="(node.isDisplaySelected == 1 || node.isDisplaySelected === true) ? 'left:19px' : 'left:2px'"
-                    ></span>
-                  </button>
-                </div>
-
-                <!-- CRUD（hover 显示） -->
-                <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ml-1">
-                  <button
-                    class="inline-flex items-center gap-0.5 px-1.5 py-1 font-medium text-primary hover:bg-primary/10 rounded-md transition-colors"
-                    style="font-size: 11px;"
-                    @click.stop="emitAdd(node)"
-                  >
-                    <span class="material-symbols-outlined" style="font-size: 12px;">add</span>
-                    新增
-                  </button>
-                  <button
-                    v-if="node.id && node.id.length !== 5"
-                    class="inline-flex items-center gap-0.5 px-1.5 py-1 font-medium text-error hover:bg-error/10 rounded-md transition-colors"
-                    style="font-size: 11px;"
-                    @click.stop="emitDelete(node)"
-                  >
-                    <span class="material-symbols-outlined" style="font-size: 12px;">delete</span>
-                    删除
-                  </button>
-                </div>
-              </div>
-            </template>
           </div>
+
+          <!-- ────── mode=unit-manage：按钮组（v-once 外，Vue 响应式驱动） ────── -->
+          <template v-if="mode === 'unit-manage'">
+            <div class="flex items-center gap-0.5 flex-shrink-0">
+              <!-- 排名开关 -->
+              <div class="flex items-center gap-1 ml-1">
+                <span class="text-[11px] text-on-surface-variant whitespace-nowrap">排名</span>
+                <button
+                  class="relative rounded-full transition-all duration-200 flex-shrink-0"
+                  :class="rankingBtnCls(node)"
+                  style="height:18px;width:36px"
+                  :title="rankingTitle(node)"
+                  @click.stop="emitToggleRanking(node)"
+                >
+                  <span
+                    class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200"
+                    :style="rankingDotStyle(node)"
+                  ></span>
+                </button>
+              </div>
+
+              <!-- 显示开关 -->
+              <div class="flex items-center gap-1 ml-1">
+                <span class="text-[11px] text-on-surface-variant whitespace-nowrap">显示</span>
+                <button
+                  class="relative rounded-full transition-all duration-200 flex-shrink-0"
+                  :class="displayBtnCls(node)"
+                  style="height:18px;width:36px"
+                  :title="displayTitle(node)"
+                  @click.stop="emitToggleDisplay(node)"
+                >
+                  <span
+                    class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200"
+                    :style="displayDotStyle(node)"
+                  ></span>
+                </button>
+              </div>
+
+              <!-- CRUD（hover 显示） -->
+              <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ml-1">
+                <button
+                  class="inline-flex items-center gap-0.5 px-1.5 py-1 font-medium text-primary hover:bg-primary/10 rounded-md transition-colors"
+                  style="font-size: 11px;"
+                  @click.stop="emitAdd(node)"
+                >
+                  <span class="material-symbols-outlined" style="font-size: 12px;">add</span>
+                  新增
+                </button>
+                <button
+                  v-if="node.id && node.id.length !== 5"
+                  class="inline-flex items-center gap-0.5 px-1.5 py-1 font-medium text-error hover:bg-error/10 rounded-md transition-colors"
+                  style="font-size: 11px;"
+                  @click.stop="emitDelete(node)"
+                >
+                  <span class="material-symbols-outlined" style="font-size: 12px;">delete</span>
+                  删除
+                </button>
+              </div>
+            </div>
+          </template>
 
           <!-- 当前组织标签（数据库原值，与新选区分） -->
           <span
@@ -156,7 +135,7 @@ export default {
     /** 渲染模式：'unit-manage' 在 v-once 内联渲染全量按钮；其他值使用 slot */
     mode: { type: String, default: '' }
   },
-  emits: ['node-click', 'toggle-ranking', 'toggle-display', 'cascade-ranking', 'add-node', 'delete-node'],
+  emits: ['node-click', 'toggle-ranking', 'toggle-display', 'cascade-ranking', 'cascade-display', 'add-node', 'delete-node'],
   data() {
     return {
       /** 装饰后的树（仅首次构建，后续不重写） */
@@ -389,64 +368,74 @@ export default {
       }
     },
 
+    /* ============= 响应式：toggle 视觉状态 ============= */
+
+    /** 排名按钮背景 class */
+    rankingBtnCls(node) {
+      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
+      return on ? 'bg-primary' : 'bg-gray-300'
+    },
+    /** 排名按钮圆点位置 */
+    rankingDotStyle(node) {
+      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
+      return on ? 'left:19px' : 'left:2px'
+    },
+    /** 排名按钮 title */
+    rankingTitle(node) {
+      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
+      return on ? '取消参与排名' : '参与排名'
+    },
+
+    /** 显示按钮背景 class */
+    displayBtnCls(node) {
+      const on = node.isDisplaySelected == 1 || node.isDisplaySelected === true
+      return on ? 'bg-primary' : 'bg-gray-300'
+    },
+    /** 显示按钮圆点位置 */
+    displayDotStyle(node) {
+      const on = node.isDisplaySelected == 1 || node.isDisplaySelected === true
+      return on ? 'left:19px' : 'left:2px'
+    },
+    /** 显示按钮 title */
+    displayTitle(node) {
+      const on = node.isDisplaySelected == 1 || node.isDisplaySelected === true
+      return on ? '不在前台显示' : '在前台显示'
+    },
+
+    /* ============= 事件发射 ============= */
+
     emitToggleRanking(node) {
+      if (node._hasChildren) {
+        // 父级：翻转自己并向下级联到所有子级
+        const newVal = !(node.isRankingSelected == 1 || node.isRankingSelected === true)
+        this.$emit('toggle-ranking', node)
+        this.$emit('cascade-ranking', node, newVal)
+        this.$forceUpdate()
+        return
+      }
       this.$emit('toggle-ranking', node)
-      // $emit 是同步的 — 父组件 handler 已执行完毕，node.isRankingSelected 已翻转
-      this._updateRankingToggleDOM(node)
+      this.$forceUpdate()
     },
 
     emitToggleDisplay(node) {
+      if (node._hasChildren) {
+        const newVal = !(node.isDisplaySelected == 1 || node.isDisplaySelected === true)
+        this.$emit('toggle-display', node)
+        this.$emit('cascade-display', node, newVal)
+        this.$forceUpdate()
+        return
+      }
       this.$emit('toggle-display', node)
-      this._updateDisplayToggleDOM(node)
+      this.$forceUpdate()
     },
 
-    emitCascadeRanking(node, selected) {
-      this.$emit('cascade-ranking', node, selected)
-      // 父组件 cascadeRanking 已同步执行完所有子节点的 isRankingSelected 翻转
-      this._updateCascadeRankingDOM(node)
-    },
+    /* ============= 公共方法 ============= */
 
     emitAdd(node) {
       this.$emit('add-node', node)
     },
-
     emitDelete(node) {
       this.$emit('delete-node', node)
-    },
-
-    /* ===================== 直接 DOM 更新 toggle 视觉状态 ===================== */
-
-    _updateRankingToggleDOM(node) {
-      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
-      const track = this.$el.querySelector(`[data-nid="${node.id}"] [data-track="ranking"]`)
-      if (!track) return
-      track.classList.toggle('bg-primary', on)
-      track.classList.toggle('bg-gray-300', !on)
-      track.title = on ? '取消参与排名' : '参与排名'
-      const dot = track.querySelector('.toggle-dot')
-      if (dot) dot.style.left = on ? '19px' : '2px'
-    },
-
-    _updateDisplayToggleDOM(node) {
-      const on = node.isDisplaySelected == 1 || node.isDisplaySelected === true
-      const track = this.$el.querySelector(`[data-nid="${node.id}"] [data-track="display"]`)
-      if (!track) return
-      track.classList.toggle('bg-primary', on)
-      track.classList.toggle('bg-gray-300', !on)
-      track.title = on ? '不在前台显示' : '在前台显示'
-      const dot = track.querySelector('.toggle-dot')
-      if (dot) dot.style.left = on ? '19px' : '2px'
-    },
-
-    _updateCascadeRankingDOM(node) {
-      if (!node._hasChildren || !node.children) return
-      const walk = (nodes) => {
-        for (const child of nodes) {
-          this._updateRankingToggleDOM(child)
-          if (child._hasChildren && child.children) walk(child.children)
-        }
-      }
-      walk(node.children)
     },
 
     /* ===================== 内部 ===================== */
