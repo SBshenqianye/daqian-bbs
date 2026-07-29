@@ -658,6 +658,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         return new int[]{post, reply, featured};
     }
 
+    /**
+     * 从 bbs_system_config 读取 JSON 数组格式的排除列表（点8/9共用）
+     * @param configKey 配置键名（org_statistics_exclude / org_display_exclude）
+     * @return 排除的 orgNo 列表，无配置或解析失败返回空列表
+     */
     @Override
     public ResultBean personalPointsRank(PersonalPointsRankParam param) {
         // 默认时间：当月
@@ -678,15 +683,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // 查询 Top N
         List<PersonalPointsRankVO> list = articleMapper.personalPointsRank(param);
 
-        // === [预留] 点 8：统计排除 ===
-        // 后续从配置读取需排除的 orgNo 列表，过滤掉统计单位
-        // List<String> excludeOrgNos = getExcludeOrgNos();
-        // if (!excludeOrgNos.isEmpty() && !CollectionUtils.isEmpty(list)) {
-        //     list = list.stream()
-        //         .filter(item -> !excludeOrgNos.contains(item.getOrgNo()))
-        //         .collect(Collectors.toList());
-        // }
-
         // 分配排名序号
         if (!CollectionUtils.isEmpty(list)) {
             int[] rank = {1};
@@ -698,7 +694,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (param.getCurrentUserId() != null) {
             param.setUserId(param.getCurrentUserId());
             currentUser = articleMapper.getUserPersonalRank(param);
-            // === [预留] 点 8：如果当前用户所在单位被排除，则不展示
 
             // 如果用户 0 积分（不在排名中），也返回基础信息卡
             if (currentUser == null) {
