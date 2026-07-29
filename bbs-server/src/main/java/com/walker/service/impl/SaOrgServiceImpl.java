@@ -39,7 +39,7 @@ public class SaOrgServiceImpl extends ServiceImpl<SaOrgMapper, SaOrg> implements
     @Override
     public List<SaOrgTreeVO> getOrgTree() {
         // 查询全量单位列表
-        List<SaOrg> orgList = this.list();
+        List<SaOrg> orgList = this.list(new LambdaQueryWrapper<SaOrg>().orderByAsc(SaOrg::getOrgNo));
         if (orgList == null || orgList.isEmpty()) {
             return new ArrayList<>();
         }
