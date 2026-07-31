@@ -5,6 +5,7 @@ import com.walker.pojo.SaOrg;
 import com.walker.vo.ResultBean;
 import com.walker.vo.SaOrgTreeVO;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -50,4 +51,19 @@ public interface SaOrgService extends IService<SaOrg> {
      * @param displayMap orgNo → 是否显示
      */
     void batchUpdateDisplay(Map<String, Boolean> displayMap);
+
+    /**
+     * 解析组织在用户前台的显示层级名称：
+     * 沿 org_tree 路径自底向上找第一个 is_display_selected=1 的祖先，
+     * 用户自身组织被隐藏时返回上一可见级名称；查不到时返回 fallbackName。
+     * @param orgNo 组织编号
+     * @param fallbackName 兜底名称（通常传 user.orgName）
+     */
+    String resolveDisplayOrgName(String orgNo, String fallbackName);
+
+    /**
+     * 批量解析显示层级名称：orgNo → 过滤后的层级名称（查不到的 orgNo 不在 map 中）
+     * @param orgNos 组织编号集合
+     */
+    Map<String, String> resolveDisplayOrgNames(Collection<String> orgNos);
 }

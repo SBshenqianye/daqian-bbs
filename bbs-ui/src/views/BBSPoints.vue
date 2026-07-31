@@ -356,16 +356,14 @@ export default {
         const rootNode = (tree && tree.obj && tree.obj[0]) || null
         const orgTabs = []
         if (rootNode && rootNode.children) {
+          // 显示配置不影响积分排名：所有二级单位都生成 Tab
           rootNode.children.forEach(child => {
-            // isDisplaySelected === 1 才展示 Tab
-            if (child.isDisplaySelected === 1 || child.isDisplaySelected === true) {
-              orgTabs.push({
-                key: 'org_' + child.id,
-                label: child.label,
-                orgNo: child.id,
-                mode: 'org',
-              })
-            }
+            orgTabs.push({
+              key: 'org_' + child.id,
+              label: child.label,
+              orgNo: child.id,
+              mode: 'org',
+            })
           })
         }
         // 构建完整 Tab 列表

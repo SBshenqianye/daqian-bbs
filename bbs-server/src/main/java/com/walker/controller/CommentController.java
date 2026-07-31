@@ -3,7 +3,6 @@ package com.walker.controller;
 
 import com.walker.pojo.Comment;
 import com.walker.pojo.Reply;
-import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.service.CommentService;
 import com.walker.service.ReplyService;
@@ -14,7 +13,6 @@ import com.walker.vo.ResultBean;
 import com.walker.vo.param.CommentParam;
 import com.walker.vo.ReplyVO;
 import com.walker.vo.param.ReplyParam;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -148,15 +146,9 @@ public class CommentController {
     }
 
     /**
-     * 从 bbs_sa_org 查询组织的完整名称（user.orgName 可能已被 display 过滤覆盖）
+     * 按显示层级解析组织的完整名称（user.orgName 可能已被 display 过滤覆盖）
      */
     private String resolveFullOrgName(String orgNo, String fallbackName) {
-        if (orgNo == null) return fallbackName;
-        SaOrg org = saOrgService.getOne(
-                new LambdaQueryWrapper<SaOrg>()
-                        .eq(SaOrg::getOrgNo, orgNo)
-                        .eq(SaOrg::getIsDelete, 0)
-        );
-        return org != null ? org.getOrgName() : fallbackName;
+        return saOrgService.resolveDisplayOrgName(orgNo, fallbackName);
     }
 }

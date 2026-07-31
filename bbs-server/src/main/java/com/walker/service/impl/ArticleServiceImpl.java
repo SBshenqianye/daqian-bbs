@@ -63,6 +63,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private SaOrgMapper saOrgMapper;
 
     @Autowired
+    private SaOrgService saOrgService;
+
+    @Autowired
     private CommentMapper commentMapper;
 
     /**
@@ -268,22 +271,12 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .filter(u -> u.getPortrait() != null || u.getOrgName() != null)
                 .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
-        // 批量查询组织表，构建 orgNo → orgName 映射（用于 display 过滤后的完整名称）
-        Map<String, String> orgNameMap = new HashMap<>();
+        // 批量解析显示层级名称（用户组织被隐藏时显示上一可见级）
         Set<String> orgNos = users.stream()
                 .map(User::getOrgNo)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        if (!orgNos.isEmpty()) {
-            List<SaOrg> orgs = saOrgMapper.selectList(
-                    new LambdaQueryWrapper<SaOrg>()
-                            .in(SaOrg::getOrgNo, orgNos)
-                            .eq(SaOrg::getIsDelete, 0)
-            );
-            for (SaOrg org : orgs) {
-                orgNameMap.put(org.getOrgNo(), org.getOrgName());
-            }
-        }
+        Map<String, String> orgNameMap = saOrgService.resolveDisplayOrgNames(orgNos);
 
         articles.forEach(a -> {
             if (a.getUserId() != null && userMap.containsKey(a.getUserId())) {
@@ -689,6 +682,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             list.forEach(item -> item.setRankNum(rank[0]++));
         }
 
+        // 按显示层级解析组织标签（用户组织被隐藏时显示上一可见级）
+        applyDisplayOrgToRank(list);
+
         // 查询当前用户排名
         PersonalPointsRankVO currentUser = null;
         if (param.getCurrentUserId() != null) {
@@ -709,7 +705,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                             new LambdaQueryWrapper<SaOrg>().eq(SaOrg::getOrgNo, user.getOrgNo())
                         );
                         if (org != null) {
-                            currentUser.setOrgName(org.getOrgName());
+                            // 同样按显示层级过滤（原始名 org.getOrgName() 作为兜底）
+                            currentUser.setOrgName(saOrgService.resolveDisplayOrgName(user.getOrgNo(), org.getOrgName()));
                         }
                     }
                     currentUser.setPosts(0);
@@ -720,10 +717,32 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             }
         }
 
+        // 当前用户排名卡的 orgName 同样按显示层级过滤
+        if (currentUser != null && currentUser.getOrgNo() != null) {
+            currentUser.setOrgName(saOrgService.resolveDisplayOrgName(currentUser.getOrgNo(), currentUser.getOrgName()));
+        }
+
         Map<String, Object> result = new HashMap<>();
         result.put("list", list);
         result.put("currentUser", currentUser);
         return ResultBean.success("查询成功", result);
+    }
+
+    /**
+     * 按显示层级批量过滤个人排名的组织标签（与文章/评论的 orgName 保持一致的过滤规则）
+     */
+    private void applyDisplayOrgToRank(List<PersonalPointsRankVO> list) {
+        if (CollectionUtils.isEmpty(list)) return;
+        Set<String> orgNos = list.stream()
+                .map(PersonalPointsRankVO::getOrgNo)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (orgNos.isEmpty()) return;
+        Map<String, String> orgNameMap = saOrgService.resolveDisplayOrgNames(orgNos);
+        list.forEach(item -> {
+            String resolved = orgNameMap.get(item.getOrgNo());
+            if (resolved != null) item.setOrgName(resolved);
+        });
     }
 
     @Override
