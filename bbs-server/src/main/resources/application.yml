@@ -1,7 +1,7 @@
 
 server:
-  # 端口号设置
-  port: 9083
+  # 端口号设置（开发默认 9083；生产环境用环境变量 BBS_SERVER_PORT 覆盖为 18848）
+  port: ${BBS_SERVER_PORT:9083}
   servlet:
     context-path: /bbs-server
 spring:
