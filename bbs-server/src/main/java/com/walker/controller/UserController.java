@@ -92,7 +92,8 @@ public class UserController {
         map.put("idCard", user.getIdCard());
         map.put("orgNo", user.getOrgNo());
         map.put("orgName", user.getOrgName());
-        map.put("orgNameFull", resolveFullOrgName(user.getOrgNo(), user.getOrgName()));
+        // 个人中心显示完整的原始组织名称（不受显示层级过滤）
+        map.put("orgNameFull", resolveRawOrgName(user.getOrgNo(), user.getOrgName()));
         map.put("deptName", user.getDeptName());
         map.put("userType", user.getUserType());
         map.put("personnelId", user.getPersonnelId());
@@ -173,9 +174,16 @@ public class UserController {
     }
 
     /**
-     * 从 bbs_sa_org 查询组织的完整名称（用户 orgName 可能已被 display 过滤覆盖）
+     * 按显示层级解析组织的完整名称（用户 orgName 可能已被 display 过滤覆盖）
      */
     private String resolveFullOrgName(String orgNo, String fallbackName) {
+        return saOrgService.resolveDisplayOrgName(orgNo, fallbackName);
+    }
+
+    /**
+     * 查询组织的原始完整名称（个人中心全部显示，不受显示层级过滤）
+     */
+    private String resolveRawOrgName(String orgNo, String fallbackName) {
         if (orgNo == null) return fallbackName;
         SaOrg org = saOrgService.getOne(
                 new LambdaQueryWrapper<SaOrg>()

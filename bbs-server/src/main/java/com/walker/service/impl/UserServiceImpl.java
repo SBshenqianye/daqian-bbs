@@ -18,6 +18,7 @@ import com.walker.vo.MapCityVO;
 import com.walker.service.impl.OrgImportService;
 import com.walker.utils.PinyinUtil;
 import com.walker.vo.ResultBean;
+import com.walker.service.SaOrgService;
 import com.walker.service.UserService;
 import com.walker.vo.UserMonthVO;
 import com.walker.vo.excel.ImportPreviewVO;
@@ -79,6 +80,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private SaOrgMapper saOrgMapper;
+
+    @Autowired
+    private SaOrgService saOrgService;
 
     @Autowired
     private OrgImportService orgImportService;
@@ -169,13 +173,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             // 显式设置瞬态组织字段（确保序列化到前端）
             jsonObject.put("orgName", user.getOrgName());
             jsonObject.put("deptName", user.getDeptName());
-            // 从组织表查询完整组织名称（可能被 display 过滤覆盖）
-            SaOrg fullOrg = user.getOrgNo() != null ? saOrgMapper.selectOne(
-                    new LambdaQueryWrapper<SaOrg>()
-                            .eq(SaOrg::getOrgNo, user.getOrgNo())
-                            .eq(SaOrg::getIsDelete, 0)
-            ) : null;
-            jsonObject.put("orgNameFull", fullOrg != null ? fullOrg.getOrgName() : user.getOrgName());
+            // 按显示层级解析完整组织名称（用户组织被隐藏时显示上一可见级）
+            jsonObject.put("orgNameFull", saOrgService.resolveDisplayOrgName(user.getOrgNo(), user.getOrgName()));
             tokenMap.put("user", jsonObject);
 
             return ResultBean.success("登录成功！",tokenMap);
