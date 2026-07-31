@@ -356,6 +356,24 @@ export default {
       return true
     },
 
+    /** 按 ID toggle 节点的展开/折叠状态 */
+    toggleNodeById(id) {
+      const findNode = (nodes, targetId) => {
+        for (const n of nodes) {
+          if (n.id === targetId) return n
+          if (n.children && n.children.length) {
+            const found = findNode(n.children, targetId)
+            if (found) return found
+          }
+        }
+        return null
+      }
+      const node = findNode(this.treeData, id)
+      if (!node || !node._hasChildren) return false
+      this.toggleNode(node)
+      return true
+    },
+
     /** 同步所有节点的 chevron 旋转状态（v-once 冻结了模板，须 DOM 操作） */
     _syncChevrons() {
       if (!this.$el || !this.flatList) return

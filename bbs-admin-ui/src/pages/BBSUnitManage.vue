@@ -1,7 +1,7 @@
 <template>
   <div class="bg-surface min-h-screen">
     <!-- Sticky Header -->
-    <div class="sticky top-0 z-20 bg-surface border-b border-outline-variant/30 shadow-sm">
+    <div ref="pageHeader" class="sticky top-0 z-20 bg-surface border-b border-outline-variant/30 shadow-sm">
       <div class="max-w-7xl mx-auto px-page-margin-desktop py-4">
         <div class="flex items-center justify-between">
           <div>
@@ -19,7 +19,6 @@
                 class="w-52 h-9 pl-8 pr-3 bg-surface border border-outline-variant rounded-lg text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-all"
                 placeholder="搜索单位名称..."
               />
-              <!-- 居中搜索图标：用 flex items-center 替代 top-1/2 translate 避免字体垂直偏移 -->
               <div class="absolute left-2.5 inset-y-0 flex items-center pointer-events-none">
                 <span class="material-symbols-outlined text-outline leading-none" style="font-size:16px">search</span>
               </div>
@@ -31,6 +30,7 @@
                 <span class="material-symbols-outlined" style="font-size:12px">close</span>
               </button>
             </div>
+          </div>
           <div v-if="orgTree.length" class="flex items-center gap-1">
             <button
               class="inline-flex items-center gap-1 px-2.5 py-1.5 font-medium text-primary bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors"
@@ -60,10 +60,49 @@
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Content -->
-  <div class="max-w-7xl mx-auto px-page-margin-desktop py-6">
+    <!-- ⭐ 悬浮层级导航：完全复用 OrgTree 行结构与缩进 -->
+    <!-- 始终渲染在 DOM 中（opacity 控制显示/隐藏），确保导航高度始终可测 -->
+    <div
+      class="org-floating-nav bg-container border border-border"
+      :class="{ 'nav-visible': showFloatingNav && currentContextPath.length }"
+      :style="{ top: navTop + 'px', left: navLeft + 'px', width: navWidth + 'px' }"
+    >
+      <div class="flex flex-col gap-0.5" style="padding: 4px 20px;">
+      <div
+        v-for="(item, idx) in currentContextPath"
+        :key="item.id"
+        class="group flex items-center gap-1 px-3 py-1.5 rounded-lg border mb-0.5 cursor-pointer"
+        :class="[
+          'd' + Math.min(item._treeDepth, 6),
+          idx === currentContextPath.length - 1
+            ? 'bg-primary/15 border-primary text-primary font-semibold'
+            : 'bg-surface-container-low border-transparent hover:border-outline-variant/30 hover:bg-surface-container-low/80'
+        ]"
+        :title="item.label"
+        @click.stop="navigateToNode(item)"
+      >
+        <!-- ↓↓↓ 与 OrgTree.vue 完全一致的内层结构（始终显示 chevron，全部为可折叠节点） ↓↓↓ -->
+        <div class="flex items-center gap-1 min-w-0 flex-1 w-full">
+          <!-- 箭头：所有项都可折叠，使用 tree-chevron + tree-copen 保证旋转动画 -->
+          <button
+            class="w-5 h-5 flex items-center justify-center rounded hover:bg-surface-variant transition-colors flex-shrink-0 -ml-0.5"
+          >
+            <span class="material-symbols-outlined tree-chevron tree-copen" style="font-size:14px">chevron_right</span>
+          </button>
+
+          <!-- 图标：全部为可折叠，永远显示 folder -->
+          <span class="material-symbols-outlined flex-shrink-0 text-outline" style="font-size: 18px;">folder</span>
+
+          <!-- 标签 -->
+          <span class="flex-1 font-body-md truncate min-w-0 ml-1">{{ item.label }}</span>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div ref="contentWrap" class="max-w-7xl mx-auto px-page-margin-desktop py-6">
 
       <!-- Selected summary -->
       <div v-if="orgTree.length && (rankingSelectedCount > 0 || displaySelectedCount > 0)" class="mb-4 flex items-center gap-4 text-body-md">
@@ -83,7 +122,7 @@
       </div>
 
       <!-- Tree Card -->
-      <div v-else class="bg-container border border-border rounded-xl p-card-padding">
+      <div v-else ref="treeCard" class="bg-container border border-border rounded-xl p-card-padding">
         <template v-if="!orgTree.length">
           <div class="text-center py-12 text-on-surface-variant flex flex-col items-center gap-2">
             <span class="material-symbols-outlined opacity-20" style="font-size:48px">account_tree</span>
@@ -181,6 +220,12 @@ export default {
       addPOrgNo: '',
       addParentLabel: '',
       addOrgName: '',
+      // ⭐ 悬浮导航
+      currentContextPath: [],
+      showFloatingNav: false,
+      navTop: 96,
+      navLeft: 0,
+      navWidth: 0,
     }
   },
   computed: {
@@ -195,7 +240,27 @@ export default {
           || Object.keys(this.displayMap).some(k => this.displayMap[k] !== this.originalDisplay[k])
     },
   },
-  mounted() { this.loadData() },
+  mounted() {
+    this.loadData()
+    // 页面实际在 Home.vue 的 overflow-y-auto 容器内滚动，不是 window
+    let el = this.$el.parentElement
+    while (el && el !== document.body) {
+      if (window.getComputedStyle(el).overflowY === 'auto') break
+      el = el.parentElement
+    }
+    this._scrollContainer = el || window
+    this._scrollContainer.addEventListener('scroll', this._onScroll, { passive: true })
+    // 挂载后测量 header 高度用于悬浮导航定位
+    this.$nextTick(() => this._updateNavTop())
+    // 窗口 resize 时重新测量导航宽度/位置
+    window.addEventListener('resize', this._updateNavTop)
+  },
+  beforeDestroy() {
+    if (this._scrollContainer) {
+      this._scrollContainer.removeEventListener('scroll', this._onScroll)
+    }
+    window.removeEventListener('resize', this._updateNavTop)
+  },
   methods: {
     async loadData() {
       this.loading = true
@@ -203,9 +268,16 @@ export default {
         const res = await this.getRequestUrl('/common/saOrgTree')
         if (res.code == 200) {
           this.orgTree = res.obj || []
-          // 建立节点 id → 节点索引
+          // 建立节点 id → 节点索引，并补齐缺失的 pOrgNo（树结构通过 children 体现）
           this.nodeMap = {}
-          walkTree(this.orgTree, n => { this.nodeMap[n.id] = n })
+          const fillParentRef = (nodes, parentId) => {
+            for (const n of nodes) {
+              if (parentId && (n.pOrgNo == null || n.pOrgNo === '')) n.pOrgNo = parentId
+              this.nodeMap[n.id] = n
+              if (n.children && n.children.length) fillParentRef(n.children, n.id)
+            }
+          }
+          fillParentRef(this.orgTree, null)
           // 初始化 maps
           this.originalRanking = {}
           this.displayMap = {}
@@ -221,8 +293,194 @@ export default {
         } else {
           this.orgTree = []
         }
+        // 设置初始层级路径
+        this._setInitialContext()
       } catch (e) { this.orgTree = [] }
       this.loading = false
+    },
+
+    // ════════ 层级路径追踪 ════════
+
+    /** 从任意节点向上回溯到根，返回 [根, …, 当前] 路径 */
+    getPath(id) {
+      if (!id || !this.nodeMap[id]) return []
+      const path = []
+      let current = this.nodeMap[id]
+      while (current) {
+        path.unshift(current)
+        current = current.pOrgNo ? this.nodeMap[current.pOrgNo] : null
+      }
+      return path
+    },
+
+    /** 更新导航路径 */
+    updateContext(node) {
+      const id = (node && node.id) || ''
+      if (!id || !this.nodeMap[id]) return
+      this.currentContextPath = this.getPath(id)
+    },
+
+    /** 点击导航项 → toggle 折叠/展开并滚动到该节点 */
+    navigateToNode(node) {
+      if (!node || !this.$refs.orgTree) return
+      this.$refs.orgTree.toggleNodeById(node.id)
+      this.$nextTick(() => {
+        const row = document.querySelector(`[data-nid="${node.id}"]`)
+        if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        this._onScroll()
+      })
+    },
+
+    /** 加载数据后初始化为第一个根节点 */
+    _setInitialContext() {
+      this.showFloatingNav = false
+      this.currentContextPath = []
+    },
+
+    /** 测量 pageHeader 在视口中的底部位置 → 悬浮导航的 top */
+    _updateNavTop() {
+      const el = this.$refs && this.$refs.pageHeader
+      if (el) this.navTop = el.getBoundingClientRect().bottom
+      // 从卡片元素测量，确保悬浮导航外框与卡片外框对齐
+      const cardEl = this.$refs && this.$refs.treeCard
+      if (cardEl) {
+        const rect = cardEl.getBoundingClientRect()
+        this.navLeft = rect.left
+        this.navWidth = rect.width
+      } else {
+        // 回退：直接从 contentWrap 测量
+        const contentEl = this.$refs && this.$refs.contentWrap
+        if (contentEl) {
+          const rect = contentEl.getBoundingClientRect()
+          this.navLeft = rect.left
+          this.navWidth = rect.width
+        }
+      }
+    },
+
+    /** ─── 滚动处理 ─── */
+    _onScroll() {
+      this._updateNavTop()
+
+      const rows = document.querySelectorAll('[data-nid]')
+      if (!rows.length || !this.orgTree.length) {
+        this.showFloatingNav = false
+        this.currentContextPath = []
+        return
+      }
+
+      const headerBottom = this.navTop
+
+      // ── 滞后显示/隐藏 ──
+      const firstRect = rows[0].getBoundingClientRect()
+      if (this.showFloatingNav) {
+        if (firstRect.top >= headerBottom + 25) {
+          this.showFloatingNav = false
+          this.currentContextPath = []
+          return
+        }
+      } else {
+        if (firstRect.top >= headerBottom - 5) return
+        this.showFloatingNav = true
+      }
+
+      // ── 扫描范围 = headerBottom + 导航高度（动态） ──
+      //    有估算验证 + 路径前缀对齐保护，不会形成反馈回路。
+      const navEl2 = this.$el && this.$el.querySelector('.org-floating-nav')
+      const navH = navEl2 ? navEl2.offsetHeight : 55
+      const threshold = headerBottom + navH
+
+      const fullStack = []
+      for (const row of rows) {
+        const rect = row.getBoundingClientRect()
+        if (rect.height === 0) continue
+        if (!(rect.top < threshold)) break
+
+        const node = this.nodeMap[row.dataset.nid]
+        if (node && node.children && node.children.length > 0) {
+          fullStack.push(Object.assign({}, node, {
+            _treeDepth: this.getPath(node.id).length - 1,
+            _rectBottom: rect.bottom
+          }))
+        }
+      }
+
+      // ── 确定路径：以 fullStack 末尾（最接近阈值）的节点为准 ──
+      //    路径在第一个不可折叠的祖先处截断：若 child 因无 children 而被排除，
+      //    则 grandchild 也不应出现（不能跳过中间层级）。
+      let newPath = []
+      if (fullStack.length > 0) {
+        const rawPath = this.getPath(fullStack[fullStack.length - 1].id)
+        for (const n of rawPath) {
+          if (!(n.children && n.children.length > 0)) break
+          newPath.push(n)
+        }
+      }
+
+      // ── 检测同层替换 ──
+      let _replaceId = null
+      if (this._lastPath && newPath.length > 0) {
+        for (let d = 0; d < Math.min(this._lastPath.length, newPath.length); d++) {
+          if (this._lastPath[d].id !== newPath[d].id) {
+            _replaceId = this._lastPath[d].id
+            break
+          }
+        }
+      }
+
+      // ── 清理过期 pending（用户滚离旧上下文后自动清除） ──
+      if (this._pendingReplaceId && !_replaceId) {
+        const stillRelevant = fullStack.some(item => {
+          const p = this.getPath(item.id)
+          return p.some(n => n.id === this._pendingReplaceId)
+        })
+        if (!stillRelevant) this._pendingReplaceId = null
+      }
+
+      // ── 同层替换：两阶段 ──
+      //    阶段1（pending）：删旧兄弟，不添新兄弟 → 导航变短
+      //    阶段2（confirm）：新兄弟位置达到缩短后的导航底部 → 加入
+      const rid = _replaceId || this._pendingReplaceId
+      if (_replaceId) this._pendingReplaceId = _replaceId
+
+      if (rid) {
+        // 从 fullStack 末尾找第一个不在旧兄弟子树中的节点（最深的新节点）
+        let checkItem = null
+        for (let i = fullStack.length - 1; i >= 0; i--) {
+          const p = this.getPath(fullStack[i].id)
+          if (!p.some(n => n.id === rid)) { checkItem = fullStack[i]; break }
+        }
+        if (checkItem) {
+          const dp = this.getPath(checkItem.id).filter(n => n.children && n.children.length > 0)
+          // Fix1: 一致延迟的 checkH = navH - 20，节点需多滚动 20px 才被确认
+          const checkH = Math.max(10, navH - 20)
+          const row = document.querySelector('[data-nid="' + checkItem.id + '"]')
+          if (row && row.getBoundingClientRect().top < headerBottom + checkH) {
+            // 确认：新兄弟已到达缩短后的导航底部 → 切换
+            newPath = dp
+            this._pendingReplaceId = null
+          } else {
+            // 未确认：删旧（从当前导航内容中移除旧兄弟子树），不添新 → 导航变短
+            this.currentContextPath = this.currentContextPath.filter(item => {
+              const p = this.getPath(item.id)
+              return !p.some(n => n.id === rid)
+            })
+            // Fix2: fallback 到 newPath 根节点而非 fullStack（避免重引入旧子树）
+            if (!this.currentContextPath.length && newPath.length > 0) {
+              this.currentContextPath = [Object.assign({}, newPath[0], {
+                _treeDepth: this.getPath(newPath[0].id).length - 1
+              })]
+            }
+            return
+          }
+        }
+      }
+
+      // Fix4: 简化展示，直接使用 newPath
+      this._lastPath = newPath
+      this.currentContextPath = newPath.map(n => Object.assign({}, n, {
+        _treeDepth: this.getPath(n.id).length - 1
+      }))
     },
 
     // ---- 树交互 ----
@@ -230,6 +488,7 @@ export default {
       if (node._hasChildren) {
         this.$refs.orgTree.toggleNode(node)
       }
+      this.$nextTick(() => this._onScroll())
     },
 
     // ---- 排名开关 ----
@@ -382,3 +641,27 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.org-floating-nav {
+  position: fixed;
+  z-index: 999;
+  /* 用 max-height 防止暴涨，超出内部滚动；高度在 0~190px 间自然变化 */
+  max-height: 190px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  will-change: transform, opacity;
+  /* 默认隐藏：透明 + 禁止交互 */
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.org-floating-nav.nav-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+</style>
