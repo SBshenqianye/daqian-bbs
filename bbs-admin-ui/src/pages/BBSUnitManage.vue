@@ -499,23 +499,6 @@ export default {
       const val = !(this.rankingMap[node.id] === true)
       this.$set(this.rankingMap, node.id, val)
       node.isRankingSelected = val ? 1 : 0
-      try { this._cascadeUpRanking(node) } catch (e) { console.warn('[cascadeRanking]', e) }
-    },
-    /** 向上级联更新父节点排名状态（利用装饰节点的 _parent 链） */
-    _cascadeUpRanking(node) {
-      // node 是装饰节点（来自 OrgTree flatList），直接通过 _parent 向上走
-      if (!node || !node._parent) return
-      const parent = node._parent
-      if (!parent.children || !parent.children.length) return
-      const allOn = parent.children.every(c => this.rankingMap[c.id] === true)
-      if (allOn) {
-        this.$set(this.rankingMap, parent.id, true)
-        parent.isRankingSelected = 1
-      } else {
-        this.$set(this.rankingMap, parent.id, false)
-        parent.isRankingSelected = 0
-      }
-      this._cascadeUpRanking(parent)
     },
     cascadeRanking(node, selected) {
       const val = selected ? 1 : 0
@@ -525,7 +508,6 @@ export default {
         this.$set(this.rankingMap, child.id, !!val)
         child.isRankingSelected = val
       })
-      try { this._cascadeUpRanking(node) } catch (e) { console.warn('[cascadeRanking]', e) }
     },
     cascadeDisplay(node, selected) {
       const val = selected ? 1 : 0
@@ -535,7 +517,6 @@ export default {
         this.$set(this.displayMap, child.id, !!val)
         child.isDisplaySelected = val
       })
-      try { this._cascadeUpDisplay(node) } catch (e) { console.warn('[cascadeDisplay]', e) }
     },
 
     // ---- 显示开关 ----
@@ -546,22 +527,6 @@ export default {
       const val = !(this.displayMap[node.id] === true)
       this.$set(this.displayMap, node.id, val)
       node.isDisplaySelected = val ? 1 : 0
-      try { this._cascadeUpDisplay(node) } catch (e) {}
-    },
-    /** 向上级联更新父节点显示状态（利用装饰节点的 _parent 链） */
-    _cascadeUpDisplay(node) {
-      if (!node || !node._parent) return
-      const parent = node._parent
-      if (!parent.children || !parent.children.length) return
-      const allOn = parent.children.every(c => this.displayMap[c.id] === true)
-      if (allOn) {
-        this.$set(this.displayMap, parent.id, true)
-        parent.isDisplaySelected = 1
-      } else {
-        this.$set(this.displayMap, parent.id, false)
-        parent.isDisplaySelected = 0
-      }
-      this._cascadeUpDisplay(parent)
     },
 
     // ---- 保存 ----
