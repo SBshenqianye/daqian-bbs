@@ -174,9 +174,11 @@ start_backend() {
     jar_abs=$(cd "$(dirname "$JAR_PATH")" && pwd)/$(basename "$JAR_PATH")
 
     info "启动 bbs-server 容器（bind-mount JAR）..."
+    # --entrypoint java + -Xmx2g: 主机内存不足时 JDK8 默认按物理内存 1/4 申请堆会启动即崩溃
     $RUNNER run -d \
         --name "$BBS_SERVER_CONTAINER" \
         --network host \
+        --entrypoint java \
         -e BBS_DB_HOST="$BBS_DB_HOST" \
         -e BBS_DB_PORT="$BBS_DB_PORT" \
         -e BBS_DB_NAME="$BBS_DB_NAME" \
@@ -186,7 +188,7 @@ start_backend() {
         -e BBS_UPLOAD_DIR="$BBS_UPLOAD_DIR" \
         -v "$jar_abs:/app/app.jar:Z" \
         -v "$BBS_UPLOAD_DIR:$BBS_UPLOAD_DIR" \
-        bbs-server-base
+        bbs-server-base -Xmx2g -jar /app/app.jar --spring.profiles.active=podman
 
     ok "bbs-server 容器已启动"
 
