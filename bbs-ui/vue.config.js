@@ -19,6 +19,11 @@ module.exports = {
     // 开启代理服务器(通过9081转发给后端)，使用 vue-cli 实现
     devServer: {
         port: 9081,
+        // 禁用启发式缓存：dev 响应默认无 Cache-Control 头，浏览器会按 ETag 做启发式缓存，
+        // 导致改代码后 F5 仍显示旧版（需 Ctrl+F5）。这里强制 no-cache。
+        headers: {
+            'Cache-Control': 'no-cache',
+        },
         proxy: {
             [process.env.VUE_APP_BBS_API]: {
                 target: DEV_BACKEND_URL + '/bbs-server',

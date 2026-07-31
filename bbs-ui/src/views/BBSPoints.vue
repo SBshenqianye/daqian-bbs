@@ -72,10 +72,13 @@
             class="flex-1 flex flex-col rounded-lg overflow-hidden transition-all duration-300 hover:shadow-md"
             :class="[
               podium.orderClass,
-              podium.rank === 1 ? 'border-2 border-rank-gold shadow-sm md:-translate-y-2' : 'border border-outline-variant'
+              podium.rank === 1 ? 'border-2 border-rank-gold shadow-sm h-[300px]'
+                : podium.rank === 2 ? 'border border-outline-variant h-[270px]'
+                : 'border border-outline-variant h-[250px]'
             ]"
           >
-            <div class="flex flex-col items-center relative p-6 min-h-[200px]" :class="podium.cardClass">
+            <div class="flex flex-col items-center relative p-6 flex-1" :class="podium.cardClass">
+              <div class="flex-1"></div>
               <div
                 class="rounded-full flex items-center justify-center font-bold border-2 border-white shadow-sm mb-4"
                 :class="[podium.rankBg, podium.rank === 1 ? 'w-16 h-16 text-3xl border-4 relative' : 'w-12 h-12 text-xl']"
@@ -83,8 +86,8 @@
                 {{ podium.rank }}
                 <span v-if="podium.rank === 1" class="material-symbols-outlined absolute -top-4 -right-2 text-rank-gold rotate-12" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
               </div>
-              <h3 class="font-bold text-center mb-1 line-clamp-2" :class="podium.rank === 1 ? 'text-xl' : 'text-lg'">{{ podium.name }}</h3>
-              <div class="mt-auto w-full flex justify-between items-end pt-4">
+              <h3 class="font-bold text-center line-clamp-2 min-h-[56px] flex items-center justify-center" :class="podium.rank === 1 ? 'text-xl' : 'text-lg'">{{ podium.name }}</h3>
+              <div class="w-full flex justify-between items-end pt-4">
                 <div class="flex flex-col">
                   <span class="text-on-surface-variant uppercase font-bold" :class="podium.rank === 1 ? 'text-[12px]' : 'text-[10px]'">活跃度积分</span>
                   <span class="font-bold text-primary" :class="podium.rank === 1 ? 'text-4xl font-black' : 'text-2xl'">{{ podium.score }}</span>
@@ -94,6 +97,7 @@
                   <p>回帖: {{ podium.replies }}</p>
                 </div>
               </div>
+              <div class="flex-1"></div>
             </div>
           </div>
         </div>
