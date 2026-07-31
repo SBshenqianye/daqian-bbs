@@ -203,10 +203,12 @@ do_install() {
     # 后端
     info "启动 bbs-server..."
     $RUNNER rm -f "$BBS_SERVER_CONTAINER" 2>/dev/null || true
+    # --entrypoint java + -Xmx2g: 主机内存不足时 JDK8 默认按物理内存 1/4 申请堆（如 32G 机器默认 8G）会启动即崩溃
     $RUNNER run -d \
         --name "$BBS_SERVER_CONTAINER" \
         --network host \
         --restart=always \
+        --entrypoint java \
         -e BBS_DB_HOST="${BBS_DB_HOST:-127.0.0.1}" \
         -e BBS_DB_PORT="${BBS_DB_PORT:-15432}" \
         -e BBS_DB_NAME="${BBS_DB_NAME:-bbs}" \
@@ -216,7 +218,7 @@ do_install() {
         -e BBS_UPLOAD_DIR="$BBS_UPLOAD_DIR" \
         -v "$BBS_HOME/current/bbs-server.jar:/app/app.jar:Z" \
         -v "$BBS_UPLOAD_DIR:$BBS_UPLOAD_DIR:Z" \
-        bbs-server-base
+        bbs-server-base -Xmx2g -jar /app/app.jar --spring.profiles.active=podman
 
     ok "bbs-server 已启动"
 
