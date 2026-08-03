@@ -47,8 +47,8 @@ BBS_DB_PORT="${BBS_DB_PORT:-15432}"
 BBS_DB_NAME="${BBS_DB_NAME:-bbs}"
 BBS_DB_USER="${BBS_DB_USER:-work_flow}"
 BBS_DB_PASSWORD="${BBS_DB_PASSWORD:-work_flow123}"
-BBS_SERVER_PORT="${BBS_SERVER_PORT:-9083}"
-NGINX_PORT="${NGINX_PORT:-19848}"
+BBS_SERVER_PORT="${BBS_SERVER_PORT:-60000}"
+NGINX_PORT="${NGINX_PORT:-60001}"
 BBS_SERVER_CONTAINER="${BBS_SERVER_CONTAINER:-bbs-server}"
 BBS_NGINX_CONTAINER="${BBS_NGINX_CONTAINER:-bbs-nginx}"
 BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR:-/data/bbs/bbsUpload}"
@@ -186,6 +186,7 @@ start_backend() {
         -e BBS_DB_PASSWORD="$BBS_DB_PASSWORD" \
         -e BBS_SUPER_ADMIN_PASSWORD="${BBS_SUPER_ADMIN_PASSWORD:-1234@abcD}" \
         -e BBS_UPLOAD_DIR="$BBS_UPLOAD_DIR" \
+        -e BBS_SERVER_PORT="$BBS_SERVER_PORT" \
         -v "$jar_abs:/app/app.jar:Z" \
         -v "$BBS_UPLOAD_DIR:$BBS_UPLOAD_DIR" \
         bbs-server-base -Xmx2g -jar /app/app.jar --spring.profiles.active=podman

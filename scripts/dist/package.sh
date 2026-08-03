@@ -184,7 +184,9 @@ package_full() {
     upgrade_dir=$(package_upgrade)
     if [ -n "$upgrade_dir" ] && [ -d "$upgrade_dir" ]; then
         local ts_name; ts_name=$(basename "$upgrade_dir")
-        mv "$upgrade_dir" "$OUTPUT_DIR/$ts_name"
+        # 用 cp 而非 mv：Windows/git-bash 下跨目录 rename 会 Permission denied，导致产物漏进包
+        cp -r "$upgrade_dir" "$OUTPUT_DIR/$ts_name"
+        rm -rf "$upgrade_dir"
         ok "构建产物已复制"
     fi
 

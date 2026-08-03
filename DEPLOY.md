@@ -19,7 +19,7 @@
 
 ```
 ┌───────────────┐      ┌───────────────┐
-│  浏览器/Windowns  │      │  Nginx (19848)│
+│  浏览器/Windowns  │      │  Nginx (60001)│
 │  bbs-ui/bbs-admin │─────▶│  反向代理 +   │
 └───────────────┘      │  静态文件服务  │
                           │               │
@@ -27,7 +27,7 @@
                                   │
                           ┌───────▼───────┐
                           │  bbs-server   │
-                          │  (18848)       │
+                          │  (60000)       │
                           │  Spring Boot  │
                           └───────┬───────┘
                                   │
@@ -43,9 +43,9 @@
 |------|--------|------|
 | 用户前端 (bbs-ui) | Vue CLI 4.x, Webpack 4 | 静态文件 → Nginx |
 | 管理后台 (bbs-admin-ui) | Vue CLI 5.x, Webpack 4 | 静态文件 → Nginx |
-| 后端 (bbs-server) | Spring Boot 2.5.5, Java 8, MyBatis-Plus | 18848 |
+| 后端 (bbs-server) | Spring Boot 2.5.5, Java 8, MyBatis-Plus | 60000 |
 | PostgreSQL | 13.x | 5432 (默认) / 15432 |
-| Nginx | stable-alpine | 19848 |
+| Nginx | stable-alpine | 60001 |
 
 ---
 
@@ -124,8 +124,8 @@ cp scripts/.env.example .env
 bash scripts/build.sh
 
 # 3. 访问
-# 用户前端: http://localhost:19848/bbs-user/
-# 管理后台: http://localhost:19848/bbs-admin/
+# 用户前端: http://localhost:60001/bbs-user/
+# 管理后台: http://localhost:60001/bbs-admin/
 
 # 4. 清理
 bash scripts/ops/teardown.sh
@@ -312,11 +312,11 @@ location = "docker.m.daocloud.io"
 
 | 参数 | 值 | 配置位置 |
 |------|-----|----------|
-| 后端端口（生产） | 18848 | `.env` → `BBS_SERVER_PORT`（`application.yml` 默认 9083） |
+| 后端端口（生产） | 60000 | `.env` → `BBS_SERVER_PORT`（`application.yml` 默认 9083 = 开发） |
 | 后端上下文路径 | `/bbs-server` | `application.yml` → `server.servlet.context-path` |
 | 数据库端口（生产） | 15432 | `application-podman.yml` → `BBS_DB_PORT` 默认值 |
 | 数据库端口（默认） | 5432 | PostgreSQL 默认 |
-| Nginx 监听端口 | 19848 | 环境变量 `NGINX_PORT` |
+| Nginx 监听端口 | 60001 | 环境变量 `NGINX_PORT` |
 | Nginx → 后端上游 | `127.0.0.1:${BBS_SERVER_PORT}` | `nginx.conf.template` |
 | 数据库主机 | `127.0.0.1` | 环境变量 `BBS_DB_HOST` |
 | 上传目录 | `/data/bbs/bbsUpload` | 环境变量 `BBS_UPLOAD_DIR` |
@@ -361,8 +361,8 @@ location = "docker.m.daocloud.io"
 | `BBS_DB_NAME` | `bbs` | 数据库名 |
 | `BBS_DB_USER` | `work_flow` | 数据库用户 |
 | `BBS_DB_PASSWORD` | — | 数据库密码（必须设置） |
-| `BBS_SERVER_PORT` | `18848`（生产） | 后端端口；开发默认 9083（`application.yml`） |
-| `NGINX_PORT` | `19848` | Nginx 监听端口 |
+| `BBS_SERVER_PORT` | `60000`（生产） | 后端端口；开发默认 9083（`application.yml`） |
+| `NGINX_PORT` | `60001` | Nginx 监听端口 |
 | `BBS_UPLOAD_DIR` | `/data/bbs/bbsUpload` | 文件上传目录 |
 | `BBS_SUPER_ADMIN_PASSWORD` | `1234@abcD` | 超级管理员密码 |
 | `BBS_SERVER_CONTAINER` | `bbs-server` | 后端容器名 |
