@@ -1,6 +1,9 @@
 
 server:
-  # 端口号设置（开发默认 9083；生产环境用环境变量 BBS_SERVER_PORT 覆盖为 18848）
+  # 端口号设置（默认 9083 = 开发环境；生产环境用环境变量 BBS_SERVER_PORT 覆盖 = 60000）
+  # 注：2026-08-03 起生产端口约定为 60000（后端）/ 60001（nginx）；
+  #     18848 被历史遗留 Tomcat（含其他项目）占用，jar 默认值严禁去抢。
+  #     默认值保持 9083（开发不变）仅作兜底，生产由 .env 显式传入 60000。
   port: ${BBS_SERVER_PORT:9083}
   servlet:
     context-path: /bbs-server
