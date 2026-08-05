@@ -102,6 +102,7 @@ export default {
     return {
       collapse: false,
       showLabels: true,
+      labelTimer: null,
       dragIndex: null,
       dragOverIndex: null,
       menuItems: [
@@ -133,6 +134,7 @@ export default {
   created() {
     bus.$on('collapse', (msg) => {
       this.collapse = msg
+      this.syncLabels(msg)
     })
     // Load saved order from localStorage
     this.loadMenuOrder()
@@ -157,18 +159,20 @@ export default {
     toggleSubmenu(item) {
       item._open = !item._open
     },
-    toggleSidebar() {
-      const willCollapse = !this.collapse
-      if (willCollapse) {
+    // Label visibility follows collapse state; driven by bus so top/bottom buttons
+    // and initial auto-collapse (Home.vue) all behave identically
+    syncLabels(collapse) {
+      clearTimeout(this.labelTimer)
+      if (collapse) {
         // Collapsing: hide text immediately, then shrink sidebar
         this.showLabels = false
-      }
-      this.collapse = willCollapse
-      bus.$emit('collapse', this.collapse)
-      if (!willCollapse) {
+      } else {
         // Expanding: sidebar has 300ms transition, show text after it finishes
-        setTimeout(() => { this.showLabels = true }, 310)
+        this.labelTimer = setTimeout(() => { this.showLabels = true }, 310)
       }
+    },
+    toggleSidebar() {
+      bus.$emit('collapse', !this.collapse)
     },
 
     // --- Drag and Drop ---

@@ -6,7 +6,7 @@
         class="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-surface-container-low transition-colors text-on-surface-variant"
         @click="toggleCollapse"
       >
-        <span class="material-symbols-outlined text-[22px]">{{ localCollapse ? 'menu_open' : 'menu' }}</span>
+        <span class="material-symbols-outlined text-[22px]">{{ localCollapse ? 'menu' : 'menu_open' }}</span>
       </button>
       <div class="flex items-center gap-2 select-none">
         <span class="material-symbols-outlined text-primary text-[26px]">forum</span>
