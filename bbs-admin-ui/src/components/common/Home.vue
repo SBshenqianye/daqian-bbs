@@ -18,9 +18,7 @@
         <!-- Page Content -->
         <div class="flex-1 overflow-y-auto bg-background" ref="contentWrapper">
           <transition name="page-fade" mode="out-in">
-            <keep-alive :include="cachedTags">
-              <router-view class="min-h-full" />
-            </keep-alive>
+            <router-view :key="pageKey" class="min-h-full" />
           </transition>
 
           <!-- Back to top -->
@@ -51,17 +49,24 @@ export default {
   data() {
     return {
       collapse: false,
-      cachedTags: [],
+      pageNonce: 0,
       showBackTop: false,
     }
   },
+  computed: {
+    // key 用 fullPath：查询参数变化会重挂载，页面在 mounted/created 里重读 query；
+    // pageNonce 由全局错误处理（bus 'repair-page'）触发 +1，用于内容区白屏后原地重挂载
+    pageKey() {
+      return this.$route.fullPath + ':' + this.pageNonce
+    },
+  },
   created() {
-    bus.$on('collapse-content', (msg) => {
-      this.collapse = msg
-    })
-    bus.$on('tags', (msg) => {
-      this.cachedTags = msg.map(t => t.name).filter(Boolean)
-    })
+    bus.$on('collapse-content', this.onCollapseChange)
+    bus.$on('repair-page', this.onRepairPage)
+  },
+  beforeDestroy() {
+    bus.$off('collapse-content', this.onCollapseChange)
+    bus.$off('repair-page', this.onRepairPage)
   },
   mounted() {
     // Back to top listener
@@ -78,6 +83,12 @@ export default {
     }
   },
   methods: {
+    onCollapseChange(msg) {
+      this.collapse = msg
+    },
+    onRepairPage() {
+      this.pageNonce += 1
+    },
     scrollToTop() {
       const wrapper = this.$refs.contentWrapper
       if (wrapper) {

@@ -34,6 +34,23 @@ axios.interceptors.response.use(success=>{
     //业务逻辑错误
     if(success.status && success.status == 200){
         if( success.data.code == 401 || success.data.code == 403){
+            // 业务级 401（token 失效）：与 HTTP 401 分支一致 —— 提示 + 跳登录（带 redirect），不清 sessionStorage
+            if (success.data.code == 401) {
+                Message({
+                    type: 'error',
+                    message: '登录已过期，请重新登录！',
+                    showClose: true,
+                })
+                const currentPath = router.currentRoute.fullPath
+                router.replace(currentPath !== '/login' ? `/login?redirect=${encodeURIComponent(currentPath)}` : '/login');
+            } else {
+                // 业务级 403（已登录但无权限）：仅提示，不跳登录，避免把管理员踢回登录页
+                Message({
+                    type: 'error',
+                    message: '权限不足，请联系管理员！',
+                    showClose: true,
+                })
+            }
             return;
         }
     }
