@@ -360,8 +360,9 @@ export default {
         const rootNode = (tree && tree.obj && tree.obj[0]) || null
         const orgTabs = []
         if (rootNode && rootNode.children) {
-          // 显示配置不影响积分排名：所有二级单位都生成 Tab
+          // 该二级组织及其全部下级均未参与排名时，不生成 Tab
           rootNode.children.forEach(child => {
+            if (!this.hasRankingOrg(child)) return
             orgTabs.push({
               key: 'org_' + child.id,
               label: child.label,
@@ -387,6 +388,17 @@ export default {
         this.switchTab(this.tabs[0])
       }
       this.loading = false
+    },
+
+    /**
+     * 判断组织节点自身或任一子级是否参与排名
+     */
+    hasRankingOrg(node) {
+      if (node.isRankingSelected === 1 || node.isRankingSelected === true) return true
+      if (node.children && node.children.length) {
+        return node.children.some(child => this.hasRankingOrg(child))
+      }
+      return false
     },
 
     /**
