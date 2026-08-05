@@ -87,6 +87,20 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 return ResultBean.error("所选标签已被禁用，请重新选择");
             }
         }
+        // 标题校验：不能为空、不能包含图片/富文本语法（严格拒绝）
+        String title = articleParam.getArticleTitle();
+        if (title == null || title.trim().isEmpty()) {
+            return ResultBean.error("标题不能为空");
+        }
+        if (title.matches(".*(<[^>]*>|!\\[[^\\]]*\\]\\([^)]*\\)).*")) {
+            return ResultBean.error("标题不允许包含图片或富文本内容");
+        }
+        title = sanitizeTitle(title);
+        // 内容不能为空（纯图片内容为 ![图片](url) 文本，非空，可正常通过）
+        if (articleParam.getArticleContent() == null || articleParam.getArticleContent().trim().isEmpty()) {
+            return ResultBean.error("内容不能为空");
+        }
+
         Date date = new Date();
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String day = format.format(date);
@@ -94,7 +108,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         Article article = new Article();
         article.setArticleLabelId(labelId);
         article.setArticleAuthor(articleParam.getArticleAuthor());
-        article.setArticleTitle(articleParam.getArticleTitle());
+        article.setArticleTitle(title);
         article.setArticleSummary(articleParam.getArticleSummary());
         article.setArticleTypeId(articleParam.getArticleTypeId());
         article.setArticleContent(articleParam.getArticleContent());
@@ -115,6 +129,22 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
 
         return ResultBean.success("发布成功！");
+    }
+
+    /**
+     * 标题净化：压缩空白，按码点截断为 30 字
+     * 码点截断避免拆散 emoji 等代理对，且与 DB varchar(30) 按字符计数的语义一致
+     * 返回 null 表示净化后为空（标题无效）
+     */
+    private String sanitizeTitle(String title) {
+        if (title == null) return null;
+        String cleaned = title.trim().replaceAll("\\s+", " ");
+        if (cleaned.isEmpty()) return null;
+        if (cleaned.codePointCount(0, cleaned.length()) > 30) {
+            int end = cleaned.offsetByCodePoints(0, 30);
+            cleaned = cleaned.substring(0, end);
+        }
+        return cleaned;
     }
 
     /**
@@ -512,10 +542,24 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public ResultBean editArticle(ArticleParam articleParam) {
+        // 标题校验：不能为空、不能包含图片/富文本语法（严格拒绝）
+        String title = articleParam.getArticleTitle();
+        if (title == null || title.trim().isEmpty()) {
+            return ResultBean.error("标题不能为空");
+        }
+        if (title.matches(".*(<[^>]*>|!\\[[^\\]]*\\]\\([^)]*\\)).*")) {
+            return ResultBean.error("标题不允许包含图片或富文本内容");
+        }
+        title = sanitizeTitle(title);
+        // 内容不能为空
+        if (articleParam.getArticleContent() == null || articleParam.getArticleContent().trim().isEmpty()) {
+            return ResultBean.error("内容不能为空");
+        }
+
         Article article = new Article();
 
         article.setArticleId(articleParam.getArticleId())
-                .setArticleTitle(articleParam.getArticleTitle())
+                .setArticleTitle(title)
                 .setArticleContent(articleParam.getArticleContent())
                 .setArticleContentHtml(articleParam.getArticleContentHtml())
                 .setArticleSummary(articleParam.getArticleSummary())

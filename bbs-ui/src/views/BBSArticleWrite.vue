@@ -10,6 +10,7 @@
           class="title-textarea w-full bg-transparent border-b border-transparent hover:border-gray-200 focus:border-transparent focus:ring-0 text-4xl font-bold text-gray-800 placeholder-gray-300 p-0 pb-2 resize-none overflow-hidden transition-all duration-200"
           placeholder="请输入文章标题"
           rows="1"
+          maxlength="30"
           @input="autoResizeTitle"
         ></textarea>
         <span class="material-symbols-outlined absolute right-0 text-gray-300 pointer-events-none group-hover:text-gray-400">edit</span>
@@ -297,7 +298,8 @@ export default {
       this.syncingContent = true
       this.markdownContent = this.htmlToMd(this.$refs.editorDiv.innerHTML)
       // 清除内容为空的 <br>，使 :empty 伪类能匹配，显示 placeholder
-      if (!this.$refs.editorDiv.textContent.trim()) {
+      // 注意：图片不产生 textContent，纯图片内容不能清除
+      if (!this.$refs.editorDiv.textContent.trim() && !this.$refs.editorDiv.querySelector('img')) {
         this.$refs.editorDiv.innerHTML = ''
       }
       this.$nextTick(() => { this.syncingContent = false })
@@ -305,8 +307,23 @@ export default {
     insertHtml(html) {
       // 在光标处插入 HTML
       const sel = window.getSelection()
-      if (!sel || !sel.rangeCount) return
+      if (!this.$refs.editorDiv || !sel || !sel.rangeCount) {
+        Message({ message: '请先将光标置于正文编辑区，再插入图片或链接', type: 'warning', showClose: true, offset: 54 })
+        return
+      }
       const range = sel.getRangeAt(0)
+      // 校验选区两端都在正文编辑区内，防止插入到标题等外部区域
+      const isInsideEditor = (node) => {
+        let el = node && node.nodeType === 3 ? node.parentNode : node
+        while (el && el !== this.$refs.editorDiv && el !== document.body) {
+          el = el.parentNode
+        }
+        return el === this.$refs.editorDiv
+      }
+      if (!isInsideEditor(range.startContainer) || !isInsideEditor(range.endContainer)) {
+        Message({ message: '请先将光标置于正文编辑区，再插入图片或链接', type: 'warning', showClose: true, offset: 54 })
+        return
+      }
       range.deleteContents()
       const frag = range.createContextualFragment(html)
       range.insertNode(frag)
@@ -353,13 +370,21 @@ export default {
       const formData = new FormData()
       formData.append('file', file)
       this.postRequest('/common/upload', formData).then(res => {
-        const url = typeof res === 'string' ? res : (res && res.url ? res.url : '')
-        if (url) {
+        // 后端上传成功返回字符串路径（/bbs-server/files/...），失败时同样返回字符串错误信息（HTTP 200），需区分
+        const isPath = typeof res === 'string' && (res.startsWith('/') || /^https?:\/\//i.test(res))
+        if (isPath) {
           this.restoreSelection()
-          this.insertHtml(`<img src="${url}" alt="图片" style="max-width:100%;display:block;margin:8px 0">`)
+          this.insertHtml(`<img src="${res}" alt="图片" style="max-width:100%;display:block;margin:8px 0">`)
+        } else {
+          const msg = typeof res === 'string' && res ? res : '图片上传失败，请稍后重试'
+          Message({ message: msg, type: 'error', showClose: true, offset: 54 })
         }
-      }).catch(err => { console.warn('[BBSArticleWrite] imgUpload', err) })
-      this.$refs.imgInput.value = ''
+        this.$refs.imgInput.value = ''
+      }).catch(err => {
+        console.warn('[BBSArticleWrite] imgUpload', err)
+        this.$refs.imgInput.value = ''
+        // 注意：api.js 拦截器已对网络/HTTP 错误统一弹窗，这里不重复提示
+      })
     },
     // --- 链接插入/编辑 ---
     openLinkDialog() {
@@ -478,6 +503,11 @@ export default {
       }
       if (this.articleTitle.length > 30) {
         Message({ message: '标题最多30个字', type: 'warning', showClose: true, offset: 54 })
+        return
+      }
+      // 标题不允许包含图片或富文本（HTML 标签、markdown 图片语法）
+      if (/<[^>]*>|!\[[^\]]*\]\([^)]*\)/.test(this.articleTitle)) {
+        Message({ message: '标题不允许包含图片或富文本内容', type: 'warning', showClose: true, offset: 54 })
         return
       }
       if (!this.markdownContent.trim()) {

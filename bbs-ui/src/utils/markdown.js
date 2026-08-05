@@ -69,11 +69,22 @@ export function htmlToMd(html) {
   // 4. 统一块级标签：contenteditable 浏览器常用 <div> 包裹，统一转 <p> 处理
   md = md.replace(/<div>/gi, '<p>').replace(/<\/div>/gi, '</p>')
 
-  // 5. 逐个处理 <p> 元素
+  // 5. 逐个处理 <p> 元素及其间的游离内容（如图片插入空编辑区时是根的直接子元素，不在 <p> 内）
   const lines = []
   const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi
+  let lastIndex = 0
   let match
   while ((match = pRegex.exec(md)) !== null) {
+    // <p> 之间的游离内容：图片已在步骤2转成 ![图片](url)，<br> 已转成 \n
+    const between = md.slice(lastIndex, match.index)
+    if (between.trim()) {
+      const text = between.replace(/<[^>]*>/g, '').trim()
+      if (text) {
+        // 游离图片是块级内容，独立成行（避免 ![图片](url)hello 粘连）
+        text.replace(/!\[[^\]]*\]\([^)]*\)/g, m => '\n' + m + '\n')
+            .split('\n').forEach(seg => { if (seg.trim()) lines.push(seg.trim()) })
+      }
+    }
     const content = match[1].trim()
     if (!content) {
       lines.push('')  // 空行
@@ -86,13 +97,15 @@ export function htmlToMd(html) {
         lines.push(content)
       }
     }
+    lastIndex = pRegex.lastIndex
   }
-
-  // 5b. 兜底：如果没匹配到任何 <p>（纯文本无包裹元素的情况），直接取纯文本
-  if (lines.length === 0) {
-    const text = html.replace(/<[^>]*>/g, '').trim()
+  // 尾部游离内容（无 <p> 或 <p> 之外的内容，如图片-only 的整段）
+  if (lastIndex < md.length) {
+    const text = md.slice(lastIndex).replace(/<[^>]*>/g, '').trim()
     if (text) {
-      lines.push(text)
+      // 游离图片是块级内容，独立成行（避免 ![图片](url)hello 粘连）
+      text.replace(/!\[[^\]]*\]\([^)]*\)/g, m => '\n' + m + '\n')
+          .split('\n').forEach(seg => { if (seg.trim()) lines.push(seg.trim()) })
     }
   }
 
