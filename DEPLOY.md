@@ -294,6 +294,31 @@ location = "docker.io"
 location = "docker.m.daocloud.io"
 ```
 
+### 7.5 上传图片 404（上传成功但图片裂开）
+
+**问题**: 发帖上传图片成功（返回 URL），但图片 GET 请求 404，正文显示裂图
+**原因**: 老 podman（如 RHEL7 生产机上的 1.4.4）的 bind mount 可能静默失效——上传写进了
+容器可写层，宿主/nginx 读不到 → 404。旧文件（挂载正常时期上传的）不受影响，容易误判。
+**验证**: 推荐直接跑修复模式（一步完成验证 + 修复 + HTTP 回读自检）：
+```bash
+# 生产机（离线部署目录内已部署的脚本）
+sudo bash /data/bbs/deploy-offline.sh --repair
+# WSL 测试环境
+bash scripts/deploy/wsl.sh --repair
+```
+脚本先无破坏性验证（探针回读 + 模拟浏览器 GET 图片），当前容器健康则直接输出
+"无需重建"；异常则自动重建 bbs-server 并再次验证，仍失败会打印修复指引并退出。
+手工验证/修复:
+```bash
+podman exec bbs-server cat /data/bbs/bbsUpload/.deploy-mount-probe  # 应输出 ok
+podman exec bbs-server ls /data/bbs/bbsUpload/common/upload/        # 应与宿主一致
+chcon -Rt container_file_t /data/bbs/bbsUpload   # SELinux 环境下先打标签
+# 重新创建容器，必须包含: -v /data/bbs/bbsUpload:/data/bbs/bbsUpload:Z
+```
+**预防**: 部署脚本（`scripts/deploy/offline.sh` / `scripts/deploy/wsl.sh` / 升级包内嵌
+`upgrade.sh`）已在容器启动/重启后自动验证挂载（探针文件回读）；升级包在重启后探针读
+不到时还会**自动重建容器修复**；生产机也可随时手动执行 `deploy-offline.sh --repair`。
+
 ---
 
 ## 8. 本次部署总结

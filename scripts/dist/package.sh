@@ -147,6 +147,62 @@ for container in bbs-server bbs-nginx; do
     fi
 done
 
+# 5. 上传目录挂载验证（2026-08 生产故障：老 podman bind mount 静默失效 → 图片 404）
+#    重启后必须确认容器仍能读到宿主上传目录，读不到立即退出，避免带病运行
+set -a; [ -f "\$BBS_HOME/.env" ] && source "\$BBS_HOME/.env"; set +a
+UPLOAD_DIR="\${BBS_UPLOAD_DIR:-/data/bbs/bbsUpload}"
+STORAGE_PROBE=".deploy-mount-probe"
+mkdir -p "\$UPLOAD_DIR"
+echo ok > "\$UPLOAD_DIR/\$STORAGE_PROBE"
+tries=0
+while [ "\$tries" -lt 30 ]; do
+    if \$RUNNER exec bbs-server cat "\$UPLOAD_DIR/\$STORAGE_PROBE" 2>/dev/null | grep -q '^ok\$'; then
+        ok "上传目录挂载验证通过: \$UPLOAD_DIR（容器与宿主共享同一目录）"
+        break
+    fi
+    tries=\$((tries + 1))
+    sleep 2
+done
+if [ "\$tries" -ge 30 ]; then
+    warn "上传目录挂载验证失败：容器内读不到 \$UPLOAD_DIR/\$STORAGE_PROBE"
+    warn "原因：老 podman bind mount 静默失效（2026-08 生产故障）。正在重建 bbs-server 自动修复..."
+    \$RUNNER rm -f bbs-server 2>/dev/null || true
+    \$RUNNER run -d \
+        --name bbs-server \
+        --network host \
+        --restart=always \
+        --entrypoint java \
+        -e BBS_DB_HOST="\${BBS_DB_HOST:-127.0.0.1}" \
+        -e BBS_DB_PORT="\${BBS_DB_PORT:-15432}" \
+        -e BBS_DB_NAME="\${BBS_DB_NAME:-bbs}" \
+        -e BBS_DB_USER="\${BBS_DB_USER:-work_flow}" \
+        -e BBS_DB_PASSWORD="\${BBS_DB_PASSWORD:-work_flow123}" \
+        -e BBS_SUPER_ADMIN_PASSWORD="\${BBS_SUPER_ADMIN_PASSWORD:-1234@abcD}" \
+        -e BBS_UPLOAD_DIR="\$UPLOAD_DIR" \
+        -e BBS_SERVER_PORT="\${BBS_SERVER_PORT:-60000}" \
+        -v "\$BBS_HOME/current/bbs-server.jar:/app/app.jar:Z" \
+        -v "\$UPLOAD_DIR:\$UPLOAD_DIR:Z" \
+        bbs-server-base -Xmx2g -jar /app/app.jar --spring.profiles.active=podman
+    info "等待后端启动，再次验证挂载..."
+    sleep 10
+    tries=0
+    while [ "\$tries" -lt 30 ]; do
+        if \$RUNNER exec bbs-server cat "\$UPLOAD_DIR/\$STORAGE_PROBE" 2>/dev/null | grep -q '^ok\$'; then
+            ok "重建后挂载验证通过: \$UPLOAD_DIR（容器与宿主共享同一目录）"
+            break
+        fi
+        tries=\$((tries + 1))
+        sleep 2
+    done
+    if [ "\$tries" -ge 30 ]; then
+        warn "重建后仍无法读到上传目录，请检查："
+        warn "  1) 宿主机 SELinux: chcon -Rt container_file_t \$UPLOAD_DIR"
+        warn "  2) 容器日志: \$RUNNER logs bbs-server"
+        warn "  3) 验证: \$RUNNER exec bbs-server ls -la \$UPLOAD_DIR"
+        exit 1
+    fi
+fi
+
 echo ""
 echo -e "\033[0;32m╔══════════════════════════════════════════════╗\033[0m"
 echo -e "\033[0;32m║\033[0m  升级完成！版本: \$TIMESTAMP"
