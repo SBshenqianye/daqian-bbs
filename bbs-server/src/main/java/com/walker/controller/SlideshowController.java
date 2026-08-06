@@ -67,8 +67,8 @@ public class SlideshowController {
 
         Long time = System.currentTimeMillis();
 
-        // 文件保存的路径
-        String path = basePath + "Admin/slidesshow/" + time + "_." + suffix;
+        // 文件保存的路径（joinStoragePath 防止 storage.path 无尾斜杠时拼错目录，2026-08 生产故障）
+        String path = FilePathNormalizer.joinStoragePath(basePath, "Admin/slidesshow/" + time + "_." + suffix);
 
         // 同步到数据库中的路径(返回给前端的地址)
         String pathDB = "";

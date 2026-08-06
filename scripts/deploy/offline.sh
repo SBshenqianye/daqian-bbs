@@ -305,6 +305,9 @@ do_install() {
     BBS_SERVER_PORT="${BBS_SERVER_PORT:-60000}"
     NGINX_PORT="${NGINX_PORT:-60001}"
     BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR:-$BBS_HOME/bbsUpload}"
+    # 必须补尾斜杠：否则容器内 storage.path 无斜杠，basePath+"common/..." 拼出
+    # bbsUploadcommon 这类错误目录 → 上传 404（2026-08 生产故障；wsl.sh 同款处理）
+    BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR%/}/"
     BBS_SERVER_CONTAINER="${BBS_SERVER_CONTAINER:-bbs-server}"
     BBS_NGINX_CONTAINER="${BBS_NGINX_CONTAINER:-bbs-nginx}"
 
@@ -374,6 +377,9 @@ do_repair() {
     BBS_SERVER_PORT="${BBS_SERVER_PORT:-60000}"
     NGINX_PORT="${NGINX_PORT:-60001}"
     BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR:-$BBS_HOME/bbsUpload}"
+    # 必须补尾斜杠：否则容器内 storage.path 无斜杠，basePath+"common/..." 拼出
+    # bbsUploadcommon 这类错误目录 → 上传 404（2026-08 生产故障；wsl.sh 同款处理）
+    BBS_UPLOAD_DIR="${BBS_UPLOAD_DIR%/}/"
     BBS_SERVER_CONTAINER="${BBS_SERVER_CONTAINER:-bbs-server}"
 
     echo ""

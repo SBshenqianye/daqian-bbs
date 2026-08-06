@@ -53,4 +53,24 @@ public class FilePathNormalizer {
         }
         return path;
     }
+
+    /**
+     * 拼接文件系统存储路径，保证 base 与 child 之间恰有一个斜杠
+     * <pre>
+     *   base=/data/bbs/bbsUpload,   child=common/upload/x.png → /data/bbs/bbsUpload/common/upload/x.png
+     *   base=/data/bbs/bbsUpload/,  child=common/upload/x.png → /data/bbs/bbsUpload/common/upload/x.png
+     * </pre>
+     * 防止 storage.path 尾斜杠缺失时拼出 bbsUploadcommon 这类错误目录（2026-08 生产故障：
+     * 生产 .env 的 BBS_UPLOAD_DIR 无尾斜杠，而 WSL 部署脚本会补斜杠，导致两环境行为不一致）。
+     *
+     * @param base  storage.path（可能带或不带尾斜杠，如 /data/bbs/bbsUpload 或 /data/bbs/bbsUpload/）
+     * @param child 相对子路径（如 common/upload/2026-08-06/xxx.png）
+     * @return base 与 child 拼接后、中间恰有一个斜杠的完整路径
+     */
+    public static String joinStoragePath(String base, String child) {
+        if (base == null || child == null) {
+            return base + child;
+        }
+        return base.replaceAll("[/\\\\]+$", "") + "/" + child;
+    }
 }

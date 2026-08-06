@@ -151,6 +151,9 @@ done
 #    重启后必须确认容器仍能读到宿主上传目录，读不到立即退出，避免带病运行
 set -a; [ -f "\$BBS_HOME/.env" ] && source "\$BBS_HOME/.env"; set +a
 UPLOAD_DIR="\${BBS_UPLOAD_DIR:-/data/bbs/bbsUpload}"
+# 必须补尾斜杠：否则容器内 storage.path 无斜杠，basePath+"common/..." 拼出
+# bbsUploadcommon 这类错误目录 → 上传 404（2026-08 生产故障；wsl.sh 同款处理）
+UPLOAD_DIR="\${UPLOAD_DIR%/}/"
 STORAGE_PROBE=".deploy-mount-probe"
 mkdir -p "\$UPLOAD_DIR"
 echo ok > "\$UPLOAD_DIR/\$STORAGE_PROBE"

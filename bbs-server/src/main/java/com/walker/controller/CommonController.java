@@ -1,5 +1,6 @@
 package com.walker.controller;
 
+import com.walker.utils.FilePathNormalizer;
 import com.walker.utils.FileValidationUtil;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -74,7 +75,8 @@ public class CommonController {
         Long time = System.currentTimeMillis();
 
         String url = "common/upload/" + day + "/" + time + "_." + ext;
-        String path = basePath + url;
+        // joinStoragePath：防止 storage.path 无尾斜杠时拼出 bbsUploadcommon 这类错误目录（2026-08 生产故障）
+        String path = FilePathNormalizer.joinStoragePath(basePath, url);
 
         String imageUrl = "";
         File outFile = new File(path);
