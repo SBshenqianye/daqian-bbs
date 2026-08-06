@@ -296,28 +296,24 @@ location = "docker.m.daocloud.io"
 
 ### 7.5 上传图片 404（上传成功但图片裂开）
 
-**问题**: 发帖上传图片成功（返回 URL），但图片 GET 请求 404，正文显示裂图
-**原因**: 老 podman（如 RHEL7 生产机上的 1.4.4）的 bind mount 可能静默失效——上传写进了
-容器可写层，宿主/nginx 读不到 → 404。旧文件（挂载正常时期上传的）不受影响，容易误判。
-**验证**: 推荐直接跑修复模式（一步完成验证 + 修复 + HTTP 回读自检）：
-```bash
-# 生产机（离线部署目录内已部署的脚本）
-sudo bash /data/bbs/deploy-offline.sh --repair
-# WSL 测试环境
-bash scripts/deploy/wsl.sh --repair
-```
-脚本先无破坏性验证（探针回读 + 模拟浏览器 GET 图片），当前容器健康则直接输出
-"无需重建"；异常则自动重建 bbs-server 并再次验证，仍失败会打印修复指引并退出。
-手工验证/修复:
-```bash
-podman exec bbs-server cat /data/bbs/bbsUpload/.deploy-mount-probe  # 应输出 ok
-podman exec bbs-server ls /data/bbs/bbsUpload/common/upload/        # 应与宿主一致
-chcon -Rt container_file_t /data/bbs/bbsUpload   # SELinux 环境下先打标签
-# 重新创建容器，必须包含: -v /data/bbs/bbsUpload:/data/bbs/bbsUpload:Z
-```
-**预防**: 部署脚本（`scripts/deploy/offline.sh` / `scripts/deploy/wsl.sh` / 升级包内嵌
-`upgrade.sh`）已在容器启动/重启后自动验证挂载（探针文件回读）；升级包在重启后探针读
-不到时还会**自动重建容器修复**；生产机也可随时手动执行 `deploy-offline.sh --repair`。
+**问题**: 发帖上传图片成功（返回 URL），但图片 GET 请求 404，正文显示裂图；
+宿主上传目录 `/data/bbs/bbsUpload/common/upload/` 里没有当天文件。
+**根因（2026-08 生产故障）**: `storage.path` 无尾斜杠。后端拼路径是 `basePath + url`，
+若 `BBS_UPLOAD_DIR` 不带尾斜杠（如 `/data/bbs/bbsUpload`），会拼出
+`/data/bbs/bbsUploadcommon/upload/...` 这类错误目录——文件写进容器可写层（宿主看不到），
+而 GET 侧 `WebMvcConfig` 会补斜杠读 `/data/bbs/bbsUpload/common/...` → 404。
+WSL 正常是因为 `wsl.sh` 强制补尾斜杠（`${BBS_UPLOAD_DIR%/}/`），生产 `offline.sh` 之前不补。
+旧文件（尾斜杠正确时期上传的）不受影响，容易误判为"选择性失效"。
+**诊断**: `bash scripts/ops/diagnose-upload.sh` —— 一键输出 7 项证据；
+关键看 `podman diff` 是否有 `bbsUploadcommon` / `bbsUploadUser` 这类无斜杠拼接目录。
+**修复**: `bash scripts/ops/fix-upload-path.sh`（生产机）—— ①抢救容器层错误目录文件到
+正确目录（8-04 起的图片可恢复）②修 .env 尾斜杠 ③重建 bbs-server ④挂载/HTTP 回读/
+抢救文件三连验证。
+**预防**:
+- 部署脚本 `offline.sh` / `wsl.sh` / 升级包内嵌 `upgrade.sh` 均已强制补尾斜杠
+- `.env.example` 已带尾斜杠并注释提醒
+- 后端代码统一走 `FilePathNormalizer.joinStoragePath()` 安全拼接，任何配置下不再拼错
+- 挂载探针验证（`--repair` / 升级自愈）保留作为第二道防线
 
 ---
 

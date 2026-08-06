@@ -114,8 +114,8 @@ public class UserController {
 
         Long time = System.currentTimeMillis();
 
-        // 文件保存的路径
-        String path = basePath +"User/"+"id_"+id+"/portrait/"+time+"_."+pType;
+        // 文件保存的路径（joinStoragePath 防止 storage.path 无尾斜杠时拼错目录，2026-08 生产故障）
+        String path = FilePathNormalizer.joinStoragePath(basePath, "User/" + "id_" + id + "/portrait/" + time + "_." + pType);
 
         File outFile = new File(path);
         File parentDir = outFile.getParentFile();
