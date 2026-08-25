@@ -10,27 +10,55 @@
 bbs-server/src/main/resources/db/init/
 ├── init-mysql.sql      # 新环境完整建表（MySQL）
 ├── init-pg.sql          # 新环境完整建表（PostgreSQL）
-├── upgrade-mysql.sql    # 增量变更（MySQL，每次重启执行）
-└── upgrade-pg.sql       # 增量变更（PostgreSQL，每次重启执行）
+├── upgrade-mysql.sql    # 增量迁移（MySQL，带版本追踪，只执行一次）
+└── upgrade-pg.sql       # 增量迁移（PostgreSQL，带版本追踪，只执行一次）
 ```
 
 ### 修改规则
 
 ```
 业务需求 → DDL/DML 变更
-    ├── 更新 upgrade-mysql.sql（加新 step，必须幂等）
-    ├── 更新 upgrade-pg.sql（加新 step，必须幂等）
+    ├── 更新 upgrade-mysql.sql（加新 @migration 块）
+    ├── 更新 upgrade-pg.sql（加新 @migration 块）
     ├── 同步更新 init-mysql.sql（建表 + 初始数据保持一致）
     └── 同步更新 init-pg.sql（建表 + 初始数据保持一致）
 ```
 
 即：**upgrade 和 init 总是同步更新，MySQL 和 PostgreSQL 总是同步更新**，不允许只改其中一个。
 
+### 迁移版本追踪（@migration 标记）
+
+`upgrade-*.sql` 中每个迁移块必须以 `-- @migration: <id> <description>` 开头：
+
+```sql
+-- @migration: v012-my-feature 我的功能描述
+ALTER TABLE bbs_xxx ADD COLUMN ...;
+UPDATE bbs_yyy SET ...;
+```
+
+- **版本 ID**：`v` + 三位序号 + `-` + 英文短名（如 `v012-add-xxx-field`）
+- **描述**：中文简述迁移内容
+- **执行策略**：`DatabaseInitializer` 启动时读取 `bbs_schema_version` 表，**只执行未记录的迁移块**，执行成功后记录版本号。已执行过的迁移不会重复执行。
+- **文件开头到第一个 @migration 之间的 SQL**：视为"版本前遗留"，首次启动时自动标记为已执行（不会实际运行 DML）。
+
 ### 幂等要求
 
-- **MySQL `upgrade-mysql.sql`**: 所有 DDL 用 `information_schema` 条件判断 + `PREPARE`/`EXECUTE`；DML 用 `WHERE NOT EXISTS`。确保每条语句重复执行零报错。
-- **PostgreSQL `upgrade-pg.sql`**: 利用原生 `IF NOT EXISTS` / `ON CONFLICT DO NOTHING` / `WHERE NOT EXISTS` 保证幂等。不需要 information_schema + PREPARE 那套，PostgreSQL 原生支持。
+由于迁移只执行一次，**不再要求 DML 操作天然幂等**。但仍建议保留 DDL 幂等（`IF NOT EXISTS`）作为安全网：
+
+- **MySQL `upgrade-mysql.sql`**: DDL 用 `information_schema` 条件判断 + `PREPARE`/`EXECUTE`；DML 无需特殊处理（迁移框架保证只执行一次）。
+- **PostgreSQL `upgrade-pg.sql`**: 利用原生 `IF NOT EXISTS` / `ON CONFLICT DO NOTHING`。
 - **`init-*.sql`**: 使用 `CREATE TABLE IF NOT EXISTS` / `INSERT ... ON CONFLICT DO NOTHING`，幂等安全。
+
+### 版本追踪表
+
+```sql
+-- bbs_schema_version（由 init-*.sql 建表，DatabaseInitializer 管理）
+CREATE TABLE bbs_schema_version (
+    version     varchar(50) PRIMARY KEY,  -- 迁移版本标识（如 v011-lingdao-display）
+    description varchar(255),             -- 迁移描述
+    applied_at  varchar(20) NOT NULL      -- 执行时间
+);
+```
 
 ### 字段类型对照
 

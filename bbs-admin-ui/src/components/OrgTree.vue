@@ -505,8 +505,10 @@ export default {
 <style>
 /* 每行作为独立布局/样式/绘制容器，避免展开时触发全量 layout 回溯 */
 .group { contain: layout style paint; }
-/* 隐藏（替代 v-show / :style display） */
-.th { display: none; }
+/* 隐藏（替代 v-show / :style display）
+ * 使用 .group.th 提升特异性，确保始终覆盖 Tailwind 的 .flex { display:flex }，
+ * 避免 CSS 加载顺序不同导致 .flex 胜出产生"幽灵"可见行。 */
+.group.th { display: none !important; }
 /* 缩进层级（CSS class 比 :style 的 js 对象 diff 快得多） */
 .d0 { margin-left: 0; }
 .d1 { margin-left: 24px; }

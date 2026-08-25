@@ -429,3 +429,12 @@ SELECT setval('bbs_user_id_seq', GREATEST(nextval('bbs_user_id_seq'), (SELECT CO
 SELECT setval('bbs_article_label_label_id_seq', GREATEST(nextval('bbs_article_label_label_id_seq'), (SELECT COALESCE(max(label_id), 0) FROM bbs_article_label)));
 SELECT setval('bbs_sensitive_word_id_seq', GREATEST(nextval('bbs_sensitive_word_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_sensitive_word)));
 SELECT setval('bbs_dict_id_seq', GREATEST(nextval('bbs_dict_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_dict)));
+
+-- ----------------------------
+-- Table: bbs_schema_version（迁移版本追踪）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_schema_version (
+    version     varchar(50) PRIMARY KEY,
+    description varchar(255),
+    applied_at  varchar(20) NOT NULL
+);

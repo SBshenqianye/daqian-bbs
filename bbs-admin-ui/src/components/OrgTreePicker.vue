@@ -145,6 +145,13 @@ export default {
     }
   },
   watch: {
+    filterText() {
+      // 搜索条件变化时，清除浮动指示器，防止"幽灵"残留
+      this.showScrollUp = false
+      this.showScrollDown = false
+      this.showCurrentUp = false
+      this.showCurrentDown = false
+    },
     visible(val) {
       if (val) {
         this.localSelectedId = this.selectedId || ''

@@ -453,4 +453,15 @@ CREATE TABLE `bbs_notification` (
   INDEX `idx_notification_user_read` (`user_id`, `is_read`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '通知表';
 
+-- ----------------------------
+-- Table: bbs_schema_version（迁移版本追踪）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_schema_version`;
+CREATE TABLE `bbs_schema_version` (
+  `version`     varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '迁移版本标识',
+  `description` varchar(255) DEFAULT NULL COMMENT '迁移描述',
+  `applied_at`  varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '执行时间',
+  PRIMARY KEY (`version`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic COMMENT = '数据库迁移版本追踪';
+
 SET FOREIGN_KEY_CHECKS = 1;
