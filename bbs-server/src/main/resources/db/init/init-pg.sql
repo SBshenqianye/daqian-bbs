@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS bbs_article (
     recommend            smallint,
     enable               integer DEFAULT 0,
     is_delete            integer DEFAULT 0,
-    is_featured          smallint NOT NULL DEFAULT 0
+    is_featured          smallint NOT NULL DEFAULT 0,
+    is_hot_bonus         smallint DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_article_featured_time ON bbs_article (is_featured, create_time);
 
@@ -201,7 +202,8 @@ CREATE TABLE IF NOT EXISTS bbs_reply (
     reply_user_id    integer,
     reply_time       varchar(20) NOT NULL,
     enable           integer DEFAULT 1,
-    is_delete        integer DEFAULT 0
+    is_delete        integer DEFAULT 0,
+    is_adopted       smallint DEFAULT 0
 );
 
 -- ----------------------------
@@ -260,6 +262,8 @@ CREATE TABLE IF NOT EXISTS bbs_user (
     personnel_id    varchar(50),
     id_card         varchar(18),
     is_first_login  smallint DEFAULT 1,
+    post_restricted smallint DEFAULT 0,
+    post_restricted_until varchar(20),
     CONSTRAINT uk_bbs_user_username UNIQUE (username),
     CONSTRAINT uk_bbs_user_personnel_id UNIQUE (personnel_id),
     CONSTRAINT uk_bbs_user_id_card UNIQUE (id_card)
@@ -336,7 +340,15 @@ INSERT INTO bbs_dict (id, dict_type, dict_value, dict_label, dict_sort, create_b
 (1, 'post', '3', '发帖积分', 1, '系统', '2026-06-26 00:00:00', '发一个帖子所得积分'),
 (2, 'reply', '1', '回帖积分', 0, '系统', '2026-06-26 00:00:00', '回帖一次所得积分'),
 (3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）'),
-(4, 'featured', '10', '精华帖积分', 2, '系统', '2026-07-13 00:00:00', '被设为精华帖额外获得的积分')
+(4, 'featured', '10', '精华帖积分', 2, '系统', '2026-07-13 00:00:00', '被设为精华帖额外获得的积分'),
+(5, 'violation', 'illegal', '违法违规内容', 1, '系统', '2026-08-25 00:00:00', '扣15分'),
+(6, 'violation', 'attack', '人身攻击/争吵引战', 2, '系统', '2026-08-25 00:00:00', '扣10分'),
+(7, 'violation', 'spam', '恶意灌水/刷屏', 3, '系统', '2026-08-25 00:00:00', '扣4分'),
+(8, 'violation', 'plagiarism', '抄袭剽窃', 4, '系统', '2026-08-25 00:00:00', '扣12分'),
+(9, 'violation', 'false_report', '虚假恶意举报', 5, '系统', '2026-08-25 00:00:00', '扣3分'),
+(10, 'violation', 'leak', '泄露企业秘密', 6, '系统', '2026-08-25 00:00:00', '扣20分'),
+(11, 'hot_threshold', '10', '帖子热度回复阈值', 10, '系统', '2026-08-25 00:00:00', '回复数超过此值触发热度奖励'),
+(12, 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', '2026-08-25 00:00:00', '登录后需浏览满此分钟数才计分')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------
@@ -420,6 +432,90 @@ CREATE TABLE IF NOT EXISTS bbs_notification (
 );
 CREATE INDEX IF NOT EXISTS idx_notification_user_id ON bbs_notification (user_id);
 CREATE INDEX IF NOT EXISTS idx_notification_user_read ON bbs_notification (user_id, is_read);
+
+-- ----------------------------
+-- Table: bbs_login_log（每日登录浏览记录）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_login_log (
+    id              SERIAL PRIMARY KEY,
+    user_id         integer NOT NULL,
+    login_date      varchar(10) NOT NULL,
+    login_time      varchar(20),
+    browse_minutes  integer DEFAULT 0,
+    points_awarded  smallint DEFAULT 0,
+    create_time     varchar(20)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_login_log_user_date ON bbs_login_log (user_id, login_date);
+
+-- ----------------------------
+-- Table: bbs_report（实名举报记录）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_report (
+    id              SERIAL PRIMARY KEY,
+    reporter_id     integer NOT NULL,
+    target_type     varchar(20) NOT NULL,
+    target_id       integer NOT NULL,
+    reason          varchar(500),
+    status          varchar(20) DEFAULT 'pending',
+    reviewer_id     integer,
+    review_time     varchar(20),
+    review_remark   varchar(500),
+    points_awarded  smallint DEFAULT 0,
+    create_time     varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_report_reporter ON bbs_report (reporter_id);
+CREATE INDEX IF NOT EXISTS idx_report_target ON bbs_report (target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_report_status ON bbs_report (status);
+
+-- ----------------------------
+-- Table: bbs_violation（违规记录）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_violation (
+    id              SERIAL PRIMARY KEY,
+    user_id         integer NOT NULL,
+    violation_type  varchar(50) NOT NULL,
+    points_deducted integer NOT NULL,
+    related_type    varchar(20),
+    related_id      integer,
+    operator_id     integer NOT NULL,
+    remark          varchar(500),
+    create_time     varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_violation_user ON bbs_violation (user_id);
+CREATE INDEX IF NOT EXISTS idx_violation_type ON bbs_violation (violation_type);
+
+-- ----------------------------
+-- Table: bbs_appeal（申诉记录）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_appeal (
+    id              SERIAL PRIMARY KEY,
+    user_id         integer NOT NULL,
+    appeal_type     varchar(20) NOT NULL,
+    related_id      integer,
+    content         text NOT NULL,
+    status          varchar(20) DEFAULT 'pending',
+    reviewer_id     integer,
+    review_remark   varchar(500),
+    review_time     varchar(20),
+    create_time     varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_appeal_user ON bbs_appeal (user_id);
+CREATE INDEX IF NOT EXISTS idx_appeal_status ON bbs_appeal (status);
+
+-- ----------------------------
+-- Table: bbs_board_moderator（版块管理员）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_board_moderator (
+    id           SERIAL PRIMARY KEY,
+    user_id      integer NOT NULL,
+    label_id     integer NOT NULL,
+    role_type    varchar(20) DEFAULT 'moderator',
+    status       smallint DEFAULT 1,
+    appoint_time varchar(20),
+    create_time  varchar(20)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_board_mod_user_label ON bbs_board_moderator (user_id, label_id);
+CREATE INDEX IF NOT EXISTS idx_board_mod_label ON bbs_board_moderator (label_id);
 
 -- ----------------------------
 -- 重置序列，使后续自增从正确值开始

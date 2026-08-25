@@ -154,6 +154,142 @@ CREATE INDEX IF NOT EXISTS idx_notification_user_read ON bbs_notification (user_
 UPDATE bbs_sa_org SET is_display_selected = 0
   WHERE org_name = '领导干部' AND is_delete = 0 AND is_display_selected = 1;
 
+-- @migration: v012-ops-v2 运营方案V2功能（登录积分/热度/采纳/举报/违规/等级/版主/限制/申诉）
+
+-- === 1. 新增表 ===
+
+-- bbs_login_log — 每日登录浏览记录
+CREATE TABLE IF NOT EXISTS bbs_login_log (
+    id              SERIAL PRIMARY KEY,
+    user_id         integer NOT NULL,
+    login_date      varchar(10) NOT NULL,
+    login_time      varchar(20),
+    browse_minutes  integer DEFAULT 0,
+    points_awarded  smallint DEFAULT 0,
+    create_time     varchar(20)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_login_log_user_date ON bbs_login_log (user_id, login_date);
+
+-- bbs_report — 实名举报记录
+CREATE TABLE IF NOT EXISTS bbs_report (
+    id              SERIAL PRIMARY KEY,
+    reporter_id     integer NOT NULL,
+    target_type     varchar(20) NOT NULL,
+    target_id       integer NOT NULL,
+    reason          varchar(500),
+    status          varchar(20) DEFAULT 'pending',
+    reviewer_id     integer,
+    review_time     varchar(20),
+    review_remark   varchar(500),
+    points_awarded  smallint DEFAULT 0,
+    create_time     varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_report_reporter ON bbs_report (reporter_id);
+CREATE INDEX IF NOT EXISTS idx_report_target ON bbs_report (target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_report_status ON bbs_report (status);
+
+-- bbs_violation — 违规记录
+CREATE TABLE IF NOT EXISTS bbs_violation (
+    id              SERIAL PRIMARY KEY,
+    user_id         integer NOT NULL,
+    violation_type  varchar(50) NOT NULL,
+    points_deducted integer NOT NULL,
+    related_type    varchar(20),
+    related_id      integer,
+    operator_id     integer NOT NULL,
+    remark          varchar(500),
+    create_time     varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_violation_user ON bbs_violation (user_id);
+CREATE INDEX IF NOT EXISTS idx_violation_type ON bbs_violation (violation_type);
+
+-- bbs_appeal — 申诉记录
+CREATE TABLE IF NOT EXISTS bbs_appeal (
+    id              SERIAL PRIMARY KEY,
+    user_id         integer NOT NULL,
+    appeal_type     varchar(20) NOT NULL,
+    related_id      integer,
+    content         text NOT NULL,
+    status          varchar(20) DEFAULT 'pending',
+    reviewer_id     integer,
+    review_remark   varchar(500),
+    review_time     varchar(20),
+    create_time     varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_appeal_user ON bbs_appeal (user_id);
+CREATE INDEX IF NOT EXISTS idx_appeal_status ON bbs_appeal (status);
+
+-- bbs_board_moderator — 版块管理员
+CREATE TABLE IF NOT EXISTS bbs_board_moderator (
+    id           SERIAL PRIMARY KEY,
+    user_id      integer NOT NULL,
+    label_id     integer NOT NULL,
+    role_type    varchar(20) DEFAULT 'moderator',
+    status       smallint DEFAULT 1,
+    appoint_time varchar(20),
+    create_time  varchar(20)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_board_mod_user_label ON bbs_board_moderator (user_id, label_id);
+CREATE INDEX IF NOT EXISTS idx_board_mod_label ON bbs_board_moderator (label_id);
+
+-- === 2. 修改现有表 ===
+
+-- bbs_reply 增加 is_adopted 字段
+ALTER TABLE bbs_reply ADD COLUMN IF NOT EXISTS is_adopted smallint DEFAULT 0;
+
+-- bbs_user 增加发帖限制字段
+ALTER TABLE bbs_user ADD COLUMN IF NOT EXISTS post_restricted smallint DEFAULT 0;
+ALTER TABLE bbs_user ADD COLUMN IF NOT EXISTS post_restricted_until varchar(20);
+
+-- bbs_article 增加热度奖励标记字段
+ALTER TABLE bbs_article ADD COLUMN IF NOT EXISTS is_hot_bonus smallint DEFAULT 0;
+
+-- === 3. 数据字典新增 ===
+
+-- 违规类型字典
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark)
+SELECT 'violation', 'illegal', '违法违规内容', 1, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣15分'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_value = 'illegal');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark)
+SELECT 'violation', 'attack', '人身攻击/争吵引战', 2, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣10分'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_value = 'attack');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark)
+SELECT 'violation', 'spam', '恶意灌水/刷屏', 3, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣4分'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_value = 'spam');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark)
+SELECT 'violation', 'plagiarism', '抄袭剽窃', 4, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣12分'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_value = 'plagiarism');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark)
+SELECT 'violation', 'false_report', '虚假恶意举报', 5, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣3分'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_value = 'false_report');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark)
+SELECT 'violation', 'leak', '泄露企业秘密', 6, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣20分'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_value = 'leak');
+
+-- 帖子热度阈值
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark)
+SELECT 'hot_threshold', '10', '帖子热度回复阈值', 10, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '回复数超过此值触发热度奖励'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'hot_threshold');
+
+-- 每日登录浏览阈值（分钟）
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark)
+SELECT 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '登录后需浏览满此分钟数才计分'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'login_browse_minutes');
+
+-- ============================================
+-- 回滚 SQL（如需撤销上述变更，取消注释执行）
+-- ============================================
+-- DROP TABLE IF EXISTS bbs_board_moderator;
+-- DROP TABLE IF EXISTS bbs_appeal;
+-- DROP TABLE IF EXISTS bbs_violation;
+-- DROP TABLE IF EXISTS bbs_report;
+-- DROP TABLE IF EXISTS bbs_login_log;
+-- ALTER TABLE bbs_article DROP COLUMN IF EXISTS is_hot_bonus;
+-- ALTER TABLE bbs_user DROP COLUMN IF EXISTS post_restricted_until;
+-- ALTER TABLE bbs_user DROP COLUMN IF EXISTS post_restricted;
+-- ALTER TABLE bbs_reply DROP COLUMN IF EXISTS is_adopted;
+-- DELETE FROM bbs_dict WHERE dict_type IN ('violation', 'hot_threshold', 'login_browse_minutes');
+
 -- ============================================
 -- 回滚 SQL（如需撤销上述变更，取消注释执行）
 -- ============================================
