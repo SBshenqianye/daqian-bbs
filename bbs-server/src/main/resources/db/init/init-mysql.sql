@@ -404,6 +404,53 @@ INSERT INTO `bbs_sensitive_word` (`id`, `keyword`) VALUES
 (2, '肉票'),
 (3, '抢劫'),
 (4, '莎莎舞'),
-(5, '老司机');
+(5, '老司机'),
+(6, '哈哈哈'),
+(7, '嘻嘻嘻'),
+(8, '嘿嘿嘿'),
+(9, '啊啊啊'),
+(10, '嗯嗯嗯'),
+(11, '哦哦哦'),
+(12, '呵呵呵'),
+(13, '啦啦啦'),
+(14, '呜呜呜'),
+(15, '沙发'),
+(16, '占位'),
+(17, '占楼'),
+(18, '路过'),
+(19, '马克'),
+(20, 'mark'),
+(21, '顶贴'),
+(22, '灌水'),
+(23, '水水水'),
+(24, '水帖'),
+(25, '打卡'),
+(26, '签到'),
+(27, '666666'),
+(28, '8888'),
+(29, '11111'),
+(30, '123456'),
+(31, '测试测试'),
+(32, '测试一下'),
+(33, 'testtest');
+
+-- ----------------------------
+-- Table: bbs_notification（通知表）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_notification`;
+CREATE TABLE `bbs_notification` (
+  `id`             int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`        int(11) NOT NULL COMMENT '被通知的用户ID',
+  `from_user_id`   int(11) DEFAULT NULL COMMENT '触发通知的用户ID',
+  `type`           varchar(20) NOT NULL COMMENT '通知类型(reply/comment/favorite)',
+  `title`          varchar(255) DEFAULT NULL COMMENT '通知标题',
+  `related_type`   varchar(20) DEFAULT NULL COMMENT '关联类型(article/comment/reply)',
+  `related_id`     int(11) DEFAULT NULL COMMENT '关联ID',
+  `is_read`        tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已读(0=未读,1=已读)',
+  `create_time`    varchar(20) DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_notification_user_id` (`user_id`),
+  INDEX `idx_notification_user_read` (`user_id`, `is_read`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '通知表';
 
 SET FOREIGN_KEY_CHECKS = 1;

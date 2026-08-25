@@ -114,9 +114,28 @@ UPDATE bbs_sa_org
 SET org_tree = '51404|5140403|514040304|514040422' || SUBSTRING(org_tree, LENGTH('514040422') + 1)
 WHERE org_no LIKE '5140404220%' AND org_tree LIKE '514040422|514040422%';
 
--- Step 7: 软删内江星原公司（三新）及其后代（已合并到内江三新公司）
+-- Step 7: 软删内江星原公司（三新）及其后代（已合并到内江三新公司），同时迁移其下用户
+UPDATE bbs_user SET org_no = '514040303' WHERE org_no = '514040424';
+UPDATE bbs_user SET org_no = '514040303' WHERE org_no IN ('51404042401','51404042402','51404042403','51404042404','51404042405');
 UPDATE bbs_sa_org SET is_delete = 1 WHERE org_no = '514040424' AND is_delete = 0;
 UPDATE bbs_sa_org SET is_delete = 1 WHERE org_no LIKE '5140404240%' AND is_delete = 0;
+
+-- Step 8: 将5个县公司下的星原分公司移到对应的国网XX供电分公司下
+-- 8a: 内江星原公司隆昌分公司 → 国网隆昌市供电分公司
+UPDATE bbs_sa_org SET p_org_no = '514040204', org_tree = '514040204|514040423' WHERE org_no = '514040423' AND p_org_no = '5140404';
+UPDATE bbs_sa_org SET org_tree = '514040204|514040423' || SUBSTRING(org_tree, LENGTH('514040423') + 1) WHERE org_no LIKE '5140404230%' AND org_tree LIKE '514040423|514040423%';
+-- 8b: 内江星原公司东兴分公司 → 国网东兴区供电分公司
+UPDATE bbs_sa_org SET p_org_no = '514040201', org_tree = '514040201|514040414' WHERE org_no = '514040414' AND p_org_no = '5140404';
+UPDATE bbs_sa_org SET org_tree = '514040201|514040414' || SUBSTRING(org_tree, LENGTH('514040414') + 1) WHERE org_no LIKE '5140404140%' AND org_tree LIKE '514040414|514040414%';
+-- 8c: 内江星原公司威远分公司 → 国网威远县供电分公司
+UPDATE bbs_sa_org SET p_org_no = '514040202', org_tree = '514040202|514040415' WHERE org_no = '514040415' AND p_org_no = '5140404';
+UPDATE bbs_sa_org SET org_tree = '514040202|514040415' || SUBSTRING(org_tree, LENGTH('514040415') + 1) WHERE org_no LIKE '5140404150%' AND org_tree LIKE '514040415|514040415%';
+-- 8d: 内江星原公司资中分公司 → 国网资中县供电分公司
+UPDATE bbs_sa_org SET p_org_no = '514040203', org_tree = '514040203|514040421' WHERE org_no = '514040421' AND p_org_no = '5140404';
+UPDATE bbs_sa_org SET org_tree = '514040203|514040421' || SUBSTRING(org_tree, LENGTH('514040421') + 1) WHERE org_no LIKE '5140404210%' AND org_tree LIKE '514040421|514040421%';
+-- 8e: 内江星原公司市区分公司 → 市区供电中心
+UPDATE bbs_sa_org SET p_org_no = '514040205', org_tree = '514040205|514040417' WHERE org_no = '514040417' AND p_org_no = '5140404';
+UPDATE bbs_sa_org SET org_tree = '514040205|514040417' || SUBSTRING(org_tree, LENGTH('514040417') + 1) WHERE org_no LIKE '5140404170%' AND org_tree LIKE '514040417|514040417%';
 
 -- 2026-08-XX: 积分调整日志表（管理员手动增减用户积分）
 CREATE TABLE IF NOT EXISTS bbs_points_log (
@@ -140,6 +159,36 @@ ALTER TABLE bbs_points_log ADD COLUMN IF NOT EXISTS is_reversed smallint NOT NUL
 ALTER TABLE bbs_points_log ADD COLUMN IF NOT EXISTS reversed_by integer;
 ALTER TABLE bbs_points_log ADD COLUMN IF NOT EXISTS reversing_record integer;
 CREATE INDEX IF NOT EXISTS idx_points_log_is_reversed ON bbs_points_log (is_reversed);
+
+-- ============================================
+-- 2026-09-XX: 内容质量检测 — 扩展垃圾/灌水关键词库
+-- ============================================
+INSERT INTO bbs_sensitive_word (keyword) VALUES
+('哈哈哈'),('嘻嘻嘻'),('嘿嘿嘿'),('啊啊啊'),('嗯嗯嗯'),('哦哦哦'),('呵呵呵'),
+('啦啦啦'),('呜呜呜'),
+('沙发'),('占位'),('占楼'),('路过'),('马克'),('mark'),('mark一下'),
+('顶贴'),('灌水'),('水水水'),('水帖'),
+('来了'),('看看'),('打卡'),('签到'),
+('666666'),('8888'),('11111'),('123456'),
+('测试测试'),('测试一下'),('testtest')
+ON CONFLICT DO NOTHING;
+
+-- ============================================
+-- 2026-09-XX: 通知表（回复提醒、未读计数）
+-- ============================================
+CREATE TABLE IF NOT EXISTS bbs_notification (
+    id             SERIAL PRIMARY KEY,
+    user_id        integer NOT NULL,
+    from_user_id   integer,
+    type           varchar(20) NOT NULL,
+    title          varchar(255),
+    related_type   varchar(20),
+    related_id     integer,
+    is_read        smallint NOT NULL DEFAULT 0,
+    create_time    varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_notification_user_id ON bbs_notification (user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_user_read ON bbs_notification (user_id, is_read);
 
 -- ============================================
 -- 回滚 SQL（如需撤销上述变更，取消注释执行）

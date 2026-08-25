@@ -354,7 +354,35 @@ INSERT INTO bbs_sensitive_word (id, keyword) VALUES
 (2, '肉票'),
 (3, '抢劫'),
 (4, '莎莎舞'),
-(5, '老司机')
+(5, '老司机'),
+(6, '哈哈哈'),
+(7, '嘻嘻嘻'),
+(8, '嘿嘿嘿'),
+(9, '啊啊啊'),
+(10, '嗯嗯嗯'),
+(11, '哦哦哦'),
+(12, '呵呵呵'),
+(13, '啦啦啦'),
+(14, '呜呜呜'),
+(15, '沙发'),
+(16, '占位'),
+(17, '占楼'),
+(18, '路过'),
+(19, '马克'),
+(20, 'mark'),
+(21, '顶贴'),
+(22, '灌水'),
+(23, '水水水'),
+(24, '水帖'),
+(25, '打卡'),
+(26, '签到'),
+(27, '666666'),
+(28, '8888'),
+(29, '11111'),
+(30, '123456'),
+(31, '测试测试'),
+(32, '测试一下'),
+(33, 'testtest')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------
@@ -375,6 +403,23 @@ CREATE TABLE IF NOT EXISTS bbs_points_log (
 );
 CREATE INDEX IF NOT EXISTS idx_points_log_user_id ON bbs_points_log (user_id);
 CREATE INDEX IF NOT EXISTS idx_points_log_is_reversed ON bbs_points_log (is_reversed);
+
+-- ----------------------------
+-- Table: bbs_notification（通知表）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_notification (
+    id             SERIAL PRIMARY KEY,
+    user_id        integer NOT NULL,
+    from_user_id   integer,
+    type           varchar(20) NOT NULL,
+    title          varchar(255),
+    related_type   varchar(20),
+    related_id     integer,
+    is_read        smallint NOT NULL DEFAULT 0,
+    create_time    varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_notification_user_id ON bbs_notification (user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_user_read ON bbs_notification (user_id, is_read);
 
 -- ----------------------------
 -- 重置序列，使后续自增从正确值开始
