@@ -13,7 +13,7 @@ RUN apk add --no-cache gettext
 # Nginx 配置模板（启动时由 envsubst 渲染）
 COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 
-EXPOSE 19848
+EXPOSE 60001
 
 # 前端 dist 目录由上层调用方 bind-mount 到 /usr/share/nginx/html/
 # NGINX_PORT 和 BBS_SERVER_PORT 由 podman run -e 传入

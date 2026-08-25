@@ -51,7 +51,7 @@
                 <p class="text-body-md text-secondary mb-4 line-clamp-2" style="white-space: pre-line">{{ article.articleSummary }}</p>
                 <div class="flex items-center justify-between text-label-md text-outline">
                   <div class="flex items-center gap-2">
-                    <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" size="sm" layout="inline" />
+                    <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" :org-name-full="article.authorOrgNameFull" size="sm" layout="inline" />
                     <span class="mx-1">•</span>
                     <span>{{ formatTime(article.time) }}</span>
                   </div>
@@ -164,6 +164,7 @@ export default {
             userId: a.userId,
             authorAvatar: normalizeFileUrl(a.portrait || ''),
             authorOrgName: a.authorOrgName || '',
+            authorOrgNameFull: a.authorOrgNameFull || '',
             time: a.createTime || '',
             views: a.articleViewNum || 0,
             comments: a.commentNum ?? a.comment_num ?? 0,

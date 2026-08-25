@@ -75,8 +75,8 @@ public class ArticleFileController {
         String day = format.format(date);
         Long time = System.currentTimeMillis();
         String url = "User/" + "id_" + id + "/file/" + day + "/" + time + "/" + fileName;
-        // 文件保存的路径
-        String path = basePath + url;
+        // 文件保存的路径（joinStoragePath 防止 storage.path 无尾斜杠时拼错目录，2026-08 生产故障）
+        String path = FilePathNormalizer.joinStoragePath(basePath, url);
         // 返回给前端的 url 路径
         String imageUrl = "";
         File outFile = new File(path);

@@ -50,4 +50,8 @@ public class SaOrg implements Serializable {
     @ApiModelProperty("是否参与排名:0=否,1=是")
     @TableField("is_ranking_selected")
     private Integer isRankingSelected;
+
+    @ApiModelProperty("是否显示在用户前台:0=否,1=是")
+    @TableField("is_display_selected")
+    private Integer isDisplaySelected;
 }

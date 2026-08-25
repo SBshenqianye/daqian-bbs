@@ -1,6 +1,7 @@
 package com.walker.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.SaOrgMapper;
 import com.walker.mapper.UserMapper;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +41,7 @@ public class SaOrgServiceImpl extends ServiceImpl<SaOrgMapper, SaOrg> implements
     @Override
     public List<SaOrgTreeVO> getOrgTree() {
         // 查询全量单位列表
-        List<SaOrg> orgList = this.list();
+        List<SaOrg> orgList = this.list(new LambdaQueryWrapper<SaOrg>().orderByAsc(SaOrg::getOrgNo));
         if (orgList == null || orgList.isEmpty()) {
             return new ArrayList<>();
         }
@@ -51,6 +54,7 @@ public class SaOrgServiceImpl extends ServiceImpl<SaOrgMapper, SaOrg> implements
             vo.setLabel(org.getOrgName());
             vo.setPOrgNo(org.getPOrgNo());
             vo.setIsRankingSelected(org.getIsRankingSelected());
+            vo.setIsDisplaySelected(org.getIsDisplaySelected());
             orgMap.put(org.getOrgNo(), vo);
         }
 
@@ -145,5 +149,67 @@ public class SaOrgServiceImpl extends ServiceImpl<SaOrgMapper, SaOrg> implements
             return ResultBean.success("操作成功！");
         }
         return ResultBean.error("入库失败！");
+    }
+
+    @Override
+    public void batchUpdateDisplay(Map<String, Boolean> displayMap) {
+        for (Map.Entry<String, Boolean> entry : displayMap.entrySet()) {
+            SaOrg org = new SaOrg();
+            org.setIsDisplaySelected(entry.getValue() ? 1 : 0);
+            saOrgMapper.update(org,
+                    new LambdaUpdateWrapper<SaOrg>()
+                            .eq(SaOrg::getOrgNo, entry.getKey())
+            );
+        }
+    }
+
+    @Override
+    public String resolveDisplayOrgName(String orgNo, String fallbackName) {
+        if (orgNo == null || orgNo.trim().isEmpty()) return fallbackName;
+        Map<String, String> map = resolveDisplayOrgNames(Collections.singletonList(orgNo));
+        String name = map.get(orgNo);
+        return name != null ? name : fallbackName;
+    }
+
+    @Override
+    public Map<String, String> resolveDisplayOrgNames(Collection<String> orgNos) {
+        Map<String, String> result = new HashMap<>();
+        if (orgNos == null || orgNos.isEmpty()) return result;
+
+        // 查询全量非删除组织，建立 orgNo → SaOrg 映射（祖先节点可能不在入参集合中）
+        List<SaOrg> allOrgs = this.list(new LambdaQueryWrapper<SaOrg>().eq(SaOrg::getIsDelete, 0));
+        if (allOrgs == null || allOrgs.isEmpty()) return result;
+
+        Map<String, SaOrg> orgMap = allOrgs.stream()
+                .collect(Collectors.toMap(SaOrg::getOrgNo, o -> o, (a, b) -> a));
+
+        for (String orgNo : orgNos) {
+            if (orgNo == null || orgNo.trim().isEmpty()) continue;
+            SaOrg userOrg = orgMap.get(orgNo);
+            if (userOrg == null || userOrg.getOrgTree() == null || userOrg.getOrgTree().isEmpty()) {
+                result.put(orgNo, userOrg != null ? userOrg.getOrgName() : null);
+                continue;
+            }
+            // 自底向上遍历 org_tree 路径，找第一个 is_display_selected=1 的祖先
+            String[] path = userOrg.getOrgTree().split("\\|");
+            String resolvedName = null;
+            for (int i = path.length - 1; i >= 0; i--) {
+                SaOrg ancestor = orgMap.get(path[i]);
+                if (ancestor != null && Integer.valueOf(1).equals(ancestor.getIsDisplaySelected())) {
+                    resolvedName = ancestor.getOrgName();
+                    break;
+                }
+            }
+            // 链上无可见级（自身及全部祖先都被隐藏）时，回退到直属父级，
+            // 与 applyDisplayOrg 的 fallback 一致：显示上一级，而非原始名
+            if (resolvedName == null && path.length >= 2) {
+                SaOrg parent = orgMap.get(path[path.length - 2]);
+                if (parent != null) {
+                    resolvedName = parent.getOrgName();
+                }
+            }
+            result.put(orgNo, resolvedName != null ? resolvedName : userOrg.getOrgName());
+        }
+        return result;
     }
 }

@@ -3,10 +3,12 @@ package com.walker.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.walker.pojo.Article;
 import com.walker.vo.PointsRankVO;
+import com.walker.vo.PersonalPointsRankVO;
 import com.walker.vo.param.ArticleParam;
 import com.walker.vo.param.ArticleStatisticParam;
 import com.walker.vo.ArticleStatisticVO;
 import com.walker.vo.param.PointsRankParam;
+import com.walker.vo.param.PersonalPointsRankParam;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -75,4 +77,14 @@ public interface ArticleMapper extends BaseMapper<Article> {
      * 查询最新 N 条精华帖（置顶用）
      */
     List<Article> selectFeaturedTop(@Param("limit") int limit);
+
+    /**
+     * 个人积分排名 Top N
+     */
+    List<PersonalPointsRankVO> personalPointsRank(PersonalPointsRankParam param);
+
+    /**
+     * 查询指定用户在当前时间范围内的积分和排名
+     */
+    PersonalPointsRankVO getUserPersonalRank(PersonalPointsRankParam param);
 }

@@ -247,6 +247,7 @@ CREATE TABLE `bbs_sa_org` (
   `org_tree`           varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '单位树',
   `is_delete`          tinyint(1) NULL DEFAULT NULL COMMENT '是否删除',
   `is_ranking_selected` tinyint(1) NULL DEFAULT 0 COMMENT '是否参与排名(0=否,1=是)',
+  `is_display_selected` tinyint(1) NULL DEFAULT 1 COMMENT '是否显示在用户前台(0=否,1=是)',
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 

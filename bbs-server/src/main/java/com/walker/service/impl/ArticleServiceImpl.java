@@ -19,6 +19,8 @@ import com.walker.vo.param.ArticleParam;
 import com.walker.vo.param.ArticleStatisticParam;
 import com.walker.vo.ArticleStatisticVO;
 import com.walker.vo.param.PointsRankParam;
+import com.walker.vo.param.PersonalPointsRankParam;
+import com.walker.vo.PersonalPointsRankVO;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -61,6 +63,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private SaOrgMapper saOrgMapper;
 
     @Autowired
+    private SaOrgService saOrgService;
+
+    @Autowired
     private CommentMapper commentMapper;
 
     /**
@@ -82,6 +87,20 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 return ResultBean.error("所选标签已被禁用，请重新选择");
             }
         }
+        // 标题校验：不能为空、不能包含图片/富文本语法（严格拒绝）
+        String title = articleParam.getArticleTitle();
+        if (title == null || title.trim().isEmpty()) {
+            return ResultBean.error("标题不能为空");
+        }
+        if (title.matches(".*(<[^>]*>|!\\[[^\\]]*\\]\\([^)]*\\)).*")) {
+            return ResultBean.error("标题不允许包含图片或富文本内容");
+        }
+        title = sanitizeTitle(title);
+        // 内容不能为空（纯图片内容为 ![图片](url) 文本，非空，可正常通过）
+        if (articleParam.getArticleContent() == null || articleParam.getArticleContent().trim().isEmpty()) {
+            return ResultBean.error("内容不能为空");
+        }
+
         Date date = new Date();
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String day = format.format(date);
@@ -89,7 +108,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         Article article = new Article();
         article.setArticleLabelId(labelId);
         article.setArticleAuthor(articleParam.getArticleAuthor());
-        article.setArticleTitle(articleParam.getArticleTitle());
+        article.setArticleTitle(title);
         article.setArticleSummary(articleParam.getArticleSummary());
         article.setArticleTypeId(articleParam.getArticleTypeId());
         article.setArticleContent(articleParam.getArticleContent());
@@ -110,6 +129,22 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
 
         return ResultBean.success("发布成功！");
+    }
+
+    /**
+     * 标题净化：压缩空白，按码点截断为 30 字
+     * 码点截断避免拆散 emoji 等代理对，且与 DB varchar(30) 按字符计数的语义一致
+     * 返回 null 表示净化后为空（标题无效）
+     */
+    private String sanitizeTitle(String title) {
+        if (title == null) return null;
+        String cleaned = title.trim().replaceAll("\\s+", " ");
+        if (cleaned.isEmpty()) return null;
+        if (cleaned.codePointCount(0, cleaned.length()) > 30) {
+            int end = cleaned.offsetByCodePoints(0, 30);
+            cleaned = cleaned.substring(0, end);
+        }
+        return cleaned;
     }
 
     /**
@@ -266,6 +301,13 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .filter(u -> u.getPortrait() != null || u.getOrgName() != null)
                 .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
+        // 批量解析显示层级名称（用户组织被隐藏时显示上一可见级）
+        Set<String> orgNos = users.stream()
+                .map(User::getOrgNo)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<String, String> orgNameMap = saOrgService.resolveDisplayOrgNames(orgNos);
+
         articles.forEach(a -> {
             if (a.getUserId() != null && userMap.containsKey(a.getUserId())) {
                 User u = userMap.get(a.getUserId());
@@ -273,6 +315,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     a.setPortrait(u.getPortrait());
                 }
                 a.setAuthorOrgName(u.getOrgName());
+                String fullOrgName = orgNameMap.get(u.getOrgNo());
+                a.setAuthorOrgNameFull(fullOrgName != null ? fullOrgName : u.getOrgName());
                 a.setAuthorDeptName(u.getDeptName());
             }
         });
@@ -498,10 +542,24 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public ResultBean editArticle(ArticleParam articleParam) {
+        // 标题校验：不能为空、不能包含图片/富文本语法（严格拒绝）
+        String title = articleParam.getArticleTitle();
+        if (title == null || title.trim().isEmpty()) {
+            return ResultBean.error("标题不能为空");
+        }
+        if (title.matches(".*(<[^>]*>|!\\[[^\\]]*\\]\\([^)]*\\)).*")) {
+            return ResultBean.error("标题不允许包含图片或富文本内容");
+        }
+        title = sanitizeTitle(title);
+        // 内容不能为空
+        if (articleParam.getArticleContent() == null || articleParam.getArticleContent().trim().isEmpty()) {
+            return ResultBean.error("内容不能为空");
+        }
+
         Article article = new Article();
 
         article.setArticleId(articleParam.getArticleId())
-                .setArticleTitle(articleParam.getArticleTitle())
+                .setArticleTitle(title)
                 .setArticleContent(articleParam.getArticleContent())
                 .setArticleContentHtml(articleParam.getArticleContentHtml())
                 .setArticleSummary(articleParam.getArticleSummary())
@@ -565,18 +623,21 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             pointsRankParam.setFeatured(0);
         }
         // 01：本月，02：累计，获取配置的开始和结束日期
-        if (ConstantUtil.MANA_ZERO_ONE.equals(pointsRankParam.getRankType())) {
-            pointsRankParam.setStartTime(DateUtil.formatDate(DateUtil.beginOfMonth(new Date())));
-            pointsRankParam.setEndTime(DateUtil.formatDate(DateUtil.endOfMonth(new Date())));
-        } else {
-            // 查询累计排名配置的开始和结束时间
-            List<Dict> startTimeList = dictService.listDictByType(ConstantUtil.MANA_POINTS_START_TIME);
-            List<Dict> endTimeList = dictService.listDictByType(ConstantUtil.MANA_POINTS_END_TIME);
-            if (CollectionUtils.isEmpty(startTimeList) || CollectionUtils.isEmpty(endTimeList) || CollectionUtils.isEmpty(postList) || CollectionUtils.isEmpty(replyList)) {
-                return ResultBean.error("累积排名日期配置不全，请联系管理员");
+        // 如果前端已传 startTime 和 endTime，直接使用；否则按 rankType 计算默认值
+        if (StringUtils.isEmpty(pointsRankParam.getStartTime()) || StringUtils.isEmpty(pointsRankParam.getEndTime())) {
+            if (ConstantUtil.MANA_ZERO_ONE.equals(pointsRankParam.getRankType())) {
+                pointsRankParam.setStartTime(DateUtil.formatDate(DateUtil.beginOfMonth(new Date())));
+                pointsRankParam.setEndTime(DateUtil.formatDate(DateUtil.endOfMonth(new Date())));
+            } else {
+                // 查询累计排名配置的开始和结束时间
+                List<Dict> startTimeList = dictService.listDictByType(ConstantUtil.MANA_POINTS_START_TIME);
+                List<Dict> endTimeList = dictService.listDictByType(ConstantUtil.MANA_POINTS_END_TIME);
+                if (CollectionUtils.isEmpty(startTimeList) || CollectionUtils.isEmpty(endTimeList) || CollectionUtils.isEmpty(postList) || CollectionUtils.isEmpty(replyList)) {
+                    return ResultBean.error("累积排名日期配置不全，请联系管理员");
+                }
+                pointsRankParam.setStartTime(startTimeList.get(0).getDictValue());
+                pointsRankParam.setEndTime(endTimeList.get(0).getDictValue());
             }
-            pointsRankParam.setStartTime(startTimeList.get(0).getDictValue());
-            pointsRankParam.setEndTime(endTimeList.get(0).getDictValue());
         }
 
         List<PointsRankVO> resultList = articleMapper.pointsRank(pointsRankParam);
@@ -592,14 +653,18 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             });
         }
 
-        // 排名单位过滤：如果 bbs_sa_org 中有勾选了参与排名的单位，只显示这些单位
+        // 排名单位过滤：只显示在 admin-ui 中勾选了"参与排名"的单位
         if (!CollectionUtils.isEmpty(resultList)) {
             List<SaOrg> rankingOrgs = saOrgMapper.selectList(
                     new LambdaQueryWrapper<SaOrg>()
                             .eq(SaOrg::getIsRankingSelected, 1)
                             .eq(SaOrg::getIsDelete, 0)
             );
-            if (!CollectionUtils.isEmpty(rankingOrgs)) {
+            if (CollectionUtils.isEmpty(rankingOrgs)) {
+                // 没有勾选任何排名单位 → 返回空列表
+                resultList = new ArrayList<>();
+            } else {
+                // 有勾选的 → 只显示勾选的那些
                 List<String> allowedOrgNos = rankingOrgs.stream()
                         .map(SaOrg::getOrgNo)
                         .collect(Collectors.toList());
@@ -612,6 +677,116 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
 
         return ResultBean.success("查询成功", resultList);
+    }
+
+    /**
+     * 获取积分配置（发帖/回帖/精华帖分值）
+     */
+    private int[] getPointsConfig() {
+        List<Dict> postList = dictService.listDictByType(ConstantUtil.MANA_POST);
+        List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
+        int post = Integer.parseInt(postList.get(0).getDictValue());
+        int reply = Integer.parseInt(replyList.get(0).getDictValue());
+        int featured = 0;
+        List<Dict> featuredList = dictService.listDictByType(ConstantUtil.MANA_FEATURED);
+        if (!CollectionUtils.isEmpty(featuredList)) {
+            featured = Integer.parseInt(featuredList.get(0).getDictValue());
+        }
+        return new int[]{post, reply, featured};
+    }
+
+    /**
+     * 从 bbs_system_config 读取 JSON 数组格式的排除列表（点8/9共用）
+     * @param configKey 配置键名（org_statistics_exclude / org_display_exclude）
+     * @return 排除的 orgNo 列表，无配置或解析失败返回空列表
+     */
+    @Override
+    public ResultBean personalPointsRank(PersonalPointsRankParam param) {
+        // 默认时间：当月
+        if (StringUtils.isEmpty(param.getStartTime()) || StringUtils.isEmpty(param.getEndTime())) {
+            param.setStartTime(DateUtil.formatDate(DateUtil.beginOfMonth(new Date())));
+            param.setEndTime(DateUtil.formatDate(DateUtil.endOfMonth(new Date())));
+        }
+        // 默认 size = 20
+        if (param.getSize() == null || param.getSize() < 1) {
+            param.setSize(20);
+        }
+
+        // 获取积分配置
+        int[] config = getPointsConfig();
+        param.setPost(config[0]);
+        param.setReply(config[1]);
+
+        // 查询 Top N
+        List<PersonalPointsRankVO> list = articleMapper.personalPointsRank(param);
+
+        // 分配排名序号
+        if (!CollectionUtils.isEmpty(list)) {
+            int[] rank = {1};
+            list.forEach(item -> item.setRankNum(rank[0]++));
+        }
+
+        // 按显示层级解析组织标签（用户组织被隐藏时显示上一可见级）
+        applyDisplayOrgToRank(list);
+
+        // 查询当前用户排名
+        PersonalPointsRankVO currentUser = null;
+        if (param.getCurrentUserId() != null) {
+            param.setUserId(param.getCurrentUserId());
+            currentUser = articleMapper.getUserPersonalRank(param);
+
+            // 如果用户 0 积分（不在排名中），也返回基础信息卡
+            if (currentUser == null) {
+                User user = userService.getById(param.getCurrentUserId());
+                if (user != null) {
+                    currentUser = new PersonalPointsRankVO();
+                    currentUser.setUserId(user.getId());
+                    currentUser.setNickName(user.getNickname());
+                    currentUser.setPortrait(user.getPortrait());
+                    currentUser.setOrgNo(user.getOrgNo());
+                    if (user.getOrgNo() != null) {
+                        SaOrg org = saOrgMapper.selectOne(
+                            new LambdaQueryWrapper<SaOrg>().eq(SaOrg::getOrgNo, user.getOrgNo())
+                        );
+                        if (org != null) {
+                            // 同样按显示层级过滤（原始名 org.getOrgName() 作为兜底）
+                            currentUser.setOrgName(saOrgService.resolveDisplayOrgName(user.getOrgNo(), org.getOrgName()));
+                        }
+                    }
+                    currentUser.setPosts(0);
+                    currentUser.setReplies(0);
+                    currentUser.setPoints(0);
+                    currentUser.setRankNum(null); // 未上榜
+                }
+            }
+        }
+
+        // 当前用户排名卡的 orgName 同样按显示层级过滤
+        if (currentUser != null && currentUser.getOrgNo() != null) {
+            currentUser.setOrgName(saOrgService.resolveDisplayOrgName(currentUser.getOrgNo(), currentUser.getOrgName()));
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("currentUser", currentUser);
+        return ResultBean.success("查询成功", result);
+    }
+
+    /**
+     * 按显示层级批量过滤个人排名的组织标签（与文章/评论的 orgName 保持一致的过滤规则）
+     */
+    private void applyDisplayOrgToRank(List<PersonalPointsRankVO> list) {
+        if (CollectionUtils.isEmpty(list)) return;
+        Set<String> orgNos = list.stream()
+                .map(PersonalPointsRankVO::getOrgNo)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (orgNos.isEmpty()) return;
+        Map<String, String> orgNameMap = saOrgService.resolveDisplayOrgNames(orgNos);
+        list.forEach(item -> {
+            String resolved = orgNameMap.get(item.getOrgNo());
+            if (resolved != null) item.setOrgName(resolved);
+        });
     }
 
     @Override

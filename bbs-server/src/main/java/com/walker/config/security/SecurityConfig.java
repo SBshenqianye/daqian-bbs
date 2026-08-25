@@ -61,6 +61,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 .authorizeRequests()
+                // 注意：antMatchers 顺序敏感，具体路径必须放在通配符之前
+                // 用户信息接口必须登录：未认证时 principal 为 null，UserController.getUserInfo 会 NPE（500）
+                // 改为认证要求后，未登录由 RestAuthorizationEntryPoint 统一返回 401
+                .antMatchers("/common/user/info")
+                .authenticated()
                 .antMatchers("/common/**","/admin/**", "/files/**")
                 .permitAll() // common下的所有资源进行放行
                 .anyRequest()

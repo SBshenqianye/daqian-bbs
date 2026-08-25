@@ -132,7 +132,7 @@
                 <p class="text-body-md text-secondary mb-4 line-clamp-2" style="white-space: pre-line">{{ article.summary }}</p>
                 <div class="flex items-center justify-between text-label-md text-outline">
                   <div class="flex items-center gap-2">
-                    <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" size="sm" layout="inline" />
+                    <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" :org-name-full="article.authorOrgNameFull" size="sm" layout="inline" />
                     <span class="mx-1">•</span>
                     <span>{{ formatTime(article.time) }}</span>
                   </div>
@@ -189,14 +189,6 @@
             </button>
           </div>
 
-          <!-- Side Promotion Card -->
-          <div class="bg-primary-container text-white rounded-lg p-card-padding relative overflow-hidden">
-            <div class="relative z-10">
-              <h4 class="font-headline-sm mb-1">智荟专题</h4>
-              <p class="text-body-md opacity-80">探索最前沿的电力行业技术专题。</p>
-            </div>
-            <span class="material-symbols-outlined absolute -bottom-4 -right-4 text-white/20 text-[100px] select-none pointer-events-none">lightbulb</span>
-          </div>
         </aside>
       </div>
     </div>
@@ -272,6 +264,7 @@ export default {
           userId: a.userId,
           authorAvatar: normalizeFileUrl(a.portrait || ''),
           authorOrgName: a.authorOrgName || '',
+          authorOrgNameFull: a.authorOrgNameFull || '',
           isFeatured: a.isFeatured === 1 || a.isFeatured === '1',
           labelId: a.articleLabelId || null,
           time: a.createTime || a.articleCreateTime || '',

@@ -3,17 +3,28 @@
 # 不包含应用代码，JAR 在运行时通过 bind mount 挂载：
 #   podman run -v /path/to/bbs-server.jar:/app/app.jar
 #
+# 基于 CentOS 7（glibc 2.17，与 RHEL7 生产服务器同代）：
+#   - 生产服务器内核为 RHEL7 3.10，eclipse-temurin(glibc 2.4x/Ubuntu 26.04)
+#     在该内核上 pthread_create 失败（Cannot create GC thread，JVM 起不来），
+#     故改用 CentOS7 同代 glibc 根治
+#
 # 构建方式：
 #   podman build -t bbs-server-base -f bbs-server/Dockerfile.base bbs-server
 # ============================================
-FROM eclipse-temurin:8-jre
+FROM centos:7
+
+# CentOS 7 已 EOL，官方 mirrorlist 失效，切换到 vault 归档源
+RUN sed -i 's|mirrorlist=|#mirrorlist=|g; s|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Base.repo \
+    && yum install -y java-1.8.0-openjdk-headless curl \
+    && yum clean all
 
 WORKDIR /app
 
-EXPOSE 8083
+EXPOSE 9083
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget -q --spider http://localhost:${SERVER_PORT:-8083}/bbs-server/ || exit 1
+  CMD curl -fsS http://localhost:${BBS_SERVER_PORT:-9083}/bbs-server/ || exit 1
 
 # JAR 由上层调用方 bind-mount 到 /app/app.jar
-ENTRYPOINT ["java", "-jar", "/app/app.jar", "--spring.profiles.active=podman"]
+# -Xmx2g: 主机内存不足时 JDK8 默认按物理内存 1/4 申请堆（如 32G 机器默认 8G）会启动即崩溃
+ENTRYPOINT ["java", "-Xmx2g", "-jar", "/app/app.jar", "--spring.profiles.active=podman"]

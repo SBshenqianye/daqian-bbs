@@ -13,9 +13,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 组织导入服务
- * 从Excel提取组织信息并写入 bbs_sa_org
- * 支持按名称匹配已有组织和自动生成 org_no
+ * 组织匹配服务
+ * 从Excel提取组织信息，在已有 bbs_sa_org 树中按名称匹配
+ * 不创建新组织，匹配不到的记录在 unmatchedPairs 中
  */
 @Service
 public class OrgImportService {
@@ -27,7 +27,7 @@ public class OrgImportService {
     private static final String ROOT_ORG_NO = "51404";
 
     /**
-     * 预览组织导入（不存库，仅返回匹配/创建结果）
+     * 预览组织匹配结果（不存库，仅返回匹配/未匹配结果）
      */
     public List<ImportPreviewVO.OrgPreview> previewOrgs(List<UserExcelRow> rows) {
         // 提取唯一 (orgName, deptName) 组合
@@ -44,19 +44,19 @@ public class OrgImportService {
                 preview.setAction("matched");
             } else {
                 preview.setOrgName(pair.orgName);
-                preview.setAction("created");
+                preview.setAction("unmatched");
             }
 
-            // 如果单位已匹配到 or 被创建，检测部门
+            // 检测部门
             if (pair.deptName != null && !pair.deptName.isEmpty()) {
-                String unitOrgNo = existingOrg != null ? existingOrg.getOrgNo() : "AUTO";
-                SaOrg existingDept = findDeptByName(pair.deptName, unitOrgNo);
-                if (existingDept != null || existingOrg == null) {
+                if (existingOrg != null) {
+                    SaOrg existingDept = findDeptByName(pair.deptName, existingOrg.getOrgNo());
                     preview.setDeptName(pair.deptName);
-                    preview.setAction(preview.getAction() + ",dept_matched");
+                    preview.setAction(preview.getAction() + (existingDept != null ? ",dept_matched" : ",dept_unmatched"));
                 } else {
+                    // 单位不存在则部门也无法匹配
                     preview.setDeptName(pair.deptName);
-                    preview.setAction(preview.getAction() + ",dept_created");
+                    preview.setAction(preview.getAction() + ",dept_unmatched");
                 }
             }
 
@@ -66,132 +66,142 @@ public class OrgImportService {
     }
 
     /**
-     * 执行组织导入：创建不存在的组织，返回 org_name → org_no 映射
+     * 匹配组织：仅从已有组织架构中查找，不创建新组织
+     * 返回 (orgName, deptName) → org_no 映射，匹配不到的排除在外
      *
      * @param rows Excel行数据
-     * @return Map<orgName, orgNo> 以及 Map<deptName, orgNo>
+     * @return OrgImportResult，包含 orgNoByPair 映射和 unmatchedPairs 列表
      */
     public OrgImportResult importOrgs(List<UserExcelRow> rows) {
         // 提取唯一 (orgName, deptName) 组合
         Set<OrgPair> uniquePairs = extractOrgPairs(rows);
 
-        Map<String, String> orgNoMap = new HashMap<>();  // orgName → orgNo
-        Map<String, String> deptNoMap = new HashMap<>(); // deptName → orgNo
-        int createdCount = 0;
+        // 复合键 (orgName, deptName) → 最终分配的组织编号
+        Map<OrgPair, String> orgNoByPair = new HashMap<>();
+        List<OrgPair> unmatchedPairs = new ArrayList<>();
 
-        // 先导入全部单位
         for (OrgPair pair : uniquePairs) {
-            String unitOrgNo;
-
-            // 1. 查找或创建单位（单位名称）
+            // 1. 查找单位（只匹配，不创建）
             SaOrg existingOrg = findOrgByName(pair.orgName);
-            if (existingOrg != null) {
-                unitOrgNo = existingOrg.getOrgNo();
-            } else {
-                // 创建新单位
-                unitOrgNo = generateOrgNo(ROOT_ORG_NO, 7);
-                SaOrg newOrg = new SaOrg();
-                newOrg.setId(getNextId());
-                newOrg.setOrgNo(unitOrgNo);
-                newOrg.setOrgName(pair.orgName);
-                newOrg.setPOrgNo(ROOT_ORG_NO);
-                newOrg.setOrgTree(ROOT_ORG_NO + "|" + unitOrgNo);
-                newOrg.setIsDelete(0);
-                saOrgMapper.insert(newOrg);
-                createdCount++;
+            if (existingOrg == null) {
+                unmatchedPairs.add(pair);
+                continue;
             }
-            orgNoMap.put(pair.orgName, unitOrgNo);
 
-            // 2. 查找或创建部门（部门名称）
+            // 2. 若有部门，尝试在单位下查找；部门不匹配仍可回退到单位
             if (pair.deptName != null && !pair.deptName.isEmpty()) {
-                SaOrg existingDept = findDeptByName(pair.deptName, unitOrgNo);
+                SaOrg existingDept = findDeptByName(pair.deptName, existingOrg.getOrgNo());
                 if (existingDept != null) {
-                    deptNoMap.put(pair.deptName, existingDept.getOrgNo());
+                    orgNoByPair.put(pair, existingDept.getOrgNo());
                 } else {
-                    String deptOrgNo = generateOrgNo(unitOrgNo, 9);
-                    SaOrg newDept = new SaOrg();
-                    newDept.setId(getNextId());
-                    newDept.setOrgNo(deptOrgNo);
-                    newDept.setOrgName(pair.deptName);
-                    newDept.setPOrgNo(unitOrgNo);
-                    newDept.setOrgTree(ROOT_ORG_NO + "|" + unitOrgNo + "|" + deptOrgNo);
-                    newDept.setIsDelete(0);
-                    saOrgMapper.insert(newDept);
-                    deptNoMap.put(pair.deptName, deptOrgNo);
-                    createdCount++;
+                    // 部门名称不在当前单位下 → 使用单位编号
+                    orgNoByPair.put(pair, existingOrg.getOrgNo());
                 }
+            } else {
+                // 无部门，直接使用单位编号
+                orgNoByPair.put(pair, existingOrg.getOrgNo());
             }
         }
 
         OrgImportResult result = new OrgImportResult();
-        result.orgNoMap = orgNoMap;
-        result.deptNoMap = deptNoMap;
-        result.createdCount = createdCount;
+        result.orgNoByPair = orgNoByPair;
+        result.unmatchedPairs = unmatchedPairs;
         return result;
     }
 
     /**
      * 根据用户行数据查找最匹配的 org_no
-     * 优先用部门名，其次用单位名
+     * 使用 (orgName, deptName) 复合键精确定位
+     * @return 匹配到的 org_no，匹配不到返回 null
      */
-    public String findBestOrgNo(UserExcelRow row, Map<String, String> orgNoMap, Map<String, String> deptNoMap) {
-        // 优先匹配部门
-        if (row.getDeptName() != null && deptNoMap.containsKey(row.getDeptName())) {
-            return deptNoMap.get(row.getDeptName());
-        }
-        // 其次匹配单位
-        if (row.getOrgName() != null && orgNoMap.containsKey(row.getOrgName())) {
-            return orgNoMap.get(row.getOrgName());
-        }
-        return ROOT_ORG_NO; // 兜底
+    public String findBestOrgNo(UserExcelRow row, Map<OrgPair, String> orgNoByPair) {
+        OrgPair key = new OrgPair();
+        key.orgName = row.getOrgName();
+        key.deptName = row.getDeptName();
+        return orgNoByPair.get(key);
     }
 
     // ==================== 内部辅助方法 ====================
 
-    /** 按单位名称查找 */
+    /** 按单位名称查找（精确匹配，支持兼容性降级） */
     private SaOrg findOrgByName(String orgName) {
+        if (orgName == null || orgName.trim().isEmpty()) return null;
+        String name = orgName.trim();
+
+        // 1. 精确匹配
         List<SaOrg> list = saOrgMapper.selectList(
                 new LambdaQueryWrapper<SaOrg>()
-                        .eq(SaOrg::getOrgName, orgName)
+                        .eq(SaOrg::getOrgName, name)
                         .eq(SaOrg::getIsDelete, 0)
                         .last("LIMIT 1")
         );
-        return CollectionUtils.isEmpty(list) ? null : list.get(0);
+        if (!CollectionUtils.isEmpty(list)) return list.get(0);
+
+        // 2. 兼容：Excel 中可能带"国网"前缀而 DB 中不带（如 "国网内江供电公司本部" → "内江供电公司本部"）
+        String stripped = name.replaceFirst("^国网", "").trim();
+        if (!stripped.equals(name)) {
+            list = saOrgMapper.selectList(
+                    new LambdaQueryWrapper<SaOrg>()
+                            .eq(SaOrg::getOrgName, stripped)
+                            .eq(SaOrg::getIsDelete, 0)
+                            .last("LIMIT 1")
+            );
+            if (!CollectionUtils.isEmpty(list)) return list.get(0);
+        }
+
+        // 3. 兼容：DB 中可能带"国网"前缀而 Excel 中不带
+        String prefixed = "国网" + name;
+        list = saOrgMapper.selectList(
+                new LambdaQueryWrapper<SaOrg>()
+                        .eq(SaOrg::getOrgName, prefixed)
+                        .eq(SaOrg::getIsDelete, 0)
+                        .last("LIMIT 1")
+        );
+        if (!CollectionUtils.isEmpty(list)) return list.get(0);
+
+        return null;
     }
 
-    /** 按部门名称和父级编号查找 */
+    /** 按部门名称和父级编号查找（精确匹配，支持兼容性降级） */
     private SaOrg findDeptByName(String deptName, String pOrgNo) {
+        if (deptName == null || deptName.trim().isEmpty()) return null;
+        String name = deptName.trim();
+
+        // 1. 精确匹配
         List<SaOrg> list = saOrgMapper.selectList(
                 new LambdaQueryWrapper<SaOrg>()
-                        .eq(SaOrg::getOrgName, deptName)
+                        .eq(SaOrg::getOrgName, name)
                         .eq(SaOrg::getPOrgNo, pOrgNo)
                         .eq(SaOrg::getIsDelete, 0)
                         .last("LIMIT 1")
         );
-        return CollectionUtils.isEmpty(list) ? null : list.get(0);
-    }
+        if (!CollectionUtils.isEmpty(list)) return list.get(0);
 
-    /** 自动生成 org_no：查询同级最大编号后 +1 */
-    private String generateOrgNo(String parentOrgNo, int targetLength) {
-        List<SaOrg> siblings = saOrgMapper.selectList(
-                new LambdaQueryWrapper<SaOrg>()
-                        .eq(SaOrg::getPOrgNo, parentOrgNo)
-                        .eq(SaOrg::getIsDelete, 0)
-        );
-        long maxNo = siblings.stream()
-                .map(SaOrg::getOrgNo)
-                .filter(no -> no.length() == targetLength)
-                .mapToLong(Long::parseLong)
-                .max()
-                .orElse(0L);
-        if (maxNo > 0L) return String.valueOf(maxNo + 1L);
-        return parentOrgNo + "01";
-    }
+        // 2. 兼容："国网" 前缀差异
+        String stripped = name.replaceFirst("^国网", "").trim();
+        if (!stripped.equals(name)) {
+            list = saOrgMapper.selectList(
+                    new LambdaQueryWrapper<SaOrg>()
+                            .eq(SaOrg::getOrgName, stripped)
+                            .eq(SaOrg::getPOrgNo, pOrgNo)
+                            .eq(SaOrg::getIsDelete, 0)
+                            .last("LIMIT 1")
+            );
+            if (!CollectionUtils.isEmpty(list)) return list.get(0);
+        }
+        String prefixed = "国网" + name;
+        if (!prefixed.equals(name)) {
+            list = saOrgMapper.selectList(
+                    new LambdaQueryWrapper<SaOrg>()
+                            .eq(SaOrg::getOrgName, prefixed)
+                            .eq(SaOrg::getPOrgNo, pOrgNo)
+                            .eq(SaOrg::getIsDelete, 0)
+                            .last("LIMIT 1")
+            );
+            if (!CollectionUtils.isEmpty(list)) return list.get(0);
+        }
 
-    /** 获取下一个可用的 id */
-    private int getNextId() {
-        List<SaOrg> all = saOrgMapper.selectList(null);
-        return all.stream().mapToInt(SaOrg::getId).max().orElse(0) + 1;
+        return null;
     }
 
     /** 提取唯一 (单位名称, 部门名称) 组合 */
@@ -206,8 +216,8 @@ public class OrgImportService {
                 .collect(Collectors.toSet());
     }
 
-    /** (单位, 部门) 组合，用于去重 */
-    private static class OrgPair {
+    /** (单位, 部门) 组合，用于去重和复合键查找 */
+    public static class OrgPair {
         String orgName;
         String deptName;
 
@@ -228,8 +238,13 @@ public class OrgImportService {
 
     /** 组织导入结果 */
     public static class OrgImportResult {
-        public Map<String, String> orgNoMap;
-        public Map<String, String> deptNoMap;
-        public int createdCount;
+        /** 复合键 (orgName, deptName) → 最终分配的组织编号（仅包含匹配成功的） */
+        public Map<OrgPair, String> orgNoByPair;
+        /** 匹配不到的 (orgName, deptName) 列表 */
+        public List<OrgPair> unmatchedPairs;
+        /** 未匹配数量 */
+        public int getUnmatchedCount() {
+            return unmatchedPairs != null ? unmatchedPairs.size() : 0;
+        }
     }
 }

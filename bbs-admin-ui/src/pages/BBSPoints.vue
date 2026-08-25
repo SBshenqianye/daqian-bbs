@@ -10,7 +10,7 @@
           </h1>
           <p class="text-body-md text-secondary mt-1">查看单位活跃度排名</p>
         </div>
-        <button class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-all font-label-md text-label-md" @click="$router.push('/points/config')">
+        <button class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-all font-label-md text-label-md" @click="$router.push('/unitManage')">
           <span class="material-symbols-outlined text-[18px]">tune</span>
           配置排名单位
         </button>

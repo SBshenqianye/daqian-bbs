@@ -7,6 +7,7 @@ import com.walker.vo.ResultBean;
 import com.walker.vo.param.ArticleParam;
 import com.walker.vo.param.ArticleStatisticParam;
 import com.walker.vo.param.PointsRankParam;
+import com.walker.vo.param.PersonalPointsRankParam;
 
 import java.util.List;
 
@@ -233,4 +234,9 @@ public interface ArticleService extends IService<Article> {
      * 获取最新精华帖（置顶用）
      */
     ResultBean getFeaturedTop(int limit);
+
+    /**
+     * 个人积分排名
+     */
+    ResultBean personalPointsRank(PersonalPointsRankParam param);
 }

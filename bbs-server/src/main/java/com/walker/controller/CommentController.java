@@ -6,6 +6,7 @@ import com.walker.pojo.Reply;
 import com.walker.pojo.User;
 import com.walker.service.CommentService;
 import com.walker.service.ReplyService;
+import com.walker.service.SaOrgService;
 import com.walker.service.UserService;
 import com.walker.vo.CommentReplyVO;
 import com.walker.vo.ResultBean;
@@ -41,6 +42,9 @@ public class CommentController {
 
     @Autowired
     private ReplyService replyService;
+
+    @Autowired
+    private SaOrgService saOrgService;
 
     @ApiOperation(value = "保存用户的评论(一级评论)")
     @PutMapping("/comment/userComment")
@@ -79,6 +83,7 @@ public class CommentController {
                 commentReplyVO.setPortrait(user.getPortrait());
                 commentReplyVO.setNickname(user.getNickname());
                 commentReplyVO.setOrgName(user.getOrgName());
+                commentReplyVO.setOrgNameFull(resolveFullOrgName(user.getOrgNo(), user.getOrgName()));
                 commentReplyVO.setDeptName(user.getDeptName());
 
                 //通过回复的Id去获取回复内容
@@ -106,6 +111,7 @@ public class CommentController {
                         replyVO.setPortrait(userVO1.getPortrait());
                         replyVO.setNickname(userVO1.getNickname());
                         replyVO.setOrgName(userVO1.getOrgName());
+                        replyVO.setOrgNameFull(resolveFullOrgName(userVO1.getOrgNo(), userVO1.getOrgName()));
                         replyVO.setDeptName(userVO1.getDeptName());
 
                         Integer toUserId = reply.getReplyToUserId();
@@ -137,5 +143,12 @@ public class CommentController {
     @PostMapping("/comment/deleteCommentById")
     public ResultBean deleteCommentById(@RequestBody ReplyParam replyParam){
         return commentService.deleteCommentById(replyParam.getCommentId());
+    }
+
+    /**
+     * 按显示层级解析组织的完整名称（user.orgName 可能已被 display 过滤覆盖）
+     */
+    private String resolveFullOrgName(String orgNo, String fallbackName) {
+        return saOrgService.resolveDisplayOrgName(orgNo, fallbackName);
     }
 }

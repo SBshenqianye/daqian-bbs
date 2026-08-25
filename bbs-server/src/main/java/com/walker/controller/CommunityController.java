@@ -136,8 +136,8 @@ public class CommunityController {
 
         long time = System.currentTimeMillis();
 
-        // 文件保存的路径
-        String path = basePath +"Admin/communityImage/"+time+"_."+pType;
+        // 文件保存的路径（joinStoragePath 防止 storage.path 无尾斜杠时拼错目录，2026-08 生产故障）
+        String path = FilePathNormalizer.joinStoragePath(basePath, "Admin/communityImage/" + time + "_." + pType);
         String pathDB = "";
 
         File outFile = new File(path);

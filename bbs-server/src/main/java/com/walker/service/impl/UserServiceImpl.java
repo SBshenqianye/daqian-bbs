@@ -18,6 +18,7 @@ import com.walker.vo.MapCityVO;
 import com.walker.service.impl.OrgImportService;
 import com.walker.utils.PinyinUtil;
 import com.walker.vo.ResultBean;
+import com.walker.service.SaOrgService;
 import com.walker.service.UserService;
 import com.walker.vo.UserMonthVO;
 import com.walker.vo.excel.ImportPreviewVO;
@@ -79,6 +80,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private SaOrgMapper saOrgMapper;
+
+    @Autowired
+    private SaOrgService saOrgService;
 
     @Autowired
     private OrgImportService orgImportService;
@@ -169,6 +173,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             // 显式设置瞬态组织字段（确保序列化到前端）
             jsonObject.put("orgName", user.getOrgName());
             jsonObject.put("deptName", user.getDeptName());
+            // 按显示层级解析完整组织名称（用户组织被隐藏时显示上一可见级）
+            jsonObject.put("orgNameFull", saOrgService.resolveDisplayOrgName(user.getOrgNo(), user.getOrgName()));
             tokenMap.put("user", jsonObject);
 
             return ResultBean.success("登录成功！",tokenMap);
@@ -356,6 +362,58 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     user.setOrgName(org.getOrgName());
                 }
             }
+        }
+
+        // 根据 is_display_selected 字段，将 orgName 解析为 org_tree 路径上最深层被勾选的组织名称
+        applyDisplayOrg(users);
+    }
+
+    /**
+     * 根据 is_display_selected 字段，将用户的 orgName 解析为
+     * org_tree 路径上最深层被勾选的组织名称。
+     * 若路径上无勾选节点，保持原有 orgName 不变（fallback）。
+     */
+    private void applyDisplayOrg(List<User> users) {
+        if (CollectionUtils.isEmpty(users)) return;
+
+        Set<String> userOrgNos = users.stream()
+                .map(User::getOrgNo)
+                .filter(Objects::nonNull)
+                .filter(no -> !ROOT_ORG_NO.equals(no))
+                .collect(Collectors.toSet());
+        if (userOrgNos.isEmpty()) return;
+
+        // 查询所有非删除组织，建立 orgNo → SaOrg 映射
+        List<SaOrg> allOrgs = saOrgMapper.selectList(
+                new LambdaQueryWrapper<SaOrg>()
+                        .eq(SaOrg::getIsDelete, 0)
+        );
+        if (CollectionUtils.isEmpty(allOrgs)) return;
+
+        Map<String, SaOrg> orgMap = allOrgs.stream()
+                .collect(Collectors.toMap(SaOrg::getOrgNo, o -> o, (a, b) -> a));
+
+        for (User user : users) {
+            String orgNo = user.getOrgNo();
+            if (orgNo == null || ROOT_ORG_NO.equals(orgNo)) continue;
+
+            SaOrg userOrg = orgMap.get(orgNo);
+            if (userOrg == null || userOrg.getOrgTree() == null) continue;
+
+            // 从 org_tree 路径自底向上遍历，找第一个 is_display_selected=1 的祖先
+            String[] path = userOrg.getOrgTree().split("\\|");
+            String resolvedName = null;
+            for (int i = path.length - 1; i >= 0; i--) {
+                SaOrg ancestor = orgMap.get(path[i]);
+                if (ancestor != null && Integer.valueOf(1).equals(ancestor.getIsDisplaySelected())) {
+                    resolvedName = ancestor.getOrgName();
+                    break;
+                }
+            }
+            if (resolvedName != null) {
+                user.setOrgName(resolvedName);
+            }
+            // resolvedName == null → 路径上无勾选节点，保持原有 orgName 不变
         }
     }
 
@@ -688,9 +746,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             task.total = total;
             result.setTotalCount(total);
 
-            // 1. 先导入组织
+            // 1. 匹配组织（只从已有架构中查找，不创建）
             OrgImportService.OrgImportResult orgResult = orgImportService.importOrgs(rows);
-            result.setOrgCreatedCount(orgResult.createdCount);
+            result.setOrgUnmatchedCount(orgResult.getUnmatchedCount());
 
             int newCount = 0, updateCount = 0, skipCount = 0, failCount = 0;
 
@@ -728,9 +786,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     }
                     detail.setUsername(username);
 
-                    // 匹配组织
-                    String orgNo = orgImportService.findBestOrgNo(row,
-                            orgResult.orgNoMap, orgResult.deptNoMap);
+                    // 匹配组织（用 orgName+deptName 复合键精确定位）
+                    String orgNo = orgImportService.findBestOrgNo(row, orgResult.orgNoByPair);
+
+                    // 组织匹配不到时跳过该行
+                    if (orgNo == null) {
+                        detail.setAction("跳过");
+                        detail.setSuccess(false);
+                        detail.setMessage("无法匹配组织：单位名称「" + row.getOrgName()
+                                + (row.getDeptName() != null && !row.getDeptName().isEmpty()
+                                        ? "」下部门「" + row.getDeptName() : "")
+                                + "」不存在于当前组织架构中，请先导入组织架构或修正Excel数据");
+                        skipCount++;
+                        details.add(detail);
+                        task.setProgress(i + 1);
+                        continue;
+                    }
 
                     // (personnel_id, id_card) 双键匹配
                     User existingUser = userMapper.selectOne(

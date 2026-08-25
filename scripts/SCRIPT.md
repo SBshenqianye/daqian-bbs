@@ -1,6 +1,6 @@
 # scripts/ 目录说明
 
-> 最后更新: 2026-07-15
+> 最后更新: 2026-08-05
 
 ## 目录结构
 
@@ -17,7 +17,11 @@ scripts/
 │   └── package.sh         ← 离线打包分发
 ├── lib/
 │   └── progress.sh        ← 进度指示工具库（步骤计数、spinner、进度条）
+└── ops/
+    └── pg-start.sh        ← 本地 PostgreSQL 容器管理（必须挂具名卷 bbs-pgdata）
 ```
+
+> ⚠ **pg 数据持久化红线**：`bbs-postgres` 容器必须用 `-v bbs-pgdata:/var/lib/postgresql/data` 具名卷挂载。postgres 镜像不挂卷时会自动生成**匿名卷**，容器一删数据就跟容器一起消失；脚本内任何"删容器重建"逻辑都会导致换新卷、数据"丢失"（实际数据还在旧匿名卷里，可手动找回）。详见 `ops/pg-start.sh` 头注释。
 
 ---
 

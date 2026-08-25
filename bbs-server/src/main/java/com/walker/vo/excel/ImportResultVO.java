@@ -19,8 +19,8 @@ public class ImportResultVO {
     /** 用户导入失败数 */
     private int userFailCount;
 
-    /** 新建组织数 */
-    private int orgCreatedCount;
+    /** 组织未匹配数 */
+    private int orgUnmatchedCount;
 
     /** 覆盖更新数 */
     private int userUpdatedCount;

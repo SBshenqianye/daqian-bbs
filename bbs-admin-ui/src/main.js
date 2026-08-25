@@ -9,6 +9,7 @@ import 'babel-polyfill';
 import './assets/tailwind.css';
 import {postRequest,putRequest,getRequest,getRequestUrl,deleteRequest,uploadFile} from "@/api/api";
 import * as echarts from 'echarts'
+import {installErrorHandler} from "./utils/errorHandler";
 
 
 Vue.prototype.$echarts = echarts
@@ -40,6 +41,9 @@ router.beforeEach((to, from, next) => {
         next();
     }
 });
+
+// 全局错误处理 + 自动恢复（必须在 new Vue() 之前安装）
+installErrorHandler(router);
 
 new Vue({
     router,
