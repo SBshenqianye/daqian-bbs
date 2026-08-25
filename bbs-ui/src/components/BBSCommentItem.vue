@@ -1,5 +1,5 @@
 <template>
-  <div class="flex gap-2.5">
+  <div :id="'comment-' + comment.id" class="flex gap-2.5 comment-anchor">
     <div class="flex-grow min-w-0">
       <div class="flex items-center justify-between mb-0.5">
         <bbs-user-badge :avatar="comment.avatar" :nickname="comment.author" :org-name="comment.orgName" :org-name-full="comment.orgNameFull" size="xs" layout="inline" />
@@ -12,7 +12,7 @@
           </button>
         </div>
       </div>
-      <p class="text-outline text-label-xs mb-1">{{ comment.time }}</p>
+      <p class="text-outline text-[11px] leading-tight mb-1 opacity-60">{{ comment.time }}</p>
       <div class="font-body-sm text-on-surface leading-relaxed mb-2 whitespace-pre-line">
         <span v-if="comment.replyTo" class="text-primary-container font-medium mr-1.5">回复{{ comment.replyTo }}:</span>
         {{ comment.content }}
@@ -92,6 +92,13 @@ export default {
       expandedReplies: false,
     }
   },
+  mounted() {
+    // 监听展开事件（deep-link 滚动到折叠回复时）
+    this.$bus && this.$bus.$on('expandComment', this.handleExpandComment)
+  },
+  beforeDestroy() {
+    this.$bus && this.$bus.$off('expandComment', this.handleExpandComment)
+  },
   computed: {
     showReplyInput() {
       return this.replyState.activeId === this.comment.replyKey
@@ -103,6 +110,12 @@ export default {
     },
   },
   methods: {
+    handleExpandComment(commentId) {
+      // 如果是自己的评论被请求展开，且有折叠的回复，展开它们
+      if (String(this.comment.id) === String(commentId) && this.comment.children && this.comment.children.length > this.maxVisibleReplies) {
+        this.expandedReplies = true
+      }
+    },
     handleToggleReply() {
       this.replyState.activeId = this.showReplyInput ? null : this.comment.replyKey
     },
@@ -132,3 +145,9 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.comment-anchor {
+  scroll-margin-top: 80px;
+}
+</style>

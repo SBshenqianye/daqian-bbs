@@ -71,6 +71,12 @@ const router = new VueRouter({
             component: () => import('@/views/BBSFeaturedArticles.vue'),
             meta: { auth: false }
         },
+        {
+            name: 'BBSMyReplies',
+            path: '/my-replies',
+            component: () => import('@/views/BBSMyReplies.vue'),
+            meta: { auth: true }
+        },
 
     ]
 })

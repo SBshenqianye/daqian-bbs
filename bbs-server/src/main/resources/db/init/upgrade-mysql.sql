@@ -253,8 +253,17 @@ EXECUTE stmt_notif;
 DEALLOCATE PREPARE stmt_notif;
 
 -- ============================================
+-- 2026-09-XX: 领导干部默认不展示排名，但积分计入上级单位
+-- 需求：各"领导干部"不在部门展示排名，但默认计入积分到单位里面
+--   例：东兴公司-领导干部的积分计入东兴公司，但用户页不展示
+-- ============================================
+UPDATE `bbs_sa_org` SET `is_display_selected` = 0 WHERE `org_name` = '领导干部' AND `is_delete` = 0;
+
+-- ============================================
 -- 回滚 SQL（如需撤销上述变更，取消注释执行）
 -- ============================================
+-- 领导干部展示排名回滚
+-- UPDATE `bbs_sa_org` SET `is_display_selected` = 1 WHERE `org_name` = '领导干部';
 -- Step 7 回滚
 -- UPDATE `bbs_sa_org` SET `is_delete` = 0 WHERE `org_no` LIKE '5140404240%';
 -- UPDATE `bbs_sa_org` SET `is_delete` = 0 WHERE `org_no` = '514040424';

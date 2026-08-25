@@ -45,7 +45,7 @@ Vue.prototype.getRequest = getRequest;
 Vue.prototype.deleteRequest = deleteRequest;
 
 // 需要登录才能访问的路径（未登录时直接跳转登录页）
-const authPaths = ['/write', '/userinfo', '/stat'];
+const authPaths = ['/write', '/userinfo', '/stat', '/my-replies'];
 const needAuth = (path) => authPaths.some(p => path === p || path.startsWith(p + '/'));
 
 router.beforeEach(((to, from, next) => {

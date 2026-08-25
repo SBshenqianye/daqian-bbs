@@ -78,12 +78,20 @@
           @mouseenter="userMenuOpen = true"
           @mouseleave="userMenuOpen = false"
         >
-          <div class="cursor-pointer" @click="userMenuOpen = !userMenuOpen">
+          <div class="cursor-pointer relative" @click="handleAvatarClick">
             <img
               alt="Avatar"
               class="w-10 h-10 rounded-full border border-outline-variant object-cover"
               :src="portrait"
             >
+            <!-- 未读通知角标 -->
+            <span
+              v-if="unreadCount > 0"
+              class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-error rounded-full text-white text-[11px] font-bold flex items-center justify-center leading-none border-2 border-container"
+              @click.stop="goToNotifications"
+            >
+              {{ unreadCount > 99 ? '99+' : unreadCount }}
+            </span>
           </div>
           <!-- Popover Content -->
           <div
@@ -119,6 +127,25 @@
                 >
                   <span class="material-symbols-outlined text-[20px]">edit_square</span>
                   我的发布
+                </router-link>
+                <router-link
+                  to="/my-replies?tab=myReplies"
+                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
+                >
+                  <span class="material-symbols-outlined text-[20px]">reply</span>
+                  我回复的
+                </router-link>
+                <router-link
+                  to="/my-replies?tab=repliedToMe"
+                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
+                >
+                  <span class="material-symbols-outlined text-[20px]">quickreply</span>
+                  回复我的
+                  <!-- 未读红点 -->
+                  <span
+                    v-if="unreadCount > 0"
+                    class="ml-auto w-2 h-2 bg-error rounded-full flex-shrink-0"
+                  ></span>
                 </router-link>
                 <div class="h-[1px] bg-outline-variant my-1"></div>
                 <button
@@ -217,6 +244,8 @@ export default {
       showFeedback: false,
       feedbackLoading: false,
       feedbackContact: null,
+      unreadCount: 0,
+      unreadTimer: null,
     }
   },
   computed: {
@@ -254,6 +283,15 @@ export default {
     })
     // Listen for avatar update
     this.$bus && this.$bus.$on('portraitUpdated', this.checkLoginState)
+    // Listen for unread count updates
+    this.$bus && this.$bus.$on('unreadCountUpdated', (count) => {
+      this.unreadCount = count
+    })
+    // Fetch unread count on login
+    if (this.isLogin) {
+      this.fetchUnreadCount()
+      this.unreadTimer = setInterval(this.fetchUnreadCount, 30000)
+    }
   },
   watch: {
     showFeedback(val) {
@@ -264,6 +302,8 @@ export default {
     window.removeEventListener('scroll', this.handleScroll)
     this.$bus && this.$bus.$off('isLogin')
     this.$bus && this.$bus.$off('portraitUpdated')
+    this.$bus && this.$bus.$off('unreadCountUpdated')
+    if (this.unreadTimer) clearInterval(this.unreadTimer)
   },
   methods: {
     checkLoginState() {
@@ -271,9 +311,18 @@ export default {
       if (token) {
         this.isLogin = true
         this.user = getUser()
+        this.fetchUnreadCount()
+        if (!this.unreadTimer) {
+          this.unreadTimer = setInterval(this.fetchUnreadCount, 30000)
+        }
       } else {
         this.isLogin = false
         this.user = null
+        this.unreadCount = 0
+        if (this.unreadTimer) {
+          clearInterval(this.unreadTimer)
+          this.unreadTimer = null
+        }
       }
     },
     handleScroll() {
@@ -327,6 +376,21 @@ export default {
       }).catch(() => {
         this.feedbackLoading = false
       })
+    },
+    fetchUnreadCount() {
+      const user = getUser()
+      if (!user) return
+      this.getRequest(`/notification/unreadCount?userId=${user.id}`).then(resp => {
+        this.unreadCount = (resp && resp.obj) || 0
+      }).catch(() => {})
+    },
+    handleAvatarClick() {
+      this.userMenuOpen = !this.userMenuOpen
+    },
+    goToNotifications() {
+      this.userMenuOpen = false
+      if (this.$route.path === '/my-replies' && this.$route.query.tab === 'repliedToMe') return
+      this.$router.push({ path: '/my-replies', query: { tab: 'repliedToMe' } })
     },
   },
 }

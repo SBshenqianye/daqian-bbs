@@ -11,6 +11,7 @@ import com.walker.pojo.*;
 import com.walker.service.*;
 import com.walker.service.ArticleLabelService;
 import com.walker.utils.ConstantUtil;
+import com.walker.utils.ContentQualityUtil;
 import com.walker.utils.SensitiveWordUtil;
 import com.walker.vo.InformationVO;
 import com.walker.vo.PointsRankVO;
@@ -101,6 +102,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             return ResultBean.error("内容不能为空");
         }
 
+        // ── 内容质量检测：垃圾内容标记为不可见，不计入积分 ──
+        ContentQualityUtil.QualityResult quality = ContentQualityUtil.checkContent(
+                articleParam.getArticleTitle(), articleParam.getArticleContent());
+
         Date date = new Date();
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String day = format.format(date);
@@ -117,8 +122,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setUserId(articleParam.getUserId());
         article.setArticleGoodNum(0);
         article.setArticleViewNum(0);
-        // 默认发布后就显示，默认审核通过，管理后台取消审核功能
-        article.setEnable(1);
+        // 根据内容质量检测结果决定是否通过审核：垃圾内容标记为不可见（不计积分）
+        article.setEnable(quality.isPassed() ? 1 : 0);
         article.setArticleCommunityId(articleParam.getArticleCommunityId());
         article.setCreateTime(day);
 
@@ -128,6 +133,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             articleFileService.updateArticleFile(articleParam.getFiles(), article.getArticleId());
         }
 
+        // 垃圾内容提示用户
+        if (quality.isSpam()) {
+            return ResultBean.success("发布成功，但内容被判定为低质量，暂不展示且不计入积分");
+        }
         return ResultBean.success("发布成功！");
     }
 

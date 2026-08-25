@@ -60,3 +60,7 @@ bbs/
 
 # Test runner output (Playwright, etc.)
 test-results/tmp/
+
+# dsh
+.dsh/
+.dsh-trash/

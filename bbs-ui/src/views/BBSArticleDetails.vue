@@ -234,6 +234,7 @@ export default {
       commentInputObserver: null,
       commentPlaceholder: '',
       replyState: { activeId: null },
+      scrollToTarget: null,
     }
   },
   computed: {
@@ -268,6 +269,11 @@ export default {
   mounted() {
     this.initCurrentUser()
     this.loadLabels()
+    // 读取 deep-link 参数（commentId / replyId）
+    const query = this.$route.query
+    if (query.commentId || query.replyId) {
+      this.scrollToTarget = query.replyId || query.commentId
+    }
     if (this.articleId) {
       this.loadArticle(this.articleId)
       this.loadComments(this.articleId)
@@ -360,6 +366,12 @@ export default {
           this.comments = []
         }
         this.commentsLoaded = true
+        // deep-link: 评论加载完成后滚动到目标位置
+        this.$nextTick(() => {
+          if (this.scrollToTarget) {
+            this.scrollToComment(this.scrollToTarget)
+          }
+        })
       }).catch(err => {
         console.warn('[BBSArticleDetails] loadComments', err)
         this.comments = []
@@ -531,6 +543,54 @@ export default {
           Message({ message: '下载失败，请稍后重试', type: 'warning', showClose: true, offset: 54 })
         })
     },
+    /**
+     * 滚动到指定评论/回复位置并高亮（DOM 直接操作，不依赖 Vue 响应式）
+     */
+    scrollToComment(targetId) {
+      const el = document.getElementById('comment-' + targetId)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        this.applyHighlight(el)
+        return
+      }
+      // 如果元素不存在（可能在折叠的回复中），展开后重试
+      for (const comment of this.comments) {
+        if (comment.children) {
+          const found = comment.children.find(c => String(c.id) === String(targetId))
+          if (found) {
+            this.expandCommentReplies(comment.id)
+            this.$nextTick(() => {
+              setTimeout(() => {
+                const retryEl = document.getElementById('comment-' + targetId)
+                if (retryEl) {
+                  retryEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  this.applyHighlight(retryEl)
+                }
+              }, 200)
+            })
+            return
+          }
+        }
+      }
+    },
+    /**
+     * 对指定 DOM 元素应用高亮动画（添加 class → 3 秒后移除）
+     */
+    applyHighlight(el) {
+      el.classList.add('comment-highlight')
+      setTimeout(() => {
+        el.classList.remove('comment-highlight')
+      }, 3200)
+    },
+    /**
+     * 展开指定评论的折叠回复
+     */
+    expandCommentReplies(commentId) {
+      // 通过触发 BBSCommentItem 的展开逻辑来实现
+      // 这里用一个简单的方式：设置 comment 的 expandedReplies
+      // 由于 BBSCommentItem 使用内部状态，我们通过 provide/inject 传递展开信号
+      this.$bus && this.$bus.$emit('expandComment', commentId)
+    },
   },
   beforeDestroy() {
     if (this.commentInputObserver) {
@@ -546,6 +606,17 @@ export default {
 .markdown-body p {
   margin: 0;
   line-height: 1.5;
+}
+/* 评论/回复高亮动画（全局样式，供 DOM 操作添加 class 使用） */
+.comment-highlight {
+  animation: comment-highlight-fade 3s ease-out forwards;
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: -4px -8px;
+}
+@keyframes comment-highlight-fade {
+  0% { background-color: rgba(25, 118, 210, 0.20); }
+  100% { background-color: transparent; }
 }
 </style>
 <style scoped>
