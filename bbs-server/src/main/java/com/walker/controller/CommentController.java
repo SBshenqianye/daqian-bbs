@@ -5,6 +5,7 @@ import com.walker.pojo.Comment;
 import com.walker.pojo.Reply;
 import com.walker.pojo.User;
 import com.walker.service.CommentService;
+import com.walker.service.PointsLogService;
 import com.walker.service.ReplyService;
 import com.walker.service.SaOrgService;
 import com.walker.service.UserService;
@@ -46,6 +47,9 @@ public class CommentController {
     @Autowired
     private SaOrgService saOrgService;
 
+    @Autowired
+    private PointsLogService pointsLogService;
+
     @ApiOperation(value = "保存用户的评论(一级评论)")
     @PutMapping("/comment/userComment")
     public ResultBean userComment(@RequestBody CommentParam commentParam){
@@ -85,6 +89,7 @@ public class CommentController {
                 commentReplyVO.setOrgName(user.getOrgName());
                 commentReplyVO.setOrgNameFull(resolveFullOrgName(user.getOrgNo(), user.getOrgName()));
                 commentReplyVO.setDeptName(user.getDeptName());
+                commentReplyVO.setPoints(pointsLogService.getPointsAdjustment(userId));
 
                 //通过回复的Id去获取回复内容
 
@@ -113,6 +118,7 @@ public class CommentController {
                         replyVO.setOrgName(userVO1.getOrgName());
                         replyVO.setOrgNameFull(resolveFullOrgName(userVO1.getOrgNo(), userVO1.getOrgName()));
                         replyVO.setDeptName(userVO1.getDeptName());
+                        replyVO.setPoints(pointsLogService.getPointsAdjustment(fromUserId));
 
                         Integer toUserId = reply.getReplyToUserId();
                         User userVO2 = userService.queryUserinfoById(toUserId);

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.walker.mapper.PointsLogMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.walker.pojo.PointsLog">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="points_change" property="pointsChange" />
+        <result column="reason" property="reason" />
+        <result column="related_type" property="relatedType" />
+        <result column="related_id" property="relatedId" />
+        <result column="operator_id" property="operatorId" />
+        <result column="create_time" property="createTime" />
+    </resultMap>
+
+    <!-- 查询指定用户的手动积分调整总和（排除已撤销的记录） -->
+    <select id="sumPointsChangeByUserId" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(points_change), 0)
+        FROM bbs_points_log
+        WHERE user_id = #{userId}
+          AND is_reversed = 0
+    </select>
+
+</mapper>

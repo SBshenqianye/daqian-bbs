@@ -376,6 +376,27 @@ SELECT 'feedback_contact', '{\"name\":\"\",\"email\":\"\"}', '使用反馈联系
 WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'feedback_contact');
 
 -- ----------------------------
+-- Table: bbs_points_log（积分调整日志）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_points_log`;
+CREATE TABLE `bbs_points_log` (
+  `id`               int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`          int(11) NOT NULL COMMENT '用户ID',
+  `points_change`    int(11) NOT NULL COMMENT '积分变动（正数加分，负数扣分）',
+  `reason`           varchar(500) DEFAULT NULL COMMENT '调整原因',
+  `related_type`     varchar(20) DEFAULT NULL COMMENT '关联类型（article/comment/reply/manual/undo）',
+  `related_id`       int(11) DEFAULT NULL COMMENT '关联ID（帖子ID/评论ID/回复ID）',
+  `operator_id`      int(11) DEFAULT NULL COMMENT '操作人ID（管理员）',
+  `create_time`      varchar(20) DEFAULT NULL COMMENT '创建时间',
+  `is_reversed`      tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已被撤销(0=否,1=是)',
+  `reversed_by`      int(11) DEFAULT NULL COMMENT '被哪条撤销记录撤销（记录ID）',
+  `reversing_record` int(11) DEFAULT NULL COMMENT '此记录撤销了哪条原始记录（记录ID）',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_points_log_user_id` (`user_id`),
+  INDEX `idx_points_log_is_reversed` (`is_reversed`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '积分调整日志';
+
+-- ----------------------------
 -- 敏感词
 -- ----------------------------
 INSERT INTO `bbs_sensitive_word` (`id`, `keyword`) VALUES

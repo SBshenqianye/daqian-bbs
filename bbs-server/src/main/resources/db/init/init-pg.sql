@@ -326,6 +326,9 @@ INSERT INTO bbs_sa_org (id, org_no, org_name, p_org_no, org_tree, is_delete) VAL
 (32, '514042812', '国网四川内江隆昌云顶供电所', '5140428', '51101|51404|5140428|514042812', 0)
 ON CONFLICT (id) DO NOTHING;
 
+-- 注：init 中的组织机构名称已同步更新（2026-08-25 组织架构梳理）
+-- "地市支撑机构及原集体企业" 已在 upgrade 中重命名为 "公司所属各单位"
+
 -- ----------------------------
 -- 数据字典
 -- ----------------------------
@@ -353,6 +356,25 @@ INSERT INTO bbs_sensitive_word (id, keyword) VALUES
 (4, '莎莎舞'),
 (5, '老司机')
 ON CONFLICT (id) DO NOTHING;
+
+-- ----------------------------
+-- Table: bbs_points_log（积分调整日志）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_points_log (
+    id               SERIAL PRIMARY KEY,
+    user_id          integer NOT NULL,
+    points_change    integer NOT NULL,
+    reason           varchar(500),
+    related_type     varchar(20),
+    related_id       integer,
+    operator_id      integer,
+    create_time      varchar(20),
+    is_reversed      smallint NOT NULL DEFAULT 0,
+    reversed_by      integer,
+    reversing_record integer
+);
+CREATE INDEX IF NOT EXISTS idx_points_log_user_id ON bbs_points_log (user_id);
+CREATE INDEX IF NOT EXISTS idx_points_log_is_reversed ON bbs_points_log (is_reversed);
 
 -- ----------------------------
 -- 重置序列，使后续自增从正确值开始

@@ -42,6 +42,9 @@ public class CommentReplyVO {
     @ApiModelProperty("评论人的部门名称")
     private String deptName;
 
+    @ApiModelProperty("评论人的积分（含手动调整）")
+    private Integer points;
+
     @ApiModelProperty("回复")
     private List<ReplyVO> reply;
 

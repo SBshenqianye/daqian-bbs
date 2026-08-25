@@ -230,6 +230,15 @@
         <div class="p-5" v-loading="detailLoading">
           <div v-if="detailTitle" class="mb-4">
             <h2 class="font-headline-md text-headline-md text-on-surface">标题：《{{ detailTitle }}》</h2>
+            <div v-if="detailAuthor" class="flex items-center gap-3 mt-2">
+              <span class="text-body-md text-on-surface-variant flex items-center gap-1">
+                <span class="material-symbols-outlined text-[16px]">person</span>
+                {{ detailAuthor }}
+              </span>
+              <span class="text-[12px] text-on-surface-variant bg-surface-variant px-2 py-0.5 rounded">积分: {{ detailPoints }}</span>
+              <button class="text-[12px] text-primary hover:underline" @click="openPointsDialog(detailUserId, detailAuthor, 'article', detailArticleId)">调整积分</button>
+              <button class="text-[12px] text-on-surface-variant hover:text-primary hover:underline" @click="openPointsLogDialog(detailUserId, detailAuthor)">查看记录</button>
+            </div>
           </div>
           <div class="markdown-body detail-content" v-html="renderedContent"></div>
           <div v-if="detailFileList && detailFileList.length > 0" class="mt-6 bg-surface-container-low rounded-lg p-4">
@@ -259,18 +268,41 @@
               <div v-for="(item, index) in detailComments" :key="item.commentId || index" class="bg-surface-container-low rounded-lg p-4 border border-outline-variant/50">
                 <div class="flex items-center gap-3 mb-2">
                   <img class="w-9 h-9 rounded-full bg-surface-variant object-cover" :src="getAvatarUrl(item.portrait)" alt="">
-                  <div>
-                    <span class="font-headline-sm text-headline-sm text-on-surface">{{ item.nickname || '未知用户' }}</span>
-                    <span class="text-body-md text-on-surface-variant ml-2">{{ item.commentTime }}</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="font-headline-sm text-headline-sm text-on-surface">{{ item.nickname || '未知用户' }}</span>
+                      <span class="text-body-md text-on-surface-variant text-[12px]">{{ item.commentTime }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-0.5">
+                      <span class="text-[11px] text-on-surface-variant bg-surface-variant px-1.5 py-0.5 rounded">积分: {{ item.points || 0 }}</span>
+                      <button class="text-[11px] text-primary hover:underline" @click="openPointsDialog(item.userId, item.nickname, 'comment', item.commentId)">调整积分</button>
+                      <button class="text-[11px] text-on-surface-variant hover:text-primary hover:underline" @click="openPointsLogDialog(item.userId, item.nickname)">查看记录</button>
+                    </div>
                   </div>
+                  <button class="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors" @click="handleDeleteComment(item.commentId)">
+                    <span class="material-symbols-outlined text-[14px]">delete</span>
+                    删除
+                  </button>
                 </div>
                 <p class="text-body-md text-on-surface ml-12">{{ item.commentContent }}</p>
                 <div v-if="item.reply && item.reply.length" class="ml-12 mt-3 pl-4 border-l-2 border-outline-variant/30 space-y-3">
                   <div v-for="(reply, rIdx) in item.reply" :key="reply.replyId || rIdx" class="bg-surface-container rounded-lg p-3">
                     <div class="flex items-center gap-2 mb-1.5">
                       <img class="w-7 h-7 rounded-full bg-surface-variant object-cover" :src="getAvatarUrl(reply.portrait)" alt="">
-                      <span class="font-headline-sm text-headline-sm text-on-surface text-[13px]">{{ reply.nickname || '未知用户' }}</span>
-                      <span class="text-body-md text-on-surface-variant text-[12px]">{{ reply.replyTime }}</span>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                          <span class="font-headline-sm text-headline-sm text-on-surface text-[13px]">{{ reply.nickname || '未知用户' }}</span>
+                          <span class="text-body-md text-on-surface-variant text-[12px]">{{ reply.replyTime }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                          <span class="text-[10px] text-on-surface-variant bg-surface-variant px-1.5 py-0.5 rounded">积分: {{ reply.points || 0 }}</span>
+                          <button class="text-[10px] text-primary hover:underline" @click="openPointsDialog(reply.replyUserId, reply.nickname, 'reply', reply.replyId)">调整积分</button>
+                          <button class="text-[10px] text-on-surface-variant hover:text-primary hover:underline" @click="openPointsLogDialog(reply.replyUserId, reply.nickname)">查看记录</button>
+                        </div>
+                      </div>
+                      <button class="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors" @click="handleDeleteReply(reply.replyId)">
+                        <span class="material-symbols-outlined text-[12px]">delete</span>
+                      </button>
                     </div>
                     <p class="text-body-md text-on-surface-variant ml-9">
                       <span v-if="reply.replyToNickname" class="text-primary">回复 {{ reply.replyToNickname }}：</span>
@@ -288,6 +320,121 @@
         </div>
         <div class="flex justify-end p-5 border-t border-outline-variant bg-surface-container-lowest">
           <button class="px-6 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="closeDetail">关 闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Points Adjustment Dialog -->
+    <div v-if="pointsDialogVisible" class="fixed inset-0 bg-black/30 z-40" @click="pointsDialogVisible = false"></div>
+    <div v-if="pointsDialogVisible" class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="bg-container w-full max-w-md mx-auto my-[15vh] rounded-xl shadow-2xl">
+        <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+          <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-rank-gold">paid</span>
+            调整积分 - {{ pointsDialogUser.nickname }}
+          </h3>
+          <button class="text-outline hover:text-error transition-colors" @click="pointsDialogVisible = false">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="p-5 space-y-4">
+          <div>
+            <label class="block text-body-md text-on-surface mb-1.5 font-medium">积分变动</label>
+            <div class="flex items-center gap-2">
+              <div class="flex rounded-lg border border-outline-variant overflow-hidden">
+                <button
+                  class="px-4 py-2 text-[13px] font-medium transition-all"
+                  :class="pointsDialogForm.pointsChange >= 0 ? 'bg-primary text-on-primary' : 'bg-surface text-on-surface-variant hover:bg-surface-container-low'"
+                  @click="pointsDialogForm.pointsChange = Math.abs(pointsDialogForm.pointsChange || 0) || 1"
+                >加分</button>
+                <button
+                  class="px-4 py-2 text-[13px] font-medium transition-all"
+                  :class="pointsDialogForm.pointsChange < 0 ? 'bg-error text-on-error' : 'bg-surface text-on-surface-variant hover:bg-surface-container-low'"
+                  @click="pointsDialogForm.pointsChange = -(Math.abs(pointsDialogForm.pointsChange || 0) || 1)"
+                >扣分</button>
+              </div>
+              <input
+                v-model.number="pointsDialogForm.pointsChange"
+                type="number"
+                min="0"
+                class="flex-1 h-10 px-4 bg-surface rounded-lg border border-outline-variant text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-all"
+                placeholder="输入分值"
+              />
+              <span class="text-body-md text-on-surface-variant">积分</span>
+            </div>
+            <p class="text-[11px] text-on-surface-variant mt-1">{{ pointsDialogForm.pointsChange >= 0 ? '为该用户增加积分' : '从该用户扣除积分' }}</p>
+          </div>
+          <div>
+            <label class="block text-body-md text-on-surface mb-1.5 font-medium">调整原因</label>
+            <textarea
+              v-model="pointsDialogForm.reason"
+              rows="3"
+              class="w-full px-4 py-2.5 bg-surface rounded-lg border border-outline-variant text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-all resize-none"
+              placeholder="请输入调整原因（如：灌水扣分、优质内容加分等）"
+            ></textarea>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
+          <button class="px-4 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="pointsDialogVisible = false">取消</button>
+          <button class="px-4 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md" :disabled="pointsDialogSubmitting" @click="submitPointsAdjust">
+            {{ pointsDialogSubmitting ? '提交中...' : '确认调整' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Points Log Dialog -->
+    <div v-if="pointsLogDialogVisible" class="fixed inset-0 bg-black/30 z-40" @click="pointsLogDialogVisible = false"></div>
+    <div v-if="pointsLogDialogVisible" class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="bg-container w-full max-w-lg mx-auto my-[10vh] rounded-xl shadow-2xl">
+        <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+          <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-rank-gold">history</span>
+            积分变动记录 - {{ pointsLogDialogUser.nickname }}
+          </h3>
+          <button class="text-outline hover:text-error transition-colors" @click="pointsLogDialogVisible = false">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="p-5">
+          <div v-if="pointsLogLoading" class="flex items-center justify-center py-12">
+            <span class="inline-block w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
+          </div>
+          <div v-else-if="pointsLogList.length === 0" class="py-12 text-center flex flex-col items-center gap-2 text-on-surface-variant">
+            <span class="material-symbols-outlined text-[48px] opacity-20">inbox</span>
+            <p class="text-body-md">暂无积分变动记录</p>
+          </div>
+          <div v-else class="space-y-3 max-h-[50vh] overflow-y-auto">
+            <div v-for="log in pointsLogList" :key="log.id" class="flex items-start gap-3 p-3 rounded-lg border border-outline-variant/30" :class="log.isReversed === 1 ? 'bg-surface opacity-60' : 'bg-surface-container-low'">
+              <span class="shrink-0 mt-0.5 material-symbols-outlined text-[20px]" :class="log.pointsChange > 0 ? 'text-primary' : 'text-error'">
+                {{ log.isReversed === 1 ? 'undo' : (log.pointsChange > 0 ? 'add_circle' : 'remove_circle') }}
+              </span>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-body-md" :class="log.isReversed === 1 ? 'text-on-surface-variant line-through' : (log.pointsChange > 0 ? 'text-primary' : 'text-error')">
+                    {{ log.pointsChange > 0 ? '加 ' : '扣 ' }}{{ Math.abs(log.pointsChange) }} 积分
+                  </span>
+                  <span v-if="log.relatedType" class="text-[11px] text-on-surface-variant bg-surface-variant px-1.5 py-0.5 rounded">
+                    {{ relatedTypeLabel(log.relatedType) }}
+                  </span>
+                  <span v-if="log.isReversed === 1" class="text-[11px] text-on-surface-variant bg-error/10 text-error px-1.5 py-0.5 rounded">已撤销</span>
+                </div>
+                <p v-if="log.reason" class="text-body-md text-on-surface-variant mt-1">{{ log.reason }}</p>
+                <p class="text-[11px] text-outline mt-1">{{ log.createTime }}</p>
+              </div>
+              <button
+                v-if="log.isReversed !== 1 && log.relatedType !== 'undo'"
+                class="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-on-surface-variant bg-surface-variant rounded hover:bg-error/10 hover:text-error transition-colors"
+                @click="handleUndoPointsLog(log)"
+              >
+                <span class="material-symbols-outlined text-[14px]">undo</span>
+                撤销
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end p-5 border-t border-outline-variant bg-surface-container-lowest">
+          <button class="px-6 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="pointsLogDialogVisible = false">关闭</button>
         </div>
       </div>
     </div>
@@ -329,9 +476,27 @@ export default {
       detailArticleId: null,
       detailTitle: '',
       detailContent: '',
+      detailUserId: null,
+      detailAuthor: '',
+      detailPoints: 0,
       detailComments: [],
       detailFileList: [],
       defaultAvatar: require('../assets/img/img.jpeg'),
+      // 积分调整对话框
+      pointsDialogVisible: false,
+      pointsDialogSubmitting: false,
+      pointsDialogUser: { id: null, nickname: '' },
+      pointsDialogForm: {
+        pointsChange: 1,
+        reason: '',
+        relatedType: '',
+        relatedId: null,
+      },
+      // 积分记录对话框
+      pointsLogDialogVisible: false,
+      pointsLogLoading: false,
+      pointsLogDialogUser: { id: null, nickname: '' },
+      pointsLogList: [],
     }
   },
   computed: {
@@ -475,8 +640,13 @@ export default {
       this.detailArticleId = null
       this.detailTitle = ''
       this.detailContent = ''
+      this.detailUserId = null
+      this.detailAuthor = ''
+      this.detailPoints = 0
       this.detailComments = []
       this.detailFileList = []
+      this.pointsDialogVisible = false
+      this.pointsLogDialogVisible = false
     },
     loadArticleDetail(articleId) {
       this.detailLoading = true
@@ -485,10 +655,23 @@ export default {
         if (resp) {
           this.detailContent = resp.obj.articleContent
           this.detailTitle = resp.obj.articleTitle
+          this.detailUserId = resp.obj.userId
+          this.detailAuthor = resp.obj.articleAuthor || ''
           this.getArticleFileByArticleId(articleId)
           this.getCommentByArticleId(articleId)
+          // 获取帖子作者的积分
+          if (resp.obj.userId) {
+            this.fetchArticleAuthorPoints(resp.obj.userId)
+          }
         }
       }).catch(err => { console.warn('[ArticlePage] getArticleById', err); this.detailLoading = false })
+    },
+    fetchArticleAuthorPoints(userId) {
+      this.getRequest('/admin/points/total', userId).then(resp => {
+        if (resp && resp.obj !== undefined && resp.obj !== null) {
+          this.detailPoints = resp.obj || 0
+        }
+      }).catch(() => { this.detailPoints = 0 })
     },
     getArticleFileByArticleId(articleId) {
       this.postRequest(`/common/getArticleFileByArticleId/${articleId}`, {}).then(res => {
@@ -561,6 +744,121 @@ export default {
           if (resp) {
             this.$message.success('全部审核通过！')
             this.fetchList()
+          }
+        })
+      }).catch(() => {})
+    },
+    handleDeleteComment(commentId) {
+      this.$confirm('确定要删除该评论吗？删除后将无法恢复。', '提示', { type: 'warning' }).then(() => {
+        this.postRequest('/comment/deleteCommentById', { commentId }).then(resp => {
+          if (resp) {
+            this.$message.success('评论删除成功！')
+            this.getCommentByArticleId(this.detailArticleId)
+          }
+        })
+      }).catch(() => {})
+    },
+    handleDeleteReply(replyId) {
+      this.$confirm('确定要删除该回复吗？删除后将无法恢复。', '提示', { type: 'warning' }).then(() => {
+        this.postRequest('/reply/deleteReplyById', { replyId }).then(resp => {
+          if (resp) {
+            this.$message.success('回复删除成功！')
+            this.getCommentByArticleId(this.detailArticleId)
+          }
+        })
+      }).catch(() => {})
+    },
+    openPointsDialog(userId, nickname, relatedType, relatedId) {
+      this.pointsDialogUser = { id: userId, nickname: nickname || '未知用户' }
+      this.pointsDialogForm = {
+        pointsChange: 1,
+        reason: '',
+        relatedType: relatedType,
+        relatedId: relatedId,
+      }
+      this.pointsDialogVisible = true
+    },
+    submitPointsAdjust() {
+      if (!this.pointsDialogForm.pointsChange || this.pointsDialogForm.pointsChange === 0) {
+        this.$message.warning('请输入有效的积分分值')
+        return
+      }
+      const change = this.pointsDialogForm.pointsChange
+      const absVal = Math.abs(change)
+      const params = {
+        userId: this.pointsDialogUser.id,
+        pointsChange: change,
+        reason: this.pointsDialogForm.reason || (change > 0 ? '管理员加分' : '管理员扣分'),
+        relatedType: this.pointsDialogForm.relatedType || 'manual',
+        relatedId: this.pointsDialogForm.relatedId,
+      }
+      this.pointsDialogSubmitting = true
+      this.postRequest('/admin/points/adjust', params).then(resp => {
+        this.pointsDialogSubmitting = false
+        if (resp) {
+          this.$message.success('积分调整成功！')
+          this.pointsDialogVisible = false
+          // 刷新评论列表以更新积分显示
+          if (this.detailArticleId) {
+            this.getCommentByArticleId(this.detailArticleId)
+          }
+          // 如果调整的是帖子作者的积分，刷新帖子区域的积分显示
+          if (this.pointsDialogUser.id === this.detailUserId) {
+            this.fetchArticleAuthorPoints(this.detailUserId)
+          }
+        }
+      }).catch(() => {
+        this.pointsDialogSubmitting = false
+      })
+    },
+    openPointsLogDialog(userId, nickname) {
+      this.pointsLogDialogUser = { id: userId, nickname: nickname || '未知用户' }
+      this.pointsLogList = []
+      this.pointsLogDialogVisible = true
+      this.fetchPointsLog(userId)
+    },
+    fetchPointsLog(userId) {
+      this.pointsLogLoading = true
+      this.getRequest('/admin/points/log', userId).then(resp => {
+        this.pointsLogLoading = false
+        if (resp && resp.obj && Array.isArray(resp.obj)) {
+          this.pointsLogList = resp.obj
+        } else if (Array.isArray(resp)) {
+          this.pointsLogList = resp
+        } else {
+          this.pointsLogList = []
+        }
+      }).catch(err => {
+        console.warn('[ArticlePage] fetchPointsLog', err)
+        this.pointsLogLoading = false
+        this.pointsLogList = []
+      })
+    },
+    relatedTypeLabel(type) {
+      const map = {
+        article: '帖子',
+        comment: '评论',
+        reply: '回复',
+        manual: '手动',
+        undo: '撤销',
+      }
+      return map[type] || type
+    },
+    handleUndoPointsLog(log) {
+      this.$confirm(`确定要撤销这条积分调整吗？\n\n${log.pointsChange > 0 ? '加 ' : '扣 '}${Math.abs(log.pointsChange)} 积分`, '撤销确认', { type: 'warning' }).then(() => {
+        this.postRequest(`/admin/points/undo/${log.id}`, {}).then(resp => {
+          if (resp) {
+            this.$message.success('撤销成功！')
+            // 刷新记录列表
+            this.fetchPointsLog(this.pointsLogDialogUser.id)
+            // 刷新帖子区域积分（如果调整的是帖子作者）
+            if (this.pointsLogDialogUser.id === this.detailUserId) {
+              this.fetchArticleAuthorPoints(this.detailUserId)
+            }
+            // 刷新评论列表积分
+            if (this.detailArticleId) {
+              this.getCommentByArticleId(this.detailArticleId)
+            }
           }
         })
       }).catch(() => {})

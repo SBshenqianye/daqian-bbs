@@ -45,4 +45,7 @@ public class ReplyVO {
 
     @ApiModelProperty("是否显示输入框")
     private boolean inputShow;
+
+    @ApiModelProperty("回复人的积分（含手动调整）")
+    private Integer points;
 }
