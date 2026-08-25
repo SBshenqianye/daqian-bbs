@@ -101,6 +101,10 @@ public class Article implements Serializable {
     @TableField("is_featured")
     private Integer isFeatured;
 
+    @ApiModelProperty("热度奖励是否已发放(0=否,1=是)")
+    @TableField("is_hot_bonus")
+    private Integer isHotBonus;
+
     @ApiModelProperty("标签名称（关联查询，非数据库字段）")
     @TableField(exist = false)
     private String articleLabelName;

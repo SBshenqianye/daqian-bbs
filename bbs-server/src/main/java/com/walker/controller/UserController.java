@@ -7,6 +7,7 @@ import com.walker.vo.excel.ImportResultVO;
 import com.github.pagehelper.PageInfo;
 import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
+import com.walker.service.PointsLogService;
 import com.walker.service.SaOrgService;
 import com.walker.utils.FilePathNormalizer;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -25,11 +26,8 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.IOException;
 import java.security.Principal;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 /**
  * <p>
@@ -49,6 +47,9 @@ public class UserController {
 
     @Autowired
     private SaOrgService saOrgService;
+
+    @Autowired
+    private PointsLogService pointsLogService;
 
     @Value("${storage.path}")
     private String basePath;
@@ -366,5 +367,51 @@ public class UserController {
     @PostMapping("/admin/updateUserDetail")
     public ResultBean adminUpdateUserDetail(@RequestBody AdminUserUpdateParam param) {
         return userService.adminUpdateUserDetail(param);
+    }
+
+    // ==================== 运营方案V2 新增接口 ====================
+
+    @ApiOperation(value = "获取当前用户等级")
+    @GetMapping("/user/level")
+    public ResultBean getUserLevel(@RequestParam Integer userId) {
+        Integer totalPoints = pointsLogService.getPointsAdjustment(userId);
+        if (totalPoints == null) totalPoints = 0;
+        int level = totalPoints / 100;
+        Map<String, Object> data = new HashMap<>();
+        data.put("level", level);
+        data.put("totalPoints", totalPoints);
+        return ResultBean.success("查询成功", data);
+    }
+
+    @ApiOperation(value = "管理员限制/解除用户发帖")
+    @PostMapping("/admin/user/restrictPost")
+    public ResultBean restrictPost(@RequestBody Map<String, Object> params) {
+        Integer userId = (Integer) params.get("userId");
+        Integer restricted = (Integer) params.get("restricted");
+        String until = (String) params.get("until");
+
+        if (userId == null || restricted == null) {
+            return ResultBean.error("参数不完整");
+        }
+
+        User user = userService.getById(userId);
+        if (user == null) {
+            return ResultBean.error("用户不存在");
+        }
+
+        user.setPostRestricted(restricted);
+        user.setPostRestrictedUntil(restricted == 1 ? until : null);
+        userService.updateById(user);
+
+        return ResultBean.success(restricted == 1 ? "已限制发帖" : "已解除发帖限制");
+    }
+
+    @ApiOperation(value = "用户查看自己的积分变动记录")
+    @PostMapping("/user/points/myLog")
+    public ResultBean getMyPointsLog(@RequestBody Map<String, Object> params) {
+        Integer userId = (Integer) params.get("userId");
+        Integer page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;
+        Integer size = params.get("size") != null ? Integer.parseInt(params.get("size").toString()) : 10;
+        return pointsLogService.getUserPointsLog(userId, page, size);
     }
 }

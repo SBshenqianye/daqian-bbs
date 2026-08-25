@@ -57,4 +57,8 @@ public class Reply implements Serializable {
     @TableLogic
     private Integer isDelete;
 
+    @ApiModelProperty("是否被采纳(0=否,1=是)")
+    @TableField("is_adopted")
+    private Integer isAdopted;
+
 }

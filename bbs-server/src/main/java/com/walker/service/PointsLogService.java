@@ -37,4 +37,9 @@ public interface PointsLogService extends IService<PointsLog> {
      * @param operatorId 操作人ID
      */
     ResultBean undoPointsLog(Integer logId, Integer operatorId);
+
+    /**
+     * 分页查询用户积分变动记录
+     */
+    ResultBean getUserPointsLog(Integer userId, Integer page, Integer size);
 }

@@ -1,6 +1,7 @@
 package com.walker.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.PointsLogMapper;
 import com.walker.pojo.PointsLog;
@@ -12,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 积分调整日志服务实现类
@@ -95,5 +98,21 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
         this.updateById(original);
 
         return ResultBean.success("撤销成功");
+    }
+
+    @Override
+    public ResultBean getUserPointsLog(Integer userId, Integer page, Integer size) {
+        if (userId == null) {
+            return ResultBean.error("用户ID不能为空");
+        }
+        Page<PointsLog> pageParam = new Page<>(page, size);
+        LambdaQueryWrapper<PointsLog> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PointsLog::getUserId, userId);
+        wrapper.orderByDesc(PointsLog::getCreateTime);
+        Page<PointsLog> result = this.page(pageParam, wrapper);
+        Map<String, Object> data = new HashMap<>();
+        data.put("records", result.getRecords());
+        data.put("total", result.getTotal());
+        return ResultBean.success("查询成功", data);
     }
 }

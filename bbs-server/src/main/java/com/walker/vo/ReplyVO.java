@@ -48,4 +48,7 @@ public class ReplyVO {
 
     @ApiModelProperty("回复人的积分（含手动调整）")
     private Integer points;
+
+    @ApiModelProperty("是否被采纳(0=否,1=是)")
+    private Integer isAdopted;
 }

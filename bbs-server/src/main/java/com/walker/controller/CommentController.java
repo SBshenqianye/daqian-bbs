@@ -1,14 +1,12 @@
 package com.walker.controller;
 
 
+import com.walker.mapper.DictMapper;
+import com.walker.pojo.Article;
 import com.walker.pojo.Comment;
 import com.walker.pojo.Reply;
 import com.walker.pojo.User;
-import com.walker.service.CommentService;
-import com.walker.service.PointsLogService;
-import com.walker.service.ReplyService;
-import com.walker.service.SaOrgService;
-import com.walker.service.UserService;
+import com.walker.service.*;
 import com.walker.vo.CommentReplyVO;
 import com.walker.vo.ResultBean;
 import com.walker.vo.param.CommentParam;
@@ -50,11 +48,74 @@ public class CommentController {
     @Autowired
     private PointsLogService pointsLogService;
 
+    @Autowired
+    private ArticleService articleService;
+
+    @Autowired
+    private DictMapper dictMapper;
+
+    @Autowired
+    private NotificationService notificationService;
+
     @ApiOperation(value = "保存用户的评论(一级评论)")
     @PutMapping("/comment/userComment")
     public ResultBean userComment(@RequestBody CommentParam commentParam){
 
-        return commentService.saveUserComment(commentParam);
+        ResultBean result = commentService.saveUserComment(commentParam);
+
+        // 帖子热度奖励检查：评论发布后检查该文章的有效回复数
+        if (commentParam.getCommentArticleId() != null && commentParam.getCommentUserId() != null) {
+            try {
+                checkHotBonus(commentParam.getCommentArticleId());
+            } catch (Exception e) {
+                // 热度检查失败不影响评论发布
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * 检查帖子热度奖励：有效回复数超过阈值且未发过热度奖励时，给作者加1分
+     */
+    private void checkHotBonus(Integer articleId) {
+        Article article = articleService.queryArticleById(articleId);
+        if (article == null || article.getIsHotBonus() != null && article.getIsHotBonus() == 1) {
+            return; // 文章不存在或已发过热度奖励
+        }
+
+        // 获取热度阈值（默认10）
+        int threshold = 10;
+        try {
+            String val = dictMapper.selectValueByType("hot_threshold");
+            if (val != null) threshold = Integer.parseInt(val);
+        } catch (Exception e) {
+            // 使用默认值
+        }
+
+        // 统计该文章的有效评论数（评论也算回复）
+        // 这里简化处理：统计 comment 数 + reply 数
+        // 使用已有的 queryCommentReply 获取评论列表
+        List<Comment> comments = commentService.queryCommentReply(articleId);
+        int totalReplies = 0;
+        for (Comment c : comments) {
+            List<Reply> replies = replyService.queryReplyByCommentId(c.getCommentId());
+            totalReplies += replies.size();
+        }
+
+        if (totalReplies >= threshold) {
+            // 触发热度奖励
+            article.setIsHotBonus(1);
+            articleService.updateById(article);
+
+            pointsLogService.adjustUserPoints(article.getUserId(), 1, "帖子热度奖励（回复数达" + totalReplies + "条）",
+                    "hot_bonus", articleId, null);
+
+            // 通知作者
+            notificationService.createNotification(article.getUserId(), null,
+                    "hot_bonus", "恭喜！您的帖子获得热度奖励+1分",
+                    "article", articleId);
+        }
     }
 
 
@@ -119,6 +180,7 @@ public class CommentController {
                         replyVO.setOrgNameFull(resolveFullOrgName(userVO1.getOrgNo(), userVO1.getOrgName()));
                         replyVO.setDeptName(userVO1.getDeptName());
                         replyVO.setPoints(pointsLogService.getPointsAdjustment(fromUserId));
+                        replyVO.setIsAdopted(reply.getIsAdopted());
 
                         Integer toUserId = reply.getReplyToUserId();
                         User userVO2 = userService.queryUserinfoById(toUserId);
