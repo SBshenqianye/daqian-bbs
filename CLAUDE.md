@@ -79,3 +79,29 @@ CREATE TABLE bbs_schema_version (
 - `bbs-admin-ui/` — 管理后台（Vue 2 + Element UI）
 - `bbs-ui/` — 用户前台（Vue 2）
 - `bbs-server/` — Java 后端（Spring Boot + MyBatis-Plus）
+
+## 前端开发规范
+
+### v-if/v-else 与复杂 DOM 组件
+
+**禁止**在包含 `v-for`、`v-once`、事件委托的复杂组件外部使用 v-if/v-else 来控制其可见性。v-if 切换会**销毁并重建**整个子树 DOM，Vue 内部事件指令清理可能在 `vnode.elm === undefined` 上调用 `removeEventListener`，导致 `TypeError`，触发全局 `errorHandler` → `attemptRepair` → 页面重建 → 组件冻结。
+
+**正确模式**：始终挂载复杂组件 DOM，用 CSS class 控制可见性：
+
+```vue
+<!-- ✅ 正确：始终挂载，CSS 切换 -->
+<div :class="visible ? '' : 'opacity-0 h-0 overflow-hidden pointer-events-none'">
+  <ComplexComponent />
+</div>
+
+<!-- ❌ 销误：v-if 会销毁/重建 DOM -->
+<div v-if="visible">
+  <ComplexComponent />
+</div>
+```
+
+**浮层消息**（loading/empty/no-match）是简单 div，可用独立 v-if 链切换，无风险。详见 `OrgTree.vue`。
+
+### 动态 :key 陷阱
+
+在 v-for 或 v-if 分支上使用动态 `:key="reactiveValue"`，每次值变化都会销毁重建子树。若值在交互中频繁变化（如每次按键），会触发大量 DOM 操作。应使用静态 key 或稳定标识。
