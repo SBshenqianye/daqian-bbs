@@ -1,22 +1,11 @@
 <template>
   <div>
-    <!-- loading -->
-    <div v-if="loading" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
-      <span class="material-symbols-outlined opacity-50 animate-spin" style="font-size: 36px;">sync</span>
-      <p class="text-body-md">加载中...</p>
-    </div>
-    <!-- empty (when no data at all, not just filtered) -->
-    <div v-else-if="!initialized" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
-      <span class="material-symbols-outlined opacity-20" style="font-size: 48px;">account_tree</span>
-      <p class="text-body-md">暂无组织数据</p>
-    </div>
-    <!-- no match -->
-    <div v-else-if="filterText && !matchCount" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
-      <span class="material-symbols-outlined opacity-20" style="font-size: 48px;">search_off</span>
-      <p class="text-body-md">无匹配单位</p>
-    </div>
-    <!-- tree -->
-    <div v-else key="tree" class="select-none" @click="onTreeClick">
+    <!-- tree：始终挂载，通过 CSS 控制可见性，避免 v-if 销毁/重建 DOM 导致冻结 -->
+    <div
+      class="select-none"
+      :class="showTree ? '' : 'opacity-0 h-0 overflow-hidden pointer-events-none'"
+      @click="onTreeClick"
+    >
       <div v-for="node in flatList" :key="node.id" :data-nid="node.id">
         <div
           class="group flex items-center gap-1 px-3 py-1.5 rounded-lg border mb-0.5 cursor-pointer"
@@ -117,6 +106,20 @@
         </div>
       </div>
     </div>
+
+    <!-- 浮层：独立于树的 v-if 链（仅切换简单 div，无 DOM 破坏风险） -->
+    <div v-if="loading" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
+      <span class="material-symbols-outlined opacity-50 animate-spin" style="font-size: 36px;">sync</span>
+      <p class="text-body-md">加载中...</p>
+    </div>
+    <div v-else-if="!initialized" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
+      <span class="material-symbols-outlined opacity-20" style="font-size: 48px;">account_tree</span>
+      <p class="text-body-md">暂无组织数据</p>
+    </div>
+    <div v-else-if="filterText && !matchCount" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
+      <span class="material-symbols-outlined opacity-20" style="font-size: 48px;">search_off</span>
+      <p class="text-body-md">无匹配单位</p>
+    </div>
   </div>
 </template>
 
@@ -148,6 +151,12 @@ export default {
       matchCount: 0
     }
   },
+  computed: {
+    /** 树是否应该可见（始终挂载，仅 CSS 切换，避免 v-if 销毁 DOM） */
+    showTree() {
+      return this.initialized && (!(this.filterText || '').trim() || this.matchCount > 0)
+    }
+  },
   watch: {
     nodes: {
       immediate: true,
@@ -171,6 +180,10 @@ export default {
     filterText() {
       this._syncVisibility()
       this.$forceUpdate()
+      // 树始终挂载，搜索条件变化后需同步 chevron 旋转状态
+      if (this.showTree) {
+        this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+      }
     },
   },
   methods: {
