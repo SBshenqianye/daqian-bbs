@@ -226,136 +226,100 @@ UPDATE `bbs_sa_org` SET `is_display_selected` = 0
   WHERE `org_name` = '领导干部' AND `is_delete` = 0 AND `is_display_selected` = 1;
 
 -- @migration: v012-ops-v2 运营方案V2功能（登录积分/热度/采纳/举报/违规/等级/版主/限制/申诉）
+-- 注：迁移框架保证每个块只执行一次，DDL 使用 CREATE TABLE IF NOT EXISTS 作为安全网
 
 -- === 1. 新增表 ===
 
 -- bbs_login_log — 每日登录浏览记录
-SELECT COUNT(*) INTO @tbl_ll_exists FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_login_log';
-SET @sql_ll = IF(@tbl_ll_exists = 0, 'CREATE TABLE `bbs_login_log` (
-  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT ''主键ID'',
-  `user_id`         int(11) NOT NULL COMMENT ''用户ID'',
-  `login_date`      varchar(10) NOT NULL COMMENT ''登录日期(YYYY-MM-DD)'',
-  `login_time`      varchar(20) DEFAULT NULL COMMENT ''登录时间'',
-  `browse_minutes`  int(11) DEFAULT 0 COMMENT ''有效浏览分钟数'',
-  `points_awarded`  tinyint(1) DEFAULT 0 COMMENT ''是否已发积分(0=否,1=是)'',
-  `create_time`     varchar(20) DEFAULT NULL COMMENT ''创建时间'',
+CREATE TABLE IF NOT EXISTS `bbs_login_log` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`         int(11) NOT NULL COMMENT '用户ID',
+  `login_date`      varchar(10) NOT NULL COMMENT '登录日期(YYYY-MM-DD)',
+  `login_time`      varchar(20) DEFAULT NULL COMMENT '登录时间',
+  `browse_minutes`  int(11) DEFAULT 0 COMMENT '有效浏览分钟数',
+  `points_awarded`  tinyint(1) DEFAULT 0 COMMENT '是否已发积分(0=否,1=是)',
+  `create_time`     varchar(20) DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `uk_login_log_user_date` (`user_id`, `login_date`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT=''每日登录浏览记录''', 'SELECT 1');
-PREPARE stmt_ll FROM @sql_ll;
-EXECUTE stmt_ll;
-DEALLOCATE PREPARE stmt_ll;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='每日登录浏览记录';
 
 -- bbs_report — 实名举报记录
-SELECT COUNT(*) INTO @tbl_rpt_exists FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_report';
-SET @sql_rpt = IF(@tbl_rpt_exists = 0, 'CREATE TABLE `bbs_report` (
-  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT ''主键ID'',
-  `reporter_id`     int(11) NOT NULL COMMENT ''举报人ID'',
-  `target_type`     varchar(20) NOT NULL COMMENT ''举报目标类型(article/comment/reply)'',
-  `target_id`       int(11) NOT NULL COMMENT ''被举报内容ID'',
-  `reason`          varchar(500) DEFAULT NULL COMMENT ''举报原因'',
-  `status`          varchar(20) DEFAULT ''pending'' COMMENT ''状态(pending/confirmed/rejected)'',
-  `reviewer_id`     int(11) DEFAULT NULL COMMENT ''审核人ID'',
-  `review_time`     varchar(20) DEFAULT NULL COMMENT ''审核时间'',
-  `review_remark`   varchar(500) DEFAULT NULL COMMENT ''审核备注'',
-  `points_awarded`  tinyint(1) DEFAULT 0 COMMENT ''是否已给举报人发积分(0=否,1=是)'',
-  `create_time`     varchar(20) DEFAULT NULL COMMENT ''创建时间'',
+CREATE TABLE IF NOT EXISTS `bbs_report` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `reporter_id`     int(11) NOT NULL COMMENT '举报人ID',
+  `target_type`     varchar(20) NOT NULL COMMENT '举报目标类型(article/comment/reply)',
+  `target_id`       int(11) NOT NULL COMMENT '被举报内容ID',
+  `reason`          varchar(500) DEFAULT NULL COMMENT '举报原因',
+  `status`          varchar(20) DEFAULT 'pending' COMMENT '状态(pending/confirmed/rejected)',
+  `reviewer_id`     int(11) DEFAULT NULL COMMENT '审核人ID',
+  `review_time`     varchar(20) DEFAULT NULL COMMENT '审核时间',
+  `review_remark`   varchar(500) DEFAULT NULL COMMENT '审核备注',
+  `points_awarded`  tinyint(1) DEFAULT 0 COMMENT '是否已给举报人发积分(0=否,1=是)',
+  `create_time`     varchar(20) DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_report_reporter` (`reporter_id`),
   INDEX `idx_report_target` (`target_type`, `target_id`),
   INDEX `idx_report_status` (`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT=''实名举报记录''', 'SELECT 1');
-PREPARE stmt_rpt FROM @sql_rpt;
-EXECUTE stmt_rpt;
-DEALLOCATE PREPARE stmt_rpt;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='实名举报记录';
 
 -- bbs_violation — 违规记录
-SELECT COUNT(*) INTO @tbl_vio_exists FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_violation';
-SET @sql_vio = IF(@tbl_vio_exists = 0, 'CREATE TABLE `bbs_violation` (
-  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT ''主键ID'',
-  `user_id`         int(11) NOT NULL COMMENT ''违规用户ID'',
-  `violation_type`  varchar(50) NOT NULL COMMENT ''违规类型(对应字典violation)'',
-  `points_deducted` int(11) NOT NULL COMMENT ''扣减积分'',
-  `related_type`    varchar(20) DEFAULT NULL COMMENT ''关联类型(article/comment/reply)'',
-  `related_id`      int(11) DEFAULT NULL COMMENT ''关联ID'',
-  `operator_id`     int(11) NOT NULL COMMENT ''操作管理员ID'',
-  `remark`          varchar(500) DEFAULT NULL COMMENT ''备注说明'',
-  `create_time`     varchar(20) DEFAULT NULL COMMENT ''创建时间'',
+CREATE TABLE IF NOT EXISTS `bbs_violation` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`         int(11) NOT NULL COMMENT '违规用户ID',
+  `violation_type`  varchar(50) NOT NULL COMMENT '违规类型(对应字典violation)',
+  `points_deducted` int(11) NOT NULL COMMENT '扣减积分',
+  `related_type`    varchar(20) DEFAULT NULL COMMENT '关联类型(article/comment/reply)',
+  `related_id`      int(11) DEFAULT NULL COMMENT '关联ID',
+  `operator_id`     int(11) NOT NULL COMMENT '操作管理员ID',
+  `remark`          varchar(500) DEFAULT NULL COMMENT '备注说明',
+  `create_time`     varchar(20) DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_violation_user` (`user_id`),
   INDEX `idx_violation_type` (`violation_type`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT=''违规记录''', 'SELECT 1');
-PREPARE stmt_vio FROM @sql_vio;
-EXECUTE stmt_vio;
-DEALLOCATE PREPARE stmt_vio;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='违规记录';
 
 -- bbs_appeal — 申诉记录
-SELECT COUNT(*) INTO @tbl_apl_exists FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_appeal';
-SET @sql_apl = IF(@tbl_apl_exists = 0, 'CREATE TABLE `bbs_appeal` (
-  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT ''主键ID'',
-  `user_id`         int(11) NOT NULL COMMENT ''申诉人ID'',
-  `appeal_type`     varchar(20) NOT NULL COMMENT ''申诉类型(violation/points/other)'',
-  `related_id`      int(11) DEFAULT NULL COMMENT ''关联的违规/积分记录ID'',
-  `content`         text NOT NULL COMMENT ''申诉内容'',
-  `status`          varchar(20) DEFAULT ''pending'' COMMENT ''状态(pending/accepted/rejected)'',
-  `reviewer_id`     int(11) DEFAULT NULL COMMENT ''审核人ID'',
-  `review_remark`   varchar(500) DEFAULT NULL COMMENT ''审核备注'',
-  `review_time`     varchar(20) DEFAULT NULL COMMENT ''审核时间'',
-  `create_time`     varchar(20) DEFAULT NULL COMMENT ''创建时间'',
+CREATE TABLE IF NOT EXISTS `bbs_appeal` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`         int(11) NOT NULL COMMENT '申诉人ID',
+  `appeal_type`     varchar(20) NOT NULL COMMENT '申诉类型(violation/points/other)',
+  `related_id`      int(11) DEFAULT NULL COMMENT '关联的违规/积分记录ID',
+  `content`         text NOT NULL COMMENT '申诉内容',
+  `status`          varchar(20) DEFAULT 'pending' COMMENT '状态(pending/accepted/rejected)',
+  `reviewer_id`     int(11) DEFAULT NULL COMMENT '审核人ID',
+  `review_remark`   varchar(500) DEFAULT NULL COMMENT '审核备注',
+  `review_time`     varchar(20) DEFAULT NULL COMMENT '审核时间',
+  `create_time`     varchar(20) DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_appeal_user` (`user_id`),
   INDEX `idx_appeal_status` (`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT=''申诉记录''', 'SELECT 1');
-PREPARE stmt_apl FROM @sql_apl;
-EXECUTE stmt_apl;
-DEALLOCATE PREPARE stmt_apl;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='申诉记录';
 
 -- bbs_board_moderator — 版块管理员
-SELECT COUNT(*) INTO @tbl_bm_exists FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_board_moderator';
-SET @sql_bm = IF(@tbl_bm_exists = 0, 'CREATE TABLE `bbs_board_moderator` (
-  `id`           int(11) NOT NULL AUTO_INCREMENT COMMENT ''主键ID'',
-  `user_id`      int(11) NOT NULL COMMENT ''用户ID'',
-  `label_id`     int(11) NOT NULL COMMENT ''关联标签(版块)ID'',
-  `role_type`    varchar(20) DEFAULT ''moderator'' COMMENT ''角色类型(moderator/admin)'',
-  `status`       tinyint(1) DEFAULT 1 COMMENT ''状态(1=有效,0=撤销)'',
-  `appoint_time` varchar(20) DEFAULT NULL COMMENT ''任命时间'',
-  `create_time`  varchar(20) DEFAULT NULL COMMENT ''创建时间'',
+CREATE TABLE IF NOT EXISTS `bbs_board_moderator` (
+  `id`           int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`      int(11) NOT NULL COMMENT '用户ID',
+  `label_id`     int(11) NOT NULL COMMENT '关联标签(版块)ID',
+  `role_type`    varchar(20) DEFAULT 'moderator' COMMENT '角色类型(moderator/admin)',
+  `status`       tinyint(1) DEFAULT 1 COMMENT '状态(1=有效,0=撤销)',
+  `appoint_time` varchar(20) DEFAULT NULL COMMENT '任命时间',
+  `create_time`  varchar(20) DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `uk_board_mod_user_label` (`user_id`, `label_id`),
   INDEX `idx_board_mod_label` (`label_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT=''版块管理员''', 'SELECT 1');
-PREPARE stmt_bm FROM @sql_bm;
-EXECUTE stmt_bm;
-DEALLOCATE PREPARE stmt_bm;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='版块管理员';
 
 -- === 2. 修改现有表 ===
 
--- bbs_reply 增加 is_adopted 字段
-SELECT COUNT(*) INTO @col_adopted_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_reply' AND COLUMN_NAME = 'is_adopted';
-SET @sql_adopted = IF(@col_adopted_exists = 0, 'ALTER TABLE `bbs_reply` ADD COLUMN `is_adopted` tinyint(1) DEFAULT 0 COMMENT ''是否被采纳(0=否,1=是)''', 'SELECT 1');
-PREPARE stmt_adopted FROM @sql_adopted;
-EXECUTE stmt_adopted;
-DEALLOCATE PREPARE stmt_adopted;
+-- bbs_reply 增加 is_adopted 字段（忽略已存在错误）
+ALTER TABLE `bbs_reply` ADD COLUMN `is_adopted` tinyint(1) DEFAULT 0 COMMENT '是否被采纳(0=否,1=是)';
 
 -- bbs_user 增加发帖限制字段
-SELECT COUNT(*) INTO @col_pr_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_user' AND COLUMN_NAME = 'post_restricted';
-SET @sql_pr = IF(@col_pr_exists = 0, 'ALTER TABLE `bbs_user` ADD COLUMN `post_restricted` tinyint(1) DEFAULT 0 COMMENT ''是否限制发帖(0=否,1=是)''', 'SELECT 1');
-PREPARE stmt_pr FROM @sql_pr;
-EXECUTE stmt_pr;
-DEALLOCATE PREPARE stmt_pr;
-
-SELECT COUNT(*) INTO @col_pru_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_user' AND COLUMN_NAME = 'post_restricted_until';
-SET @sql_pru = IF(@col_pru_exists = 0, 'ALTER TABLE `bbs_user` ADD COLUMN `post_restricted_until` varchar(20) DEFAULT NULL COMMENT ''限制发帖截止时间''', 'SELECT 1');
-PREPARE stmt_pru FROM @sql_pru;
-EXECUTE stmt_pru;
-DEALLOCATE PREPARE stmt_pru;
+ALTER TABLE `bbs_user` ADD COLUMN `post_restricted` tinyint(1) DEFAULT 0 COMMENT '是否限制发帖(0=否,1=是)';
+ALTER TABLE `bbs_user` ADD COLUMN `post_restricted_until` varchar(20) DEFAULT NULL COMMENT '限制发帖截止时间';
 
 -- bbs_article 增加热度奖励标记字段
-SELECT COUNT(*) INTO @col_hb_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_article' AND COLUMN_NAME = 'is_hot_bonus';
-SET @sql_hb = IF(@col_hb_exists = 0, 'ALTER TABLE `bbs_article` ADD COLUMN `is_hot_bonus` tinyint(1) DEFAULT 0 COMMENT ''热度奖励是否已发放(0=否,1=是)''', 'SELECT 1');
-PREPARE stmt_hb FROM @sql_hb;
-EXECUTE stmt_hb;
-DEALLOCATE PREPARE stmt_hb;
+ALTER TABLE `bbs_article` ADD COLUMN `is_hot_bonus` tinyint(1) DEFAULT 0 COMMENT '热度奖励是否已发放(0=否,1=是)';
 
 -- === 3. 数据字典新增 ===
 
@@ -402,17 +366,3 @@ WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'login_browse_min
 -- ALTER TABLE `bbs_user` DROP COLUMN `post_restricted`;
 -- ALTER TABLE `bbs_reply` DROP COLUMN `is_adopted`;
 -- DELETE FROM `bbs_dict` WHERE `dict_type` IN ('violation', 'hot_threshold', 'login_browse_minutes');
-
--- ============================================
--- 回滚 SQL（如需撤销上述变更，取消注释执行）
--- ============================================
--- Step 7 回滚
--- UPDATE `bbs_sa_org` SET `is_delete` = 0 WHERE `org_no` LIKE '5140404240%';
--- UPDATE `bbs_sa_org` SET `is_delete` = 0 WHERE `org_no` = '514040424';
--- Step 6 回滚
--- UPDATE `bbs_sa_org` SET `p_org_no` = '5140404', `org_tree` = CONCAT('51404|5140404|', SUBSTRING(`org_tree`, LENGTH('51404|5140403|514040304|') + 1)) WHERE `org_no` = '514040422';
--- Step 3 回滚
--- UPDATE `bbs_sa_org` SET `is_delete` = 0 WHERE `org_no` = '51404011701';
--- Step 1 回滚
--- UPDATE `bbs_sa_org` SET `org_name` = '地市支撑机构及原集体企业' WHERE `org_name` = '公司所属各单位';
--- 注意：Step 4-5 的完整回滚较复杂，建议从备份恢复
