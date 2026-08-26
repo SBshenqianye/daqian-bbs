@@ -230,6 +230,7 @@
 
 <script>
 import { getToken, getUser, removeToken, removeUser } from '@/utils/auth'
+import { Notification } from 'element-ui'
 
 export default {
   name: 'BBSHeader',
@@ -246,6 +247,9 @@ export default {
       feedbackContact: null,
       unreadCount: 0,
       unreadTimer: null,
+      heartbeatTimer: null,
+      dailyLoginCalled: false,
+      pointsAlreadyAwarded: false,
     }
   },
   computed: {
@@ -292,11 +296,23 @@ export default {
       this.fetchUnreadCount()
       this.unreadTimer = setInterval(this.fetchUnreadCount, 30000)
     }
+    // 根据当前路由决定是否启动浏览心跳
+    if (this.isLogin && this.isBrowsingPage(this.$route.path)) {
+      this.startHeartbeat()
+    }
   },
   watch: {
     showFeedback(val) {
       if (val) this.fetchFeedbackContact()
-    }
+    },
+    '$route.path'(newPath) {
+      if (!this.isLogin) return
+      if (this.isBrowsingPage(newPath)) {
+        this.startHeartbeat()
+      } else {
+        this.stopHeartbeat()
+      }
+    },
   },
   beforeDestroy() {
     window.removeEventListener('scroll', this.handleScroll)
@@ -304,6 +320,7 @@ export default {
     this.$bus && this.$bus.$off('portraitUpdated')
     this.$bus && this.$bus.$off('unreadCountUpdated')
     if (this.unreadTimer) clearInterval(this.unreadTimer)
+    this.stopHeartbeat()
   },
   methods: {
     checkLoginState() {
@@ -315,10 +332,17 @@ export default {
         if (!this.unreadTimer) {
           this.unreadTimer = setInterval(this.fetchUnreadCount, 30000)
         }
+        // 登录状态下，若在浏览页面则启动心跳
+        if (this.isBrowsingPage(this.$route.path) && !this.heartbeatTimer) {
+          this.startHeartbeat()
+        }
       } else {
         this.isLogin = false
         this.user = null
         this.unreadCount = 0
+        this.dailyLoginCalled = false
+        this.pointsAlreadyAwarded = false
+        this.stopHeartbeat()
         if (this.unreadTimer) {
           clearInterval(this.unreadTimer)
           this.unreadTimer = null
@@ -346,6 +370,9 @@ export default {
       }
     },
     handleLogout() {
+      this.stopHeartbeat()
+      this.dailyLoginCalled = false
+      this.pointsAlreadyAwarded = false
       removeToken()
       removeUser()
       this.user = null
@@ -391,6 +418,57 @@ export default {
       this.userMenuOpen = false
       if (this.$route.path === '/my-replies' && this.$route.query.tab === 'repliedToMe') return
       this.$router.push({ path: '/my-replies', query: { tab: 'repliedToMe' } })
+    },
+    // ---- 浏览心跳（只在内容浏览页运行） ----
+    /** 判断当前路由是否为"浏览页面"（帖子详情页） */
+    isBrowsingPage(path) {
+      return path.startsWith('/articleDetails/')
+    },
+    /** 启动浏览心跳：先记录每日登录，再每 60s 上报一次 */
+    startHeartbeat() {
+      if (this.heartbeatTimer) return
+      const user = getUser()
+      if (!user) return
+      // 调用 dailyLogin 记录今日登录（幂等，已存在则返回状态）
+      this.postRequest(`/user/dailyLogin?userId=${user.id}`).then(resp => {
+        if (resp && resp.obj) {
+          this.dailyLoginCalled = true
+          // 如果后端说今日积分已发放，标记不再弹窗
+          if (resp.obj.pointsAwarded === 1) {
+            this.pointsAlreadyAwarded = true
+          }
+        }
+      }).catch(() => {})
+      // 立即发一次心跳，然后每 60s 发一次
+      this.sendHeartbeat()
+      this.heartbeatTimer = setInterval(this.sendHeartbeat, 60000)
+    },
+    /** 停止浏览心跳 */
+    stopHeartbeat() {
+      if (this.heartbeatTimer) {
+        clearInterval(this.heartbeatTimer)
+        this.heartbeatTimer = null
+      }
+    },
+    /** 单次心跳上报 */
+    sendHeartbeat() {
+      if (this.pointsAlreadyAwarded) return
+      const user = getUser()
+      if (!user) return
+      this.postRequest(`/user/browseHeartbeat?userId=${user.id}`).then(resp => {
+        if (!resp || !resp.obj) return
+        if (resp.obj.pointsAwarded === 1 && !this.pointsAlreadyAwarded) {
+          this.pointsAlreadyAwarded = true
+          // 弹出积分到账弹窗（自动消失，无需点击）
+          Notification({
+            title: '🎉 积分到账',
+            message: '恭喜获得每日登录浏览积分 +1',
+            type: 'success',
+            duration: 4000,
+            position: 'top-right',
+          })
+        }
+      }).catch(() => {})
     },
   },
 }

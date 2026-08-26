@@ -63,6 +63,8 @@ axios.interceptors.response.use(success=>{
                 || url.indexOf('saOrgTree') !== -1
                 || url.indexOf('listByGroup') !== -1
                 || url.indexOf('login') !== -1
+                || url.indexOf('dailyLogin') !== -1
+                || url.indexOf('browseHeartbeat') !== -1
                 || url.indexOf('pointsRank') !== -1
                 || url.indexOf('personalPointsRank') !== -1
             if (!noSuccessTip) {

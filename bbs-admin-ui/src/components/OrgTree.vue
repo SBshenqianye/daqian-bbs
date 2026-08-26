@@ -16,7 +16,7 @@
       <p class="text-body-md">无匹配单位</p>
     </div>
     <!-- tree -->
-    <div v-else class="select-none" @click="onTreeClick">
+    <div v-else :key="'tree-' + filterText" class="select-none" @click="onTreeClick">
       <div v-for="node in flatList" :key="node.id" :data-nid="node.id">
         <div
           class="group flex items-center gap-1 px-3 py-1.5 rounded-lg border mb-0.5 cursor-pointer"

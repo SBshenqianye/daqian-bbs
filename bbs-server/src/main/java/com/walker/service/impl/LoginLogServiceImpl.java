@@ -8,6 +8,7 @@ import com.walker.service.LoginLogService;
 import com.walker.service.PointsLogService;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,7 +47,7 @@ public class LoginLogServiceImpl extends ServiceImpl<LoginLogMapper, LoginLog> i
             return ResultBean.success("今日已登录", data);
         }
 
-        // 新建今日登录记录
+        // 新建今日登录记录（并发场景下可能已存在，捕获重复键异常）
         LoginLog log = new LoginLog();
         log.setUserId(userId);
         log.setLoginDate(loginDate);
@@ -54,7 +55,16 @@ public class LoginLogServiceImpl extends ServiceImpl<LoginLogMapper, LoginLog> i
         log.setBrowseMinutes(0);
         log.setPointsAwarded(0);
         log.setCreateTime(loginTime);
-        this.save(log);
+        try {
+            this.save(log);
+        } catch (DuplicateKeyException e) {
+            // 并发插入，已有记录，直接查返回
+            existing = loginLogMapper.findByUserAndDate(userId, loginDate);
+            Map<String, Object> data = new HashMap<>();
+            data.put("browseMinutes", existing.getBrowseMinutes());
+            data.put("pointsAwarded", existing.getPointsAwarded());
+            return ResultBean.success("今日已登录", data);
+        }
 
         Map<String, Object> data = new HashMap<>();
         data.put("browseMinutes", 0);
@@ -71,9 +81,12 @@ public class LoginLogServiceImpl extends ServiceImpl<LoginLogMapper, LoginLog> i
 
         LoginLog existing = loginLogMapper.findByUserAndDate(userId, loginDate);
         if (existing == null) {
-            // 自动创建今日记录
+            // 自动创建今日记录（并发下可能由 dailyLogin 并发创建）
             dailyLogin(userId);
             existing = loginLogMapper.findByUserAndDate(userId, loginDate);
+        }
+        if (existing == null) {
+            return ResultBean.error("登录记录异常，请稍后重试");
         }
 
         // 已发过分且满10分钟，无需继续累计
