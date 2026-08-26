@@ -69,6 +69,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Autowired
     private CommentMapper commentMapper;
 
+    @Autowired
+    private PointsLogService pointsLogService;
+
     /**
      * 发布文章
      * @param articleParam
@@ -131,6 +134,19 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // 如果 文章附件不为空，则添加文章和附件的绑定关系
         if (articleParam.getFiles() != null && articleParam.getFiles().length > 0) {
             articleFileService.updateArticleFile(articleParam.getFiles(), article.getArticleId());
+        }
+
+        // 发帖积分：只有通过质量检测的帖子才计分
+        if (quality.isPassed()) {
+            int postPoints = 2; // default
+            try {
+                List<Dict> postList = dictService.listDictByType(ConstantUtil.MANA_POST);
+                if (postList != null && !postList.isEmpty()) {
+                    postPoints = Integer.parseInt(postList.get(0).getDictValue());
+                }
+            } catch (Exception e) { /* use default */ }
+            pointsLogService.adjustUserPoints(articleParam.getUserId(), postPoints, "发帖积分",
+                    "article", article.getArticleId(), null);
         }
 
         // 垃圾内容提示用户
@@ -545,6 +561,32 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public ResultBean deleteArticleByArticleId(Integer articleId) {
+        // 删除前先获取文章信息，用于扣回积分
+        Article article = articleMapper.selectById(articleId);
+        if (article != null && article.getEnable() != null && article.getEnable() == 1) {
+            int postPoints = 2; // default
+            try {
+                List<Dict> postList = dictService.listDictByType(ConstantUtil.MANA_POST);
+                if (postList != null && !postList.isEmpty()) {
+                    postPoints = Integer.parseInt(postList.get(0).getDictValue());
+                }
+            } catch (Exception e) { /* use default */ }
+            pointsLogService.adjustUserPoints(article.getUserId(), -postPoints, "删除帖子扣回积分",
+                    "article", articleId, null);
+
+            // 如果是精华帖，额外扣回精华加分
+            if (article.getIsFeatured() != null && article.getIsFeatured() == 1) {
+                int featuredPoints = 10; // default
+                try {
+                    List<Dict> featuredList = dictService.listDictByType(ConstantUtil.MANA_FEATURED);
+                    if (featuredList != null && !featuredList.isEmpty()) {
+                        featuredPoints = Integer.parseInt(featuredList.get(0).getDictValue());
+                    }
+                } catch (Exception e) { /* use default */ }
+                pointsLogService.adjustUserPoints(article.getUserId(), -featuredPoints, "删除精华帖扣回加分",
+                        "article", articleId, null);
+            }
+        }
         articleMapper.deleteById(articleId);
         return ResultBean.success("删除成功！");
     }
@@ -614,23 +656,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (StringUtils.isEmpty(pointsRankParam.getOrgNo())){
             pointsRankParam.setOrgNo(ConstantUtil.ORG_NEI_JIANG);
         }
-        // 按单位统计查询当前层级和下级 发布文章数
+        // 按单位统计查询当前层级和下级
         pointsRankParam.setOrgLength(pointsRankParam.getOrgNo().length()+2);
-        // 查询配置中-发帖和回帖积分
-        List<Dict> postList = dictService.listDictByType(ConstantUtil.MANA_POST);
-        List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
-        if (CollectionUtils.isEmpty(postList) || CollectionUtils.isEmpty(replyList)) {
-            return ResultBean.error("积分计算发帖回帖配置不全，请联系管理员");
-        }
-        pointsRankParam.setPost(Integer.parseInt(postList.get(0).getDictValue()));
-        pointsRankParam.setReply(Integer.parseInt(replyList.get(0).getDictValue()));
-        // 查询配置中-精华帖积分
-        List<Dict> featuredList = dictService.listDictByType(ConstantUtil.MANA_FEATURED);
-        if (!CollectionUtils.isEmpty(featuredList)) {
-            pointsRankParam.setFeatured(Integer.parseInt(featuredList.get(0).getDictValue()));
-        } else {
-            pointsRankParam.setFeatured(0);
-        }
         // 01：本月，02：累计，获取配置的开始和结束日期
         // 如果前端已传 startTime 和 endTime，直接使用；否则按 rankType 计算默认值
         if (StringUtils.isEmpty(pointsRankParam.getStartTime()) || StringUtils.isEmpty(pointsRankParam.getEndTime())) {
@@ -638,14 +665,17 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 pointsRankParam.setStartTime(DateUtil.formatDate(DateUtil.beginOfMonth(new Date())));
                 pointsRankParam.setEndTime(DateUtil.formatDate(DateUtil.endOfMonth(new Date())));
             } else {
-                // 查询累计排名配置的开始和结束时间
+                // 累计排名：优先从配置读取，没有则覆盖全部历史
                 List<Dict> startTimeList = dictService.listDictByType(ConstantUtil.MANA_POINTS_START_TIME);
                 List<Dict> endTimeList = dictService.listDictByType(ConstantUtil.MANA_POINTS_END_TIME);
-                if (CollectionUtils.isEmpty(startTimeList) || CollectionUtils.isEmpty(endTimeList) || CollectionUtils.isEmpty(postList) || CollectionUtils.isEmpty(replyList)) {
-                    return ResultBean.error("累积排名日期配置不全，请联系管理员");
+                if (!CollectionUtils.isEmpty(startTimeList) && !CollectionUtils.isEmpty(endTimeList)) {
+                    pointsRankParam.setStartTime(startTimeList.get(0).getDictValue());
+                    pointsRankParam.setEndTime(endTimeList.get(0).getDictValue());
+                } else {
+                    // 未配置 → 覆盖全部历史
+                    pointsRankParam.setStartTime("2000-01-01");
+                    pointsRankParam.setEndTime(DateUtil.formatDate(new Date()));
                 }
-                pointsRankParam.setStartTime(startTimeList.get(0).getDictValue());
-                pointsRankParam.setEndTime(endTimeList.get(0).getDictValue());
             }
         }
 
@@ -721,12 +751,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             param.setSize(20);
         }
 
-        // 获取积分配置
-        int[] config = getPointsConfig();
-        param.setPost(config[0]);
-        param.setReply(config[1]);
-
-        // 查询 Top N
+        // 查询 Top N（积分完全来自 bbs_points_log，无需传入 dict 配置）
         List<PersonalPointsRankVO> list = articleMapper.personalPointsRank(param);
 
         // 分配排名序号
@@ -838,9 +863,42 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (articleId == null) {
             return ResultBean.error("文章ID不能为空");
         }
-        Article article = new Article();
-        article.setArticleId(articleId).setIsFeatured(isFeatured);
-        articleMapper.updateById(article);
+        // 查询文章，获取当前精华状态和作者
+        Article article = articleMapper.selectById(articleId);
+        if (article == null) {
+            return ResultBean.error("文章不存在");
+        }
+        Integer oldFeatured = article.getIsFeatured() != null ? article.getIsFeatured() : 0;
+        // 更新精华状态
+        Article update = new Article();
+        update.setArticleId(articleId).setIsFeatured(isFeatured);
+        articleMapper.updateById(update);
+
+        // 积分变动：设为精华+10，取消精华-10
+        int newFeatured = isFeatured != null ? isFeatured : 0;
+        if (newFeatured == 1 && oldFeatured != 1) {
+            // 设为精华 → 加分
+            int featuredPoints = 10; // default
+            try {
+                List<Dict> featuredList = dictService.listDictByType(ConstantUtil.MANA_FEATURED);
+                if (featuredList != null && !featuredList.isEmpty()) {
+                    featuredPoints = Integer.parseInt(featuredList.get(0).getDictValue());
+                }
+            } catch (Exception e) { /* use default */ }
+            pointsLogService.adjustUserPoints(article.getUserId(), featuredPoints, "精华帖奖励积分",
+                    "article", articleId, null);
+        } else if (newFeatured != 1 && oldFeatured == 1) {
+            // 取消精华 → 扣回
+            int featuredPoints = 10;
+            try {
+                List<Dict> featuredList = dictService.listDictByType(ConstantUtil.MANA_FEATURED);
+                if (featuredList != null && !featuredList.isEmpty()) {
+                    featuredPoints = Integer.parseInt(featuredList.get(0).getDictValue());
+                }
+            } catch (Exception e) { /* use default */ }
+            pointsLogService.adjustUserPoints(article.getUserId(), -featuredPoints, "取消精华帖扣回积分",
+                    "article", articleId, null);
+        }
         return ResultBean.success(isFeatured == 1 ? "已设为精华帖" : "已取消精华帖");
     }
 

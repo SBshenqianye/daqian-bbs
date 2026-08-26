@@ -366,3 +366,87 @@ WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'login_browse_min
 -- ALTER TABLE `bbs_user` DROP COLUMN `post_restricted`;
 -- ALTER TABLE `bbs_reply` DROP COLUMN `is_adopted`;
 -- DELETE FROM `bbs_dict` WHERE `dict_type` IN ('violation', 'hot_threshold', 'login_browse_minutes');
+
+-- @migration: v013-backfill-points-log 回填历史积分到 bbs_points_log
+-- 将历史发帖、评论、回复、登录浏览积分写入积分日志，使积分明细完整
+-- 幂等：通过 NOT EXISTS 检查 related_type + related_id 避免重复
+
+-- 1. 历史发帖积分
+INSERT INTO bbs_points_log (user_id, points_change, reason, related_type, related_id, operator_id, create_time, is_reversed)
+SELECT a.user_id,
+       CAST(COALESCE(d.dict_value, '3') AS SIGNED),
+       '发帖积分',
+       'article',
+       a.article_id,
+       NULL,
+       a.create_time,
+       0
+FROM bbs_article a
+LEFT JOIN bbs_dict d ON d.dict_type = 'post'
+WHERE a.is_delete = 0
+  AND a.enable = 1
+  AND NOT EXISTS (
+    SELECT 1 FROM bbs_points_log p
+    WHERE p.related_type = 'article' AND p.related_id = a.article_id
+  );
+
+-- 2. 历史评论积分（楼层）
+INSERT INTO bbs_points_log (user_id, points_change, reason, related_type, related_id, operator_id, create_time, is_reversed)
+SELECT c.comment_user_id,
+       CAST(COALESCE(d.dict_value, '1') AS SIGNED),
+       '评论积分',
+       'comment',
+       c.comment_id,
+       NULL,
+       c.comment_time,
+       0
+FROM bbs_comment c
+LEFT JOIN bbs_dict d ON d.dict_type = 'reply'
+WHERE c.is_delete = 0
+  AND c.enable = 1
+  AND NOT EXISTS (
+    SELECT 1 FROM bbs_points_log p
+    WHERE p.related_type = 'comment' AND p.related_id = c.comment_id
+  );
+
+-- 3. 历史回复积分（楼中楼）
+INSERT INTO bbs_points_log (user_id, points_change, reason, related_type, related_id, operator_id, create_time, is_reversed)
+SELECT r.reply_user_id,
+       CAST(COALESCE(d.dict_value, '1') AS SIGNED),
+       '回复积分',
+       'reply',
+       r.reply_id,
+       NULL,
+       r.reply_time,
+       0
+FROM bbs_reply r
+LEFT JOIN bbs_dict d ON d.dict_type = 'reply'
+WHERE r.is_delete = 0
+  AND r.enable = 1
+  AND NOT EXISTS (
+    SELECT 1 FROM bbs_points_log p
+    WHERE p.related_type = 'reply' AND p.related_id = r.reply_id
+  );
+
+-- 4. 历史登录浏览积分
+INSERT INTO bbs_points_log (user_id, points_change, reason, related_type, related_id, operator_id, create_time, is_reversed)
+SELECT ll.user_id,
+       1,
+       '每日有效登录浏览积分',
+       'login',
+       ll.id,
+       NULL,
+       ll.create_time,
+       0
+FROM bbs_login_log ll
+WHERE ll.points_awarded = 1
+  AND NOT EXISTS (
+    SELECT 1 FROM bbs_points_log p
+    WHERE p.related_type = 'login' AND p.related_id = ll.id
+  );
+
+-- @migration: v014-fix-backfill-reason 去除回填记录中的"历史回填"字样
+UPDATE bbs_points_log SET reason = '发帖积分' WHERE reason = '发帖积分（历史回填）';
+UPDATE bbs_points_log SET reason = '评论积分' WHERE reason = '评论积分（历史回填）';
+UPDATE bbs_points_log SET reason = '回复积分' WHERE reason = '回复积分（历史回填）';
+UPDATE bbs_points_log SET reason = '每日有效登录浏览积分' WHERE reason = '每日有效登录浏览积分（历史回填）';

@@ -49,74 +49,136 @@ public class ReplyListController {
 
     /**
      * 我回复的 — 获取我参与讨论的文章列表
-     * 逻辑：查找我发出的所有回复 → 找到对应的评论 → 找到对应的文章 → 去重
+     * 逻辑：查找我发出的所有回复(楼中楼) + 我发出的所有评论(楼层) → 找到对应的文章 → 去重
      */
     @ApiOperation(value = "我回复的帖子列表")
     @GetMapping("/myReplies")
     public ResultBean getMyReplies(@RequestParam Integer userId,
                                    @RequestParam(defaultValue = "1") Integer page,
                                    @RequestParam(defaultValue = "20") Integer size) {
-        // 1. 查找我发出的所有回复
+
+        // 1. 查找我发出的所有楼中楼回复
         List<Reply> myReplies = replyService.list(
                 new LambdaQueryWrapper<Reply>()
                         .eq(Reply::getReplyUserId, userId)
                         .orderByDesc(Reply::getReplyTime)
         );
 
-        // 2. 提取去重的评论ID，按最新回复时间排序
+        // 提取去重的评论ID → 文章映射（楼中楼回复 → 评论 → 文章）
         Map<Integer, Reply> latestReplyByComment = new LinkedHashMap<>();
         for (Reply reply : myReplies) {
-            Integer commentId = reply.getCommentId();
-            if (!latestReplyByComment.containsKey(commentId)) {
-                latestReplyByComment.put(commentId, reply);
+            if (!latestReplyByComment.containsKey(reply.getCommentId())) {
+                latestReplyByComment.put(reply.getCommentId(), reply);
+            }
+        }
+        List<Integer> replyCommentIds = new ArrayList<>(latestReplyByComment.keySet());
+        Map<Integer, Integer> replyCommentToArticle = new LinkedHashMap<>();
+        if (!replyCommentIds.isEmpty()) {
+            List<Comment> replyComments = commentService.listByIds(replyCommentIds);
+            for (Comment c : replyComments) {
+                replyCommentToArticle.putIfAbsent(c.getCommentId(), c.getCommentArticleId());
             }
         }
 
-        // 3. 通过评论找到文章
-        List<Integer> commentIds = new ArrayList<>(latestReplyByComment.keySet());
-        if (commentIds.isEmpty()) {
+        // 2. 查找我发出的所有楼层评论
+        List<Comment> myComments = commentService.list(
+                new LambdaQueryWrapper<Comment>()
+                        .eq(Comment::getCommentUserId, userId)
+                        .orderByDesc(Comment::getCommentTime)
+        );
+
+        // 3. 合并：按文章ID去重，保留最新的互动记录
+        // key: articleId, value: { articleId, commentId, replyId, content, time, source }
+        LinkedHashMap<Integer, Map<String, Object>> articleInteractions = new LinkedHashMap<>();
+
+        // 先加入楼层评论（按时间顺序，后来的如果更旧会覆盖，但我们按时间倒序所以不会）
+        for (Comment c : myComments) {
+            Integer articleId = c.getCommentArticleId();
+            if (articleId == null) continue;
+            if (!articleInteractions.containsKey(articleId)) {
+                Map<String, Object> interaction = new HashMap<>();
+                interaction.put("articleId", articleId);
+                interaction.put("commentId", c.getCommentId());
+                interaction.put("replyId", null);
+                interaction.put("content", c.getCommentContent());
+                interaction.put("time", c.getCommentTime());
+                interaction.put("source", "comment");
+                articleInteractions.put(articleId, interaction);
+            }
+        }
+
+        // 再加入楼中楼回复（如果文章已有记录但更新，则覆盖）
+        for (Map.Entry<Integer, Reply> entry : latestReplyByComment.entrySet()) {
+            Integer commentId = entry.getKey();
+            Reply reply = entry.getValue();
+            Integer articleId = replyCommentToArticle.get(commentId);
+            if (articleId == null) continue;
+
+            Map<String, Object> existing = articleInteractions.get(articleId);
+            if (existing == null) {
+                // 文章首次出现
+                Map<String, Object> interaction = new HashMap<>();
+                interaction.put("articleId", articleId);
+                interaction.put("commentId", commentId);
+                interaction.put("replyId", reply.getReplyId());
+                interaction.put("content", reply.getReplyContent());
+                interaction.put("time", reply.getReplyTime());
+                interaction.put("source", "reply");
+                articleInteractions.put(articleId, interaction);
+            } else {
+                // 文章已有记录，如果回复更新则覆盖为回复内容
+                String existingTime = (String) existing.get("time");
+                String replyTime = reply.getReplyTime();
+                if (replyTime != null && (existingTime == null || replyTime.compareTo(existingTime) > 0)) {
+                    existing.put("commentId", commentId);
+                    existing.put("replyId", reply.getReplyId());
+                    existing.put("content", reply.getReplyContent());
+                    existing.put("time", reply.getReplyTime());
+                    existing.put("source", "reply");
+                }
+            }
+        }
+
+        // 4. 按最新互动时间排序（最新的在前）
+        List<Map<String, Object>> sortedList = new ArrayList<>(articleInteractions.values());
+        sortedList.sort((a, b) -> {
+            String t1 = (String) a.getOrDefault("time", "");
+            String t2 = (String) b.getOrDefault("time", "");
+            return t2.compareTo(t1);
+        });
+
+        // 5. 查询文章信息并构建返回结果
+        List<Integer> articleIds = sortedList.stream()
+                .map(m -> (Integer) m.get("articleId"))
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (articleIds.isEmpty()) {
             return ResultBean.success("查询成功", Collections.emptyMap());
         }
 
-        List<Comment> comments = commentService.listByIds(commentIds);
-        Map<Integer, Comment> commentMap = comments.stream()
-                .collect(Collectors.toMap(Comment::getCommentId, c -> c, (a, b) -> a));
-
-        // 4. 获取去重的文章ID（保持顺序）
-        LinkedHashMap<Integer, Comment> articleCommentMap = new LinkedHashMap<>();
-        for (Comment c : comments) {
-            articleCommentMap.putIfAbsent(c.getCommentArticleId(), c);
-        }
-        List<Integer> articleIds = new ArrayList<>(articleCommentMap.keySet());
-
-        // 5. 查询文章信息
         List<Article> articles = articleService.listByIds(articleIds);
         Map<Integer, Article> articleMap = articles.stream()
                 .collect(Collectors.toMap(Article::getArticleId, a -> a, (a, b) -> a));
 
-        // 6. 构建返回结果
         List<ReplyListItemVO> resultList = new ArrayList<>();
-        for (Map.Entry<Integer, Comment> entry : articleCommentMap.entrySet()) {
-            Integer articleId = entry.getKey();
-            Comment comment = entry.getValue();
-            Reply latestReply = latestReplyByComment.get(comment.getCommentId());
+        for (Map<String, Object> interaction : sortedList) {
+            Integer articleId = (Integer) interaction.get("articleId");
             Article article = articleMap.get(articleId);
-
             if (article == null) continue;
 
             ReplyListItemVO item = new ReplyListItemVO();
             item.setArticleId(articleId);
             item.setArticleTitle(article.getArticleTitle());
             item.setArticleImage(article.getArticleImage());
-            item.setCommentId(comment.getCommentId());
-            item.setReplyId(latestReply != null ? latestReply.getReplyId() : null);
-            item.setContent(latestReply != null ? latestReply.getReplyContent() : comment.getCommentContent());
-            item.setTime(latestReply != null ? latestReply.getReplyTime() : comment.getCommentTime());
-
+            item.setCommentId((Integer) interaction.get("commentId"));
+            item.setReplyId((Integer) interaction.get("replyId"));
+            item.setContent((String) interaction.get("content"));
+            item.setTime((String) interaction.get("time"));
             resultList.add(item);
         }
 
-        // 7. 分页（简单内存分页，数据量不大）
+        // 6. 分页
         int total = resultList.size();
         int fromIndex = (page - 1) * size;
         int toIndex = Math.min(fromIndex + size, total);

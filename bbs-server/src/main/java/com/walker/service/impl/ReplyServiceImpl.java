@@ -4,10 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.ReplyMapper;
 import com.walker.pojo.Comment;
+import com.walker.pojo.Dict;
 import com.walker.pojo.Reply;
 import com.walker.service.CommentService;
+import com.walker.service.DictService;
 import com.walker.service.NotificationService;
+import com.walker.service.PointsLogService;
 import com.walker.service.ReplyService;
+import com.walker.utils.ConstantUtil;
 import com.walker.utils.ContentQualityUtil;
 import com.walker.vo.ResultBean;
 import com.walker.vo.param.ReplyParam;
@@ -37,6 +41,12 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
 
     @Autowired
     private CommentService commentService;
+
+    @Autowired
+    private PointsLogService pointsLogService;
+
+    @Autowired
+    private DictService dictService;
     /**
      * 通过评论获取回复
      * @param commentId
@@ -77,6 +87,19 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
         reply.setEnable(quality.isPassed() ? 1 : 0);
         this.save(reply);
 
+        // 回复积分：只有通过质量检测的回复才计分
+        if (quality.isPassed()) {
+            int replyPoints = 1; // default
+            try {
+                List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
+                if (replyList != null && !replyList.isEmpty()) {
+                    replyPoints = Integer.parseInt(replyList.get(0).getDictValue());
+                }
+            } catch (Exception e) { /* use default */ }
+            pointsLogService.adjustUserPoints(replyParam.getReplyUserId(), replyPoints, "回复积分",
+                    "reply", reply.getReplyId(), null);
+        }
+
         // 通知被回复的用户（非自己时）
         if (quality.isPassed() && replyParam.getReplyToUserId() != null
                 && !replyParam.getReplyToUserId().equals(replyParam.getReplyUserId())) {
@@ -108,7 +131,19 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
 
     @Override
     public ResultBean deleteReplyById(Integer replyId) {
-
+        // 删除前先获取回复信息，用于扣回积分
+        Reply reply = replyMapper.selectById(replyId);
+        if (reply != null && reply.getEnable() != null && reply.getEnable() == 1) {
+            int replyPoints = 1; // default
+            try {
+                List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
+                if (replyList != null && !replyList.isEmpty()) {
+                    replyPoints = Integer.parseInt(replyList.get(0).getDictValue());
+                }
+            } catch (Exception e) { /* use default */ }
+            pointsLogService.adjustUserPoints(reply.getReplyUserId(), -replyPoints, "删除回复扣回积分",
+                    "reply", replyId, null);
+        }
         replyMapper.deleteById(replyId);
         return ResultBean.success("删除成功");
     }

@@ -43,11 +43,29 @@ public class ReplyController {
     @Autowired
     private NotificationService notificationService;
 
+    @Autowired
+    private CommentService commentService;
+
     @ApiOperation(value = "保存用户的回复")
     @PutMapping("/userReply")
     public ResultBean userReply(@RequestBody ReplyParam replyParam){
 
-        return replyService.saveUserReply(replyParam);
+        ResultBean result = replyService.saveUserReply(replyParam);
+
+        // 帖子热度奖励检查：回复发布后检查该文章的有效互动数
+        if (replyParam.getCommentId() != null) {
+            try {
+                // 通过评论找到文章ID
+                com.walker.pojo.Comment comment = commentService.getById(replyParam.getCommentId());
+                if (comment != null && comment.getCommentArticleId() != null) {
+                    commentService.checkHotBonus(comment.getCommentArticleId());
+                }
+            } catch (Exception e) {
+                // 热度检查失败不影响回复发布
+            }
+        }
+
+        return result;
     }
 
     @ApiOperation(value = "通过id删除用户评论")

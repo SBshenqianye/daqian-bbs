@@ -147,6 +147,13 @@
                     class="ml-auto w-2 h-2 bg-error rounded-full flex-shrink-0"
                   ></span>
                 </router-link>
+                <router-link
+                  to="/my-points-log"
+                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
+                >
+                  <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+                  积分记录
+                </router-link>
                 <div class="h-[1px] bg-outline-variant my-1"></div>
                 <button
                   type="button"
@@ -424,7 +431,7 @@ export default {
     isBrowsingPage(path) {
       return path.startsWith('/articleDetails/')
     },
-    /** 启动浏览心跳：先记录每日登录，再每 60s 上报一次 */
+    /** 启动浏览心跳：先记录每日登录，拿到状态后再发心跳 */
     startHeartbeat() {
       if (this.heartbeatTimer) return
       const user = getUser()
@@ -438,9 +445,12 @@ export default {
             this.pointsAlreadyAwarded = true
           }
         }
-      }).catch(() => {})
-      // 立即发一次心跳，然后每 60s 发一次
-      this.sendHeartbeat()
+        // dailyLogin 返回后再发第一次心跳，避免 pointsAlreadyAwarded 还是 false 导致重复弹窗
+        this.sendHeartbeat()
+      }).catch(() => {
+        // dailyLogin 失败也不阻塞心跳
+        this.sendHeartbeat()
+      })
       this.heartbeatTimer = setInterval(this.sendHeartbeat, 60000)
     },
     /** 停止浏览心跳 */

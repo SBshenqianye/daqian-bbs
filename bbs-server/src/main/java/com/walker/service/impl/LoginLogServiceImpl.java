@@ -1,5 +1,6 @@
 package com.walker.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.DictMapper;
 import com.walker.mapper.LoginLogMapper;
@@ -112,16 +113,29 @@ public class LoginLogServiceImpl extends ServiceImpl<LoginLogMapper, LoginLog> i
 
         // 达到阈值，发放积分
         if (newMinutes >= threshold && (existing.getPointsAwarded() == null || existing.getPointsAwarded() == 0)) {
-            existing.setPointsAwarded(1);
-            this.updateById(existing);
+            // ★ 原子操作：用 WHERE points_awarded=0 的 UPDATE 保证只有一个请求能抢到
+            LambdaUpdateWrapper<LoginLog> atomicUpdate = new LambdaUpdateWrapper<>();
+            atomicUpdate.eq(LoginLog::getUserId, userId)
+                    .eq(LoginLog::getLoginDate, loginDate)
+                    .eq(LoginLog::getPointsAwarded, 0)
+                    .set(LoginLog::getPointsAwarded, 1)
+                    .set(LoginLog::getBrowseMinutes, newMinutes);
+            boolean awarded = this.update(atomicUpdate);
 
-            pointsLogService.adjustUserPoints(userId, 1, "每日有效登录浏览积分",
-                    "login", null, null);
+            if (awarded) {
+                pointsLogService.adjustUserPoints(userId, 1, "每日有效登录浏览积分",
+                        "login", null, null);
 
+                Map<String, Object> data = new HashMap<>();
+                data.put("browseMinutes", newMinutes);
+                data.put("pointsAwarded", 1);
+                return ResultBean.success("恭喜获得每日登录浏览积分+1", data);
+            }
+            // 未抢到（并发已被其他请求抢先发放），返回已发放状态
             Map<String, Object> data = new HashMap<>();
             data.put("browseMinutes", newMinutes);
             data.put("pointsAwarded", 1);
-            return ResultBean.success("恭喜获得每日登录浏览积分+1", data);
+            return ResultBean.success("今日积分已发放", data);
         }
 
         this.updateById(existing);

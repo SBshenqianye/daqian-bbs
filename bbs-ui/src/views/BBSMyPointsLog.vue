@@ -69,7 +69,7 @@ export default {
       const userId = this.getUserId()
       if (!userId) return
       try {
-        const res = await this.getRequestUrl(`/user/level?userId=${userId}`)
+        const res = await this.getRequest(`/user/level?userId=${userId}`)
         if (res && res.code == 200) this.levelInfo = res.obj
       } catch (e) { /* ignore */ }
     },
@@ -78,7 +78,7 @@ export default {
       if (!userId) return
       this.loading = true
       try {
-        const res = await this.postRequestUrl('/user/points/myLog', { userId, page: this.currentPage, size: this.pageSize })
+        const res = await this.postRequest('/user/points/myLog', { userId, page: this.currentPage, size: this.pageSize })
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0

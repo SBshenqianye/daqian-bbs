@@ -73,7 +73,7 @@ export default {
       if (!userId) return
       this.loading = true
       try {
-        const res = await this.postRequestUrl('/user/appeal/myList', { userId, page: 1, size: 100 })
+        const res = await this.postRequest('/user/appeal/myList', { userId, page: 1, size: 100 })
         if (res && res.code == 200 && res.obj) this.list = res.obj.records || []
         else this.list = []
       } catch (e) { this.list = [] }
@@ -88,7 +88,7 @@ export default {
       if (!userId) return
       this.submitting = true
       try {
-        const res = await this.postRequestUrl('/user/appeal/submit', { userId, appealType: this.form.appealType, content: this.form.content })
+        const res = await this.postRequest('/user/appeal/submit', { userId, appealType: this.form.appealType, content: this.form.content })
         if (res && res.code == 200) {
           alert('申诉已提交')
           this.form = { appealType: '', content: '' }
