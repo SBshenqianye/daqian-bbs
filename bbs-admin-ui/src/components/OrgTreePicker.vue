@@ -165,6 +165,7 @@ export default {
 
         const afterDataReady = () => {
           this.$nextTick(() => {
+            if (this._isDestroyed) return
             // 计算初始选中节点的完整路径
             if (this.localSelectedId && this.treeData.length) {
               this.localSelectedPath = this._findPathInTree(this.treeData, this.localSelectedId)
@@ -262,6 +263,7 @@ export default {
         this.$refs.orgTree.expandToNode(nodeId)
       }
       this.$nextTick(() => {
+        if (this._isDestroyed) return
         const row = container.querySelector(`[data-nid="${nodeId}"]`)
         if (row) {
           row.scrollIntoView({ block: 'center', behavior: 'smooth' })

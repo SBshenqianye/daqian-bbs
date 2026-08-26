@@ -16,7 +16,7 @@
       <p class="text-body-md">无匹配单位</p>
     </div>
     <!-- tree -->
-    <div v-else :key="'tree-' + filterText" class="select-none" @click="onTreeClick">
+    <div v-else key="tree" class="select-none" @click="onTreeClick">
       <div v-for="node in flatList" :key="node.id" :data-nid="node.id">
         <div
           class="group flex items-center gap-1 px-3 py-1.5 rounded-lg border mb-0.5 cursor-pointer"
@@ -165,7 +165,7 @@ export default {
         this._buildFlatList()
         this._syncVisibility()
         this.$forceUpdate()
-        this.$nextTick(() => this._syncChevrons())
+        this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
       }
     },
     filterText() {
@@ -319,14 +319,14 @@ export default {
       this._walkTree(this.treeData, n => { n._expanded = true })
       this._syncVisibility()
       this.$forceUpdate()
-      this.$nextTick(() => this._syncChevrons())
+      this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
     },
 
     collapseAll() {
       this._walkTree(this.treeData, n => { n._expanded = false })
       this._syncVisibility()
       this.$forceUpdate()
-      this.$nextTick(() => this._syncChevrons())
+      this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
     },
 
     /** 展开到指定节点（向上展开所有祖先），确保节点可见。
@@ -352,7 +352,7 @@ export default {
       }
       this._syncVisibility()
       this.$forceUpdate()
-      this.$nextTick(() => this._syncChevrons())
+      this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
       return true
     },
 
