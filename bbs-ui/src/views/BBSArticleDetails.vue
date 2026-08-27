@@ -496,7 +496,7 @@ export default {
     },
     handleAdopt({ id, adoptType }) {
       if (!this.currentUser || !id) return
-      this.$confirm('确定采纳该内容为最佳解答？提交后等待管理员审核。', '采纳确认', {
+      this.$confirm('确定采纳该内容为最佳解答？提交后等待管理员审核。若该文章已有待审批的采纳，将替换之前的采纳。', '采纳确认', {
         confirmButtonText: '确定提交',
         cancelButtonText: '取消',
         type: 'info',
@@ -511,11 +511,12 @@ export default {
           params.commentId = id
         }
         this.postRequest('/reply/article/adoptReply', params).then(resp => {
-          if (resp && resp.code === 200) {
-            // 成功提示由 axios 拦截器统一处理，无需手动弹出
+          // 拦截器已处理非200响应（弹出错误提示并返回undefined），此处无需再提示
+          if (!resp) return
+          if (resp.code === 200) {
             this.loadComments(this.articleId)
           } else {
-            Message({ type: 'warning', message: (resp && resp.message) || '操作失败', offset: 54 })
+            Message({ type: 'warning', message: resp.message || '操作失败', offset: 54 })
           }
         }).catch(err => { console.warn('[BBSArticleDetails] handleAdopt', err) })
       }).catch(() => {})
