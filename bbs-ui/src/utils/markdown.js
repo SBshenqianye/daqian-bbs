@@ -1,16 +1,18 @@
 /**
  * 大千 BBS Markdown ↔ HTML 转换
  *
- * mdToHtml 使用 marked 库渲染完整的 Markdown 语法（标题、粗体、斜体、列表、代码块、表格等）。
+ * mdToHtml 使用 mavon-editor 自带的 markdown-it 渲染完整 Markdown 语法。
  * htmlToMd 将 contenteditable 的 innerHTML 转为极简 Markdown 格式（供编辑器使用）。
  */
 
-import { marked } from 'marked'
+import MarkdownIt from 'markdown-it'
 
-// 配置 marked：启用换行符转换（\n → <br>），支持 GFM
-marked.setOptions({
-  breaks: true,
-  gfm: true,
+// 复用 mavon-editor 已安装的 markdown-it（无需额外安装新包）
+const mdRenderer = new MarkdownIt({
+  html: false,        // 不允许原始 HTML 标签（安全）
+  breaks: true,       // \n → <br>
+  linkify: true,      // 自动识别 URL 为链接
+  typographer: true,  // 智能引号、破折号等
 })
 
 /**
@@ -19,7 +21,7 @@ marked.setOptions({
  */
 export function mdToHtml(md) {
   if (!md) return ''
-  return marked.parse(md)
+  return mdRenderer.render(md)
 }
 
 /**

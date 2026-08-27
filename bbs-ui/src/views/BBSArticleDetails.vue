@@ -12,7 +12,7 @@
             <div class="flex items-center space-x-6">
               <span class="flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-[16px]">schedule</span>
-                发布时间: {{ article.publishTime }}
+                发布时间: {{ formatTime(article.publishTime) }}
               </span>
               <div class="flex items-center gap-2">
                 <span>文章标签:</span>
@@ -180,6 +180,7 @@ import { getArticleById, getUserinfoById, getArticleFileByArticleId } from '@/ap
 import { getCommentReply } from '@/api/comment'
 import { normalizeFileUrl, normalizeUrls } from '@/utils/utils'
 import { mdToHtml } from '@/utils/markdown'
+import { dateStr } from '@/utils/time'
 import { Message } from 'element-ui'
 
 // 保持 github-markdown 样式用于 v-html 渲染的 markdown-body
@@ -298,6 +299,9 @@ export default {
     this.commentPlaceholder = prompts[Math.floor(Math.random() * prompts.length)]
   },
   methods: {
+    formatTime(val) {
+      return dateStr(val)
+    },
     initCurrentUser() {
       try {
         const u = window.sessionStorage.getItem('user')
