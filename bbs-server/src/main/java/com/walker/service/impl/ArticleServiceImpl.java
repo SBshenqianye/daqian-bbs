@@ -80,6 +80,34 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Override
     public ResultBean publish(ArticleParam articleParam) {
 
+        // ── 发帖权限校验 ──
+        Integer userId = articleParam.getUserId();
+        if (userId != null) {
+            User user = userService.getById(userId);
+            if (user != null && user.getPostRestricted() != null && user.getPostRestricted() == 1) {
+                // 检查限制是否已过期
+                if (user.getPostRestrictedUntil() != null) {
+                    try {
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        Date until = sdf.parse(user.getPostRestrictedUntil());
+                        if (new Date().before(until)) {
+                            return ResultBean.error("您的账号已被限制发帖，请联系管理员");
+                        }
+                        // 已过期，自动解除限制
+                        user.setPostRestricted(0);
+                        user.setPostRestrictedUntil(null);
+                        userService.updateById(user);
+                    } catch (Exception e) {
+                        // 解析失败视为永久限制
+                        return ResultBean.error("您的账号已被限制发帖，请联系管理员");
+                    }
+                } else {
+                    // postRestrictedUntil 为空 = 永久限制（leak 类型）
+                    return ResultBean.error("您的账号已被限制发帖，请联系管理员");
+                }
+            }
+        }
+
         // 校验标签是否存在且未被禁用
         Integer labelId = articleParam.getArticleLabelId();
         if (labelId != null && labelId > 0) {
@@ -371,6 +399,27 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 a.setCommentNum(countMap.get(a.getArticleId()));
             }
         });
+    }
+
+    /**
+     * 为"建议反馈"标签的帖子补充采纳状态（isSuggestionAdopted）
+     */
+    private void enrichWithSuggestionAdopted(List<Article> articles) {
+        if (CollectionUtils.isEmpty(articles)) return;
+        // 找出标签名为"建议反馈"的帖子ID
+        List<Integer> suggestionArticleIds = articles.stream()
+                .filter(a -> a.getArticleId() != null && a.getArticleLabelName() != null
+                        && "建议反馈".equals(a.getArticleLabelName()))
+                .map(Article::getArticleId)
+                .collect(Collectors.toList());
+        if (suggestionArticleIds.isEmpty()) return;
+        // 批量查询哪些已被采纳
+        for (Article a : articles) {
+            if (suggestionArticleIds.contains(a.getArticleId())) {
+                int count = pointsLogService.countSuggestionAdoptForArticle(a.getArticleId());
+                a.setIsSuggestionAdopted(count > 0);
+            }
+        }
     }
 
     @Override
@@ -845,6 +894,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
         enrichWithUserInfo(list);
         enrichWithCommentCounts(list);
+        enrichWithSuggestionAdopted(list);
 
         // 脱敏处理
         SensitiveWordUtil.desensitizeArticles(list);
