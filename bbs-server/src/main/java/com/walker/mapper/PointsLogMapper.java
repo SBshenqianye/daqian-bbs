@@ -35,4 +35,11 @@ public interface PointsLogMapper extends BaseMapper<PointsLog> {
      * @return 已获得的采纳积分次数
      */
     Integer countAdoptPointsForArticle(@Param("userId") Integer userId, @Param("articleId") Integer articleId);
+
+    /**
+     * 查询指定文章是否已被采纳为建议（通过积分日志中"建议被采纳积分"记录判断）
+     * @param articleId 文章ID
+     * @return 已采纳记录数
+     */
+    Integer countSuggestionAdoptForArticle(@Param("articleId") Integer articleId);
 }

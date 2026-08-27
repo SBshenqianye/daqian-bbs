@@ -405,3 +405,8 @@ ALTER TABLE bbs_comment ADD COLUMN IF NOT EXISTS adopt_status smallint DEFAULT 0
 -- @migration: v016-adopt-comment-status 补充 bbs_comment.adopt_status
 -- 早期 v015 只加了 bbs_reply.adopt_status，此迁移确保 bbs_comment 也有该列
 ALTER TABLE bbs_comment ADD COLUMN IF NOT EXISTS adopt_status smallint DEFAULT 0;
+
+-- @migration: v017-suggestion-label 添加"建议反馈"标签
+INSERT INTO bbs_article_label (label_id, label_name, enabled, icon, description)
+VALUES (4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分')
+ON CONFLICT (label_id) DO NOTHING;

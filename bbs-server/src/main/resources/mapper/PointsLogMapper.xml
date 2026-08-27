@@ -56,4 +56,14 @@
           AND c.comment_article_id = #{articleId}
     </select>
 
+    <!-- 查询指定文章是否已被采纳为建议（通过积分日志中"建议被采纳积分"记录判断） -->
+    <select id="countSuggestionAdoptForArticle" resultType="java.lang.Integer">
+        SELECT COALESCE(COUNT(*), 0)
+        FROM bbs_points_log
+        WHERE related_type = 'article'
+          AND related_id = #{articleId}
+          AND reason = '建议被采纳积分'
+          AND (is_reversed IS NULL OR is_reversed = 0)
+    </select>
+
 </mapper>

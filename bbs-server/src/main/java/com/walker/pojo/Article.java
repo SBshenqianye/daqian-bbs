@@ -128,4 +128,8 @@ public class Article implements Serializable {
     @ApiModelProperty("作者部门名称（关联查询，非数据库字段）")
     @TableField(exist = false)
     private String authorDeptName;
+
+    @ApiModelProperty("建议反馈是否已被采纳（关联查询，非数据库字段）")
+    @TableField(exist = false)
+    private Boolean isSuggestionAdopted;
 }

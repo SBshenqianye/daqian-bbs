@@ -29,6 +29,7 @@
           <select
             v-model="searchForm.labelId"
             class="w-full h-10 px-4 bg-surface rounded-lg border border-outline-variant text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none transition-all appearance-none cursor-pointer"
+            @change="handleSearch"
           >
             <option value="">全部标签</option>
             <option v-for="label in labels" :key="label.labelId" :value="String(label.labelId)">{{ label.labelName }}</option>
@@ -160,6 +161,24 @@
                   <span class="material-symbols-outlined text-[14px]">check</span>
                   通过审核
                 </button>
+                <!-- 采纳建议（建议反馈标签 + 已审核 + 未采纳 + 非作者本人） -->
+                <template v-if="article.articleLabelName === '建议反馈' && article.enable === 1">
+                  <span
+                    v-if="article.isSuggestionAdopted === true"
+                    class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-green-700 bg-green-50 rounded border border-green-200"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                    已采纳
+                  </span>
+                  <button
+                    v-else
+                    class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-amber-700 bg-amber-50 rounded hover:bg-amber-100 transition-colors border border-amber-200"
+                    @click="handleAdoptSuggestion(article)"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">lightbulb</span>
+                    采纳建议
+                  </button>
+                </template>
                 <!-- 删除 -->
                 <button class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors" @click="handleDel(article.articleId)">
                   <span class="material-symbols-outlined text-[14px]">delete</span>
@@ -625,6 +644,36 @@ export default {
             this.$message.success(resp.message || (newVal === 1 ? '已设为精华帖' : '已取消精华帖'))
             this.fetchList()
           }
+        })
+      }).catch(() => {})
+    },
+    getAdminId() {
+      try {
+        const admin = window.sessionStorage.getItem('admin')
+        if (admin) return JSON.parse(admin).id
+      } catch (e) {}
+      return 1
+    },
+    handleAdoptSuggestion(article) {
+      if (!article || !article.articleId) return
+      this.$confirm(
+        `确定采纳建议《${article.articleTitle || ''}》？\n采纳后将为作者增加5分积分。`,
+        '采纳确认',
+        { confirmButtonText: '确定采纳', cancelButtonText: '取消', type: 'warning' }
+      ).then(() => {
+        this.postRequest('/admin/suggestion/adopt', {
+          articleId: article.articleId,
+          operatorId: this.getAdminId(),
+        }).then(resp => {
+          if (resp && resp.code == 200) {
+            this.$message.success('采纳成功，作者已获得+5积分')
+            this.fetchList()
+          } else {
+            this.$message.error((resp && resp.message) || '采纳失败')
+          }
+        }).catch(err => {
+          console.warn('[ArticlePage] handleAdoptSuggestion', err)
+          this.$message.error('采纳失败')
         })
       }).catch(() => {})
     },

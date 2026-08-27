@@ -464,3 +464,8 @@ ALTER TABLE `bbs_comment` ADD COLUMN `adopt_status` tinyint(1) DEFAULT 0 COMMENT
 -- @migration: v016-adopt-comment-status 补充 bbs_comment.adopt_status
 -- 早期 v015 只加了 bbs_reply.adopt_status，此迁移确保 bbs_comment 也有该列
 ALTER TABLE `bbs_comment` ADD COLUMN `adopt_status` tinyint(1) DEFAULT 0 COMMENT '采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)';
+
+-- @migration: v017-suggestion-label 添加"建议反馈"标签
+INSERT INTO `bbs_article_label` (`label_id`, `label_name`, `enabled`, `icon`, `description`)
+SELECT 4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM `bbs_article_label` WHERE `label_id` = 4);

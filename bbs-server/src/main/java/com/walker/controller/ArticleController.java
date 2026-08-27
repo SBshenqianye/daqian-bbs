@@ -2,7 +2,9 @@ package com.walker.controller;
 
 
 import com.walker.pojo.Article;
+import com.walker.pojo.ArticleLabel;
 import com.walker.pojo.User;
+import com.walker.service.ArticleLabelService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
 import com.walker.service.UserService;
@@ -54,6 +56,9 @@ public class ArticleController {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private ArticleLabelService articleLabelService;
 
     @Value("${storage.path}")
     private String basePath;
@@ -488,13 +493,34 @@ public class ArticleController {
             return ResultBean.error("文章不存在");
         }
 
+        // 校验：帖子必须是"建议反馈"标签
+        if (article.getArticleLabelId() == null) {
+            return ResultBean.error("该帖子不是建议反馈类型，无法采纳");
+        }
+        ArticleLabel label = articleLabelService.getById(article.getArticleLabelId());
+        if (label == null || !"建议反馈".equals(label.getLabelName())) {
+            return ResultBean.error("该帖子不是建议反馈类型，无法采纳");
+        }
+
+        // 校验：管理员不能采纳自己的建议
+        if (operatorId.equals(article.getUserId())) {
+            return ResultBean.error("不能采纳自己的建议");
+        }
+
+        // 校验：防止重复采纳（查询积分日志中是否已有该文章的建议采纳记录）
+        int existCount = pointsLogService.countSuggestionAdoptForArticle(articleId);
+        if (existCount > 0) {
+            return ResultBean.error("该建议已被采纳");
+        }
+
         // 给作者加5分
         pointsLogService.adjustUserPoints(article.getUserId(), 5, "建议被采纳积分",
                 "article", articleId, operatorId);
 
         // 通知作者
+        String titleSuffix = article.getArticleTitle() != null ? "（《" + article.getArticleTitle() + "》）" : "";
         notificationService.createNotification(article.getUserId(), operatorId,
-                "suggestion_adopted", "恭喜！您的建议被采纳，获得+5积分",
+                "suggestion_adopted", "恭喜！您的建议被采纳，获得+5积分" + titleSuffix,
                 "article", articleId);
 
         return ResultBean.success("采纳成功");
