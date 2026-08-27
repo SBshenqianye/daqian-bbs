@@ -142,10 +142,11 @@ export default {
       if (this.expandedReplies) return this.comment.children
       return this.comment.children.slice(0, this.maxVisibleReplies)
     },
-    /** 是否显示采纳按钮：帖子是问题求助 + 当前用户是楼主 + 回复未采纳/待审批 */
+    /** 是否显示采纳按钮：帖子是问题求助 + 当前用户是楼主 + 当前用户不是该评论/回复的作者 */
     canAdopt() {
       return this.adoptState.isQuestionLabel && this.adoptState.currentUserId != null
         && this.adoptState.currentUserId === this.comment.articleAuthorId
+        && this.adoptState.currentUserId !== this.comment.userId
     },
   },
   methods: {
