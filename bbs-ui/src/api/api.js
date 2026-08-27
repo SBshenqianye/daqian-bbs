@@ -69,6 +69,7 @@ axios.interceptors.response.use(success=>{
                 || url.indexOf('personalPointsRank') !== -1
                 || url.indexOf('markRead') !== -1
                 || url.indexOf('markAllRead') !== -1
+                || url.indexOf('points/myLog') !== -1
             if (!noSuccessTip) {
                 Message({
                     type: 'success',
