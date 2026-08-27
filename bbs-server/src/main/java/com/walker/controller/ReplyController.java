@@ -146,6 +146,9 @@ public class ReplyController {
         com.walker.pojo.Article article = articleService.queryArticleById(articleId);
         if (article == null) return ResultBean.error("文章不存在");
 
+        // 校验：管理员不能审批自己提问的最佳解答
+        if (adminId.equals(article.getUserId())) return ResultBean.error("不能审批自己提问的最佳解答");
+
         // ---- 回复审批 ----
         if (replyId != null) {
             Reply reply = replyService.getById(replyId);
