@@ -158,8 +158,8 @@ export default {
           const list = Array.isArray(resp.obj.list) ? resp.obj.list : []
           this.articles = list.map(a => ({
             articleId: a.articleId,
-            title: a.articleTitle || '',
-            summary: a.articleSummary || '',
+            articleTitle: a.articleTitle || '',
+            articleSummary: a.articleSummary || '',
             author: a.articleAuthor || '',
             userId: a.userId,
             authorAvatar: normalizeFileUrl(a.portrait || ''),

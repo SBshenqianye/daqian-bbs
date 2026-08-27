@@ -268,6 +268,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                         .or()
                         .like(Article::getArticleTitle, keywords)
                         .or()
+                        .like(Article::getArticleAuthor, keywords)
+                        .or()
                         .in(Article::getArticleId, distinctArticleIds)
                         .orderByDesc(Article::getCreateTime)
                 );
@@ -277,6 +279,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                         .like(Article::getArticleContent, keywords)
                         .or()
                         .like(Article::getArticleTitle, keywords)
+                        .or()
+                        .like(Article::getArticleAuthor, keywords)
                         .orderByDesc(Article::getCreateTime)
                 );
             }

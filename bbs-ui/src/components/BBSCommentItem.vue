@@ -27,7 +27,7 @@
           <textarea
             v-model="replyText"
             class="flex-grow p-1.5 rounded-lg border border-border text-label-sm bg-surface focus:border-primary-container outline-none resize-none"
-            :placeholder="'回复 ' + comment.author"
+            :placeholder="'回复 ' + comment.author + '（Shift+Enter 换行）'"
             rows="1"
             @keydown.enter.exact="submitReply"
             @input="autoResizeReplyInput"

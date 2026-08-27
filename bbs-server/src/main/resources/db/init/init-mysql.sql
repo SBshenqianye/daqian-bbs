@@ -312,7 +312,7 @@ CREATE TABLE `bbs_user` (
 -- 超级管理员（密码由 DatabaseInitializer 启动时用 BCrypt 加密写入）
 -- ----------------------------
 INSERT INTO `bbs_user` (`id`, `username`, `password`, `nickname`, `gender`, `city`, `fans`, `attention`, `good`, `is_alive`, `is_delete`, `create_time`, `org_no`, `user_type`, `is_first_login`)
-VALUES (1, 'asiayak', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2rk3O', '超级管理员', '1', '河北省-秦皇岛市', 0, 0, 0, 0, 0, '2026-06-26 00:00:00', '51404', '3', 0);
+VALUES (1, 'ASIAYAK', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2rk3O', '超级管理员', '1', '河北省-秦皇岛市', 0, 0, 0, 0, 0, '2026-06-26 00:00:00', '51404', '3', 0);
 
 -- ----------------------------
 -- 文章标签

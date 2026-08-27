@@ -1,51 +1,25 @@
 /**
- * 大千 BBS 自定义 Markdown ↔ HTML 转换
+ * 大千 BBS Markdown ↔ HTML 转换
  *
- * 存储格式（极简类 Markdown）：
- *   - 每行一段文字，空行表示段落间的空行
- *   - 图片：![图片](url)
- *   - 链接：[text](url)
- *
- * htmlToMd 将 contenteditable 的 innerHTML 转为此格式。
- * mdToHtml 将格式转回 HTML。
+ * mdToHtml 使用 marked 库渲染完整的 Markdown 语法（标题、粗体、斜体、列表、代码块、表格等）。
+ * htmlToMd 将 contenteditable 的 innerHTML 转为极简 Markdown 格式（供编辑器使用）。
  */
 
+import { marked } from 'marked'
+
+// 配置 marked：启用换行符转换（\n → <br>），支持 GFM
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+})
+
 /**
- * 将自定义 Markdown 渲染为 HTML
- *
- * 每段文字用 <p> 包裹。
- * 空行（连续的 \n）渲染为 <p><br></p>（可见空行）。
- * 规则：几个连续空行就输出几个 <p><br></p>
+ * 将 Markdown 渲染为 HTML
+ * 支持完整 Markdown 语法：标题、粗体、斜体、列表、代码块、表格、引用、图片、链接等
  */
 export function mdToHtml(md) {
   if (!md) return ''
-  const lines = md.split('\n')
-  const result = []
-  let blanks = 0
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim()
-    if (!line) {
-      blanks++
-      continue
-    }
-
-    // 先输出空行
-    while (blanks > 0) {
-      result.push('<p><br></p>')
-      blanks--
-    }
-
-    // 处理段内内容
-    const processed = line
-      .replace(/!\[(.*?)\]\((.*?)\)/g, (m, alt, src) =>
-        `<img src="${src}" alt="${alt}" style="max-width:100%;display:block;margin:4px 0">`)
-      .replace(/\[([^\]]*)\]\((.*?)\)/g, '<a href="$2">$1</a>')
-
-    result.push(`<p>${processed}</p>`)
-  }
-
-  return result.join('\n')
+  return marked.parse(md)
 }
 
 /**

@@ -50,10 +50,11 @@
           <input
             v-model="keywords"
             class="w-full col-start-1 row-start-1 h-10 pl-10 pr-4 bg-surface-container-low rounded-lg border border-transparent focus:border-brand-blue focus:bg-container focus:ring-0 transition-all font-body-md text-body-md outline-none"
-            placeholder="搜索讨论、创意或人员..."
+            placeholder="搜索标题、内容或人员..."
             type="text"
             @focus="searchFocused = true"
             @blur="searchFocused = false"
+            @input="handleSearchInput"
             @keyup.enter="handleSearch"
           >
         </div>
@@ -211,6 +212,7 @@ export default {
       scrolled: false,
       searchFocused: false,
       keywords: '',
+      searchDebounceTimer: null,
       userMenuOpen: false,
       isLogin: false,
       user: null,
@@ -264,6 +266,7 @@ export default {
     window.removeEventListener('scroll', this.handleScroll)
     this.$bus && this.$bus.$off('isLogin')
     this.$bus && this.$bus.$off('portraitUpdated')
+    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer)
   },
   methods: {
     checkLoginState() {
@@ -278,6 +281,12 @@ export default {
     },
     handleScroll() {
       this.scrolled = window.scrollY > 10
+    },
+    handleSearchInput() {
+      clearTimeout(this.searchDebounceTimer)
+      this.searchDebounceTimer = setTimeout(() => {
+        this.handleSearch()
+      }, 300)
     },
     handleSearch() {
       const keywords = (this.keywords || '').trim()

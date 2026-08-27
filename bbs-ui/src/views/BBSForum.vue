@@ -330,13 +330,21 @@ export default {
     loadLabels() {
       this.getRequest('/common/getArticleLabel').then(resp => {
         if (resp && Array.isArray(resp)) {
-          this.categories = resp.map((l, i) => ({
-            name: l.labelName,
-            icon: l.icon || 'bookmark',
-            labelId: l.labelId,
-            active: i === 0,
-            description: l.description || '',
-          }))
+          this.categories = [
+            { name: '全部', icon: 'apps', labelId: null, active: this.filteredLabelId === null, description: '' },
+            ...resp.map((l) => ({
+              name: l.labelName,
+              icon: l.icon || 'bookmark',
+              labelId: l.labelId,
+              active: false,
+              description: l.description || '',
+            }))
+          ]
+          // 如果已有选中的标签，激活对应分类
+          if (this.filteredLabelId !== null) {
+            const match = this.categories.find(c => String(c.labelId) === String(this.filteredLabelId))
+            if (match) match.active = true
+          }
         }
       }).catch(err => {
         console.warn('[BBSForum] loadLabels', err)
@@ -344,9 +352,20 @@ export default {
       })
     },
     selectCategory(cat) {
+      if (cat.labelId === null) {
+        // 点击"全部"：取消所有分类选中，显示全部文章
+        this.categories.forEach(c => { c.active = false })
+        cat.active = true
+        this.filteredLabelId = null
+        return
+      }
+      // 点击具体分类
       if (cat.active) {
+        // 取消选中，回到"全部"
         cat.active = false
         this.filteredLabelId = null
+        const allCat = this.categories.find(c => c.labelId === null)
+        if (allCat) allCat.active = true
         return
       }
       this.categories.forEach(c => { c.active = false })

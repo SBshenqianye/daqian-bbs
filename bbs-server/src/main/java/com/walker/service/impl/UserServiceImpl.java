@@ -141,6 +141,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public ResultBean login(String username, String password, String channel, HttpServletRequest request) {
+        // 登录账号大小写不敏感：统一转大写
+        if (username != null) {
+            username = username.toUpperCase(Locale.ROOT);
+        }
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
@@ -191,13 +195,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public User getUserByUsername(String username) {
         User user = null;
         if (StringUtils.isNoneBlank(username)){
+            // 大小写不敏感：统一转大写
+            username = username.toUpperCase(Locale.ROOT);
             user = userMapper.selectOne(
                     new LambdaQueryWrapper<User>()
                             .eq(User::getUsername, username)
             );
         }
         return user;
-        // return userMapper.selectOne(new QueryWrapper<User>().eq("username",username));
     }
 
     /**
@@ -642,7 +647,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 String idCardLast4 = row.getIdCard() != null && row.getIdCard().length() >= 4
                         ? row.getIdCard().substring(row.getIdCard().length() - 4)
                         : "0000";
-                up.setUsername(PinyinUtil.generateUsername(row.getNickname(), idCardLast4));
+                up.setUsername(PinyinUtil.generateUsername(row.getNickname(), idCardLast4).toUpperCase(Locale.ROOT));
 
                 // 判断是新增还是更新
                 User existing = userMapper.selectOne(
@@ -942,7 +947,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             if (existing != null) {
                 return ResultBean.error("用户名已被其他用户使用");
             }
-            updateUser.setUsername(param.getUsername());
+            updateUser.setUsername(param.getUsername().toUpperCase(Locale.ROOT));
         }
         // 优先使用自定义密码，其次判断是否重置
         if (StringUtils.isNoneBlank(param.getPassword())) {
@@ -972,7 +977,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         User newUser = new User();
-        newUser.setUsername(param.getUsername())
+        newUser.setUsername(param.getUsername().toUpperCase(Locale.ROOT))
                 .setNickname(param.getNickname())
                 .setPhone(param.getPhone() != null ? param.getPhone() : "")
                 .setOrgNo(param.getOrgNo())

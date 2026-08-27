@@ -83,3 +83,7 @@ SET @sql_display = IF(@col_display_exists = 0, 'ALTER TABLE `bbs_sa_org` ADD COL
 PREPARE stmt_display FROM @sql_display;
 EXECUTE stmt_display;
 DEALLOCATE PREPARE stmt_display;
+
+-- 2026-08-25: 登录账号大小写不敏感 — 已有数据统一转大写
+UPDATE bbs_user SET username = UPPER(username) WHERE username <> UPPER(username);
+UPDATE bbs_admin SET username = UPPER(username) WHERE username <> UPPER(username);
