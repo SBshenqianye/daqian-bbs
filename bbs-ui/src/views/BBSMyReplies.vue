@@ -204,6 +204,8 @@ export default {
     const tab = this.$route.query.tab
     if (tab === 'repliedToMe') {
       this.activeTab = 'repliedToMe'
+      // 直接通过 URL 进入"回复我的"tab 时也标记已读
+      this.$nextTick(() => this.markAsRead())
     }
     this.fetchData()
     this.fetchUnreadCount()
@@ -284,9 +286,10 @@ export default {
     markAsRead() {
       const user = getUser()
       if (!user) return
-      this.postRequest(`/notification/markAllRead?userId=${user.id}`).then(() => {
-        this.unreadCount = 0
-        this.$bus && this.$bus.$emit('unreadCountUpdated', 0)
+      // 只标记"回复"类型的通知为已读，不影响其他类型（评论、违规等）
+      this.postRequest(`/notification/markRead?userId=${user.id}&type=reply`).then(() => {
+        // 重新获取未读数（因为只标记了 reply 类型，可能还有其他未读）
+        this.fetchUnreadCount()
       }).catch(() => {})
     },
 

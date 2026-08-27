@@ -67,6 +67,8 @@ axios.interceptors.response.use(success=>{
                 || url.indexOf('browseHeartbeat') !== -1
                 || url.indexOf('pointsRank') !== -1
                 || url.indexOf('personalPointsRank') !== -1
+                || url.indexOf('markRead') !== -1
+                || url.indexOf('markAllRead') !== -1
             if (!noSuccessTip) {
                 Message({
                     type: 'success',
