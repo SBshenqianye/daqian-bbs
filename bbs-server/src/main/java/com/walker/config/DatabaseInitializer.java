@@ -208,9 +208,13 @@ public class DatabaseInitializer {
                             } else if (upper.startsWith("DROP ") && e.getMessage() != null && e.getMessage().contains("doesn't exist")) {
                                 // DROP 不存在的对象，正常跳过
                                 log.debug("Skip drop-if-not-exists: {}", preview(trimmed));
-                            } else if (upper.startsWith("SELECT 1")) {
-                                // 纯占位语句，跳过
-                                log.debug("Skip placeholder: {}", preview(trimmed));
+                            } else if (upper.startsWith("SELECT 1") || upper.startsWith("PREPARE ") || upper.startsWith("DEALLOCATE ")) {
+                                // 纯占位语句 / MySQL PREPARE/DEALLOCATE，跳过
+                                log.debug("Skip placeholder/prepared-stmt: {}", preview(trimmed));
+                            } else if (upper.startsWith("ALTER TABLE") && e.getMessage() != null
+                                    && (e.getMessage().contains("Duplicate column") || e.getMessage().contains("already exists"))) {
+                                // 列已存在，视为成功
+                                log.debug("Column already exists, skip: {}", preview(trimmed));
                             } else {
                                 log.error("Migration DDL/DML FAILED [{}]: {} — {}", block.version, preview(trimmed), e.getMessage());
                                 hasDdlError = true;

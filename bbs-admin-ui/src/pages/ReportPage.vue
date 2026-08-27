@@ -100,7 +100,7 @@ export default {
       try {
         const params = { page: this.currentPage, size: this.pageSize }
         if (this.filterStatus) params.status = this.filterStatus
-        const res = await this.postRequestUrl('/admin/report/list', params)
+        const res = await this.postRequest('/admin/report/list', params)
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0
@@ -116,7 +116,7 @@ export default {
     },
     async doReview(reportId, status, remark) {
       try {
-        const res = await this.postRequestUrl('/admin/report/review', { reportId, reviewerId: 1, status, remark })
+        const res = await this.postRequest('/admin/report/review', { reportId, reviewerId: 1, status, remark })
         if (res && res.code == 200) {
           this.$message.success('审核完成')
           await this.loadList()

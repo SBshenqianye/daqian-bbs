@@ -48,4 +48,7 @@ public class CommentReplyVO {
     @ApiModelProperty("回复")
     private List<ReplyVO> reply;
 
+    @ApiModelProperty("采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)")
+    private Integer adoptStatus;
+
 }

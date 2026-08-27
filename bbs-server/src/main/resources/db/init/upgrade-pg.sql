@@ -391,3 +391,17 @@ UPDATE bbs_points_log SET reason = '发帖积分' WHERE reason = '发帖积分�
 UPDATE bbs_points_log SET reason = '评论积分' WHERE reason = '评论积分（历史回填）';
 UPDATE bbs_points_log SET reason = '回复积分' WHERE reason = '回复积分（历史回填）';
 UPDATE bbs_points_log SET reason = '每日有效登录浏览积分' WHERE reason = '每日有效登录浏览积分（历史回填）';
+
+-- @migration: v015-adopt-status 采纳审批状态（问题求助最佳解答）
+-- bbs_reply 新增 adopt_status：0=未采纳 1=待审批 2=已确认 3=已拒绝
+ALTER TABLE bbs_reply ADD COLUMN IF NOT EXISTS adopt_status smallint DEFAULT 0;
+
+-- 回填：已采纳的记录设为已确认(2)
+UPDATE bbs_reply SET adopt_status = 2 WHERE is_adopted = 1 AND (adopt_status IS NULL OR adopt_status = 0);
+
+-- bbs_comment 同步新增 adopt_status（评论也可被采纳为最佳解答）
+ALTER TABLE bbs_comment ADD COLUMN IF NOT EXISTS adopt_status smallint DEFAULT 0;
+
+-- @migration: v016-adopt-comment-status 补充 bbs_comment.adopt_status
+-- 早期 v015 只加了 bbs_reply.adopt_status，此迁移确保 bbs_comment 也有该列
+ALTER TABLE bbs_comment ADD COLUMN IF NOT EXISTS adopt_status smallint DEFAULT 0;

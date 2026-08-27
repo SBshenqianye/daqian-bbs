@@ -51,4 +51,13 @@ public interface PointsLogService extends IService<PointsLog> {
      * @return 已获得的回帖积分次数
      */
     int countReplyPointsForArticle(Integer userId, Integer articleId);
+
+    /**
+     * 统计用户在指定主题帖下已获得的最佳解答采纳积分次数
+     * 同一篇主题帖下同一用户最多获得1次最佳解答积分
+     * @param userId 用户ID
+     * @param articleId 主题帖ID
+     * @return 已获得的采纳积分次数
+     */
+    int countAdoptPointsForArticle(Integer userId, Integer articleId);
 }

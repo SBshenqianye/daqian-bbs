@@ -44,4 +44,16 @@
         ) t
     </select>
 
+    <!-- 统计用户在指定主题帖下已获得的最佳解答采纳积分次数（排除已撤销的记录） -->
+    <select id="countAdoptPointsForArticle" resultType="java.lang.Integer">
+        SELECT COALESCE(COUNT(*), 0)
+        FROM bbs_points_log p
+        INNER JOIN bbs_reply r ON p.related_id = r.reply_id
+        INNER JOIN bbs_comment c ON r.comment_id = c.comment_id
+        WHERE p.user_id = #{userId}
+          AND p.related_type = 'adopt'
+          AND (p.is_reversed IS NULL OR p.is_reversed = 0)
+          AND c.comment_article_id = #{articleId}
+    </select>
+
 </mapper>

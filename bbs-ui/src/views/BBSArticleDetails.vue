@@ -107,6 +107,7 @@
             :currentUserAvatar="currentUserAvatar"
             @delete="handleDeleteComment"
             @reply="handleReply"
+            @adopt="handleAdopt"
           />
 
           <!-- 空状态：全无评论 -->
@@ -194,6 +195,9 @@ export default {
   provide() {
     return {
       replyState: this.replyState,
+      // 提供父组件实例引用，子组件通过 adoptState.isQuestionLabel / adoptState.currentUserId 始终读到最新值
+      // （provide() 只执行一次，直接传原始值会快照为 false；传引用则始终跟随父组件 computed 变化）
+      adoptState: this,
     }
   },
   data() {
@@ -211,6 +215,7 @@ export default {
         publishTime: '',
         tag: '',
         tagId: '',
+        userId: null,
         author: '',
         authorTitle: '',
         authorAvatar: '',
@@ -264,6 +269,14 @@ export default {
     },
     renderedHtml() {
       return mdToHtml(this.rawContent)
+    },
+    /** 当前用户ID */
+    currentUserId() {
+      return this.currentUser ? this.currentUser.id : null
+    },
+    /** 帖子标签是否为"问题求助" */
+    isQuestionLabel() {
+      return this.articleTagName === '问题求助'
     },
   },
   mounted() {
@@ -329,6 +342,7 @@ export default {
           this.article.title = resp.articleTitle || ''
           this.article.publishTime = resp.createTime || ''
           this.article.tagId = resp.articleLabelId
+          this.article.userId = resp.userId
           this.article.author = resp.articleAuthor || ''
           const rawContent = resp.articleContentHtml || resp.articleContent || ''
           const normalized = normalizeUrls(rawContent)
@@ -382,11 +396,13 @@ export default {
     mapComment(c) {
       const myId = this.currentUser ? this.currentUser.id : null
       const commentId = c.commentId || c.id
+      const articleAuthorId = this.article && this.article.userId ? this.article.userId : null
       const mapped = {
         id: commentId,
         replyKey: 'c-' + commentId,
         commentRootId: commentId,
         userId: c.userId,
+        articleAuthorId,
         author: c.nickname || '',
         avatar: normalizeFileUrl(c.portrait || ''),
         orgName: c.orgName || '',
@@ -394,6 +410,7 @@ export default {
         time: c.commentTime || '',
         content: c.commentContent || '',
         canDelete: myId != null && String(c.userId) === String(myId),
+        adoptStatus: c.adoptStatus || 0,
         children: (c.reply || []).map(r => {
           const replyId = r.replyId || r.id
           return {
@@ -402,6 +419,7 @@ export default {
             commentRootId: commentId,
             userId: r.replyUserId || r.userId,
             replyTargetUserId: r.replyToUserId,
+            articleAuthorId,
             author: r.nickname || '',
             avatar: normalizeFileUrl(r.portrait || ''),
             orgName: r.orgName || '',
@@ -410,6 +428,7 @@ export default {
             content: r.replyContent || '',
             replyTo: r.replyToNickname || '',
             canDelete: myId != null && String(r.replyUserId || r.userId) === String(myId),
+            adoptStatus: r.adoptStatus || 0,
             children: [],
           }
         }),
@@ -474,6 +493,32 @@ export default {
           Message({ type: 'error', message: '回复失败', offset: 54 })
         }
       }).catch(err => { console.warn('[BBSArticleDetails] handleReply', err) })
+    },
+    handleAdopt({ id, adoptType }) {
+      if (!this.currentUser || !id) return
+      this.$confirm('确定采纳该内容为最佳解答？提交后等待管理员审核。', '采纳确认', {
+        confirmButtonText: '确定提交',
+        cancelButtonText: '取消',
+        type: 'info',
+      }).then(() => {
+        const params = {
+          articleId: this.articleId,
+          userId: this.currentUser.id,
+        }
+        if (adoptType === 'reply') {
+          params.replyId = id
+        } else {
+          params.commentId = id
+        }
+        this.postRequest('/reply/article/adoptReply', params).then(resp => {
+          if (resp && resp.code === 200) {
+            // 成功提示由 axios 拦截器统一处理，无需手动弹出
+            this.loadComments(this.articleId)
+          } else {
+            Message({ type: 'warning', message: (resp && resp.message) || '操作失败', offset: 54 })
+          }
+        }).catch(err => { console.warn('[BBSArticleDetails] handleAdopt', err) })
+      }).catch(() => {})
     },
     handleDeleteComment(comment) {
       if (!comment) return

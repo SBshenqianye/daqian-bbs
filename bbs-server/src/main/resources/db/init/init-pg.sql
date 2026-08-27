@@ -104,7 +104,8 @@ CREATE TABLE IF NOT EXISTS bbs_comment (
     comment_user_id     integer,
     comment_time        varchar(20),
     enable              integer DEFAULT 1,
-    is_delete           integer DEFAULT 0
+    is_delete           integer DEFAULT 0,
+    adopt_status        smallint DEFAULT 0
 );
 
 -- ----------------------------
@@ -203,7 +204,8 @@ CREATE TABLE IF NOT EXISTS bbs_reply (
     reply_time       varchar(20) NOT NULL,
     enable           integer DEFAULT 1,
     is_delete        integer DEFAULT 0,
-    is_adopted       smallint DEFAULT 0
+    is_adopted       smallint DEFAULT 0,
+    adopt_status     smallint DEFAULT 0
 );
 
 -- ----------------------------

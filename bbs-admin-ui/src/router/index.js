@@ -102,6 +102,11 @@ export default new Router({
                     meta: { title: '版主管理' }
                 },
                 {
+                    path: '/approve-adopt',
+                    component: () => import('../pages/ApproveAdoptPage.vue'),
+                    meta: { title: '采纳审批' }
+                },
+                {
                     path: '/404',
                     component: () => import('../pages/404.vue'),
                     meta: { title: '404' }

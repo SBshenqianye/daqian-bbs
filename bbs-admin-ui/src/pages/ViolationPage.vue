@@ -138,7 +138,7 @@ export default {
       try {
         const params = { page: this.currentPage, size: this.pageSize }
         if (this.searchUserId) params.userId = parseInt(this.searchUserId)
-        const res = await this.postRequestUrl('/admin/violation/list', params)
+        const res = await this.postRequest('/admin/violation/list', params)
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0
@@ -155,7 +155,7 @@ export default {
       try {
         const params = { ...this.form, userId: parseInt(this.form.userId), operatorId: 1 }
         if (this.form.relatedId) params.relatedId = parseInt(this.form.relatedId)
-        const res = await this.postRequestUrl('/admin/violation/add', params)
+        const res = await this.postRequest('/admin/violation/add', params)
         if (res && res.code == 200) {
           this.$message.success('违规记录已添加')
           this.form = { userId: '', violationType: '', relatedType: '', relatedId: '', remark: '' }

@@ -121,6 +121,7 @@ CREATE TABLE `bbs_comment` (
   `comment_time`        varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '评论时间',
   `enable`              int(11) NULL DEFAULT 1 COMMENT '是否被审核通过',
   `is_delete`           int(11) NULL DEFAULT 0 COMMENT '逻辑删除',
+  `adopt_status`        tinyint(1) NULL DEFAULT 0 COMMENT '采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)',
   PRIMARY KEY (`comment_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
@@ -234,6 +235,7 @@ CREATE TABLE `bbs_reply` (
   `enable`           int(11) NULL DEFAULT 1 COMMENT '是否被审核通过',
   `is_delete`        int(11) NULL DEFAULT 0 COMMENT '逻辑删除',
   `is_adopted`       tinyint(1) NULL DEFAULT 0 COMMENT '是否被采纳(0=否,1=是)',
+  `adopt_status`     tinyint(1) NULL DEFAULT 0 COMMENT '采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)',
   PRIMARY KEY (`reply_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 

@@ -97,6 +97,7 @@ public class CommentController {
                 commentReplyVO.setOrgNameFull(resolveFullOrgName(user.getOrgNo(), user.getOrgName()));
                 commentReplyVO.setDeptName(user.getDeptName());
                 commentReplyVO.setPoints(pointsLogService.getPointsAdjustment(userId));
+                commentReplyVO.setAdoptStatus(comment.getAdoptStatus());
 
                 //通过回复的Id去获取回复内容
 
@@ -127,6 +128,7 @@ public class CommentController {
                         replyVO.setDeptName(userVO1.getDeptName());
                         replyVO.setPoints(pointsLogService.getPointsAdjustment(fromUserId));
                         replyVO.setIsAdopted(reply.getIsAdopted());
+                        replyVO.setAdoptStatus(reply.getAdoptStatus());
 
                         Integer toUserId = reply.getReplyToUserId();
                         User userVO2 = userService.queryUserinfoById(toUserId);

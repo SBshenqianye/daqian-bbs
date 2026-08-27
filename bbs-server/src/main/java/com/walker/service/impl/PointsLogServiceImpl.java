@@ -124,4 +124,13 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
         Integer count = pointsLogMapper.countReplyPointsForArticle(userId, articleId);
         return count != null ? count : 0;
     }
+
+    @Override
+    public int countAdoptPointsForArticle(Integer userId, Integer articleId) {
+        if (userId == null || articleId == null) {
+            return 0;
+        }
+        Integer count = pointsLogMapper.countAdoptPointsForArticle(userId, articleId);
+        return count != null ? count : 0;
+    }
 }

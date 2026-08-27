@@ -61,4 +61,8 @@ public class Reply implements Serializable {
     @TableField("is_adopted")
     private Integer isAdopted;
 
+    @ApiModelProperty("采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)")
+    @TableField("adopt_status")
+    private Integer adoptStatus;
+
 }

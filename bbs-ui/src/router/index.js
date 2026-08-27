@@ -101,6 +101,12 @@ const router = new VueRouter({
             component: () => import('@/views/BBSMyReports.vue'),
             meta: { auth: true }
         },
+        {
+            name: 'BBSNotifications',
+            path: '/notifications',
+            component: () => import('@/views/BBSNotifications.vue'),
+            meta: { auth: true }
+        },
 
     ]
 })

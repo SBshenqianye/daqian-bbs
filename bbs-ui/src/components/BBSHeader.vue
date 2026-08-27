@@ -154,6 +154,18 @@
                   <span class="material-symbols-outlined text-[20px]">receipt_long</span>
                   积分记录
                 </router-link>
+                <router-link
+                  to="/notifications"
+                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
+                >
+                  <span class="material-symbols-outlined text-[20px]">notifications</span>
+                  消息通知
+                  <!-- 未读红点 -->
+                  <span
+                    v-if="unreadCount > 0"
+                    class="ml-auto w-2 h-2 bg-error rounded-full flex-shrink-0"
+                  ></span>
+                </router-link>
                 <div class="h-[1px] bg-outline-variant my-1"></div>
                 <button
                   type="button"
@@ -423,8 +435,8 @@ export default {
     },
     goToNotifications() {
       this.userMenuOpen = false
-      if (this.$route.path === '/my-replies' && this.$route.query.tab === 'repliedToMe') return
-      this.$router.push({ path: '/my-replies', query: { tab: 'repliedToMe' } })
+      if (this.$route.path === '/notifications') return
+      this.$router.push('/notifications')
     },
     // ---- 浏览心跳（只在内容浏览页运行） ----
     /** 判断当前路由是否为"浏览页面"（帖子详情页） */

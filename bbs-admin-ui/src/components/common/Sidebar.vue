@@ -119,6 +119,7 @@ export default {
         { icon: 'feedback', label: '举报管理', path: '/report' },
         { icon: 'assignment', label: '申诉管理', path: '/appeal' },
         { icon: 'shield', label: '版主管理', path: '/moderator' },
+        { icon: 'check_circle', label: '采纳审批', path: '/approve-adopt' },
         // { icon: 'view_carousel', label: '轮播图管理', path: '/slideshow' },
         // { icon: 'bar_chart', label: '文章统计', path: '/statistic' },
         // { icon: 'edit_note', label: '写文章', path: '/write' },

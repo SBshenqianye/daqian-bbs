@@ -93,7 +93,7 @@ export default {
     async loadList() {
       this.loading = true
       try {
-        const res = await this.postRequestUrl('/admin/moderator/list', { page: this.currentPage, size: this.pageSize })
+        const res = await this.postRequest('/admin/moderator/list', { page: this.currentPage, size: this.pageSize })
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0
@@ -108,7 +108,7 @@ export default {
       }
       this.appointing = true
       try {
-        const res = await this.postRequestUrl('/admin/moderator/appoint', {
+        const res = await this.postRequest('/admin/moderator/appoint', {
           userId: parseInt(this.form.userId), labelId: parseInt(this.form.labelId), operatorId: 1
         })
         if (res && res.code == 200) {
@@ -128,7 +128,7 @@ export default {
     },
     async doDismiss(item) {
       try {
-        const res = await this.postRequestUrl('/admin/moderator/dismiss', { userId: item.userId, labelId: item.labelId })
+        const res = await this.postRequest('/admin/moderator/dismiss', { userId: item.userId, labelId: item.labelId })
         if (res && res.code == 200) {
           this.$message.success('已撤销')
           await this.loadList()
