@@ -81,17 +81,22 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         comment.setEnable(quality.isPassed() ? 1 : 0);
         this.save(comment);
 
-        // 评论积分：只有通过质量检测的评论才计分
+        // 评论积分：只有通过质量检测的评论才计分，且同一篇帖子下同一用户最多3次
         if (quality.isPassed()) {
-            int replyPoints = 1; // default
-            try {
-                List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
-                if (replyList != null && !replyList.isEmpty()) {
-                    replyPoints = Integer.parseInt(replyList.get(0).getDictValue());
-                }
-            } catch (Exception e) { /* use default */ }
-            pointsLogService.adjustUserPoints(commentParam.getCommentUserId(), replyPoints, "评论积分",
-                    "comment", comment.getCommentId(), null);
+            // 检查该用户在此文章下已获得的回帖积分次数
+            int existingCount = pointsLogService.countReplyPointsForArticle(
+                    commentParam.getCommentUserId(), commentParam.getCommentArticleId());
+            if (existingCount < 3) {
+                int replyPoints = 1; // default
+                try {
+                    List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
+                    if (replyList != null && !replyList.isEmpty()) {
+                        replyPoints = Integer.parseInt(replyList.get(0).getDictValue());
+                    }
+                } catch (Exception e) { /* use default */ }
+                pointsLogService.adjustUserPoints(commentParam.getCommentUserId(), replyPoints, "评论积分",
+                        "comment", comment.getCommentId(), null);
+            }
         }
 
         // 通知文章作者（非自己时）

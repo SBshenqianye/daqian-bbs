@@ -87,25 +87,36 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
         reply.setEnable(quality.isPassed() ? 1 : 0);
         this.save(reply);
 
-        // 回复积分：只有通过质量检测的回复才计分
+        // 回复积分：只有通过质量检测的回复才计分，且同一篇帖子下同一用户最多3次
+        Comment commentForArticle = null;
         if (quality.isPassed()) {
-            int replyPoints = 1; // default
-            try {
-                List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
-                if (replyList != null && !replyList.isEmpty()) {
-                    replyPoints = Integer.parseInt(replyList.get(0).getDictValue());
+            // 通过评论找到文章ID，检查该用户在此文章下已获得的回帖积分次数
+            commentForArticle = commentService.getById(replyParam.getCommentId());
+            if (commentForArticle != null) {
+                int existingCount = pointsLogService.countReplyPointsForArticle(
+                        replyParam.getReplyUserId(), commentForArticle.getCommentArticleId());
+                if (existingCount < 3) {
+                    int replyPoints = 1; // default
+                    try {
+                        List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
+                        if (replyList != null && !replyList.isEmpty()) {
+                            replyPoints = Integer.parseInt(replyList.get(0).getDictValue());
+                        }
+                    } catch (Exception e) { /* use default */ }
+                    pointsLogService.adjustUserPoints(replyParam.getReplyUserId(), replyPoints, "回复积分",
+                            "reply", reply.getReplyId(), null);
                 }
-            } catch (Exception e) { /* use default */ }
-            pointsLogService.adjustUserPoints(replyParam.getReplyUserId(), replyPoints, "回复积分",
-                    "reply", reply.getReplyId(), null);
+            }
         }
 
         // 通知被回复的用户（非自己时）
         if (quality.isPassed() && replyParam.getReplyToUserId() != null
                 && !replyParam.getReplyToUserId().equals(replyParam.getReplyUserId())) {
             try {
-                Comment comment = commentService.getById(replyParam.getCommentId());
-                String commentPreview = comment != null ? comment.getCommentContent() : "";
+                if (commentForArticle == null) {
+                    commentForArticle = commentService.getById(replyParam.getCommentId());
+                }
+                String commentPreview = commentForArticle != null ? commentForArticle.getCommentContent() : "";
                 if (commentPreview.length() > 20) {
                     commentPreview = commentPreview.substring(0, 20) + "...";
                 }

@@ -22,4 +22,26 @@
           AND is_reversed = 0
     </select>
 
+    <!-- 统计用户在指定主题帖下已获得的回帖积分次数（评论+回复，排除已撤销的记录） -->
+    <select id="countReplyPointsForArticle" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(cnt), 0) FROM (
+            SELECT COUNT(*) AS cnt
+            FROM bbs_points_log p
+            INNER JOIN bbs_comment c ON p.related_id = c.comment_id
+            WHERE p.user_id = #{userId}
+              AND p.related_type = 'comment'
+              AND (p.is_reversed IS NULL OR p.is_reversed = 0)
+              AND c.comment_article_id = #{articleId}
+            UNION ALL
+            SELECT COUNT(*) AS cnt
+            FROM bbs_points_log p
+            INNER JOIN bbs_reply r ON p.related_id = r.reply_id
+            INNER JOIN bbs_comment c ON r.comment_id = c.comment_id
+            WHERE p.user_id = #{userId}
+              AND p.related_type = 'reply'
+              AND (p.is_reversed IS NULL OR p.is_reversed = 0)
+              AND c.comment_article_id = #{articleId}
+        ) t
+    </select>
+
 </mapper>

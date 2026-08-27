@@ -42,4 +42,13 @@ public interface PointsLogService extends IService<PointsLog> {
      * 分页查询用户积分变动记录
      */
     ResultBean getUserPointsLog(Integer userId, Integer page, Integer size);
+
+    /**
+     * 统计用户在指定主题帖下已获得的回帖积分次数（评论+回复）
+     * 同一篇主题帖下同一用户最多累计获得3次回帖积分
+     * @param userId 用户ID
+     * @param articleId 主题帖ID
+     * @return 已获得的回帖积分次数
+     */
+    int countReplyPointsForArticle(Integer userId, Integer articleId);
 }

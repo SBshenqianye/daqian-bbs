@@ -115,4 +115,13 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
         data.put("total", result.getTotal());
         return ResultBean.success("查询成功", data);
     }
+
+    @Override
+    public int countReplyPointsForArticle(Integer userId, Integer articleId) {
+        if (userId == null || articleId == null) {
+            return 0;
+        }
+        Integer count = pointsLogMapper.countReplyPointsForArticle(userId, articleId);
+        return count != null ? count : 0;
+    }
 }
