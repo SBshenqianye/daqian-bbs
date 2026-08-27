@@ -97,18 +97,18 @@ public class ReplyController {
             return ResultBean.error("该帖子不是问题求助类型，无法采纳");
         }
 
-        // 校验：同一文章最多只能有一条采纳（待审批或已确认）
-        boolean alreadyHasAdopt = hasPendingOrConfirmedAdopt(articleId);
-        if (alreadyHasAdopt) return ResultBean.error("该文章已有采纳申请或最佳解答，不可重复采纳");
+        // 校验：已有已确认采纳(2)的帖子不可再采纳；已有待审批采纳(1)的允许替换
+        int confirmedCount = countConfirmedAdopt(articleId);
+        if (confirmedCount > 0) return ResultBean.error("该文章已有最佳解答，不可再次采纳");
+
+        // 如果已有待审批的采纳，先取消（替换场景）
+        cancelPendingAdopts(articleId, null);
 
         // ---- 回复采纳 ----
         if (replyId != null) {
             Reply reply = replyService.getById(replyId);
             if (reply == null) return ResultBean.error("回复不存在");
             if (userId.equals(reply.getReplyUserId())) return ResultBean.error("不能采纳自己的回复");
-            if (reply.getAdoptStatus() != null && reply.getAdoptStatus() != 0) {
-                return ResultBean.error(adoptStatusMsg(reply.getAdoptStatus()));
-            }
             reply.setAdoptStatus(1);
             replyService.updateById(reply);
             notifyModerators(article, replyId, "reply", userId);
@@ -120,9 +120,6 @@ public class ReplyController {
             Comment comment = commentService.getById(commentId);
             if (comment == null) return ResultBean.error("评论不存在");
             if (userId.equals(comment.getCommentUserId())) return ResultBean.error("不能采纳自己的评论");
-            if (comment.getAdoptStatus() != null && comment.getAdoptStatus() != 0) {
-                return ResultBean.error(adoptStatusMsg(comment.getAdoptStatus()));
-            }
             comment.setAdoptStatus(1);
             commentService.updateById(comment);
             notifyModerators(article, commentId, "comment", userId);
@@ -308,23 +305,54 @@ public class ReplyController {
     // ==================== 辅助方法 ====================
 
     /**
-     * 检查该文章是否已有待审批(1)或已确认(2)的采纳
-     * 同一文章最多只能有一条采纳
+     * 检查该文章是否已有已确认(2)的采纳
+     * 已确认的采纳不可替换
      */
-    private boolean hasPendingOrConfirmedAdopt(Integer articleId) {
+    private int countConfirmedAdopt(Integer articleId) {
         // 查 bbs_reply：通过 comment 找到属于该文章的回复
         LambdaQueryWrapper<Reply> replyWrapper = new LambdaQueryWrapper<>();
-        replyWrapper.in(Reply::getAdoptStatus, 1, 2);
-        List<Reply> adoptReplies = replyService.list(replyWrapper);
-        for (Reply r : adoptReplies) {
+        replyWrapper.eq(Reply::getAdoptStatus, 2);
+        List<Reply> confirmedReplies = replyService.list(replyWrapper);
+        int count = 0;
+        for (Reply r : confirmedReplies) {
             Comment c = commentService.getById(r.getCommentId());
-            if (c != null && articleId.equals(c.getCommentArticleId())) return true;
+            if (c != null && articleId.equals(c.getCommentArticleId())) count++;
         }
         // 查 bbs_comment：直接按文章ID查
         LambdaQueryWrapper<Comment> commentWrapper = new LambdaQueryWrapper<>();
         commentWrapper.eq(Comment::getCommentArticleId, articleId)
-                      .in(Comment::getAdoptStatus, 1, 2);
-        return commentService.count(commentWrapper) > 0;
+                      .eq(Comment::getAdoptStatus, 2);
+        count += commentService.count(commentWrapper);
+        return count;
+    }
+
+    /**
+     * 取消该文章所有待审批(1)的采纳（替换场景：采纳新内容前先清掉旧的待审批）
+     * excludeId: 可选，排除某个ID不取消
+     */
+    private void cancelPendingAdopts(Integer articleId, Integer excludeId) {
+        // 取消待审批的回复
+        LambdaQueryWrapper<Reply> replyWrapper = new LambdaQueryWrapper<>();
+        replyWrapper.eq(Reply::getAdoptStatus, 1);
+        List<Reply> pendingReplies = replyService.list(replyWrapper);
+        for (Reply r : pendingReplies) {
+            if (excludeId != null && excludeId.equals(r.getReplyId())) continue;
+            Comment c = commentService.getById(r.getCommentId());
+            if (c != null && articleId.equals(c.getCommentArticleId())) {
+                r.setAdoptStatus(0);
+                replyService.updateById(r);
+            }
+        }
+        // 取消待审批的评论
+        LambdaQueryWrapper<Comment> commentWrapper = new LambdaQueryWrapper<>();
+        commentWrapper.eq(Comment::getCommentArticleId, articleId)
+                      .eq(Comment::getAdoptStatus, 1);
+        List<Comment> pendingComments = commentService.list(commentWrapper);
+        for (Comment comment : pendingComments) {
+            if (excludeId != null && excludeId.equals(comment.getCommentId())) continue;
+            comment.setAdoptStatus(0);
+            commentService.updateById(comment);
+        }
     }
 
     private void notifyModerators(com.walker.pojo.Article article, Integer relatedId, String relatedType, Integer fromUserId) {
@@ -345,16 +373,6 @@ public class ReplyController {
         }
         if (notified.add(1)) {
             notificationService.createNotification(1, fromUserId, "adopt_pending", notifyTitle, relatedType, relatedId);
-        }
-    }
-
-    private String adoptStatusMsg(Integer status) {
-        if (status == null) return "无法采纳";
-        switch (status) {
-            case 1: return "该内容已有待审批的采纳申请";
-            case 2: return "该内容已被采纳";
-            case 3: return "该内容的采纳申请已被拒绝";
-            default: return "无法采纳";
         }
     }
 
