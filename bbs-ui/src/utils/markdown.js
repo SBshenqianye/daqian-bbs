@@ -231,8 +231,12 @@ export function htmlToMd(html) {
   md = lines.join('\n')
 
   // 7. 清理
-  md = md.replace(/&nbsp;/g, ' ')
   md = md.replace(/<[^>]*>/g, '')     // 移除漏网的 HTML 标签
+  md = md.replace(/&nbsp;/g, ' ')
+  md = md.replace(/&gt;/g, '>')       // 解码 > （contenteditable 粘贴时被转义）
+  md = md.replace(/&lt;/g, '<')
+  md = md.replace(/&quot;/g, '"')
+  md = md.replace(/&amp;/g, '&')      // & 必须放最后，避免重复解码
   md = md.replace(/^\n+|\n+$/g, '')   // 去首尾空行
 
   return md
