@@ -38,6 +38,7 @@ public final class NotificationCategory {
         m.put("hot_bonus", SYSTEM);             // 帖子热度奖励
         m.put("suggestion_adopted", SYSTEM);    // 建议被采纳
         m.put("report_confirmed", SYSTEM);      // 举报核实
+        m.put("report_pending", SYSTEM);        // 实名举报待审核（通知超级管理员）
         m.put("violation", SYSTEM);             // 违规记录
         m.put("post_restricted", SYSTEM);       // 发帖权限限制
         TYPE_CATEGORY = Collections.unmodifiableMap(m);

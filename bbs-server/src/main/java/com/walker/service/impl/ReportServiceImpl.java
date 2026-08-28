@@ -4,9 +4,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.ReportMapper;
+import com.walker.pojo.Article;
+import com.walker.pojo.Comment;
+import com.walker.pojo.Reply;
 import com.walker.pojo.Report;
+import com.walker.service.ArticleService;
+import com.walker.service.CommentService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
+import com.walker.service.ReplyService;
 import com.walker.service.ReportService;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,12 +20,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
 public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> implements ReportService {
+
+    /** 单人单日举报上限（兜底防"驳回→再报"循环刷量） */
+    private static final int MAX_REPORTS_PER_DAY = 10;
 
     @Autowired
     private ReportMapper reportMapper;
@@ -30,6 +42,15 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     @Autowired
     private NotificationService notificationService;
 
+    @Autowired
+    private ArticleService articleService;
+
+    @Autowired
+    private CommentService commentService;
+
+    @Autowired
+    private ReplyService replyService;
+
     @Override
     @Transactional
     public ResultBean submitReport(Integer reporterId, String targetType, Integer targetId, String reason) {
@@ -37,7 +58,32 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             return ResultBean.error("参数不完整");
         }
 
-        // 检查是否已举报过
+        // 不能举报自己发布的内容（实名举报面向他人内容，同时杜绝自产自销刷分）
+        Integer ownerId = queryTargetOwnerId(targetType, targetId);
+        if (ownerId != null && ownerId.equals(reporterId)) {
+            return ResultBean.error("不能举报自己发布的内容");
+        }
+
+        // 该内容已被核实处理过（存在 confirmed 记录）则不再接受任何新举报：首报有效，防确认后跟报刷分
+        long confirmedCount = this.count(new LambdaQueryWrapper<Report>()
+                .eq(Report::getTargetType, targetType)
+                .eq(Report::getTargetId, targetId)
+                .eq(Report::getStatus, "confirmed"));
+        if (confirmedCount > 0) {
+            return ResultBean.error("该内容已被核实处理，无需重复举报");
+        }
+
+        // 单人单日频率限制：兜底防"驳回→再报"无限循环刷量
+        String today = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
+        long todayCount = this.count(new LambdaQueryWrapper<Report>()
+                .eq(Report::getReporterId, reporterId)
+                .ge(Report::getCreateTime, today));
+        if (todayCount >= MAX_REPORTS_PER_DAY) {
+            return ResultBean.error("举报过于频繁，请明天再试");
+        }
+
+        // 检查是否已举报过：存在未驳回的记录即拒绝（pending 期间防重复，confirmed 后防同一内容反复计分；
+        // rejected 后允许再报，便于补充证据，由单日上限兜底）
         long count = this.count(new LambdaQueryWrapper<Report>()
                 .eq(Report::getReporterId, reporterId)
                 .eq(Report::getTargetType, targetType)
@@ -60,7 +106,53 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         report.setCreateTime(fmt.format(now));
         this.save(report);
 
+        // 通知超级管理员（bbs_user id=1，与 adopt_pending 待审批通知同模式）有新举报待审核。
+        // 仅当本条是该目标第一条待审举报时才通知：同一内容多人跟报不重复轰炸超管；
+        // 该目标被处理后（无 pending）有人再报，会重新触发通知（新一轮待办）。
+        // 举报人即管理员本人时 createNotification 内部会跳过自身通知。
+        long pendingCount = this.count(new LambdaQueryWrapper<Report>()
+                .eq(Report::getTargetType, targetType)
+                .eq(Report::getTargetId, targetId)
+                .eq(Report::getStatus, "pending"));
+        if (pendingCount == 1) {
+            notificationService.createNotification(1, reporterId, "report_pending",
+                    "有新的实名举报待审核：" + targetTypeLabel(targetType) + " #" + targetId,
+                    "report", report.getId());
+        }
+
         return ResultBean.success("举报已提交，等待审核");
+    }
+
+    /**
+     * 查询举报目标内容的作者 id（用于禁止自举报）；目标不存在或类型未知返回 null
+     */
+    private Integer queryTargetOwnerId(String targetType, Integer targetId) {
+        if ("article".equals(targetType)) {
+            Article article = articleService.getById(targetId);
+            return article == null ? null : article.getUserId();
+        }
+        if ("comment".equals(targetType)) {
+            Comment comment = commentService.getById(targetId);
+            return comment == null ? null : comment.getCommentUserId();
+        }
+        if ("reply".equals(targetType)) {
+            Reply reply = replyService.getById(targetId);
+            return reply == null ? null : reply.getReplyUserId();
+        }
+        return null;
+    }
+
+    /** 举报对象类型的中文展示名（通知文案用），与前端 getTargetTypeLabel 口径一致 */
+    private String targetTypeLabel(String targetType) {
+        if (targetType == null) {
+            return "内容";
+        }
+        switch (targetType) {
+            case "article": return "文章";
+            case "comment": return "评论";
+            case "reply":   return "回复";
+            default:        return targetType;
+        }
     }
 
     @Override
@@ -86,7 +178,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         report.setReviewTime(fmt.format(now));
         report.setReviewRemark(remark);
 
-        // 确认举报属实：给举报人加2分
+        // 确认举报属实：给该举报人加2分
         if ("confirmed".equals(status)) {
             report.setPointsAwarded(1);
             this.updateById(report);
@@ -97,6 +189,28 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             // 通知举报人
             notificationService.createNotification(report.getReporterId(), reviewerId,
                     "report_confirmed", "您的举报已核实", "report", reportId);
+
+            // 一次批准、全组计分：同一内容其余待审举报一并确认，各自 +2 分并通知。
+            // 计分截止于本次核实——之后的跟报在提交时即被拒（见 submitReport 的 confirmed 拦截），不再有后续参与者。
+            List<Report> others = this.list(new LambdaQueryWrapper<Report>()
+                    .eq(Report::getTargetType, report.getTargetType())
+                    .eq(Report::getTargetId, report.getTargetId())
+                    .eq(Report::getStatus, "pending")
+                    .ne(Report::getId, reportId));
+            for (Report other : others) {
+                other.setStatus("confirmed");
+                other.setPointsAwarded(1);
+                other.setReviewerId(reviewerId);
+                other.setReviewTime(fmt.format(now));
+                other.setReviewRemark("同一内容举报核实，一并确认加分");
+                this.updateById(other);
+
+                pointsLogService.adjustUserPoints(other.getReporterId(), 2, "举报属实奖励",
+                        "report", other.getId(), reviewerId);
+
+                notificationService.createNotification(other.getReporterId(), reviewerId,
+                        "report_confirmed", "您举报的内容已核实", "report", other.getId());
+            }
         } else {
             this.updateById(report);
         }
@@ -116,6 +230,52 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         Map<String, Object> data = new HashMap<>();
         data.put("records", result.getRecords());
         data.put("total", result.getTotal());
+        return ResultBean.success("查询成功", data);
+    }
+
+    @Override
+    public ResultBean listReportsGrouped(String status, Integer page, Integer size) {
+        // 举报表数据量有限（社区场景），一次性取过滤后记录在内存分组，换取组完整性（分页不拆组）
+        LambdaQueryWrapper<Report> wrapper = new LambdaQueryWrapper<>();
+        if (status != null && !status.isEmpty()) {
+            wrapper.eq(Report::getStatus, status);
+        }
+        wrapper.orderByAsc(Report::getCreateTime);
+        List<Report> all = this.list(wrapper);
+
+        // 按 targetType|targetId 分组，LinkedHashMap 保持最早举报在前
+        Map<String, List<Report>> groups = new LinkedHashMap<>();
+        for (Report r : all) {
+            groups.computeIfAbsent(r.getTargetType() + "|" + r.getTargetId(), k -> new ArrayList<>()).add(r);
+        }
+
+        List<Map<String, Object>> records = new ArrayList<>();
+        int total = groups.size();
+        int from = Math.max(0, (page - 1) * size);
+        int to = Math.min(from + size, total);
+        List<List<Report>> groupLists = new ArrayList<>(groups.values());
+        for (int i = from; i < to; i++) {
+            List<Report> members = groupLists.get(i);
+            // 代表记录：优先首条待审（管理员最需要操作的），否则最早一条（首报）
+            Report representative = members.get(0);
+            for (Report m : members) {
+                if ("pending".equals(m.getStatus())) {
+                    representative = m;
+                    break;
+                }
+            }
+            Map<String, Object> group = new HashMap<>();
+            group.put("representative", representative);
+            group.put("members", members);
+            group.put("totalCount", members.size());
+            group.put("targetType", representative.getTargetType());
+            group.put("targetId", representative.getTargetId());
+            records.add(group);
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("records", records);
+        data.put("total", total);
         return ResultBean.success("查询成功", data);
     }
 

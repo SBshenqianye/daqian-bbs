@@ -21,14 +21,24 @@
                 </el-tooltip>
               </div>
             </div>
-            <div class="flex items-center gap-3 py-1 px-3 bg-surface-container-lowest border border-border rounded-lg">
-              <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-white overflow-hidden shadow-inner">
-                <img alt="Author" class="w-full h-full object-cover" :src="article.authorAvatar || require('@/assets/portrait.png')">
-              </div>
-              <div class="flex flex-col">
-                <span class="font-bold text-on-surface">{{ article.author }}</span>
-                <span v-if="article.authorOrgName" class="text-[10px] text-outline" :title="article.authorOrgNameFull || article.authorOrgName">{{ article.authorOrgName }}</span>
-                <span v-else class="text-[10px] text-outline">{{ article.authorTitle }}</span>
+            <div class="flex items-center gap-3">
+              <button
+                v-if="canReportArticle"
+                class="flex items-center gap-1 text-on-surface-variant hover:text-error transition-primary"
+                title="实名举报该文章，管理员核实属实后可获得积分奖励"
+                @click="openArticleReport"
+              >
+                <span class="material-symbols-outlined text-[16px]">flag</span> 举报
+              </button>
+              <div class="flex items-center gap-3 py-1 px-3 bg-surface-container-lowest border border-border rounded-lg">
+                <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-white overflow-hidden shadow-inner">
+                  <img alt="Author" class="w-full h-full object-cover" :src="article.authorAvatar || require('@/assets/portrait.png')">
+                </div>
+                <div class="flex flex-col">
+                  <span class="font-bold text-on-surface">{{ article.author }}</span>
+                  <span v-if="article.authorOrgName" class="text-[10px] text-outline" :title="article.authorOrgNameFull || article.authorOrgName">{{ article.authorOrgName }}</span>
+                  <span v-else class="text-[10px] text-outline">{{ article.authorTitle }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -108,6 +118,7 @@
             @delete="handleDeleteComment"
             @reply="handleReply"
             @adopt="handleAdopt"
+            @report="handleCommentReport"
           />
 
           <!-- 空状态：全无评论 -->
@@ -172,11 +183,21 @@
         </div>
       </div>
     </transition>
+
+    <!-- 举报弹窗（文章/评论/回复共用） -->
+    <BBSReportDialog
+      :visible="reportDialog.visible"
+      :target-type="reportDialog.targetType"
+      :target-id="reportDialog.targetId"
+      :target-preview="reportDialog.targetPreview"
+      @close="reportDialog.visible = false"
+    />
   </main>
 </template>
 
 <script>
 import BBSCommentItem from '@/components/BBSCommentItem.vue'
+import BBSReportDialog from '@/components/BBSReportDialog.vue'
 import { getArticleById, getUserinfoById, getArticleFileByArticleId } from '@/api/article'
 import { getCommentReply } from '@/api/comment'
 import { normalizeFileUrl, normalizeUrls } from '@/utils/utils'
@@ -192,7 +213,7 @@ const MIN_COMMENT_FILLER = 3
 
 export default {
   name: 'BBSArticleDetails',
-  components: { BBSCommentItem },
+  components: { BBSCommentItem, BBSReportDialog },
   provide() {
     return {
       replyState: this.replyState,
@@ -241,6 +262,8 @@ export default {
       commentPlaceholder: '',
       replyState: { activeId: null },
       scrollToTarget: null,
+      // 举报弹窗状态（文章/评论/回复共用）
+      reportDialog: { visible: false, targetType: 'article', targetId: null, targetPreview: '' },
     }
   },
   computed: {
@@ -278,6 +301,11 @@ export default {
     /** 帖子标签是否为"问题求助" */
     isQuestionLabel() {
       return this.articleTagName === '问题求助'
+    },
+    /** 是否可举报文章：已登录且不是自己的文章 */
+    canReportArticle() {
+      return this.currentUserId != null && this.article.userId != null
+        && String(this.currentUserId) !== String(this.article.userId)
     },
   },
   mounted() {
@@ -553,6 +581,35 @@ export default {
           }).catch(err => { console.warn('[BBSArticleDetails] deleteComment', err) })
         }
       }).catch(() => {})
+    },
+    /** 打开举报弹窗（统一入口：未登录跳登录页） */
+    openReportDialog(payload) {
+      if (!this.currentUser) {
+        this.$router.push({ path: '/login', query: { redirect: this.$route.fullPath } })
+        return
+      }
+      this.reportDialog = {
+        visible: true,
+        targetType: payload.targetType,
+        targetId: payload.targetId,
+        targetPreview: payload.targetPreview || '',
+      }
+    },
+    /** 举报文章 */
+    openArticleReport() {
+      const preview = this.article.title ? '文章《' + this.article.title + '》' : '文章 #' + this.articleId
+      this.openReportDialog({ targetType: 'article', targetId: Number(this.articleId), targetPreview: preview })
+    },
+    /** 举报评论/回复（BBSCommentItem @report 逐层冒泡，replyKey 区分层级） */
+    handleCommentReport(comment) {
+      if (!comment) return
+      const isReply = comment.id !== comment.commentRootId
+      const preview = (comment.author ? comment.author + '：' : '') + String(comment.content || '').slice(0, 80)
+      this.openReportDialog({
+        targetType: isReply ? 'reply' : 'comment',
+        targetId: comment.id,
+        targetPreview: preview,
+      })
     },
     initStickyBar() {
       const input = this.$refs && this.$refs.commentInput

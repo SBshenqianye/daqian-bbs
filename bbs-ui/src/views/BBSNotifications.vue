@@ -166,6 +166,10 @@ export default {
           // 版主/超管：跳管理端采纳审批页（生产同 nginx 同域，管理端为 hash 路由）
           window.open('/bbs-admin/#/approve-adopt', '_blank')
           return
+        case 'report_pending':
+          // 超管：跳管理端举报管理页（同 adopt_pending 跳管理端模式）
+          window.open('/bbs-admin/#/report', '_blank')
+          return
         case 'appeal_review':
           this.$router.push('/my-appeals')
           return
@@ -215,6 +219,7 @@ export default {
         violation: 'gavel',
         post_restricted: 'block',
         report_confirmed: 'flag',
+        report_pending: 'flag',
         appeal_review: 'assignment',
       }
       return icons[type] || 'notifications'
@@ -231,6 +236,7 @@ export default {
         violation: 'bg-red-50',
         post_restricted: 'bg-gray-100',
         report_confirmed: 'bg-rose-50',
+        report_pending: 'bg-yellow-50',
         appeal_review: 'bg-indigo-50',
       }
       return map[type] || 'bg-gray-50'
@@ -247,6 +253,7 @@ export default {
         violation: 'text-red-600',
         post_restricted: 'text-gray-600',
         report_confirmed: 'text-rose-600',
+        report_pending: 'text-yellow-600',
         appeal_review: 'text-indigo-600',
       }
       return map[type] || 'text-gray-600'
@@ -263,6 +270,7 @@ export default {
         violation: '违规',
         post_restricted: '帖子限制',
         report_confirmed: '举报确认',
+        report_pending: '举报待审',
         appeal_review: '申诉审核',
       }
       return labels[type] || '通知'

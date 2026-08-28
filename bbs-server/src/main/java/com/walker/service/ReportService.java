@@ -27,6 +27,13 @@ public interface ReportService extends IService<Report> {
     ResultBean listReports(String status, Integer page, Integer size);
 
     /**
+     * 分页查询举报列表——按举报目标（targetType+targetId）分组折叠（管理员端）。
+     * 每组返回 representative（代表记录：优先首条 pending，否则最早一条）、members（组内全部记录）、totalCount。
+     * 分页以组为单位，避免同组记录被拆到两页。
+     */
+    ResultBean listReportsGrouped(String status, Integer page, Integer size);
+
+    /**
      * 用户查看自己的举报记录
      */
     ResultBean listMyReports(Integer reporterId, Integer page, Integer size);

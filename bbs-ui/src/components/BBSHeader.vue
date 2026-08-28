@@ -158,6 +158,13 @@
                   积分记录
                 </router-link>
                 <router-link
+                  to="/my-reports"
+                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
+                >
+                  <span class="material-symbols-outlined text-[20px]">flag</span>
+                  我的举报
+                </router-link>
+                <router-link
                   to="/notifications"
                   class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
                 >

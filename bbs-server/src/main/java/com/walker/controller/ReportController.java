@@ -48,6 +48,15 @@ public class ReportController {
         return reportService.listReports(status, page, size);
     }
 
+    @ApiOperation(value = "管理员查看举报列表（按举报目标分组折叠，避免同内容刷屏）")
+    @PostMapping("/admin/report/listGrouped")
+    public ResultBean listReportsGrouped(@RequestBody Map<String, Object> params) {
+        String status = (String) params.get("status");
+        Integer page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;
+        Integer size = params.get("size") != null ? Integer.parseInt(params.get("size").toString()) : 10;
+        return reportService.listReportsGrouped(status, page, size);
+    }
+
     @ApiOperation(value = "用户查看自己的举报记录")
     @PostMapping("/user/report/myList")
     public ResultBean listMyReports(@RequestBody Map<String, Object> params) {

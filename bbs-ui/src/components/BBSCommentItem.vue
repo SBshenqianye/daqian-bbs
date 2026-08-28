@@ -34,6 +34,9 @@
           <button class="hover:text-primary transition-primary flex items-center gap-0.5" @click="handleToggleReply">
             <span class="material-symbols-outlined text-[14px]">reply</span> 回复
           </button>
+          <button v-if="canReport" class="hover:text-error transition-primary flex items-center gap-0.5" @click="$emit('report', comment)">
+            <span class="material-symbols-outlined text-[14px]">flag</span> 举报
+          </button>
           <button v-if="comment.canDelete" class="hover:text-error transition-primary flex items-center gap-0.5" @click="$emit('delete', comment)">
             <span class="material-symbols-outlined text-[14px]">delete</span> 删除
           </button>
@@ -77,6 +80,7 @@
             @delete="$emit('delete', $event)"
             @reply="$emit('reply', $event)"
             @adopt="$emit('adopt', $event)"
+            @report="$emit('report', $event)"
           />
         </div>
         <!-- 展开/折叠按钮 -->
@@ -146,6 +150,11 @@ export default {
     canAdopt() {
       return this.adoptState.isQuestionLabel && this.adoptState.currentUserId != null
         && this.adoptState.currentUserId === this.comment.articleAuthorId
+        && this.adoptState.currentUserId !== this.comment.userId
+    },
+    /** 是否显示举报按钮：已登录 且 不是自己的评论/回复 */
+    canReport() {
+      return this.adoptState.currentUserId != null
         && this.adoptState.currentUserId !== this.comment.userId
     },
   },

@@ -8,7 +8,7 @@
             <span class="material-symbols-outlined text-amber-600">feedback</span>
             举报管理
           </h1>
-          <p class="text-body-md text-secondary mt-1">审核用户举报内容</p>
+          <p class="text-body-md text-secondary mt-1">审核用户举报内容（同一内容的重复举报已折叠）</p>
         </div>
       </div>
 
@@ -25,7 +25,7 @@
         </div>
       </div>
 
-      <!-- List -->
+      <!-- List：按举报目标分组，折叠重复举报 -->
       <div class="bg-container border border-border rounded-xl p-card-padding">
         <div class="border border-outline-variant rounded-lg overflow-hidden" v-loading="loading">
           <div v-if="!list || list.length === 0" class="py-12 text-center text-on-surface-variant">
@@ -44,28 +44,53 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-outline-variant/50">
-              <tr v-for="item in list" :key="item.id" class="hover:bg-surface-container-low/50">
-                <td class="px-4 py-3 text-body-sm">{{ item.id }}</td>
-                <td class="px-4 py-3 text-body-sm">{{ item.reporterId }}</td>
-                <td class="px-4 py-3 text-body-sm">{{ item.targetType }}#{{ item.targetId }}</td>
-                <td class="px-4 py-3 text-body-sm max-w-[200px] truncate">{{ item.reason || '-' }}</td>
-                <td class="px-4 py-3 text-body-sm">
-                  <span :class="{
-                    'px-2 py-0.5 rounded text-[12px] font-medium': true,
-                    'bg-yellow-100 text-yellow-800': item.status === 'pending',
-                    'bg-green-100 text-green-800': item.status === 'confirmed',
-                    'bg-red-100 text-red-800': item.status === 'rejected'
-                  }">{{ getStatusLabel(item.status) }}</span>
-                </td>
-                <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.createTime }}</td>
-                <td class="px-4 py-3 text-body-sm">
-                  <div v-if="item.status === 'pending'" class="flex gap-1">
-                    <button class="px-2 py-1 bg-green-50 text-green-700 rounded text-[12px] hover:bg-green-100" @click="handleReview(item, 'confirmed')">确认</button>
-                    <button class="px-2 py-1 bg-red-50 text-red-700 rounded text-[12px] hover:bg-red-100" @click="handleReview(item, 'rejected')">驳回</button>
-                  </div>
-                  <span v-else class="text-on-surface-variant text-[12px]">{{ item.reviewRemark || '已处理' }}</span>
-                </td>
-              </tr>
+              <template v-for="group in list">
+                <tr
+                  v-for="item in group.members"
+                  :key="item.id"
+                  v-show="isGroupExpanded(group) || item.id === group.representative.id"
+                  class="hover:bg-surface-container-low/50"
+                >
+                  <td class="px-4 py-3 text-body-sm">{{ item.id }}</td>
+                  <td class="px-4 py-3 text-body-sm">{{ item.reporterId }}</td>
+                  <td class="px-4 py-3 text-body-sm">
+                    <div class="flex items-center gap-2">
+                      <span>{{ getTargetTypeLabel(item.targetType) }}#{{ item.targetId }}</span>
+                      <!-- 折叠态下在代表行上显示重复数徽标 + 展开按钮 -->
+                      <button
+                        v-if="item.id === group.representative.id && group.totalCount > 1 && !isGroupExpanded(group)"
+                        class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[11px] font-medium hover:bg-blue-100"
+                        @click="toggleGroup(group)"
+                      >
+                        +{{ group.totalCount - 1 }} 条重复举报 ▼
+                      </button>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 text-body-sm max-w-[200px] truncate" :title="item.reason">{{ item.reason || '-' }}</td>
+                  <td class="px-4 py-3 text-body-sm">
+                    <span :class="{
+                      'px-2 py-0.5 rounded text-[12px] font-medium': true,
+                      'bg-yellow-100 text-yellow-800': item.status === 'pending',
+                      'bg-green-100 text-green-800': item.status === 'confirmed',
+                      'bg-red-100 text-red-800': item.status === 'rejected'
+                    }">{{ getStatusLabel(item.status) }}</span>
+                  </td>
+                  <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.createTime }}</td>
+                  <td class="px-4 py-3 text-body-sm">
+                    <div v-if="item.status === 'pending'" class="flex gap-1">
+                      <button class="px-2 py-1 bg-green-50 text-green-700 rounded text-[12px] hover:bg-green-100" @click="handleReview(item, 'confirmed')">确认</button>
+                      <button class="px-2 py-1 bg-red-50 text-red-700 rounded text-[12px] hover:bg-red-100" @click="handleReview(item, 'rejected')">驳回</button>
+                    </div>
+                    <span v-else class="text-on-surface-variant text-[12px]">{{ item.reviewRemark || '已处理' }}</span>
+                  </td>
+                </tr>
+                <!-- 展开态：收起按钮行 -->
+                <tr v-if="isGroupExpanded(group) && group.totalCount > 1" :key="'collapse-' + group.targetType + '-' + group.targetId">
+                  <td colspan="7" class="py-2 text-center bg-surface-container-low/40">
+                    <button class="text-blue-600 hover:underline text-[12px]" @click="toggleGroup(group)">▲ 收起其余 {{ group.totalCount - 1 }} 条重复举报</button>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -85,22 +110,30 @@ export default {
   data() {
     return {
       loading: false,
-      list: [],
-      total: 0,
+      list: [],           // 分组数据：[{ representative, members, totalCount, targetType, targetId }]
+      total: 0,           // 组数（分页单位是组，不是记录）
       currentPage: 1,
       pageSize: 10,
-      filterStatus: ''
+      filterStatus: '',
+      expandedKeys: {}    // 展开状态的组 key -> true
     }
   },
   mounted() { this.loadList() },
   methods: {
     getStatusLabel(s) { return { pending: '待审核', confirmed: '已确认', rejected: '已驳回' }[s] || s },
+    getTargetTypeLabel(t) { return { article: '文章', comment: '评论', reply: '回复' }[t] || t },
+    groupKey(group) { return group.targetType + '-' + group.targetId },
+    isGroupExpanded(group) { return !!this.expandedKeys[this.groupKey(group)] },
+    toggleGroup(group) {
+      const key = this.groupKey(group)
+      this.$set(this.expandedKeys, key, !this.expandedKeys[key])
+    },
     async loadList() {
       this.loading = true
       try {
         const params = { page: this.currentPage, size: this.pageSize }
         if (this.filterStatus) params.status = this.filterStatus
-        const res = await this.postRequest('/admin/report/list', params)
+        const res = await this.postRequest('/admin/report/listGrouped', params)
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0
@@ -110,7 +143,12 @@ export default {
     },
     handleReview(item, status) {
       const label = status === 'confirmed' ? '确认' : '驳回'
-      this.$prompt('审核备注（可选）', `确定${label}该举报？`, { type: status === 'confirmed' ? 'success' : 'warning' })
+      // 全组计分提示：确认任一条 = 同内容全部待审举报一并确认，所有举报人各 +2 分
+      const group = this.list.find(g => g.members.some(m => m.id === item.id))
+      const title = status === 'confirmed' && group && group.totalCount > 1
+        ? `确定确认该举报？该内容共 ${group.totalCount} 条举报，将一并确认，全部举报人各 +2 分`
+        : `确定${label}该举报？`
+      this.$prompt('审核备注（可选）', title, { type: status === 'confirmed' ? 'success' : 'warning' })
         .then(({ value }) => this.doReview(item.id, status, value))
         .catch(() => {})
     },
