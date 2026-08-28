@@ -74,8 +74,10 @@ export default {
       localCollapse: false,
       showDropdown: false,
       adminInfo: null,
+      // 用户前端链接：路由结构统一挂在 /bbs-user/ 下（dev 由本端口代理到 9081，生产同 nginx 域）。
+      // VUE_APP_BBS_USER_API 可选：默认同源相对路径；设置后为绝对源地址前缀。
       userClientHref:
-        (process.env.VUE_APP_BBS_USER_API || '') + '/#/userinfo',
+        (process.env.VUE_APP_BBS_USER_API || '') + '/bbs-user/#/userinfo',
       defaultPortrait: require('@/assets/portrait.png'),
     }
   },
