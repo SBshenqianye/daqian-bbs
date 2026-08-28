@@ -35,6 +35,10 @@ public class Notification implements Serializable {
     @TableField("type")
     private String type;
 
+    @ApiModelProperty("通知分类(interaction=互动消息,system=系统通知)，由 NotificationCategory 注册表按 type 归组")
+    @TableField("category")
+    private String category;
+
     @ApiModelProperty("通知标题")
     @TableField("title")
     private String title;

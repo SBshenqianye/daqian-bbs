@@ -7,10 +7,10 @@
           <span class="material-symbols-outlined text-primary">notifications</span>
           消息通知
         </h1>
-        <p v-if="unreadCount > 0" class="text-body-md text-on-surface-variant mt-1">你有 {{ unreadCount }} 条未读消息</p>
+        <p v-if="unreadSystem > 0" class="text-body-md text-on-surface-variant mt-1">你有 {{ unreadSystem }} 条未读消息</p>
       </div>
       <button
-        v-if="unreadCount > 0"
+        v-if="unreadSystem > 0"
         class="px-4 py-2 text-sm text-primary hover:bg-primary/5 rounded-lg transition-colors"
         @click="markAllRead"
       >
@@ -55,8 +55,8 @@
       <!-- Empty State -->
       <div v-else class="flex flex-col items-center justify-center py-24 text-on-surface-variant">
         <span class="material-symbols-outlined text-7xl mb-4 opacity-15">notifications_none</span>
-        <p class="font-headline-sm text-headline-sm mb-2">暂无通知</p>
-        <p class="font-body-md text-body-md">当有人回复你、评论你或你的帖子被操作时，你会收到通知</p>
+        <p class="font-headline-sm text-headline-sm mb-2">暂无系统通知</p>
+        <p class="font-body-md text-body-md">帖子被采纳、举报核实或产生违规记录等系统事件时，你会在这里收到通知；回复/评论提醒请前往"回复我的"</p>
       </div>
     </template>
 
@@ -94,6 +94,7 @@
 <script>
 import { getUser } from '@/utils/auth'
 import { friendlyTime } from '@/utils/utils'
+import notificationStore from '@/utils/notificationStore'
 
 export default {
   name: 'BBSNotifications',
@@ -104,10 +105,13 @@ export default {
       total: 0,
       currentPage: 1,
       pageSize: 20,
-      unreadCount: 0,
     }
   },
   computed: {
+    /** 系统通知未读数（全局通知 store；互动消息的未读在"回复我的"，与本页互不影响） */
+    unreadSystem() {
+      return notificationStore.count('system')
+    },
     totalPages() {
       return Math.max(1, Math.ceil(this.total / this.pageSize))
     },
@@ -125,19 +129,19 @@ export default {
   },
   mounted() {
     this.fetchList()
-    this.fetchUnreadCount()
   },
   methods: {
     friendlyTime,
     fetchList() {
       if (!this.currentUserId) return
       this.loading = true
-      this.getRequest(`/notification/list?userId=${this.currentUserId}&page=${this.currentPage}&size=${this.pageSize}`).then(resp => {
+      // 本页只展示"系统通知"分类；互动消息（回复/评论我）在"回复我的"页面
+      this.getRequest(`/notification/list?userId=${this.currentUserId}&category=system&page=${this.currentPage}&size=${this.pageSize}`).then(resp => {
         this.loading = false
         const data = resp && resp.obj
         this.notifications = (data && data.records) || []
         this.total = (data && data.total) || 0
-        // 进入通知页面时标记所有通知为已读
+        // 进入通知页面时只标记系统通知分类为已读，不影响"回复我的"的互动未读
         this.markAllRead()
       }).catch(() => {
         this.loading = false
@@ -145,21 +149,12 @@ export default {
         this.total = 0
       })
     },
-    fetchUnreadCount() {
-      if (!this.currentUserId) return
-      this.getRequest(`/notification/unreadCount?userId=${this.currentUserId}`).then(resp => {
-        this.unreadCount = (resp && resp.obj) || 0
-        this.$bus && this.$bus.$emit('unreadCountUpdated', this.unreadCount)
-      }).catch(() => {})
-    },
     markAllRead() {
       if (!this.currentUserId) return
-      this.postRequest(`/notification/markAllRead?userId=${this.currentUserId}`).then(() => {
-        this.unreadCount = 0
-        this.$bus && this.$bus.$emit('unreadCountUpdated', 0)
-        // 标记本地列表为已读
-        this.notifications.forEach(n => { n.isRead = 1 })
-      }).catch(() => {})
+      // 只清系统通知分类（与页面内容一致）
+      notificationStore.markCategoryRead('system')
+      // 标记本地列表为已读（乐观更新，store.refresh 后会与服务端对齐）
+      this.notifications.forEach(n => { n.isRead = 1 })
     },
     handleNotificationClick(item) {
       // 跳转到关联内容

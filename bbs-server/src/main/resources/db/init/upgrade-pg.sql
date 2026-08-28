@@ -410,3 +410,19 @@ ALTER TABLE bbs_comment ADD COLUMN IF NOT EXISTS adopt_status smallint DEFAULT 0
 INSERT INTO bbs_article_label (label_id, label_name, enabled, icon, description)
 VALUES (4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分')
 ON CONFLICT (label_id) DO NOTHING;
+
+-- @migration: v018-notification-category 通知分类字段，支持分类独立未读计数
+-- interaction=互动消息(reply/comment，对应"回复我的")；system=系统通知(其余类型，对应"消息通知")
+ALTER TABLE bbs_notification ADD COLUMN IF NOT EXISTS category varchar(20) DEFAULT 'system';
+
+-- 回填历史数据：互动类通知归入 interaction，其余保持 system
+UPDATE bbs_notification SET category = 'interaction'
+WHERE type IN ('reply', 'comment') AND (category IS NULL OR category = '');
+
+UPDATE bbs_notification SET category = 'system' WHERE category IS NULL OR category = '';
+
+-- 回填完成后收紧为 NOT NULL（与 init 建表定义一致）
+ALTER TABLE bbs_notification ALTER COLUMN category SET NOT NULL;
+
+-- 分类维度的未读计数索引
+CREATE INDEX IF NOT EXISTS idx_notification_user_cat_read ON bbs_notification (user_id, category, is_read);

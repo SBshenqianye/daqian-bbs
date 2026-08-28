@@ -85,13 +85,13 @@
               class="w-10 h-10 rounded-full border border-outline-variant object-cover"
               :src="portrait"
             >
-            <!-- 未读通知角标 -->
+            <!-- 未读通知角标（全部未读 = 各分类之和） -->
             <span
-              v-if="unreadCount > 0"
+              v-if="unreadTotal > 0"
               class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-error rounded-full text-white text-[11px] font-bold flex items-center justify-center leading-none border-2 border-container"
               @click.stop="goToNotifications"
             >
-              {{ unreadCount > 99 ? '99+' : unreadCount }}
+              {{ formatBadge(unreadTotal) }}
             </span>
           </div>
           <!-- Popover Content -->
@@ -142,11 +142,13 @@
                 >
                   <span class="material-symbols-outlined text-[20px]">quickreply</span>
                   回复我的
-                  <!-- 未读红点 -->
+                  <!-- 未读角标（互动消息分类，独立计数） -->
                   <span
-                    v-if="unreadCount > 0"
-                    class="ml-auto w-2 h-2 bg-error rounded-full flex-shrink-0"
-                  ></span>
+                    v-if="unreadInteraction > 0"
+                    class="ml-auto min-w-[18px] h-[18px] px-1 bg-error rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none flex-shrink-0"
+                  >
+                    {{ formatBadge(unreadInteraction) }}
+                  </span>
                 </router-link>
                 <router-link
                   to="/my-points-log"
@@ -161,11 +163,13 @@
                 >
                   <span class="material-symbols-outlined text-[20px]">notifications</span>
                   消息通知
-                  <!-- 未读红点 -->
+                  <!-- 未读角标（系统通知分类，独立计数） -->
                   <span
-                    v-if="unreadCount > 0"
-                    class="ml-auto w-2 h-2 bg-error rounded-full flex-shrink-0"
-                  ></span>
+                    v-if="unreadSystem > 0"
+                    class="ml-auto min-w-[18px] h-[18px] px-1 bg-error rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none flex-shrink-0"
+                  >
+                    {{ formatBadge(unreadSystem) }}
+                  </span>
                 </router-link>
                 <div class="h-[1px] bg-outline-variant my-1"></div>
                 <button
@@ -251,6 +255,7 @@
 <script>
 import { getToken, getUser, removeToken, removeUser } from '@/utils/auth'
 import { Notification } from 'element-ui'
+import notificationStore from '@/utils/notificationStore'
 
 export default {
   name: 'BBSHeader',
@@ -266,14 +271,24 @@ export default {
       showFeedback: false,
       feedbackLoading: false,
       feedbackContact: null,
-      unreadCount: 0,
-      unreadTimer: null,
       heartbeatTimer: null,
       dailyLoginCalled: false,
       pointsAlreadyAwarded: false,
     }
   },
   computed: {
+    /** 未读总数（= 各分类之和，来自全局通知 store） */
+    unreadTotal() {
+      return notificationStore.state.total
+    },
+    /** 互动消息未读（回复/评论我 → "回复我的"） */
+    unreadInteraction() {
+      return notificationStore.count('interaction')
+    },
+    /** 系统通知未读（采纳/违规等 → "消息通知"） */
+    unreadSystem() {
+      return notificationStore.count('system')
+    },
     portrait() {
       if (this.user && this.user.portrait) {
         return this.user.portrait
@@ -308,14 +323,9 @@ export default {
     })
     // Listen for avatar update
     this.$bus && this.$bus.$on('portraitUpdated', this.checkLoginState)
-    // Listen for unread count updates
-    this.$bus && this.$bus.$on('unreadCountUpdated', (count) => {
-      this.unreadCount = count
-    })
-    // Fetch unread count on login
+    // 登录态下启动全局未读数轮询（30s，全站唯一）
     if (this.isLogin) {
-      this.fetchUnreadCount()
-      this.unreadTimer = setInterval(this.fetchUnreadCount, 30000)
+      notificationStore.startPolling()
     }
     // 根据当前路由决定是否启动浏览心跳
     if (this.isLogin && this.isBrowsingPage(this.$route.path)) {
@@ -339,9 +349,8 @@ export default {
     window.removeEventListener('scroll', this.handleScroll)
     this.$bus && this.$bus.$off('isLogin')
     this.$bus && this.$bus.$off('portraitUpdated')
-    this.$bus && this.$bus.$off('unreadCountUpdated')
     if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer)
-    if (this.unreadTimer) clearInterval(this.unreadTimer)
+    notificationStore.stopPolling()
     this.stopHeartbeat()
   },
   methods: {
@@ -350,10 +359,7 @@ export default {
       if (token) {
         this.isLogin = true
         this.user = getUser()
-        this.fetchUnreadCount()
-        if (!this.unreadTimer) {
-          this.unreadTimer = setInterval(this.fetchUnreadCount, 30000)
-        }
+        notificationStore.startPolling()
         // 登录状态下，若在浏览页面则启动心跳
         if (this.isBrowsingPage(this.$route.path) && !this.heartbeatTimer) {
           this.startHeartbeat()
@@ -361,14 +367,10 @@ export default {
       } else {
         this.isLogin = false
         this.user = null
-        this.unreadCount = 0
         this.dailyLoginCalled = false
         this.pointsAlreadyAwarded = false
+        notificationStore.reset()
         this.stopHeartbeat()
-        if (this.unreadTimer) {
-          clearInterval(this.unreadTimer)
-          this.unreadTimer = null
-        }
       }
     },
     handleScroll() {
@@ -401,6 +403,7 @@ export default {
       this.stopHeartbeat()
       this.dailyLoginCalled = false
       this.pointsAlreadyAwarded = false
+      notificationStore.reset()
       removeToken()
       removeUser()
       this.user = null
@@ -432,12 +435,9 @@ export default {
         this.feedbackLoading = false
       })
     },
-    fetchUnreadCount() {
-      const user = getUser()
-      if (!user) return
-      this.getRequest(`/notification/unreadCount?userId=${user.id}`).then(resp => {
-        this.unreadCount = (resp && resp.obj) || 0
-      }).catch(() => {})
+    /** 角标数字格式化：超过 99 显示 99+ */
+    formatBadge(n) {
+      return n > 99 ? '99+' : String(n)
     },
     handleAvatarClick() {
       this.userMenuOpen = !this.userMenuOpen

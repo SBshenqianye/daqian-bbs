@@ -469,3 +469,27 @@ ALTER TABLE `bbs_comment` ADD COLUMN `adopt_status` tinyint(1) DEFAULT 0 COMMENT
 INSERT INTO `bbs_article_label` (`label_id`, `label_name`, `enabled`, `icon`, `description`)
 SELECT 4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM `bbs_article_label` WHERE `label_id` = 4);
+
+-- @migration: v018-notification-category 通知分类字段，支持分类独立未读计数
+-- interaction=互动消息(reply/comment，对应"回复我的")；system=系统通知(其余类型，对应"消息通知")
+SELECT COUNT(*) INTO @col_notif_cat_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_notification' AND COLUMN_NAME = 'category';
+SET @sql_notif_cat = IF(@col_notif_cat_exists = 0, 'ALTER TABLE `bbs_notification` ADD COLUMN `category` varchar(20) DEFAULT ''system'' COMMENT ''通知分类(interaction=互动消息,system=系统通知)''', 'SELECT 1');
+PREPARE stmt_notif_cat FROM @sql_notif_cat;
+EXECUTE stmt_notif_cat;
+DEALLOCATE PREPARE stmt_notif_cat;
+
+-- 回填历史数据：互动类通知归入 interaction，其余保持 system
+UPDATE `bbs_notification` SET `category` = 'interaction'
+WHERE `type` IN ('reply', 'comment') AND (`category` IS NULL OR `category` = '');
+
+UPDATE `bbs_notification` SET `category` = 'system' WHERE `category` IS NULL OR `category` = '';
+
+-- 回填完成后收紧为 NOT NULL（与 init 建表定义一致）
+ALTER TABLE `bbs_notification` MODIFY COLUMN `category` varchar(20) NOT NULL DEFAULT 'system' COMMENT '通知分类(interaction=互动消息,system=系统通知)';
+
+-- 分类维度的未读计数索引（幂等：先判断再建）
+SELECT COUNT(*) INTO @idx_notif_cat_exists FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_notification' AND INDEX_NAME = 'idx_notification_user_cat_read';
+SET @sql_notif_cat_idx = IF(@idx_notif_cat_exists = 0, 'ALTER TABLE `bbs_notification` ADD INDEX `idx_notification_user_cat_read` (`user_id`, `category`, `is_read`)', 'SELECT 1');
+PREPARE stmt_notif_cat_idx FROM @sql_notif_cat_idx;
+EXECUTE stmt_notif_cat_idx;
+DEALLOCATE PREPARE stmt_notif_cat_idx;

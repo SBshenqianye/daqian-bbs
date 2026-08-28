@@ -458,6 +458,7 @@ CREATE TABLE `bbs_notification` (
   `user_id`        int(11) NOT NULL COMMENT '被通知的用户ID',
   `from_user_id`   int(11) DEFAULT NULL COMMENT '触发通知的用户ID',
   `type`           varchar(20) NOT NULL COMMENT '通知类型(reply/comment/favorite)',
+  `category`       varchar(20) NOT NULL DEFAULT 'system' COMMENT '通知分类(interaction=互动消息,system=系统通知)',
   `title`          varchar(255) DEFAULT NULL COMMENT '通知标题',
   `related_type`   varchar(20) DEFAULT NULL COMMENT '关联类型(article/comment/reply)',
   `related_id`     int(11) DEFAULT NULL COMMENT '关联ID',
@@ -465,7 +466,8 @@ CREATE TABLE `bbs_notification` (
   `create_time`    varchar(20) DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_notification_user_id` (`user_id`),
-  INDEX `idx_notification_user_read` (`user_id`, `is_read`)
+  INDEX `idx_notification_user_read` (`user_id`, `is_read`),
+  INDEX `idx_notification_user_cat_read` (`user_id`, `category`, `is_read`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '通知表';
 
 -- ----------------------------

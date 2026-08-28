@@ -18,11 +18,13 @@
       >
         <span class="material-symbols-outlined text-[18px]">{{ tab.icon }}</span>
         {{ tab.label }}
-        <!-- 红点提示（回复我的有未读时） -->
+        <!-- 未读角标（互动消息分类：回复/评论我，独立于"消息通知"计数） -->
         <span
-          v-if="tab.key === 'repliedToMe' && unreadCount > 0"
-          class="w-2 h-2 bg-error rounded-full flex-shrink-0"
-        ></span>
+          v-if="tab.key === 'repliedToMe' && unreadInteraction > 0"
+          class="min-w-[18px] h-[18px] px-1 bg-error rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none flex-shrink-0"
+        >
+          {{ unreadInteraction > 99 ? '99+' : unreadInteraction }}
+        </span>
       </button>
     </div>
 
@@ -162,6 +164,7 @@
 <script>
 import { getUser } from '@/utils/auth'
 import { normalizeFileUrl, friendlyTime } from '@/utils/utils'
+import notificationStore from '@/utils/notificationStore'
 
 export default {
   name: 'BBSMyReplies',
@@ -178,10 +181,13 @@ export default {
       total: 0,
       currentPage: 1,
       pageSize: 20,
-      unreadCount: 0,
     }
   },
   computed: {
+    /** 互动消息未读数（全局通知 store，与"消息通知"分类相互独立） */
+    unreadInteraction() {
+      return notificationStore.count('interaction')
+    },
     totalPages() {
       return Math.max(1, Math.ceil(this.total / this.pageSize))
     },
@@ -208,15 +214,6 @@ export default {
       this.$nextTick(() => this.markAsRead())
     }
     this.fetchData()
-    this.fetchUnreadCount()
-
-    // 定时刷新未读数
-    this.unreadTimer = setInterval(this.fetchUnreadCount, 30000)
-    this.$bus && this.$bus.$on('notificationRead', this.fetchUnreadCount)
-  },
-  beforeDestroy() {
-    if (this.unreadTimer) clearInterval(this.unreadTimer)
-    this.$bus && this.$bus.$off('notificationRead', this.fetchUnreadCount)
   },
   methods: {
     normalizeFileUrl,
@@ -227,8 +224,8 @@ export default {
       this.currentPage = 1
       this.total = 0
       this.fetchData()
-      // 切换到"回复我的"时自动标记已读
-      if (key === 'repliedToMe' && this.unreadCount > 0) {
+      // 切换到"回复我的"时标记互动消息分类已读（只清互动分类，不影响系统通知）
+      if (key === 'repliedToMe' && this.unreadInteraction > 0) {
         this.markAsRead()
       }
     },
@@ -273,24 +270,10 @@ export default {
       })
     },
 
-    fetchUnreadCount() {
-      const user = getUser()
-      if (!user) return
-      this.getRequest(`/notification/unreadCount?userId=${user.id}`).then(resp => {
-        this.unreadCount = (resp && resp.obj) || 0
-        // 通知 Header 组件刷新
-        this.$bus && this.$bus.$emit('unreadCountUpdated', this.unreadCount)
-      }).catch(() => {})
-    },
-
     markAsRead() {
-      const user = getUser()
-      if (!user) return
-      // 只标记"回复"类型的通知为已读，不影响其他类型（评论、违规等）
-      this.postRequest(`/notification/markRead?userId=${user.id}&type=reply`).then(() => {
-        // 重新获取未读数（因为只标记了 reply 类型，可能还有其他未读）
-        this.fetchUnreadCount()
-      }).catch(() => {})
+      // 只把互动消息分类（reply/comment）标记为已读，
+      // 系统通知（采纳/违规等）的未读计数不受影响
+      notificationStore.markCategoryRead('interaction')
     },
 
     goToArticle(item) {

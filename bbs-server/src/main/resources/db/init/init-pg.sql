@@ -427,6 +427,7 @@ CREATE TABLE IF NOT EXISTS bbs_notification (
     user_id        integer NOT NULL,
     from_user_id   integer,
     type           varchar(20) NOT NULL,
+    category       varchar(20) NOT NULL DEFAULT 'system',
     title          varchar(255),
     related_type   varchar(20),
     related_id     integer,
@@ -435,6 +436,7 @@ CREATE TABLE IF NOT EXISTS bbs_notification (
 );
 CREATE INDEX IF NOT EXISTS idx_notification_user_id ON bbs_notification (user_id);
 CREATE INDEX IF NOT EXISTS idx_notification_user_read ON bbs_notification (user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notification_user_cat_read ON bbs_notification (user_id, category, is_read);
 
 -- ----------------------------
 -- Table: bbs_login_log（每日登录浏览记录）
