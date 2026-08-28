@@ -156,24 +156,52 @@ export default {
       // 标记本地列表为已读（乐观更新，store.refresh 后会与服务端对齐）
       this.notifications.forEach(n => { n.isRead = 1 })
     },
-    handleNotificationClick(item) {
-      // 跳转到关联内容
-      if (item.relatedType === 'reply' && item.relatedId) {
-        // 需要通过 replyId 找到对应文章
-        this.getRequest(`/reply/info?replyId=${item.relatedId}`).then(resp => {
-          // 如果有接口返回 articleId，跳转到文章详情
-          // 暂时回退到回复页面
-        }).catch(() => {})
-        // 暂时跳转到"回复我的"页面
-        this.$router.push({ path: '/my-replies', query: { tab: 'repliedToMe' } })
-      } else if (item.relatedType === 'article' && item.relatedId) {
-        this.$router.push({ name: 'BBSArticleDetails', params: { articleId: item.relatedId } })
-      } else if (item.relatedType === 'comment' && item.relatedId) {
-        this.$router.push({ path: '/my-replies', query: { tab: 'repliedToMe' } })
-      } else {
-        // 通用：跳到回复页面
-        this.$router.push({ path: '/my-replies', query: { tab: 'repliedToMe' } })
+    /**
+     * 通知点击跳转：按通知 type 分发（type 决定"谁收到的、用来干什么"），
+     * relatedType/relatedId 只作为内容锚点。不同类型互不干扰。
+     */
+    async handleNotificationClick(item) {
+      switch (item.type) {
+        case 'adopt_pending':
+          // 版主/超管：跳管理端采纳审批页（生产同 nginx 同域，管理端为 hash 路由）
+          window.open('/bbs-admin/#/approve-adopt', '_blank')
+          return
+        case 'appeal_review':
+          this.$router.push('/my-appeals')
+          return
+        case 'report_confirmed':
+          this.$router.push('/my-reports')
+          return
+        case 'violation':
+        case 'post_restricted':
+          this.$router.push('/my-violations')
+          return
       }
+
+      // 其余类型（reply/comment/adopt/adopt_rejected/hot_bonus/suggestion_adopted）
+      // 跳转关联文章详情，并尽量带上 commentId/replyId 定位到具体楼层
+      if (item.relatedType === 'article' && item.relatedId) {
+        this.goArticle(item.relatedId)
+        return
+      }
+      if ((item.relatedType === 'reply' || item.relatedType === 'comment') && item.relatedId) {
+        try {
+          const resp = await this.getRequest(`/notification/resolveTarget?relatedType=${item.relatedType}&relatedId=${item.relatedId}`)
+          const target = resp && resp.obj
+          if (target && target.articleId) {
+            this.goArticle(target.articleId, target.commentId, target.replyId)
+            return
+          }
+        } catch (e) { /* 解析失败走兜底 */ }
+      }
+      // 兜底：无法定位时不再误跳其他页面，停留在当前列表
+    },
+    /** 跳转文章详情（可带评论/回复定位参数） */
+    goArticle(articleId, commentId, replyId) {
+      const query = {}
+      if (commentId) query.commentId = commentId
+      if (replyId) query.replyId = replyId
+      this.$router.push({ name: 'BBSArticleDetails', params: { articleId }, query })
     },
     getIcon(type) {
       const icons = {

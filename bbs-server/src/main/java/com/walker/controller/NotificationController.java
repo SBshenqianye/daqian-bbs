@@ -2,8 +2,12 @@ package com.walker.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.walker.pojo.Comment;
 import com.walker.pojo.Notification;
+import com.walker.pojo.Reply;
+import com.walker.service.CommentService;
 import com.walker.service.NotificationService;
+import com.walker.service.ReplyService;
 import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -23,6 +27,12 @@ public class NotificationController {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private ReplyService replyService;
+
+    @Autowired
+    private CommentService commentService;
 
     @ApiOperation(value = "获取用户未读通知数量（全部合计）")
     @GetMapping("/unreadCount")
@@ -74,5 +84,42 @@ public class NotificationController {
         data.put("records", result.getRecords());
         data.put("total", result.getTotal());
         return ResultBean.success("查询成功", data);
+    }
+
+    /**
+     * 解析通知关联内容的文章定位（供前端点击通知跳转文章详情）。
+     * 通知表只存 relatedType(reply/comment/article) + relatedId(replyId/commentId/articleId)，
+     * reply/comment 需要经 评论→文章 两跳才能拿到 articleId。
+     *
+     * @return { articleId, commentId?, replyId? }，无法解析时字段缺失
+     */
+    @ApiOperation(value = "解析通知关联内容对应的文章定位（replyId/commentId → articleId）")
+    @GetMapping("/resolveTarget")
+    public ResultBean resolveTarget(@RequestParam String relatedType,
+                                    @RequestParam Integer relatedId) {
+        Map<String, Object> target = new LinkedHashMap<>();
+        if (relatedId == null) {
+            return ResultBean.success("查询成功", target);
+        }
+        if ("article".equals(relatedType)) {
+            target.put("articleId", relatedId);
+        } else if ("reply".equals(relatedType)) {
+            Reply reply = replyService.getById(relatedId);
+            if (reply != null) {
+                target.put("replyId", reply.getReplyId());
+                Comment comment = commentService.getById(reply.getCommentId());
+                if (comment != null) {
+                    target.put("commentId", comment.getCommentId());
+                    target.put("articleId", comment.getCommentArticleId());
+                }
+            }
+        } else if ("comment".equals(relatedType)) {
+            Comment comment = commentService.getById(relatedId);
+            if (comment != null) {
+                target.put("commentId", comment.getCommentId());
+                target.put("articleId", comment.getCommentArticleId());
+            }
+        }
+        return ResultBean.success("查询成功", target);
     }
 }
