@@ -45,4 +45,13 @@ public class ReplyVO {
 
     @ApiModelProperty("是否显示输入框")
     private boolean inputShow;
+
+    @ApiModelProperty("回复人的积分（含手动调整）")
+    private Integer points;
+
+    @ApiModelProperty("是否被采纳(0=否,1=是)")
+    private Integer isAdopted;
+
+    @ApiModelProperty("采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)")
+    private Integer adoptStatus;
 }

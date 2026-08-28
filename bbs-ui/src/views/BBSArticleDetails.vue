@@ -107,6 +107,7 @@
             :currentUserAvatar="currentUserAvatar"
             @delete="handleDeleteComment"
             @reply="handleReply"
+            @adopt="handleAdopt"
           />
 
           <!-- 空状态：全无评论 -->
@@ -195,6 +196,9 @@ export default {
   provide() {
     return {
       replyState: this.replyState,
+      // 提供父组件实例引用，子组件通过 adoptState.isQuestionLabel / adoptState.currentUserId 始终读到最新值
+      // （provide() 只执行一次，直接传原始值会快照为 false；传引用则始终跟随父组件 computed 变化）
+      adoptState: this,
     }
   },
   data() {
@@ -212,6 +216,7 @@ export default {
         publishTime: '',
         tag: '',
         tagId: '',
+        userId: null,
         author: '',
         authorTitle: '',
         authorAvatar: '',
@@ -235,6 +240,7 @@ export default {
       commentInputObserver: null,
       commentPlaceholder: '',
       replyState: { activeId: null },
+      scrollToTarget: null,
     }
   },
   computed: {
@@ -265,10 +271,23 @@ export default {
     renderedHtml() {
       return mdToHtml(this.rawContent)
     },
+    /** 当前用户ID */
+    currentUserId() {
+      return this.currentUser ? this.currentUser.id : null
+    },
+    /** 帖子标签是否为"问题求助" */
+    isQuestionLabel() {
+      return this.articleTagName === '问题求助'
+    },
   },
   mounted() {
     this.initCurrentUser()
     this.loadLabels()
+    // 读取 deep-link 参数（commentId / replyId）
+    const query = this.$route.query
+    if (query.commentId || query.replyId) {
+      this.scrollToTarget = query.replyId || query.commentId
+    }
     if (this.articleId) {
       this.loadArticle(this.articleId)
       this.loadComments(this.articleId)
@@ -328,6 +347,7 @@ export default {
           this.article.title = resp.articleTitle || ''
           this.article.publishTime = resp.createTime || ''
           this.article.tagId = resp.articleLabelId
+          this.article.userId = resp.userId
           this.article.author = resp.articleAuthor || ''
           const rawContent = resp.articleContentHtml || resp.articleContent || ''
           const normalized = normalizeUrls(rawContent)
@@ -365,6 +385,12 @@ export default {
           this.comments = []
         }
         this.commentsLoaded = true
+        // deep-link: 评论加载完成后滚动到目标位置
+        this.$nextTick(() => {
+          if (this.scrollToTarget) {
+            this.scrollToComment(this.scrollToTarget)
+          }
+        })
       }).catch(err => {
         console.warn('[BBSArticleDetails] loadComments', err)
         this.comments = []
@@ -375,11 +401,13 @@ export default {
     mapComment(c) {
       const myId = this.currentUser ? this.currentUser.id : null
       const commentId = c.commentId || c.id
+      const articleAuthorId = this.article && this.article.userId ? this.article.userId : null
       const mapped = {
         id: commentId,
         replyKey: 'c-' + commentId,
         commentRootId: commentId,
         userId: c.userId,
+        articleAuthorId,
         author: c.nickname || '',
         avatar: normalizeFileUrl(c.portrait || ''),
         orgName: c.orgName || '',
@@ -387,6 +415,7 @@ export default {
         time: c.commentTime || '',
         content: c.commentContent || '',
         canDelete: myId != null && String(c.userId) === String(myId),
+        adoptStatus: c.adoptStatus || 0,
         children: (c.reply || []).map(r => {
           const replyId = r.replyId || r.id
           return {
@@ -395,6 +424,7 @@ export default {
             commentRootId: commentId,
             userId: r.replyUserId || r.userId,
             replyTargetUserId: r.replyToUserId,
+            articleAuthorId,
             author: r.nickname || '',
             avatar: normalizeFileUrl(r.portrait || ''),
             orgName: r.orgName || '',
@@ -403,6 +433,7 @@ export default {
             content: r.replyContent || '',
             replyTo: r.replyToNickname || '',
             canDelete: myId != null && String(r.replyUserId || r.userId) === String(myId),
+            adoptStatus: r.adoptStatus || 0,
             children: [],
           }
         }),
@@ -467,6 +498,33 @@ export default {
           Message({ type: 'error', message: '回复失败', offset: 54 })
         }
       }).catch(err => { console.warn('[BBSArticleDetails] handleReply', err) })
+    },
+    handleAdopt({ id, adoptType }) {
+      if (!this.currentUser || !id) return
+      this.$confirm('确定采纳该内容为最佳解答？提交后等待管理员审核。若该文章已有待审批的采纳，将替换之前的采纳。', '采纳确认', {
+        confirmButtonText: '确定提交',
+        cancelButtonText: '取消',
+        type: 'info',
+      }).then(() => {
+        const params = {
+          articleId: this.articleId,
+          userId: this.currentUser.id,
+        }
+        if (adoptType === 'reply') {
+          params.replyId = id
+        } else {
+          params.commentId = id
+        }
+        this.postRequest('/reply/article/adoptReply', params).then(resp => {
+          // 拦截器已处理非200响应（弹出错误提示并返回undefined），此处无需再提示
+          if (!resp) return
+          if (resp.code === 200) {
+            this.loadComments(this.articleId)
+          } else {
+            Message({ type: 'warning', message: resp.message || '操作失败', offset: 54 })
+          }
+        }).catch(err => { console.warn('[BBSArticleDetails] handleAdopt', err) })
+      }).catch(() => {})
     },
     handleDeleteComment(comment) {
       if (!comment) return
@@ -536,6 +594,54 @@ export default {
           Message({ message: '下载失败，请稍后重试', type: 'warning', showClose: true, offset: 54 })
         })
     },
+    /**
+     * 滚动到指定评论/回复位置并高亮（DOM 直接操作，不依赖 Vue 响应式）
+     */
+    scrollToComment(targetId) {
+      const el = document.getElementById('comment-' + targetId)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        this.applyHighlight(el)
+        return
+      }
+      // 如果元素不存在（可能在折叠的回复中），展开后重试
+      for (const comment of this.comments) {
+        if (comment.children) {
+          const found = comment.children.find(c => String(c.id) === String(targetId))
+          if (found) {
+            this.expandCommentReplies(comment.id)
+            this.$nextTick(() => {
+              setTimeout(() => {
+                const retryEl = document.getElementById('comment-' + targetId)
+                if (retryEl) {
+                  retryEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  this.applyHighlight(retryEl)
+                }
+              }, 200)
+            })
+            return
+          }
+        }
+      }
+    },
+    /**
+     * 对指定 DOM 元素应用高亮动画（添加 class → 3 秒后移除）
+     */
+    applyHighlight(el) {
+      el.classList.add('comment-highlight')
+      setTimeout(() => {
+        el.classList.remove('comment-highlight')
+      }, 3200)
+    },
+    /**
+     * 展开指定评论的折叠回复
+     */
+    expandCommentReplies(commentId) {
+      // 通过触发 BBSCommentItem 的展开逻辑来实现
+      // 这里用一个简单的方式：设置 comment 的 expandedReplies
+      // 由于 BBSCommentItem 使用内部状态，我们通过 provide/inject 传递展开信号
+      this.$bus && this.$bus.$emit('expandComment', commentId)
+    },
   },
   beforeDestroy() {
     if (this.commentInputObserver) {
@@ -551,6 +657,17 @@ export default {
 .markdown-body p {
   margin: 0;
   line-height: 1.5;
+}
+/* 评论/回复高亮动画（全局样式，供 DOM 操作添加 class 使用） */
+.comment-highlight {
+  animation: comment-highlight-fade 3s ease-out forwards;
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: -4px -8px;
+}
+@keyframes comment-highlight-fade {
+  0% { background-color: rgba(25, 118, 210, 0.20); }
+  100% { background-color: transparent; }
 }
 </style>
 <style scoped>

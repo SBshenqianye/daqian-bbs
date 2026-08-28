@@ -42,7 +42,13 @@ public class CommentReplyVO {
     @ApiModelProperty("评论人的部门名称")
     private String deptName;
 
+    @ApiModelProperty("评论人的积分（含手动调整）")
+    private Integer points;
+
     @ApiModelProperty("回复")
     private List<ReplyVO> reply;
+
+    @ApiModelProperty("采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)")
+    private Integer adoptStatus;
 
 }

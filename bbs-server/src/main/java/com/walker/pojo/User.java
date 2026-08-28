@@ -101,6 +101,14 @@ public class User implements Serializable,UserDetails {
     @TableField("is_first_login")
     private Integer isFirstLogin;
 
+    @ApiModelProperty("是否限制发帖(0=否,1=是)")
+    @TableField("post_restricted")
+    private Integer postRestricted;
+
+    @ApiModelProperty("限制发帖截止时间")
+    @TableField("post_restricted_until")
+    private String postRestrictedUntil;
+
     @ApiModelProperty("单位名称（非数据库字段，查询时动态填充）")
     @TableField(exist = false)
     private String orgName;

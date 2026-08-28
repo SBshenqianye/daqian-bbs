@@ -4,10 +4,7 @@ package com.walker.controller;
 import com.walker.pojo.Comment;
 import com.walker.pojo.Reply;
 import com.walker.pojo.User;
-import com.walker.service.CommentService;
-import com.walker.service.ReplyService;
-import com.walker.service.SaOrgService;
-import com.walker.service.UserService;
+import com.walker.service.*;
 import com.walker.vo.CommentReplyVO;
 import com.walker.vo.ResultBean;
 import com.walker.vo.param.CommentParam;
@@ -46,11 +43,25 @@ public class CommentController {
     @Autowired
     private SaOrgService saOrgService;
 
+    @Autowired
+    private PointsLogService pointsLogService;
+
     @ApiOperation(value = "保存用户的评论(一级评论)")
     @PutMapping("/comment/userComment")
     public ResultBean userComment(@RequestBody CommentParam commentParam){
 
-        return commentService.saveUserComment(commentParam);
+        ResultBean result = commentService.saveUserComment(commentParam);
+
+        // 帖子热度奖励检查：评论发布后检查该文章的有效互动数
+        if (commentParam.getCommentArticleId() != null && commentParam.getCommentUserId() != null) {
+            try {
+                commentService.checkHotBonus(commentParam.getCommentArticleId());
+            } catch (Exception e) {
+                // 热度检查失败不影响评论发布
+            }
+        }
+
+        return result;
     }
 
 
@@ -85,6 +96,8 @@ public class CommentController {
                 commentReplyVO.setOrgName(user.getOrgName());
                 commentReplyVO.setOrgNameFull(resolveFullOrgName(user.getOrgNo(), user.getOrgName()));
                 commentReplyVO.setDeptName(user.getDeptName());
+                commentReplyVO.setPoints(pointsLogService.getPointsAdjustment(userId));
+                commentReplyVO.setAdoptStatus(comment.getAdoptStatus());
 
                 //通过回复的Id去获取回复内容
 
@@ -113,6 +126,9 @@ public class CommentController {
                         replyVO.setOrgName(userVO1.getOrgName());
                         replyVO.setOrgNameFull(resolveFullOrgName(userVO1.getOrgNo(), userVO1.getOrgName()));
                         replyVO.setDeptName(userVO1.getDeptName());
+                        replyVO.setPoints(pointsLogService.getPointsAdjustment(fromUserId));
+                        replyVO.setIsAdopted(reply.getIsAdopted());
+                        replyVO.setAdoptStatus(reply.getAdoptStatus());
 
                         Integer toUserId = reply.getReplyToUserId();
                         User userVO2 = userService.queryUserinfoById(toUserId);

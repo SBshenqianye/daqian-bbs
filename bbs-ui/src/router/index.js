@@ -71,6 +71,42 @@ const router = new VueRouter({
             component: () => import('@/views/BBSFeaturedArticles.vue'),
             meta: { auth: false }
         },
+        {
+            name: 'BBSMyReplies',
+            path: '/my-replies',
+            component: () => import('@/views/BBSMyReplies.vue'),
+            meta: { auth: true }
+        },
+        {
+            name: 'BBSMyPointsLog',
+            path: '/my-points-log',
+            component: () => import('@/views/BBSMyPointsLog.vue'),
+            meta: { auth: true }
+        },
+        {
+            name: 'BBSMyViolations',
+            path: '/my-violations',
+            component: () => import('@/views/BBSMyViolations.vue'),
+            meta: { auth: true }
+        },
+        {
+            name: 'BBSMyAppeals',
+            path: '/my-appeals',
+            component: () => import('@/views/BBSMyAppeals.vue'),
+            meta: { auth: true }
+        },
+        {
+            name: 'BBSMyReports',
+            path: '/my-reports',
+            component: () => import('@/views/BBSMyReports.vue'),
+            meta: { auth: true }
+        },
+        {
+            name: 'BBSNotifications',
+            path: '/notifications',
+            component: () => import('@/views/BBSNotifications.vue'),
+            meta: { auth: true }
+        },
 
     ]
 })

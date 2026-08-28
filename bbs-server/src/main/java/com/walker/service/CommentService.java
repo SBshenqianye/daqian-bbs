@@ -37,4 +37,11 @@ public interface CommentService extends IService<Comment> {
      * @return
      */
     ResultBean deleteCommentById(Integer commentId);
+
+    /**
+     * 检查帖子热度奖励：评论/回复数超过阈值且未发过热度奖励时，给作者加1分
+     * 同时计入 bbs_points_log
+     * @param articleId 文章ID
+     */
+    void checkHotBonus(Integer articleId);
 }

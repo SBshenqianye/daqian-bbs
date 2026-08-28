@@ -2,6 +2,12 @@ package com.walker.controller;
 
 
 import com.walker.pojo.Article;
+import com.walker.pojo.ArticleLabel;
+import com.walker.pojo.User;
+import com.walker.service.ArticleLabelService;
+import com.walker.service.NotificationService;
+import com.walker.service.PointsLogService;
+import com.walker.service.UserService;
 import com.walker.utils.ConstantUtil;
 import com.walker.utils.FilePathNormalizer;
 import com.walker.utils.SensitiveWordUtil;
@@ -41,6 +47,18 @@ public class ArticleController {
 
     @Autowired
     private ArticleService articleService;
+
+    @Autowired
+    private PointsLogService pointsLogService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
+    private ArticleLabelService articleLabelService;
 
     @Value("${storage.path}")
     private String basePath;
@@ -158,9 +176,33 @@ public class ArticleController {
     @ApiOperation(value = "发布文章")
     @PostMapping("/article/publish")
     public ResultBean publish(@RequestBody ArticleParam articleParam) {
-
+        // 发帖限制检查
+        if (articleParam.getUserId() != null) {
+            User user = userService.getById(articleParam.getUserId());
+            if (user != null && user.getPostRestricted() != null && user.getPostRestricted() == 1) {
+                // 检查是否过期
+                if (user.getPostRestrictedUntil() != null) {
+                    try {
+                        SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        java.util.Date until = fmt.parse(user.getPostRestrictedUntil());
+                        if (new java.util.Date().before(until)) {
+                            return ResultBean.error("您已被限制发帖，截止时间: " + user.getPostRestrictedUntil());
+                        } else {
+                            // 已过期，自动解除限制
+                            user.setPostRestricted(0);
+                            user.setPostRestrictedUntil(null);
+                            userService.updateById(user);
+                        }
+                    } catch (Exception e) {
+                        // 解析失败，拒绝发帖
+                        return ResultBean.error("发帖限制状态异常，请联系管理员");
+                    }
+                } else {
+                    return ResultBean.error("您已被限制发帖，请联系管理员");
+                }
+            }
+        }
         return articleService.publish(articleParam);
-
     }
 
 
@@ -434,4 +476,53 @@ public class ArticleController {
         return articleService.getFeaturedByPage(page, size, labelId);
     }
 
+    // ==================== 运营方案V2 新增接口 ====================
+
+    @ApiOperation(value = "管理员采纳建议")
+    @PostMapping("/admin/suggestion/adopt")
+    public ResultBean adoptSuggestion(@RequestBody Map<String, Object> params) {
+        Integer articleId = (Integer) params.get("articleId");
+        Integer operatorId = (Integer) params.get("operatorId");
+
+        if (articleId == null || operatorId == null) {
+            return ResultBean.error("参数不完整");
+        }
+
+        Article article = articleService.queryArticleById(articleId);
+        if (article == null) {
+            return ResultBean.error("文章不存在");
+        }
+
+        // 校验：帖子必须是"建议反馈"标签
+        if (article.getArticleLabelId() == null) {
+            return ResultBean.error("该帖子不是建议反馈类型，无法采纳");
+        }
+        ArticleLabel label = articleLabelService.getById(article.getArticleLabelId());
+        if (label == null || !"建议反馈".equals(label.getLabelName())) {
+            return ResultBean.error("该帖子不是建议反馈类型，无法采纳");
+        }
+
+        // 校验：管理员不能采纳自己的建议
+        if (operatorId.equals(article.getUserId())) {
+            return ResultBean.error("不能采纳自己的建议");
+        }
+
+        // 校验：防止重复采纳（查询积分日志中是否已有该文章的建议采纳记录）
+        int existCount = pointsLogService.countSuggestionAdoptForArticle(articleId);
+        if (existCount > 0) {
+            return ResultBean.error("该建议已被采纳");
+        }
+
+        // 给作者加5分
+        pointsLogService.adjustUserPoints(article.getUserId(), 5, "建议被采纳积分",
+                "article", articleId, operatorId);
+
+        // 通知作者
+        String titleSuffix = article.getArticleTitle() != null ? "（《" + article.getArticleTitle() + "》）" : "";
+        notificationService.createNotification(article.getUserId(), operatorId,
+                "suggestion_adopted", "恭喜！您的建议被采纳，获得+5积分" + titleSuffix,
+                "article", articleId);
+
+        return ResultBean.success("采纳成功");
+    }
 }

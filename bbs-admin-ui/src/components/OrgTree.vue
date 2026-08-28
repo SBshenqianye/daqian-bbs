@@ -1,22 +1,11 @@
 <template>
   <div>
-    <!-- loading -->
-    <div v-if="loading" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
-      <span class="material-symbols-outlined opacity-50 animate-spin" style="font-size: 36px;">sync</span>
-      <p class="text-body-md">加载中...</p>
-    </div>
-    <!-- empty (when no data at all, not just filtered) -->
-    <div v-else-if="!initialized" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
-      <span class="material-symbols-outlined opacity-20" style="font-size: 48px;">account_tree</span>
-      <p class="text-body-md">暂无组织数据</p>
-    </div>
-    <!-- no match -->
-    <div v-else-if="filterText && !matchCount" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
-      <span class="material-symbols-outlined opacity-20" style="font-size: 48px;">search_off</span>
-      <p class="text-body-md">无匹配单位</p>
-    </div>
-    <!-- tree -->
-    <div v-else class="select-none" @click="onTreeClick">
+    <!-- tree：始终挂载，通过 CSS 控制可见性，避免 v-if 销毁/重建 DOM 导致冻结 -->
+    <div
+      class="select-none"
+      :class="showTree ? '' : 'opacity-0 h-0 overflow-hidden pointer-events-none'"
+      @click="onTreeClick"
+    >
       <div v-for="node in flatList" :key="node.id" :data-nid="node.id">
         <div
           class="group flex items-center gap-1 px-3 py-1.5 rounded-lg border mb-0.5 cursor-pointer"
@@ -117,6 +106,20 @@
         </div>
       </div>
     </div>
+
+    <!-- 浮层：独立于树的 v-if 链（仅切换简单 div，无 DOM 破坏风险） -->
+    <div v-if="loading" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
+      <span class="material-symbols-outlined opacity-50 animate-spin" style="font-size: 36px;">sync</span>
+      <p class="text-body-md">加载中...</p>
+    </div>
+    <div v-else-if="!initialized" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
+      <span class="material-symbols-outlined opacity-20" style="font-size: 48px;">account_tree</span>
+      <p class="text-body-md">暂无组织数据</p>
+    </div>
+    <div v-else-if="filterText && !matchCount" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
+      <span class="material-symbols-outlined opacity-20" style="font-size: 48px;">search_off</span>
+      <p class="text-body-md">无匹配单位</p>
+    </div>
   </div>
 </template>
 
@@ -148,6 +151,12 @@ export default {
       matchCount: 0
     }
   },
+  computed: {
+    /** 树是否应该可见（始终挂载，仅 CSS 切换，避免 v-if 销毁 DOM） */
+    showTree() {
+      return this.initialized && (!(this.filterText || '').trim() || this.matchCount > 0)
+    }
+  },
   watch: {
     nodes: {
       immediate: true,
@@ -165,12 +174,16 @@ export default {
         this._buildFlatList()
         this._syncVisibility()
         this.$forceUpdate()
-        this.$nextTick(() => this._syncChevrons())
+        this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
       }
     },
     filterText() {
       this._syncVisibility()
       this.$forceUpdate()
+      // 树始终挂载，搜索条件变化后需同步 chevron 旋转状态
+      if (this.showTree) {
+        this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+      }
     },
   },
   methods: {
@@ -319,14 +332,14 @@ export default {
       this._walkTree(this.treeData, n => { n._expanded = true })
       this._syncVisibility()
       this.$forceUpdate()
-      this.$nextTick(() => this._syncChevrons())
+      this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
     },
 
     collapseAll() {
       this._walkTree(this.treeData, n => { n._expanded = false })
       this._syncVisibility()
       this.$forceUpdate()
-      this.$nextTick(() => this._syncChevrons())
+      this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
     },
 
     /** 展开到指定节点（向上展开所有祖先），确保节点可见。
@@ -352,7 +365,7 @@ export default {
       }
       this._syncVisibility()
       this.$forceUpdate()
-      this.$nextTick(() => this._syncChevrons())
+      this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
       return true
     },
 
@@ -505,8 +518,10 @@ export default {
 <style>
 /* 每行作为独立布局/样式/绘制容器，避免展开时触发全量 layout 回溯 */
 .group { contain: layout style paint; }
-/* 隐藏（替代 v-show / :style display） */
-.th { display: none; }
+/* 隐藏（替代 v-show / :style display）
+ * 使用 .group.th 提升特异性，确保始终覆盖 Tailwind 的 .flex { display:flex }，
+ * 避免 CSS 加载顺序不同导致 .flex 胜出产生"幽灵"可见行。 */
+.group.th { display: none !important; }
 /* 缩进层级（CSS class 比 :style 的 js 对象 diff 快得多） */
 .d0 { margin-left: 0; }
 .d1 { margin-left: 24px; }

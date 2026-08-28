@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.walker.mapper.PointsLogMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.walker.pojo.PointsLog">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="points_change" property="pointsChange" />
+        <result column="reason" property="reason" />
+        <result column="related_type" property="relatedType" />
+        <result column="related_id" property="relatedId" />
+        <result column="operator_id" property="operatorId" />
+        <result column="create_time" property="createTime" />
+    </resultMap>
+
+    <!-- 查询指定用户的手动积分调整总和（排除已撤销的记录） -->
+    <select id="sumPointsChangeByUserId" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(points_change), 0)
+        FROM bbs_points_log
+        WHERE user_id = #{userId}
+          AND is_reversed = 0
+    </select>
+
+    <!-- 统计用户在指定主题帖下已获得的回帖积分次数（评论+回复，排除已撤销的记录） -->
+    <select id="countReplyPointsForArticle" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(cnt), 0) FROM (
+            SELECT COUNT(*) AS cnt
+            FROM bbs_points_log p
+            INNER JOIN bbs_comment c ON p.related_id = c.comment_id
+            WHERE p.user_id = #{userId}
+              AND p.related_type = 'comment'
+              AND (p.is_reversed IS NULL OR p.is_reversed = 0)
+              AND c.comment_article_id = #{articleId}
+            UNION ALL
+            SELECT COUNT(*) AS cnt
+            FROM bbs_points_log p
+            INNER JOIN bbs_reply r ON p.related_id = r.reply_id
+            INNER JOIN bbs_comment c ON r.comment_id = c.comment_id
+            WHERE p.user_id = #{userId}
+              AND p.related_type = 'reply'
+              AND (p.is_reversed IS NULL OR p.is_reversed = 0)
+              AND c.comment_article_id = #{articleId}
+        ) t
+    </select>
+
+    <!-- 统计用户在指定主题帖下已获得的最佳解答采纳积分次数（排除已撤销的记录） -->
+    <select id="countAdoptPointsForArticle" resultType="java.lang.Integer">
+        SELECT COALESCE(COUNT(*), 0)
+        FROM bbs_points_log p
+        INNER JOIN bbs_reply r ON p.related_id = r.reply_id
+        INNER JOIN bbs_comment c ON r.comment_id = c.comment_id
+        WHERE p.user_id = #{userId}
+          AND p.related_type = 'adopt'
+          AND (p.is_reversed IS NULL OR p.is_reversed = 0)
+          AND c.comment_article_id = #{articleId}
+    </select>
+
+    <!-- 查询指定文章是否已被采纳为建议（通过积分日志中"建议被采纳积分"记录判断） -->
+    <select id="countSuggestionAdoptForArticle" resultType="java.lang.Integer">
+        SELECT COALESCE(COUNT(*), 0)
+        FROM bbs_points_log
+        WHERE related_type = 'article'
+          AND related_id = #{articleId}
+          AND reason = '建议被采纳积分'
+          AND (is_reversed IS NULL OR is_reversed = 0)
+    </select>
+
+</mapper>

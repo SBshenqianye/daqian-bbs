@@ -82,6 +82,31 @@ export default new Router({
                     meta: { title: '系统配置' }
                 },
                 {
+                    path: '/violation',
+                    component: () => import('../pages/ViolationPage.vue'),
+                    meta: { title: '违规管理' }
+                },
+                {
+                    path: '/report',
+                    component: () => import('../pages/ReportPage.vue'),
+                    meta: { title: '举报管理' }
+                },
+                {
+                    path: '/appeal',
+                    component: () => import('../pages/AppealPage.vue'),
+                    meta: { title: '申诉管理' }
+                },
+                {
+                    path: '/moderator',
+                    component: () => import('../pages/ModeratorPage.vue'),
+                    meta: { title: '版主管理' }
+                },
+                {
+                    path: '/approve-adopt',
+                    component: () => import('../pages/ApproveAdoptPage.vue'),
+                    meta: { title: '采纳审批' }
+                },
+                {
                     path: '/404',
                     component: () => import('../pages/404.vue'),
                     meta: { title: '404' }

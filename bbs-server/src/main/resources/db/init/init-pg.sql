@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS bbs_article (
     recommend            smallint,
     enable               integer DEFAULT 0,
     is_delete            integer DEFAULT 0,
-    is_featured          smallint NOT NULL DEFAULT 0
+    is_featured          smallint NOT NULL DEFAULT 0,
+    is_hot_bonus         smallint DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_article_featured_time ON bbs_article (is_featured, create_time);
 
@@ -103,7 +104,8 @@ CREATE TABLE IF NOT EXISTS bbs_comment (
     comment_user_id     integer,
     comment_time        varchar(20),
     enable              integer DEFAULT 1,
-    is_delete           integer DEFAULT 0
+    is_delete           integer DEFAULT 0,
+    adopt_status        smallint DEFAULT 0
 );
 
 -- ----------------------------
@@ -201,7 +203,9 @@ CREATE TABLE IF NOT EXISTS bbs_reply (
     reply_user_id    integer,
     reply_time       varchar(20) NOT NULL,
     enable           integer DEFAULT 1,
-    is_delete        integer DEFAULT 0
+    is_delete        integer DEFAULT 0,
+    is_adopted       smallint DEFAULT 0,
+    adopt_status     smallint DEFAULT 0
 );
 
 -- ----------------------------
@@ -260,6 +264,8 @@ CREATE TABLE IF NOT EXISTS bbs_user (
     personnel_id    varchar(50),
     id_card         varchar(18),
     is_first_login  smallint DEFAULT 1,
+    post_restricted smallint DEFAULT 0,
+    post_restricted_until varchar(20),
     CONSTRAINT uk_bbs_user_username UNIQUE (username),
     CONSTRAINT uk_bbs_user_personnel_id UNIQUE (personnel_id),
     CONSTRAINT uk_bbs_user_id_card UNIQUE (id_card)
@@ -276,7 +282,7 @@ SET session_replication_role = 'origin';
 -- 超级管理员（密码由 DatabaseInitializer 启动时用 BCrypt 加密写入）
 -- ----------------------------
 INSERT INTO bbs_user (id, username, password, nickname, gender, city, fans, attention, good, is_alive, is_delete, create_time, org_no, user_type, is_first_login)
-VALUES (1, 'ASIAYAK', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2rk3O', '超级管理员', '1', '河北省-秦皇岛市', 0, 0, 0, 0, 0, '2026-06-26 00:00:00', '51404', '3', 0)
+VALUES (1, 'asiayak', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2rk3O', '超级管理员', '1', '河北省-秦皇岛市', 0, 0, 0, 0, 0, '2026-06-26 00:00:00', '51404', '3', 0)
 ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------
@@ -285,7 +291,8 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO bbs_article_label (label_id, label_name, enabled, icon, description) VALUES
 (1, '技术交流', 0, 'thumb_up', ''),
 (2, '求助问答', 1, 'help', ''),
-(3, '资源共享', 0, 'folder_open', '')
+(3, '资源共享', 0, 'folder_open', ''),
+(4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分')
 ON CONFLICT (label_id) DO NOTHING;
 
 -- ----------------------------
@@ -326,6 +333,9 @@ INSERT INTO bbs_sa_org (id, org_no, org_name, p_org_no, org_tree, is_delete) VAL
 (32, '514042812', '国网四川内江隆昌云顶供电所', '5140428', '51101|51404|5140428|514042812', 0)
 ON CONFLICT (id) DO NOTHING;
 
+-- 注：init 中的组织机构名称已同步更新（2026-08-25 组织架构梳理）
+-- "地市支撑机构及原集体企业" 已在 upgrade 中重命名为 "公司所属各单位"
+
 -- ----------------------------
 -- 数据字典
 -- ----------------------------
@@ -333,7 +343,15 @@ INSERT INTO bbs_dict (id, dict_type, dict_value, dict_label, dict_sort, create_b
 (1, 'post', '3', '发帖积分', 1, '系统', '2026-06-26 00:00:00', '发一个帖子所得积分'),
 (2, 'reply', '1', '回帖积分', 0, '系统', '2026-06-26 00:00:00', '回帖一次所得积分'),
 (3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）'),
-(4, 'featured', '10', '精华帖积分', 2, '系统', '2026-07-13 00:00:00', '被设为精华帖额外获得的积分')
+(4, 'featured', '10', '精华帖积分', 2, '系统', '2026-07-13 00:00:00', '被设为精华帖额外获得的积分'),
+(5, 'violation', 'illegal', '违法违规内容', 1, '系统', '2026-08-25 00:00:00', '扣15分'),
+(6, 'violation', 'attack', '人身攻击/争吵引战', 2, '系统', '2026-08-25 00:00:00', '扣10分'),
+(7, 'violation', 'spam', '恶意灌水/刷屏', 3, '系统', '2026-08-25 00:00:00', '扣4分'),
+(8, 'violation', 'plagiarism', '抄袭剽窃', 4, '系统', '2026-08-25 00:00:00', '扣12分'),
+(9, 'violation', 'false_report', '虚假恶意举报', 5, '系统', '2026-08-25 00:00:00', '扣3分'),
+(10, 'violation', 'leak', '泄露企业秘密', 6, '系统', '2026-08-25 00:00:00', '扣20分'),
+(11, 'hot_threshold', '10', '帖子热度回复阈值', 10, '系统', '2026-08-25 00:00:00', '回复数超过此值触发热度奖励'),
+(12, 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', '2026-08-25 00:00:00', '登录后需浏览满此分钟数才计分')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------
@@ -351,8 +369,156 @@ INSERT INTO bbs_sensitive_word (id, keyword) VALUES
 (2, '肉票'),
 (3, '抢劫'),
 (4, '莎莎舞'),
-(5, '老司机')
+(5, '老司机'),
+(6, '哈哈哈'),
+(7, '嘻嘻嘻'),
+(8, '嘿嘿嘿'),
+(9, '啊啊啊'),
+(10, '嗯嗯嗯'),
+(11, '哦哦哦'),
+(12, '呵呵呵'),
+(13, '啦啦啦'),
+(14, '呜呜呜'),
+(15, '沙发'),
+(16, '占位'),
+(17, '占楼'),
+(18, '路过'),
+(19, '马克'),
+(20, 'mark'),
+(21, '顶贴'),
+(22, '灌水'),
+(23, '水水水'),
+(24, '水帖'),
+(25, '打卡'),
+(26, '签到'),
+(27, '666666'),
+(28, '8888'),
+(29, '11111'),
+(30, '123456'),
+(31, '测试测试'),
+(32, '测试一下'),
+(33, 'testtest')
 ON CONFLICT (id) DO NOTHING;
+
+-- ----------------------------
+-- Table: bbs_points_log（积分调整日志）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_points_log (
+    id               SERIAL PRIMARY KEY,
+    user_id          integer NOT NULL,
+    points_change    integer NOT NULL,
+    reason           varchar(500),
+    related_type     varchar(20),
+    related_id       integer,
+    operator_id      integer,
+    create_time      varchar(20),
+    is_reversed      smallint NOT NULL DEFAULT 0,
+    reversed_by      integer,
+    reversing_record integer
+);
+CREATE INDEX IF NOT EXISTS idx_points_log_user_id ON bbs_points_log (user_id);
+CREATE INDEX IF NOT EXISTS idx_points_log_is_reversed ON bbs_points_log (is_reversed);
+
+-- ----------------------------
+-- Table: bbs_notification（通知表）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_notification (
+    id             SERIAL PRIMARY KEY,
+    user_id        integer NOT NULL,
+    from_user_id   integer,
+    type           varchar(20) NOT NULL,
+    title          varchar(255),
+    related_type   varchar(20),
+    related_id     integer,
+    is_read        smallint NOT NULL DEFAULT 0,
+    create_time    varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_notification_user_id ON bbs_notification (user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_user_read ON bbs_notification (user_id, is_read);
+
+-- ----------------------------
+-- Table: bbs_login_log（每日登录浏览记录）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_login_log (
+    id              SERIAL PRIMARY KEY,
+    user_id         integer NOT NULL,
+    login_date      varchar(10) NOT NULL,
+    login_time      varchar(20),
+    browse_minutes  integer DEFAULT 0,
+    points_awarded  smallint DEFAULT 0,
+    create_time     varchar(20)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_login_log_user_date ON bbs_login_log (user_id, login_date);
+
+-- ----------------------------
+-- Table: bbs_report（实名举报记录）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_report (
+    id              SERIAL PRIMARY KEY,
+    reporter_id     integer NOT NULL,
+    target_type     varchar(20) NOT NULL,
+    target_id       integer NOT NULL,
+    reason          varchar(500),
+    status          varchar(20) DEFAULT 'pending',
+    reviewer_id     integer,
+    review_time     varchar(20),
+    review_remark   varchar(500),
+    points_awarded  smallint DEFAULT 0,
+    create_time     varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_report_reporter ON bbs_report (reporter_id);
+CREATE INDEX IF NOT EXISTS idx_report_target ON bbs_report (target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_report_status ON bbs_report (status);
+
+-- ----------------------------
+-- Table: bbs_violation（违规记录）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_violation (
+    id              SERIAL PRIMARY KEY,
+    user_id         integer NOT NULL,
+    violation_type  varchar(50) NOT NULL,
+    points_deducted integer NOT NULL,
+    related_type    varchar(20),
+    related_id      integer,
+    operator_id     integer NOT NULL,
+    remark          varchar(500),
+    create_time     varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_violation_user ON bbs_violation (user_id);
+CREATE INDEX IF NOT EXISTS idx_violation_type ON bbs_violation (violation_type);
+
+-- ----------------------------
+-- Table: bbs_appeal（申诉记录）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_appeal (
+    id              SERIAL PRIMARY KEY,
+    user_id         integer NOT NULL,
+    appeal_type     varchar(20) NOT NULL,
+    related_id      integer,
+    content         text NOT NULL,
+    status          varchar(20) DEFAULT 'pending',
+    reviewer_id     integer,
+    review_remark   varchar(500),
+    review_time     varchar(20),
+    create_time     varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_appeal_user ON bbs_appeal (user_id);
+CREATE INDEX IF NOT EXISTS idx_appeal_status ON bbs_appeal (status);
+
+-- ----------------------------
+-- Table: bbs_board_moderator（版块管理员）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_board_moderator (
+    id           SERIAL PRIMARY KEY,
+    user_id      integer NOT NULL,
+    label_id     integer NOT NULL,
+    role_type    varchar(20) DEFAULT 'moderator',
+    status       smallint DEFAULT 1,
+    appoint_time varchar(20),
+    create_time  varchar(20)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_board_mod_user_label ON bbs_board_moderator (user_id, label_id);
+CREATE INDEX IF NOT EXISTS idx_board_mod_label ON bbs_board_moderator (label_id);
 
 -- ----------------------------
 -- 重置序列，使后续自增从正确值开始
@@ -362,3 +528,12 @@ SELECT setval('bbs_user_id_seq', GREATEST(nextval('bbs_user_id_seq'), (SELECT CO
 SELECT setval('bbs_article_label_label_id_seq', GREATEST(nextval('bbs_article_label_label_id_seq'), (SELECT COALESCE(max(label_id), 0) FROM bbs_article_label)));
 SELECT setval('bbs_sensitive_word_id_seq', GREATEST(nextval('bbs_sensitive_word_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_sensitive_word)));
 SELECT setval('bbs_dict_id_seq', GREATEST(nextval('bbs_dict_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_dict)));
+
+-- ----------------------------
+-- Table: bbs_schema_version（迁移版本追踪）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_schema_version (
+    version     varchar(50) PRIMARY KEY,
+    description varchar(255),
+    applied_at  varchar(20) NOT NULL
+);

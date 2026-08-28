@@ -79,12 +79,20 @@
           @mouseenter="userMenuOpen = true"
           @mouseleave="userMenuOpen = false"
         >
-          <div class="cursor-pointer" @click="userMenuOpen = !userMenuOpen">
+          <div class="cursor-pointer relative" @click="handleAvatarClick">
             <img
               alt="Avatar"
               class="w-10 h-10 rounded-full border border-outline-variant object-cover"
               :src="portrait"
             >
+            <!-- 未读通知角标 -->
+            <span
+              v-if="unreadCount > 0"
+              class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-error rounded-full text-white text-[11px] font-bold flex items-center justify-center leading-none border-2 border-container"
+              @click.stop="goToNotifications"
+            >
+              {{ unreadCount > 99 ? '99+' : unreadCount }}
+            </span>
           </div>
           <!-- Popover Content -->
           <div
@@ -120,6 +128,44 @@
                 >
                   <span class="material-symbols-outlined text-[20px]">edit_square</span>
                   我的发布
+                </router-link>
+                <router-link
+                  to="/my-replies?tab=myReplies"
+                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
+                >
+                  <span class="material-symbols-outlined text-[20px]">reply</span>
+                  我回复的
+                </router-link>
+                <router-link
+                  to="/my-replies?tab=repliedToMe"
+                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
+                >
+                  <span class="material-symbols-outlined text-[20px]">quickreply</span>
+                  回复我的
+                  <!-- 未读红点 -->
+                  <span
+                    v-if="unreadCount > 0"
+                    class="ml-auto w-2 h-2 bg-error rounded-full flex-shrink-0"
+                  ></span>
+                </router-link>
+                <router-link
+                  to="/my-points-log"
+                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
+                >
+                  <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+                  积分记录
+                </router-link>
+                <router-link
+                  to="/notifications"
+                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
+                >
+                  <span class="material-symbols-outlined text-[20px]">notifications</span>
+                  消息通知
+                  <!-- 未读红点 -->
+                  <span
+                    v-if="unreadCount > 0"
+                    class="ml-auto w-2 h-2 bg-error rounded-full flex-shrink-0"
+                  ></span>
                 </router-link>
                 <div class="h-[1px] bg-outline-variant my-1"></div>
                 <button
@@ -204,6 +250,7 @@
 
 <script>
 import { getToken, getUser, removeToken, removeUser } from '@/utils/auth'
+import { Notification } from 'element-ui'
 
 export default {
   name: 'BBSHeader',
@@ -219,6 +266,11 @@ export default {
       showFeedback: false,
       feedbackLoading: false,
       feedbackContact: null,
+      unreadCount: 0,
+      unreadTimer: null,
+      heartbeatTimer: null,
+      dailyLoginCalled: false,
+      pointsAlreadyAwarded: false,
     }
   },
   computed: {
@@ -256,17 +308,41 @@ export default {
     })
     // Listen for avatar update
     this.$bus && this.$bus.$on('portraitUpdated', this.checkLoginState)
+    // Listen for unread count updates
+    this.$bus && this.$bus.$on('unreadCountUpdated', (count) => {
+      this.unreadCount = count
+    })
+    // Fetch unread count on login
+    if (this.isLogin) {
+      this.fetchUnreadCount()
+      this.unreadTimer = setInterval(this.fetchUnreadCount, 30000)
+    }
+    // 根据当前路由决定是否启动浏览心跳
+    if (this.isLogin && this.isBrowsingPage(this.$route.path)) {
+      this.startHeartbeat()
+    }
   },
   watch: {
     showFeedback(val) {
       if (val) this.fetchFeedbackContact()
-    }
+    },
+    '$route.path'(newPath) {
+      if (!this.isLogin) return
+      if (this.isBrowsingPage(newPath)) {
+        this.startHeartbeat()
+      } else {
+        this.stopHeartbeat()
+      }
+    },
   },
   beforeDestroy() {
     window.removeEventListener('scroll', this.handleScroll)
     this.$bus && this.$bus.$off('isLogin')
     this.$bus && this.$bus.$off('portraitUpdated')
+    this.$bus && this.$bus.$off('unreadCountUpdated')
     if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer)
+    if (this.unreadTimer) clearInterval(this.unreadTimer)
+    this.stopHeartbeat()
   },
   methods: {
     checkLoginState() {
@@ -274,9 +350,25 @@ export default {
       if (token) {
         this.isLogin = true
         this.user = getUser()
+        this.fetchUnreadCount()
+        if (!this.unreadTimer) {
+          this.unreadTimer = setInterval(this.fetchUnreadCount, 30000)
+        }
+        // 登录状态下，若在浏览页面则启动心跳
+        if (this.isBrowsingPage(this.$route.path) && !this.heartbeatTimer) {
+          this.startHeartbeat()
+        }
       } else {
         this.isLogin = false
         this.user = null
+        this.unreadCount = 0
+        this.dailyLoginCalled = false
+        this.pointsAlreadyAwarded = false
+        this.stopHeartbeat()
+        if (this.unreadTimer) {
+          clearInterval(this.unreadTimer)
+          this.unreadTimer = null
+        }
       }
     },
     handleScroll() {
@@ -306,6 +398,9 @@ export default {
       }
     },
     handleLogout() {
+      this.stopHeartbeat()
+      this.dailyLoginCalled = false
+      this.pointsAlreadyAwarded = false
       removeToken()
       removeUser()
       this.user = null
@@ -336,6 +431,75 @@ export default {
       }).catch(() => {
         this.feedbackLoading = false
       })
+    },
+    fetchUnreadCount() {
+      const user = getUser()
+      if (!user) return
+      this.getRequest(`/notification/unreadCount?userId=${user.id}`).then(resp => {
+        this.unreadCount = (resp && resp.obj) || 0
+      }).catch(() => {})
+    },
+    handleAvatarClick() {
+      this.userMenuOpen = !this.userMenuOpen
+    },
+    goToNotifications() {
+      this.userMenuOpen = false
+      if (this.$route.path === '/notifications') return
+      this.$router.push('/notifications')
+    },
+    // ---- 浏览心跳（只在内容浏览页运行） ----
+    /** 判断当前路由是否为"浏览页面"（帖子详情页） */
+    isBrowsingPage(path) {
+      return path.startsWith('/articleDetails/')
+    },
+    /** 启动浏览心跳：先记录每日登录，拿到状态后再发心跳 */
+    startHeartbeat() {
+      if (this.heartbeatTimer) return
+      const user = getUser()
+      if (!user) return
+      // 调用 dailyLogin 记录今日登录（幂等，已存在则返回状态）
+      this.postRequest(`/user/dailyLogin?userId=${user.id}`).then(resp => {
+        if (resp && resp.obj) {
+          this.dailyLoginCalled = true
+          // 如果后端说今日积分已发放，标记不再弹窗
+          if (resp.obj.pointsAwarded === 1) {
+            this.pointsAlreadyAwarded = true
+          }
+        }
+        // dailyLogin 返回后再发第一次心跳，避免 pointsAlreadyAwarded 还是 false 导致重复弹窗
+        this.sendHeartbeat()
+      }).catch(() => {
+        // dailyLogin 失败也不阻塞心跳
+        this.sendHeartbeat()
+      })
+      this.heartbeatTimer = setInterval(this.sendHeartbeat, 60000)
+    },
+    /** 停止浏览心跳 */
+    stopHeartbeat() {
+      if (this.heartbeatTimer) {
+        clearInterval(this.heartbeatTimer)
+        this.heartbeatTimer = null
+      }
+    },
+    /** 单次心跳上报 */
+    sendHeartbeat() {
+      if (this.pointsAlreadyAwarded) return
+      const user = getUser()
+      if (!user) return
+      this.postRequest(`/user/browseHeartbeat?userId=${user.id}`).then(resp => {
+        if (!resp || !resp.obj) return
+        if (resp.obj.pointsAwarded === 1 && !this.pointsAlreadyAwarded) {
+          this.pointsAlreadyAwarded = true
+          // 弹出积分到账弹窗（自动消失，无需点击）
+          Notification({
+            title: '🎉 积分到账',
+            message: '恭喜获得每日登录浏览积分 +1',
+            type: 'success',
+            duration: 4000,
+            position: 'top-right',
+          })
+        }
+      }).catch(() => {})
     },
   },
 }

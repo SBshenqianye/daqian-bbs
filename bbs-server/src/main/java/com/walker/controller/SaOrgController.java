@@ -71,7 +71,9 @@ public class SaOrgController {
     @ApiOperation("获取所有单位及排名选中状态")
     @GetMapping("/common/saOrg/rankingOrgs")
     public ResultBean getRankingOrgs() {
-        List<SaOrg> allOrgs = saOrgMapper.selectList(null);
+        List<SaOrg> allOrgs = saOrgMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SaOrg>()
+                        .eq(SaOrg::getIsDelete, 0));
         return ResultBean.success("获取成功", allOrgs);
     }
 

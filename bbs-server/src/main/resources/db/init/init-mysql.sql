@@ -56,6 +56,7 @@ CREATE TABLE `bbs_article` (
   `enable`              int(11) NULL DEFAULT 0 COMMENT '是否审核通过',
   `is_delete`           int(11) NULL DEFAULT 0 COMMENT '逻辑删除',
   `is_featured`         tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否为精华帖(0=否,1=是)',
+  `is_hot_bonus`        tinyint(1) NULL DEFAULT 0 COMMENT '热度奖励是否已发放(0=否,1=是)',
   PRIMARY KEY (`article_id`) USING BTREE,
   KEY `idx_article_featured_time` (`is_featured`, `create_time`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
@@ -120,6 +121,7 @@ CREATE TABLE `bbs_comment` (
   `comment_time`        varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '评论时间',
   `enable`              int(11) NULL DEFAULT 1 COMMENT '是否被审核通过',
   `is_delete`           int(11) NULL DEFAULT 0 COMMENT '逻辑删除',
+  `adopt_status`        tinyint(1) NULL DEFAULT 0 COMMENT '采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)',
   PRIMARY KEY (`comment_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
@@ -232,6 +234,8 @@ CREATE TABLE `bbs_reply` (
   `reply_time`       varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '回复时间',
   `enable`           int(11) NULL DEFAULT 1 COMMENT '是否被审核通过',
   `is_delete`        int(11) NULL DEFAULT 0 COMMENT '逻辑删除',
+  `is_adopted`       tinyint(1) NULL DEFAULT 0 COMMENT '是否被采纳(0=否,1=是)',
+  `adopt_status`     tinyint(1) NULL DEFAULT 0 COMMENT '采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)',
   PRIMARY KEY (`reply_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
@@ -298,6 +302,8 @@ CREATE TABLE `bbs_user` (
   `personnel_id`   varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '人员编号（Excel B列）',
   `id_card`        varchar(18) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '身份证号',
   `is_first_login` tinyint(1) NULL DEFAULT 1 COMMENT '是否首次登录(1=需改密码,0=已修改)',
+  `post_restricted` tinyint(1) NULL DEFAULT 0 COMMENT '是否限制发帖(0=否,1=是)',
+  `post_restricted_until` varchar(20) NULL DEFAULT NULL COMMENT '限制发帖截止时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `uk_bbs_user_username` (`username`),
   UNIQUE KEY `uk_bbs_user_personnel_id` (`personnel_id`),
@@ -312,7 +318,7 @@ CREATE TABLE `bbs_user` (
 -- 超级管理员（密码由 DatabaseInitializer 启动时用 BCrypt 加密写入）
 -- ----------------------------
 INSERT INTO `bbs_user` (`id`, `username`, `password`, `nickname`, `gender`, `city`, `fans`, `attention`, `good`, `is_alive`, `is_delete`, `create_time`, `org_no`, `user_type`, `is_first_login`)
-VALUES (1, 'ASIAYAK', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2rk3O', '超级管理员', '1', '河北省-秦皇岛市', 0, 0, 0, 0, 0, '2026-06-26 00:00:00', '51404', '3', 0);
+VALUES (1, 'asiayak', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2rk3O', '超级管理员', '1', '河北省-秦皇岛市', 0, 0, 0, 0, 0, '2026-06-26 00:00:00', '51404', '3', 0);
 
 -- ----------------------------
 -- 文章标签
@@ -320,7 +326,8 @@ VALUES (1, 'ASIAYAK', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2r
 INSERT INTO `bbs_article_label` (`label_id`, `label_name`, `enabled`, `icon`, `description`) VALUES
 (1, '技术交流', 0, 'thumb_up', ''),
 (2, '求助问答', 1, 'help', ''),
-(3, '资源共享', 0, 'folder_open', '');
+(3, '资源共享', 0, 'folder_open', ''),
+(4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分');
 
 -- ----------------------------
 -- 组织机构（国网四川内江供电公司）
@@ -366,7 +373,15 @@ INSERT INTO `bbs_dict` (`id`, `dict_type`, `dict_value`, `dict_label`, `dict_sor
 (1, 'post', '3', '发帖积分', 1, '系统', '2026-06-26 00:00:00', '发一个帖子所得积分'),
 (2, 'reply', '1', '回帖积分', 0, '系统', '2026-06-26 00:00:00', '回帖一次所得积分'),
 (3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）'),
-(4, 'featured', '10', '精华帖积分', 2, '系统', '2026-07-13 00:00:00', '被设为精华帖额外获得的积分');
+(4, 'featured', '10', '精华帖积分', 2, '系统', '2026-07-13 00:00:00', '被设为精华帖额外获得的积分'),
+(5, 'violation', 'illegal', '违法违规内容', 1, '系统', '2026-08-25 00:00:00', '扣15分'),
+(6, 'violation', 'attack', '人身攻击/争吵引战', 2, '系统', '2026-08-25 00:00:00', '扣10分'),
+(7, 'violation', 'spam', '恶意灌水/刷屏', 3, '系统', '2026-08-25 00:00:00', '扣4分'),
+(8, 'violation', 'plagiarism', '抄袭剽窃', 4, '系统', '2026-08-25 00:00:00', '扣12分'),
+(9, 'violation', 'false_report', '虚假恶意举报', 5, '系统', '2026-08-25 00:00:00', '扣3分'),
+(10, 'violation', 'leak', '泄露企业秘密', 6, '系统', '2026-08-25 00:00:00', '扣20分'),
+(11, 'hot_threshold', '10', '帖子热度回复阈值', 10, '系统', '2026-08-25 00:00:00', '回复数超过此值触发热度奖励'),
+(12, 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', '2026-08-25 00:00:00', '登录后需浏览满此分钟数才计分');
 
 -- ----------------------------
 -- 系统配置（使用反馈联系方式）
@@ -376,6 +391,27 @@ SELECT 'feedback_contact', '{\"name\":\"\",\"email\":\"\"}', '使用反馈联系
 WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'feedback_contact');
 
 -- ----------------------------
+-- Table: bbs_points_log（积分调整日志）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_points_log`;
+CREATE TABLE `bbs_points_log` (
+  `id`               int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`          int(11) NOT NULL COMMENT '用户ID',
+  `points_change`    int(11) NOT NULL COMMENT '积分变动（正数加分，负数扣分）',
+  `reason`           varchar(500) DEFAULT NULL COMMENT '调整原因',
+  `related_type`     varchar(20) DEFAULT NULL COMMENT '关联类型（article/comment/reply/manual/undo）',
+  `related_id`       int(11) DEFAULT NULL COMMENT '关联ID（帖子ID/评论ID/回复ID）',
+  `operator_id`      int(11) DEFAULT NULL COMMENT '操作人ID（管理员）',
+  `create_time`      varchar(20) DEFAULT NULL COMMENT '创建时间',
+  `is_reversed`      tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已被撤销(0=否,1=是)',
+  `reversed_by`      int(11) DEFAULT NULL COMMENT '被哪条撤销记录撤销（记录ID）',
+  `reversing_record` int(11) DEFAULT NULL COMMENT '此记录撤销了哪条原始记录（记录ID）',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_points_log_user_id` (`user_id`),
+  INDEX `idx_points_log_is_reversed` (`is_reversed`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '积分调整日志';
+
+-- ----------------------------
 -- 敏感词
 -- ----------------------------
 INSERT INTO `bbs_sensitive_word` (`id`, `keyword`) VALUES
@@ -383,6 +419,158 @@ INSERT INTO `bbs_sensitive_word` (`id`, `keyword`) VALUES
 (2, '肉票'),
 (3, '抢劫'),
 (4, '莎莎舞'),
-(5, '老司机');
+(5, '老司机'),
+(6, '哈哈哈'),
+(7, '嘻嘻嘻'),
+(8, '嘿嘿嘿'),
+(9, '啊啊啊'),
+(10, '嗯嗯嗯'),
+(11, '哦哦哦'),
+(12, '呵呵呵'),
+(13, '啦啦啦'),
+(14, '呜呜呜'),
+(15, '沙发'),
+(16, '占位'),
+(17, '占楼'),
+(18, '路过'),
+(19, '马克'),
+(20, 'mark'),
+(21, '顶贴'),
+(22, '灌水'),
+(23, '水水水'),
+(24, '水帖'),
+(25, '打卡'),
+(26, '签到'),
+(27, '666666'),
+(28, '8888'),
+(29, '11111'),
+(30, '123456'),
+(31, '测试测试'),
+(32, '测试一下'),
+(33, 'testtest');
+
+-- ----------------------------
+-- Table: bbs_notification（通知表）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_notification`;
+CREATE TABLE `bbs_notification` (
+  `id`             int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`        int(11) NOT NULL COMMENT '被通知的用户ID',
+  `from_user_id`   int(11) DEFAULT NULL COMMENT '触发通知的用户ID',
+  `type`           varchar(20) NOT NULL COMMENT '通知类型(reply/comment/favorite)',
+  `title`          varchar(255) DEFAULT NULL COMMENT '通知标题',
+  `related_type`   varchar(20) DEFAULT NULL COMMENT '关联类型(article/comment/reply)',
+  `related_id`     int(11) DEFAULT NULL COMMENT '关联ID',
+  `is_read`        tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已读(0=未读,1=已读)',
+  `create_time`    varchar(20) DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_notification_user_id` (`user_id`),
+  INDEX `idx_notification_user_read` (`user_id`, `is_read`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '通知表';
+
+-- ----------------------------
+-- Table: bbs_schema_version（迁移版本追踪）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_schema_version`;
+CREATE TABLE `bbs_schema_version` (
+  `version`     varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '迁移版本标识',
+  `description` varchar(255) DEFAULT NULL COMMENT '迁移描述',
+  `applied_at`  varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '执行时间',
+  PRIMARY KEY (`version`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic COMMENT = '数据库迁移版本追踪';
+
+-- ----------------------------
+-- Table: bbs_login_log（每日登录浏览记录）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_login_log`;
+CREATE TABLE `bbs_login_log` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`         int(11) NOT NULL COMMENT '用户ID',
+  `login_date`      varchar(10) NOT NULL COMMENT '登录日期(YYYY-MM-DD)',
+  `login_time`      varchar(20) DEFAULT NULL COMMENT '登录时间',
+  `browse_minutes`  int(11) DEFAULT 0 COMMENT '有效浏览分钟数',
+  `points_awarded`  tinyint(1) DEFAULT 0 COMMENT '是否已发积分(0=否,1=是)',
+  `create_time`     varchar(20) DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_login_log_user_date` (`user_id`, `login_date`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '每日登录浏览记录';
+
+-- ----------------------------
+-- Table: bbs_report（实名举报记录）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_report`;
+CREATE TABLE `bbs_report` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `reporter_id`     int(11) NOT NULL COMMENT '举报人ID',
+  `target_type`     varchar(20) NOT NULL COMMENT '举报目标类型(article/comment/reply)',
+  `target_id`       int(11) NOT NULL COMMENT '被举报内容ID',
+  `reason`          varchar(500) DEFAULT NULL COMMENT '举报原因',
+  `status`          varchar(20) DEFAULT 'pending' COMMENT '状态(pending/confirmed/rejected)',
+  `reviewer_id`     int(11) DEFAULT NULL COMMENT '审核人ID',
+  `review_time`     varchar(20) DEFAULT NULL COMMENT '审核时间',
+  `review_remark`   varchar(500) DEFAULT NULL COMMENT '审核备注',
+  `points_awarded`  tinyint(1) DEFAULT 0 COMMENT '是否已给举报人发积分(0=否,1=是)',
+  `create_time`     varchar(20) DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_report_reporter` (`reporter_id`),
+  INDEX `idx_report_target` (`target_type`, `target_id`),
+  INDEX `idx_report_status` (`status`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '实名举报记录';
+
+-- ----------------------------
+-- Table: bbs_violation（违规记录）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_violation`;
+CREATE TABLE `bbs_violation` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`         int(11) NOT NULL COMMENT '违规用户ID',
+  `violation_type`  varchar(50) NOT NULL COMMENT '违规类型(对应字典violation)',
+  `points_deducted` int(11) NOT NULL COMMENT '扣减积分',
+  `related_type`    varchar(20) DEFAULT NULL COMMENT '关联类型(article/comment/reply)',
+  `related_id`      int(11) DEFAULT NULL COMMENT '关联ID',
+  `operator_id`     int(11) NOT NULL COMMENT '操作管理员ID',
+  `remark`          varchar(500) DEFAULT NULL COMMENT '备注说明',
+  `create_time`     varchar(20) DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_violation_user` (`user_id`),
+  INDEX `idx_violation_type` (`violation_type`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '违规记录';
+
+-- ----------------------------
+-- Table: bbs_appeal（申诉记录）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_appeal`;
+CREATE TABLE `bbs_appeal` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`         int(11) NOT NULL COMMENT '申诉人ID',
+  `appeal_type`     varchar(20) NOT NULL COMMENT '申诉类型(violation/points/other)',
+  `related_id`      int(11) DEFAULT NULL COMMENT '关联的违规/积分记录ID',
+  `content`         text NOT NULL COMMENT '申诉内容',
+  `status`          varchar(20) DEFAULT 'pending' COMMENT '状态(pending/accepted/rejected)',
+  `reviewer_id`     int(11) DEFAULT NULL COMMENT '审核人ID',
+  `review_remark`   varchar(500) DEFAULT NULL COMMENT '审核备注',
+  `review_time`     varchar(20) DEFAULT NULL COMMENT '审核时间',
+  `create_time`     varchar(20) DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_appeal_user` (`user_id`),
+  INDEX `idx_appeal_status` (`status`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '申诉记录';
+
+-- ----------------------------
+-- Table: bbs_board_moderator（版块管理员）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_board_moderator`;
+CREATE TABLE `bbs_board_moderator` (
+  `id`           int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`      int(11) NOT NULL COMMENT '用户ID',
+  `label_id`     int(11) NOT NULL COMMENT '关联标签(版块)ID',
+  `role_type`    varchar(20) DEFAULT 'moderator' COMMENT '角色类型(moderator/admin)',
+  `status`       tinyint(1) DEFAULT 1 COMMENT '状态(1=有效,0=撤销)',
+  `appoint_time` varchar(20) DEFAULT NULL COMMENT '任命时间',
+  `create_time`  varchar(20) DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_board_mod_user_label` (`user_id`, `label_id`),
+  INDEX `idx_board_mod_label` (`label_id`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '版块管理员';
 
 SET FOREIGN_KEY_CHECKS = 1;

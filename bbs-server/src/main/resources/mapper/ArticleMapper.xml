@@ -63,7 +63,7 @@
                    coalesce(t2.posts, 0) AS posts,
                    coalesce(t3.replies, 0) AS replies,
                    coalesce(t4.featuredPosts, 0) AS featuredPosts,
-                   (coalesce(t2.posts, 0) * #{post} + coalesce(t3.replies, 0) * #{reply} + coalesce(t4.featuredPosts, 0) * #{featured}) AS points
+                   coalesce(t5.logPoints, 0) AS points
             FROM (
                 SELECT s.org_no, s.org_name
                 FROM bbs_sa_org s
@@ -127,6 +127,17 @@
                     </choose>
                 GROUP BY substr(u.org_no, 1, ${orgLength})
             ) t4 ON t1.org_no = t4.org_no
+            LEFT JOIN (
+                SELECT substr(u.org_no, 1, ${orgLength}) AS org_no,
+                       sum(p.points_change) AS logPoints
+                FROM bbs_points_log p
+                JOIN bbs_user u ON p.user_id = u.id
+                WHERE (p.is_reversed IS NULL OR p.is_reversed != 1)
+                  AND u.org_no LIKE concat(#{orgNo}, '%')
+                  AND p.create_time >= #{startTime}
+                  AND p.create_time <![CDATA[<]]> CONCAT(#{endTime}, ' 23:59:59')
+                GROUP BY substr(u.org_no, 1, ${orgLength})
+            ) t5 ON t1.org_no = t5.org_no
         ) t
         ORDER BY t.points DESC, t.orgNo
     </select>
@@ -137,7 +148,7 @@
                u.org_no AS orgNo, o.org_name AS orgName,
                COALESCE(t2.posts, 0) AS posts,
                COALESCE(t3.replies, 0) AS replies,
-               (COALESCE(t2.posts, 0) * #{post} + COALESCE(t3.replies, 0) * #{reply}) AS points
+               COALESCE(t4.logPoints, 0) AS points
         FROM bbs_user u
         LEFT JOIN bbs_sa_org o ON u.org_no = o.org_no
         LEFT JOIN (
@@ -168,8 +179,16 @@
                 </choose>
             GROUP BY comment_user_id
         ) t3 ON u.id = t3.comment_user_id
+        LEFT JOIN (
+            SELECT user_id, SUM(points_change) AS logPoints
+            FROM bbs_points_log
+            WHERE (is_reversed IS NULL OR is_reversed != 1)
+              AND create_time >= #{startTime}
+              AND create_time <![CDATA[<]]> CONCAT(#{endTime}, ' 23:59:59')
+            GROUP BY user_id
+        ) t4 ON u.id = t4.user_id
         WHERE u.is_delete = 0
-          AND (COALESCE(t2.posts, 0) * #{post} + COALESCE(t3.replies, 0) * #{reply}) > 0
+          AND COALESCE(t4.logPoints, 0) > 0
         ORDER BY points DESC, u.id
         LIMIT #{size}
     </select>
@@ -183,8 +202,8 @@
                    u.org_no AS orgNo, o.org_name AS orgName,
                    COALESCE(t2.posts, 0) AS posts,
                    COALESCE(t3.replies, 0) AS replies,
-                   (COALESCE(t2.posts, 0) * #{post} + COALESCE(t3.replies, 0) * #{reply}) AS points,
-                   RANK() OVER (ORDER BY (COALESCE(t2.posts, 0) * #{post} + COALESCE(t3.replies, 0) * #{reply}) DESC, u.id) AS rankNum
+                   COALESCE(t4.logPoints, 0) AS points,
+                   RANK() OVER (ORDER BY COALESCE(t4.logPoints, 0) DESC, u.id) AS rankNum
             FROM bbs_user u
             LEFT JOIN bbs_sa_org o ON u.org_no = o.org_no
             LEFT JOIN (
@@ -215,8 +234,16 @@
                     </choose>
                 GROUP BY comment_user_id
             ) t3 ON u.id = t3.comment_user_id
+            LEFT JOIN (
+                SELECT user_id, SUM(points_change) AS logPoints
+                FROM bbs_points_log
+                WHERE (is_reversed IS NULL OR is_reversed != 1)
+                  AND create_time >= #{startTime}
+                  AND create_time <![CDATA[<]]> CONCAT(#{endTime}, ' 23:59:59')
+                GROUP BY user_id
+            ) t4 ON u.id = t4.user_id
             WHERE u.is_delete = 0
-              AND (COALESCE(t2.posts, 0) * #{post} + COALESCE(t3.replies, 0) * #{reply}) > 0
+              AND COALESCE(t4.logPoints, 0) > 0
         ) ranked
         WHERE ranked.userId = #{userId}
     </select>
