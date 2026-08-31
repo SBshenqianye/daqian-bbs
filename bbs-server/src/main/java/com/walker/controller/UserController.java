@@ -8,6 +8,7 @@ import com.github.pagehelper.PageInfo;
 import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.service.PointsLogService;
+import com.walker.service.NotificationService;
 import com.walker.service.SaOrgService;
 import com.walker.utils.FilePathNormalizer;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -50,6 +51,9 @@ public class UserController {
 
     @Autowired
     private PointsLogService pointsLogService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @Value("${storage.path}")
     private String basePath;
@@ -389,6 +393,7 @@ public class UserController {
         Integer userId = (Integer) params.get("userId");
         Integer restricted = (Integer) params.get("restricted");
         String until = (String) params.get("until");
+        Integer adminId = params.get("adminId") != null ? ((Number) params.get("adminId")).intValue() : null;
 
         if (userId == null || restricted == null) {
             return ResultBean.error("参数不完整");
@@ -399,11 +404,67 @@ public class UserController {
             return ResultBean.error("用户不存在");
         }
 
+        // MyBatis-Plus updateById 默认跳过 null 字段，必须用 UpdateWrapper 强制写入 null 值
         user.setPostRestricted(restricted);
         user.setPostRestrictedUntil(restricted == 1 ? until : null);
-        userService.updateById(user);
+        userService.update(user, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<User>()
+                .eq(User::getId, userId)
+                .set(User::getPostRestricted, restricted)
+                .set(User::getPostRestrictedUntil, restricted == 1 ? until : null));
+
+        // 发送通知给被限制/解除的用户
+        String title;
+        if (restricted == 1) {
+            if (until != null && !until.isEmpty()) {
+                title = "您的发帖权限已被限制，截止时间：" + until;
+            } else {
+                title = "您的发帖权限已被永久限制，如有疑问请联系管理员";
+            }
+        } else {
+            title = "您的发帖权限已恢复，可以正常发帖了";
+        }
+        notificationService.createNotification(userId, adminId, "post_restricted", title, "user", userId);
 
         return ResultBean.success(restricted == 1 ? "已限制发帖" : "已解除发帖限制");
+    }
+
+    @ApiOperation(value = "检查用户发帖限制状态")
+    @GetMapping("/common/user/checkPostRestriction")
+    public Map<String, Object> checkPostRestriction(@RequestParam("userId") Integer userId) {
+        Map<String, Object> result = new HashMap<>();
+        User user = userService.getById(userId);
+        if (user == null) {
+            result.put("restricted", false);
+            return result;
+        }
+        if (user.getPostRestricted() == null || user.getPostRestricted() != 1) {
+            result.put("restricted", false);
+            return result;
+        }
+        // 检查限制是否已过期
+        if (user.getPostRestrictedUntil() != null && !user.getPostRestrictedUntil().isEmpty()) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                Date until = sdf.parse(user.getPostRestrictedUntil());
+                if (new Date().after(until)) {
+                    // 已过期，自动解除（LambdaUpdateWrapper 强制置空 null 字段）
+                    userService.update(user, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<User>()
+                            .eq(User::getId, userId)
+                            .set(User::getPostRestricted, 0)
+                            .set(User::getPostRestrictedUntil, null));
+                    result.put("restricted", false);
+                    return result;
+                }
+                result.put("restricted", true);
+                result.put("until", user.getPostRestrictedUntil());
+            } catch (Exception e) {
+                result.put("restricted", true);
+            }
+        } else {
+            // 永久限制
+            result.put("restricted", true);
+        }
+        return result;
     }
 
     @ApiOperation(value = "用户查看自己的积分变动记录")

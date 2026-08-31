@@ -121,8 +121,11 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
             User user = userService.getById(userId);
             if (user != null && (user.getPostRestricted() == null || user.getPostRestricted() == 0)) {
                 user.setPostRestricted(1);
-                user.setPostRestrictedUntil(null); // 永久限制，需管理员手动解除
-                userService.updateById(user);
+                // leak 类型永久限制：LambdaUpdateWrapper 强制置空 post_restricted_until（updateById 会跳过 null）
+                userService.update(user, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<User>()
+                        .eq(User::getId, userId)
+                        .set(User::getPostRestricted, 1)
+                        .set(User::getPostRestrictedUntil, null));
 
                 notificationService.createNotification(userId, operatorId,
                         "post_restricted", "因泄露企业秘密/个人隐私，您的账号已被暂停发帖权限",

@@ -93,10 +93,12 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                         if (new Date().before(until)) {
                             return ResultBean.error("您的账号已被限制发帖，请联系管理员");
                         }
-                        // 已过期，自动解除限制
+                        // 已过期，自动解除限制（LambdaUpdateWrapper 强制置空 post_restricted_until）
                         user.setPostRestricted(0);
-                        user.setPostRestrictedUntil(null);
-                        userService.updateById(user);
+                        userService.update(user, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<User>()
+                                .eq(User::getId, userId)
+                                .set(User::getPostRestricted, 0)
+                                .set(User::getPostRestrictedUntil, null));
                     } catch (Exception e) {
                         // 解析失败视为永久限制
                         return ResultBean.error("您的账号已被限制发帖，请联系管理员");
