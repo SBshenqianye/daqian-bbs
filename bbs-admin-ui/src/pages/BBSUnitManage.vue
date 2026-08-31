@@ -483,9 +483,9 @@ export default {
     },
 
     // ---- 树交互 ----
-    onNodeClick(node) {
-      if (node._hasChildren) {
-        this.$refs.orgTree.toggleNode(node)
+    onNodeClick(data, elNode) {
+      if (data.children && data.children.length) {
+        this.$refs.orgTree.toggleNodeById(data.id)
       }
       this.$nextTick(() => this._onScroll())
     },
@@ -627,5 +627,14 @@ export default {
   transform: translateY(0);
   pointer-events: auto;
 }
+
+/* 缩进层级（浮动导航 + 原 OrgTree 全局共用） */
+.d0 { margin-left: 0; }
+.d1 { margin-left: 24px; }
+.d2 { margin-left: 48px; }
+.d3 { margin-left: 72px; }
+.d4 { margin-left: 96px; }
+.d5 { margin-left: 120px; }
+.d6 { margin-left: 144px; }
 
 </style>

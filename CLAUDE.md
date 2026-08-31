@@ -100,7 +100,7 @@ CREATE TABLE bbs_schema_version (
 </div>
 ```
 
-**浮层消息**（loading/empty/no-match）是简单 div，可用独立 v-if 链切换，无风险。详见 `OrgTree.vue`。
+**浮层消息**（loading/empty/no-match）是简单 div，可用独立 v-if 链切换，无风险。详见 `OrgTree.vue`（已迁移至 el-tree，不再使用 v-once + v-for 自定义渲染）。
 
 ### v-once 内禁止 v-if/v-else
 

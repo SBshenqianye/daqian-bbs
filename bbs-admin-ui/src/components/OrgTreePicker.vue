@@ -195,11 +195,24 @@ export default {
       this.loading = false
     },
 
-    onNodeClick(node) {
-      this.localSelectedId = node.id
-      this.localSelectedLabel = node.label
-      this.localSelectedPath = this._getNodePath(node)
-      // 用户刚点击了节点，它必然在视口内，无需调用 checkSelectedVisibility
+    onNodeClick(data, elNode) {
+      this.localSelectedId = data.id
+      this.localSelectedLabel = data.label
+      // Build path using el-tree's node.parent chain or OrgTree's getNodePath
+      if (elNode && elNode.parent && elNode.parent.data) {
+        const segments = [data.label]
+        let cur = elNode.parent
+        while (cur && cur.data && cur.data.id) {
+          segments.push(cur.data.label)
+          cur = cur.parent
+        }
+        this.localSelectedPath = segments.join(' / ')
+      } else if (this.$refs.orgTree) {
+        const path = this.$refs.orgTree.getNodePath(data.id)
+        this.localSelectedPath = path.map(n => n.label).reverse().join(' / ')
+      } else {
+        this.localSelectedPath = data.label
+      }
     },
 
     confirm() {
@@ -213,17 +226,6 @@ export default {
     },
 
     /* ===================== 完整路径计算 ===================== */
-
-    /** 从已装饰节点的 _parent 链向上拼接完整路径（节点点击时用），叶子在前 */
-    _getNodePath(node) {
-      const segments = [node.label]
-      let current = node
-      while (current._parent) {
-        current = current._parent
-        segments.push(current.label)
-      }
-      return segments.join(' / ')
-    },
 
     /** 递归搜索原始 treeData 拼接路径（打开弹窗已有选中时用） */
     _findPathInTree(nodes, targetId, pathSoFar) {

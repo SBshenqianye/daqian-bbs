@@ -1,113 +1,126 @@
 <template>
   <div>
-    <!-- tree：始终挂载，通过 CSS 控制可见性，避免 v-if 销毁/重建 DOM 导致冻结 -->
+    <!-- Tree (always mounted, CSS toggle to avoid v-if DOM destruction) -->
     <div
-      class="select-none"
       :class="showTree ? '' : 'opacity-0 h-0 overflow-hidden pointer-events-none'"
-      @click="onTreeClick"
     >
-      <div v-for="node in flatList" :key="node.id" :data-nid="node.id">
-        <div
-          class="group flex items-center gap-1 px-3 py-1.5 rounded-lg border mb-0.5 cursor-pointer"
-          :class="rowCls(node)"
-        >
-          <!--
-            v-once：仅包含树结构静态部分（图标、标签），
-            toggle 按钮始终挂载、用 CSS 控制可见性（避免 v-if 在 v-once 内导致 elm 丢失）。
-          -->
-          <div v-once class="flex items-center gap-1 min-w-0 flex-1 w-full">
-            <!-- Chevron：始终挂载，CSS 切换（v-once 内禁止 v-if/v-else） -->
+      <el-tree
+        ref="tree"
+        :data="normalizedNodes"
+        node-key="id"
+        :props="elTreeProps"
+        :default-expand-all="defaultExpanded"
+        :filter-node-method="filterNode"
+        :expand-on-click-node="false"
+        :highlight-current="false"
+        :indent="indent"
+        class="org-el-tree"
+        @node-click="handleNodeClick"
+      >
+        <template #default="{ node: elNode, data }">
+          <div
+            class="org-tree-row flex items-center gap-1 w-full"
+            :class="rowCls(data, elNode)"
+            :data-nid="data.id"
+          >
+            <!-- Chevron (expand/collapse) -->
             <button
+              v-if="data._hasChildren"
               class="w-5 h-5 flex items-center justify-center rounded hover:bg-surface-variant transition-colors flex-shrink-0 -ml-0.5"
-              :class="node._hasChildren ? '' : 'hidden'"
-              @click.stop="node._hasChildren && onToggle(node)"
+              @click.stop="toggleElNode(elNode)"
             >
-              <span class="material-symbols-outlined tree-chevron" style="font-size:14px">chevron_right</span>
+              <span
+                class="material-symbols-outlined tree-chevron"
+                :class="{ 'tree-copen': elNode.expanded }"
+                style="font-size:14px"
+              >chevron_right</span>
             </button>
-            <span class="w-5 h-5 flex-shrink-0" :class="node._hasChildren ? 'hidden' : ''"></span>
+            <span v-else class="w-5 h-5 flex-shrink-0"></span>
 
-            <!-- Icon -->
-            <span class="material-symbols-outlined flex-shrink-0 text-outline" style="font-size: 18px;">{{ node._hasChildren ? 'folder' : 'description' }}</span>
+            <!-- Node icon -->
+            <span
+              class="material-symbols-outlined flex-shrink-0 text-outline"
+              style="font-size: 18px;"
+            >{{ data._hasChildren ? 'folder' : 'description' }}</span>
 
             <!-- Label -->
-            <span class="flex-1 font-body-md truncate min-w-0 ml-1">{{ node.label }}</span>
-            <span class="material-symbols-outlined text-primary flex-shrink-0" style="font-size: 16px; display:none;">check_circle</span>
+            <span class="flex-1 font-body-md truncate min-w-0 ml-1">{{ data.label }}</span>
+
+            <!-- ═══ mode=unit-manage: toggle buttons + CRUD ═══ -->
+            <template v-if="mode === 'unit-manage'">
+              <div class="flex items-center gap-0.5 flex-shrink-0">
+                <!-- Ranking toggle -->
+                <div class="flex items-center gap-1 ml-1">
+                  <span class="text-[11px] text-on-surface-variant whitespace-nowrap">排名</span>
+                  <button
+                    class="relative rounded-full transition-all duration-200 flex-shrink-0"
+                    :class="rankingBtnCls(data)"
+                    style="height:18px;width:36px"
+                    :title="rankingTitle(data)"
+                    @click.stop="emitToggleRanking(data)"
+                  >
+                    <span
+                      class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200"
+                      :style="rankingDotStyle(data)"
+                    ></span>
+                  </button>
+                </div>
+
+                <!-- Display toggle -->
+                <div class="flex items-center gap-1 ml-1">
+                  <span class="text-[11px] text-on-surface-variant whitespace-nowrap">显示</span>
+                  <button
+                    class="relative rounded-full transition-all duration-200 flex-shrink-0"
+                    :class="displayBtnCls(data)"
+                    style="height:18px;width:36px"
+                    :title="displayTitle(data)"
+                    @click.stop="emitToggleDisplay(data)"
+                  >
+                    <span
+                      class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200"
+                      :style="displayDotStyle(data)"
+                    ></span>
+                  </button>
+                </div>
+
+                <!-- CRUD (hover show) -->
+                <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ml-1">
+                  <button
+                    class="inline-flex items-center gap-0.5 px-1.5 py-1 font-medium text-primary hover:bg-primary/10 rounded-md transition-colors"
+                    style="font-size: 11px;"
+                    @click.stop="emitAdd(data)"
+                  >
+                    <span class="material-symbols-outlined" style="font-size: 12px;">add</span>
+                    新增
+                  </button>
+                  <button
+                    v-if="data.id && data.id.length !== 5"
+                    class="inline-flex items-center gap-0.5 px-1.5 py-1 font-medium text-error hover:bg-error/10 rounded-md transition-colors"
+                    style="font-size: 11px;"
+                    @click.stop="emitDelete(data)"
+                  >
+                    <span class="material-symbols-outlined" style="font-size: 12px;">delete</span>
+                    删除
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- "当前组织" tag -->
+            <span
+              v-if="data.id === currentValueId && data.id !== selectedId"
+              class="text-outline/60 ml-1 flex-shrink-0 whitespace-nowrap"
+              style="font-size: 10px; line-height: 14px;"
+            >当前组织</span>
+
+            <!-- Default mode: parent slot -->
+            <slot v-if="mode !== 'unit-manage'" name="node-actions" :node="data" />
           </div>
-
-          <!-- ────── mode=unit-manage：按钮组（v-once 外，Vue 响应式驱动） ────── -->
-          <template v-if="mode === 'unit-manage'">
-            <div class="flex items-center gap-0.5 flex-shrink-0">
-              <!-- 排名开关 -->
-              <div class="flex items-center gap-1 ml-1">
-                <span class="text-[11px] text-on-surface-variant whitespace-nowrap">排名</span>
-                <button
-                  class="relative rounded-full transition-all duration-200 flex-shrink-0"
-                  :class="rankingBtnCls(node)"
-                  style="height:18px;width:36px"
-                  :title="rankingTitle(node)"
-                  @click.stop="emitToggleRanking(node)"
-                >
-                  <span
-                    class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200"
-                    :style="rankingDotStyle(node)"
-                  ></span>
-                </button>
-              </div>
-
-              <!-- 显示开关 -->
-              <div class="flex items-center gap-1 ml-1">
-                <span class="text-[11px] text-on-surface-variant whitespace-nowrap">显示</span>
-                <button
-                  class="relative rounded-full transition-all duration-200 flex-shrink-0"
-                  :class="displayBtnCls(node)"
-                  style="height:18px;width:36px"
-                  :title="displayTitle(node)"
-                  @click.stop="emitToggleDisplay(node)"
-                >
-                  <span
-                    class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200"
-                    :style="displayDotStyle(node)"
-                  ></span>
-                </button>
-              </div>
-
-              <!-- CRUD（hover 显示） -->
-              <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ml-1">
-                <button
-                  class="inline-flex items-center gap-0.5 px-1.5 py-1 font-medium text-primary hover:bg-primary/10 rounded-md transition-colors"
-                  style="font-size: 11px;"
-                  @click.stop="emitAdd(node)"
-                >
-                  <span class="material-symbols-outlined" style="font-size: 12px;">add</span>
-                  新增
-                </button>
-                <button
-                  v-if="node.id && node.id.length !== 5"
-                  class="inline-flex items-center gap-0.5 px-1.5 py-1 font-medium text-error hover:bg-error/10 rounded-md transition-colors"
-                  style="font-size: 11px;"
-                  @click.stop="emitDelete(node)"
-                >
-                  <span class="material-symbols-outlined" style="font-size: 12px;">delete</span>
-                  删除
-                </button>
-              </div>
-            </div>
-          </template>
-
-          <!-- 当前组织标签（数据库原值，与新选区分） -->
-          <span
-            v-if="node.id === currentValueId && node.id !== selectedId"
-            class="text-outline/60 ml-1 flex-shrink-0 whitespace-nowrap"
-            style="font-size: 10px; line-height: 14px;"
-          >当前组织</span>
-
-          <!-- slot：非 unit-manage 模式向后兼容（BBSPointsConfig 等） -->
-          <slot v-if="mode !== 'unit-manage' && node._visible" name="node-actions" :node="node" />
-        </div>
-      </div>
+        </template>
+      </el-tree>
     </div>
 
-    <!-- 浮层：独立于树的 v-if 链（仅切换简单 div，无 DOM 破坏风险） -->
+    <!-- Overlays (simple v-if chain, no DOM destruction risk) -->
     <div v-if="loading" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
       <span class="material-symbols-outlined opacity-50 animate-spin" style="font-size: 36px;">sync</span>
       <p class="text-body-md">加载中...</p>
@@ -116,7 +129,7 @@
       <span class="material-symbols-outlined opacity-20" style="font-size: 48px;">account_tree</span>
       <p class="text-body-md">暂无组织数据</p>
     </div>
-    <div v-else-if="filterText && !matchCount" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
+    <div v-else-if="filterText && !hasMatches" class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-2">
       <span class="material-symbols-outlined opacity-20" style="font-size: 48px;">search_off</span>
       <p class="text-body-md">无匹配单位</p>
     </div>
@@ -130,267 +143,145 @@ export default {
     nodes: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
     selectedId: { type: String, default: '' },
-    /** 数据库中当前保存的组织 ID（与新选中的 selectedId 区分，做黯淡高亮） */
+    /** 数据库中当前保存的组织 ID (用于黯淡高亮) */
     currentValueId: { type: String, default: '' },
     filterText: { type: String, default: '' },
     indent: { type: Number, default: 24 },
     defaultExpanded: { type: Boolean, default: true },
-    /** 渲染模式：'unit-manage' 在 v-once 内联渲染全量按钮；其他值使用 slot */
-    mode: { type: String, default: '' }
+    /** 渲染模式: 'unit-manage' 内联渲染按钮; 其他值使用 slot */
+    mode: { type: String, default: '' },
   },
   emits: ['node-click', 'toggle-ranking', 'toggle-display', 'cascade-ranking', 'cascade-display', 'add-node', 'delete-node'],
   data() {
     return {
-      /** 装饰后的树（仅首次构建，后续不重写） */
-      treeData: [],
-      /** DFS 平铺列表（仅首次构建，后续不动引用）—— 自身是响应式数组，
-       *  但内部节点的 _ 属性全部非响应式，修改后须 $forceUpdate() */
-      flatList: [],
       initialized: false,
-      /** 当前 filter 命中的行数（0 表示无匹配 vs 无数据） */
-      matchCount: 0
+      hasMatches: true,
+      elTreeProps: { children: 'children', label: 'label' },
     }
   },
   computed: {
-    /** 树是否应该可见（始终挂载，仅 CSS 切换，避免 v-if 销毁 DOM） */
     showTree() {
-      return this.initialized && (!(this.filterText || '').trim() || this.matchCount > 0)
-    }
+      return this.initialized && this.normalizedNodes.length > 0
+    },
+    normalizedNodes() {
+      const result = this._normalizeData(this.nodes)
+      this.initialized = result.length > 0
+      return result
+    },
   },
   watch: {
-    nodes: {
-      immediate: true,
-      handler(val) {
-        try {
-          if (val && val.length) {
-            this.treeData = val.map(n => this._decorate(n, null, this.defaultExpanded ? 2 : false, 0))
-            this.initialized = true
-          } else {
-            this.treeData = []
-            this.flatList = []
-            this.initialized = false
-            this.matchCount = 0
-            return
-          }
-          this._buildFlatList()
-          this._syncVisibility()
-          this.$forceUpdate()
-          this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
-        } catch (e) {
-          console.error('[OrgTree] nodes handler error:', e)
-          this.treeData = []
-          this.flatList = []
-          this.initialized = false
-          this.matchCount = 0
-        }
-      }
-    },
-    filterText() {
+    filterText(val) {
       try {
-        this._syncVisibility()
-        this.$forceUpdate()
-        // 树始终挂载，搜索条件变化后需同步 chevron 旋转状态
-        if (this.showTree) {
-          this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+        const tree = this.$refs.tree
+        if (!tree) return
+        const ft = (val || '').trim()
+        tree.filter(ft || null)
+        if (ft) {
+          // Expand all to show matching results
+          this.$nextTick(() => {
+            if (this._isDestroyed) return
+            this._expandAllNodes()
+            this._checkMatches()
+          })
+        } else {
+          this.hasMatches = true
         }
       } catch (e) {
-        console.error('[OrgTree] filterText handler error:', e)
+        console.error('[OrgTree] filterText error:', e)
       }
     },
   },
   methods: {
-    /* ===================== 节点装饰 ===================== */
+    /* ═══════════ Data Normalization ═══════════ */
 
-    /** 创建节点对象。
-     *  @param {number|boolean} expandDepth - false=全折叠, true=全展开, 数字=展开到该深度
-     */
-    _decorate(node, parent, expandDepth, depth) {
-      const hasChildren = !!(node.children && Array.isArray(node.children) && node.children.length)
-      const id = node.orgNo != null ? String(node.orgNo) : (node.id != null ? String(node.id) : '')
-      const label = node.orgName != null ? node.orgName : (node.label || '')
-      // 1. 先复制原始枚举属性（包括 id, label, pOrgNo, isRankingSelected …）
-      const out = { ...node, id, label }
-      // 2. 内部属性全部非枚举 → Vue 跳过
-      const initiallyExpanded = expandDepth === true ? true : expandDepth === false ? false : depth < expandDepth
-      const priv = {
-        _expanded: initiallyExpanded,
-        _depth: depth,
-        _hasChildren: hasChildren,
-        _visible: false,
-        _filterMatch: false,
-        _parent: parent
-      }
-      for (const [k, v] of Object.entries(priv)) {
-        Object.defineProperty(out, k, {
-          value: v, enumerable: false, writable: true, configurable: true
-        })
-      }
-      // 3. children 也非枚举（不触发 reactive 递归）
-      const childArr = hasChildren
-        ? node.children.map(c => this._decorate(c, out, expandDepth, depth + 1))
-        : []
-      Object.defineProperty(out, 'children', {
-        value: childArr, enumerable: false, writable: true, configurable: true
-      })
-      return out
-    },
-
-    /** DFS 平铺全部节点（只调用一次，之后只读不写引用） */
-    _buildFlatList() {
-      const list = []
-      const stack = this.treeData.length ? [...this.treeData].reverse() : []
-      while (stack.length) {
-        const n = stack.pop()
-        list.push(n)
-        if (n._hasChildren && n.children) {
-          for (let i = n.children.length - 1; i >= 0; i--) {
-            stack.push(n.children[i])
-          }
-        }
-      }
-      this.flatList = list
-    },
-
-    /* ===================== 可见性同步 ===================== */
-
-    _syncVisibility() {
-      const ft = (this.filterText || '').trim().toLowerCase()
-      if (ft) this._syncFiltered(ft)
-      else this._syncExpanded()
-    },
-
-    _syncExpanded() {
-      let count = 0
-      for (let i = 0; i < this.flatList.length; i++) {
-        const n = this.flatList[i]
-        if (n._depth === 0) {
-          n._visible = true; count++
-        } else {
-          n._visible = n._parent._visible && n._parent._expanded
-          if (n._visible) count++
-        }
-      }
-      this.matchCount = count
-    },
-
-    _syncFiltered(ft) {
-      this._markFilterMatch(this.treeData, ft)
-      let count = 0
-      for (let i = 0; i < this.flatList.length; i++) {
-        const n = this.flatList[i]
-        if (n._depth === 0) {
-          n._visible = n._filterMatch
-        } else {
-          n._visible = n._parent._visible && n._parent._expanded && n._filterMatch
-        }
-        if (n._visible) count++
-      }
-      this.matchCount = count
-    },
-
-    _markFilterMatch(nodes, ft) {
-      let hit = false
-      for (const n of nodes) {
+    _normalizeData(nodes) {
+      if (!nodes || !Array.isArray(nodes)) return []
+      return nodes.map(n => {
+        const id = String(n.orgNo != null ? n.orgNo : (n.id != null ? n.id : ''))
         const label = n.orgName != null ? n.orgName : (n.label || '')
-        const labelMatch = label.toLowerCase().includes(ft)
-        const childMatch = n.children && n.children.length
-          ? this._markFilterMatch(n.children, ft)
-          : false
-        n._filterMatch = labelMatch || childMatch
-        if (n._filterMatch) hit = true
-      }
-      return hit
-    },
-
-    /** 从 startNode 向下传播 _visible 状态（基于 _expanded） */
-    _propagateVisibility(node) {
-      if (!node._hasChildren || !node.children) return
-      for (const child of node.children) {
-        child._visible = child._parent._visible && child._parent._expanded
-        if (child._hasChildren) this._propagateVisibility(child)
-      }
-    },
-
-    /** toggle/expand/collapse 后重算可见性 + 强制重绘 */
-    _updateAndRender() {
-      if (!(this.filterText || '').trim()) {
-        let count = 0
-        for (let i = 0; i < this.flatList.length; i++) {
-          if (this.flatList[i]._visible) count++
+        const hasChildren = !!(n.children && Array.isArray(n.children) && n.children.length)
+        const out = { ...n, id, label, _hasChildren: hasChildren }
+        if (hasChildren) {
+          out.children = this._normalizeData(n.children)
         }
-        this.matchCount = count
+        return out
+      })
+    },
+
+    /* ═══════════ Filter ═══════════ */
+
+    filterNode(value, data) {
+      if (!value) return true
+      return (data.label || '').toLowerCase().includes(value.toLowerCase())
+    },
+
+    _checkMatches() {
+      const tree = this.$refs.tree
+      if (!tree) { this.hasMatches = false; return }
+      // Check if any top-level node is visible after filtering
+      const root = tree.store.root
+      this.hasMatches = root.childNodes && root.childNodes.some(n => n.visible)
+    },
+
+    /* ═══════════ Expand/Collapse ═══════════ */
+
+    toggleElNode(elNode) {
+      if (elNode.expanded) {
+        elNode.collapse()
       } else {
-        this._syncFiltered((this.filterText || '').trim().toLowerCase())
-      }
-      this.$forceUpdate()
-    },
-
-    /* ===================== 公开方法 ===================== */
-
-    toggleNode(node) {
-      if (!node || !node._hasChildren) return
-      try {
-        node._expanded = !node._expanded
-        // 直接操作 DOM 旋转 chevron（v-once 冻结了模板，但 DOM 操作不受影响）
-        const row = this.$el && this.$el.querySelector(`[data-nid="${node.id}"]`)
-        if (row) {
-          const chevron = row.querySelector('.tree-chevron')
-          if (chevron) chevron.classList.toggle('tree-copen', node._expanded)
-        }
-        if (!(this.filterText || '').trim()) this._propagateVisibility(node)
-        this._updateAndRender()
-      } catch (e) {
-        console.error('[OrgTree] toggleNode error:', e)
+        elNode.expand()
       }
     },
 
     expandAll() {
       try {
-        this._walkTree(this.treeData, n => { n._expanded = true })
-        this._syncVisibility()
-        this.$forceUpdate()
-        this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+        this._expandAllNodes()
       } catch (e) {
         console.error('[OrgTree] expandAll error:', e)
       }
     },
 
+    _expandAllNodes() {
+      const tree = this.$refs.tree
+      if (!tree) return
+      const walk = (nodes) => {
+        for (const n of nodes) {
+          if (!n.expanded) n.expand()
+          if (n.childNodes && n.childNodes.length) walk(n.childNodes)
+        }
+      }
+      walk(tree.store.root.childNodes || [])
+    },
+
     collapseAll() {
       try {
-        this._walkTree(this.treeData, n => { n._expanded = false })
-        this._syncVisibility()
-        this.$forceUpdate()
-        this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+        const tree = this.$refs.tree
+        if (!tree) return
+        const walk = (nodes) => {
+          for (const n of nodes) {
+            if (n.childNodes && n.childNodes.length) walk(n.childNodes)
+            if (n.expanded) n.collapse()
+          }
+        }
+        walk(tree.store.root.childNodes || [])
       } catch (e) {
         console.error('[OrgTree] collapseAll error:', e)
       }
     },
 
-    /** 展开到指定节点（向上展开所有祖先），确保节点可见。
-     *  返回 true 如果找到并展开，false 如果未找到。 */
+    /** 展开到指定节点 (向上展开所有祖先) */
     expandToNode(id) {
       try {
-        const findNode = (nodes, targetId) => {
-          for (const n of nodes) {
-            if (n.id === targetId) return n
-            if (n.children && n.children.length) {
-              const found = findNode(n.children, targetId)
-              if (found) return found
-            }
-          }
-          return null
+        const tree = this.$refs.tree
+        if (!tree) return false
+        const elNode = tree.store.getNode(id)
+        if (!elNode) return false
+        // Expand all ancestors
+        let current = elNode.parent
+        while (current && current.data) {
+          if (!current.expanded) current.expand()
+          current = current.parent
         }
-        const node = findNode(this.treeData, id)
-        if (!node) return false
-        // 向上展开所有祖先
-        let current = node
-        while (current._parent) {
-          current = current._parent
-          if (!current._expanded) current._expanded = true
-        }
-        this._syncVisibility()
-        this.$forceUpdate()
-        this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
         return true
       } catch (e) {
         console.error('[OrgTree] expandToNode error:', e)
@@ -398,22 +289,14 @@ export default {
       }
     },
 
-    /** 按 ID toggle 节点的展开/折叠状态 */
+    /** 按 ID toggle 节点展开/折叠 */
     toggleNodeById(id) {
       try {
-        const findNode = (nodes, targetId) => {
-          for (const n of nodes) {
-            if (n.id === targetId) return n
-            if (n.children && n.children.length) {
-              const found = findNode(n.children, targetId)
-              if (found) return found
-            }
-          }
-          return null
-        }
-        const node = findNode(this.treeData, id)
-        if (!node || !node._hasChildren) return false
-        this.toggleNode(node)
+        const tree = this.$refs.tree
+        if (!tree) return false
+        const elNode = tree.store.getNode(id)
+        if (!elNode) return false
+        this.toggleElNode(elNode)
         return true
       } catch (e) {
         console.error('[OrgTree] toggleNodeById error:', e)
@@ -421,112 +304,29 @@ export default {
       }
     },
 
-    /** 同步所有节点的 chevron 旋转状态（v-once 冻结了模板，须 DOM 操作） */
-    _syncChevrons() {
-      try {
-        if (!this.$el || !this.flatList) return
-        for (const node of this.flatList) {
-          if (!node._hasChildren) continue
-          const row = this.$el.querySelector(`[data-nid="${node.id}"]`)
-          if (!row) continue
-          const chevron = row.querySelector('.tree-chevron')
-          if (chevron) chevron.classList.toggle('tree-copen', node._expanded)
+    /** 获取从根到指定节点的路径 (用于 OrgTreePicker 路径显示) */
+    getNodePath(id) {
+      const path = []
+      const find = (nodes, target) => {
+        for (const n of nodes) {
+          if (n.id === target) { path.push(n); return true }
+          if (n.children && n.children.length) {
+            if (find(n.children, target)) { path.unshift(n); return true }
+          }
         }
-      } catch (e) {
-        console.error('[OrgTree] _syncChevrons error:', e)
+        return false
       }
+      find(this.normalizedNodes, id)
+      return path
     },
 
-    /* ============= 响应式：toggle 视觉状态 ============= */
+    /* ═══════════ Row Styling ═══════════ */
 
-    /** 排名按钮背景 class */
-    rankingBtnCls(node) {
-      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
-      return on ? 'bg-primary' : 'bg-gray-300'
-    },
-    /** 排名按钮圆点位置 */
-    rankingDotStyle(node) {
-      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
-      return on ? 'left:19px' : 'left:2px'
-    },
-    /** 排名按钮 title */
-    rankingTitle(node) {
-      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
-      return on ? '取消参与排名' : '参与排名'
-    },
-
-    /** 显示按钮背景 class */
-    displayBtnCls(node) {
-      const on = node.isDisplaySelected == 1 || node.isDisplaySelected === true
-      return on ? 'bg-primary' : 'bg-gray-300'
-    },
-    /** 显示按钮圆点位置 */
-    displayDotStyle(node) {
-      const on = node.isDisplaySelected == 1 || node.isDisplaySelected === true
-      return on ? 'left:19px' : 'left:2px'
-    },
-    /** 显示按钮 title */
-    displayTitle(node) {
-      const on = node.isDisplaySelected == 1 || node.isDisplaySelected === true
-      return on ? '不在前台显示' : '在前台显示'
-    },
-
-    /* ============= 事件发射 ============= */
-
-    emitToggleRanking(node) {
-      if (node._hasChildren) {
-        // 父级：翻转自己并向下级联到所有子级
-        const newVal = !(node.isRankingSelected == 1 || node.isRankingSelected === true)
-        this.$emit('toggle-ranking', node)
-        this.$emit('cascade-ranking', node, newVal)
-        this.$forceUpdate()
-        return
-      }
-      this.$emit('toggle-ranking', node)
-      this.$forceUpdate()
-    },
-
-    emitToggleDisplay(node) {
-      if (node._hasChildren) {
-        const newVal = !(node.isDisplaySelected == 1 || node.isDisplaySelected === true)
-        this.$emit('toggle-display', node)
-        this.$emit('cascade-display', node, newVal)
-        this.$forceUpdate()
-        return
-      }
-      this.$emit('toggle-display', node)
-      this.$forceUpdate()
-    },
-
-    /* ============= 公共方法 ============= */
-
-    emitAdd(node) {
-      this.$emit('add-node', node)
-    },
-    emitDelete(node) {
-      this.$emit('delete-node', node)
-    },
-
-    /* ===================== 内部 ===================== */
-
-    _walkTree(nodes, fn) {
-      if (!nodes || !Array.isArray(nodes)) return
-      for (const n of nodes) {
-        fn(n)
-        if (n.children && n.children.length) this._walkTree(n.children, fn)
-      }
-    },
-
-    /** 单次 class diff 替代 :style 对象对比 —— 快 10×+ */
-    rowCls(node) {
-      const c = []
-      if (!node._visible) c.push('th')
-      c.push('d' + Math.min(node._depth, 6))
-      if (node.id === this.selectedId) {
-        // ⭐ 新选中的组织（明亮）
+    rowCls(data, elNode) {
+      const c = ['group']
+      if (data.id === this.selectedId) {
         c.push('bg-primary/15 border-primary text-primary font-semibold')
-      } else if (node.id === this.currentValueId) {
-        // ⭐ 数据库中当前保存的组织（黯淡 + 灰色 "当前组织" 标签）
+      } else if (data.id === this.currentValueId) {
         c.push('bg-surface-variant/30 border-outline-variant/40 text-on-surface-variant/60')
       } else {
         c.push('bg-surface-container-low border-transparent hover:border-outline-variant/30 hover:bg-surface-container-low/80')
@@ -534,45 +334,106 @@ export default {
       return c
     },
 
-    /** 事件委托：点击行触发 node-click */
-    onTreeClick(e) {
-      try {
-        const row = e.target.closest('[data-nid]')
-        if (!row) return
-        for (let i = 0; i < this.flatList.length; i++) {
-          if (this.flatList[i].id === row.dataset.nid) {
-            this.$emit('node-click', this.flatList[i])
-            return
-          }
-        }
-      } catch (e) {
-        console.error('[OrgTree] onTreeClick error:', e)
-      }
+    /* ═══════════ Toggle Visual State ═══════════ */
+
+    rankingBtnCls(node) {
+      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
+      return on ? 'bg-primary' : 'bg-gray-300'
+    },
+    rankingDotStyle(node) {
+      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
+      return on ? 'left:19px' : 'left:2px'
+    },
+    rankingTitle(node) {
+      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
+      return on ? '取消参与排名' : '参与排名'
+    },
+    displayBtnCls(node) {
+      const on = node.isDisplaySelected == 1 || node.isDisplaySelected === true
+      return on ? 'bg-primary' : 'bg-gray-300'
+    },
+    displayDotStyle(node) {
+      const on = node.isDisplaySelected == 1 || node.isDisplaySelected === true
+      return on ? 'left:19px' : 'left:2px'
+    },
+    displayTitle(node) {
+      const on = node.isDisplaySelected == 1 || node.isDisplaySelected === true
+      return on ? '不在前台显示' : '在前台显示'
     },
 
-    onToggle(node) {
-      this.toggleNode(node)
-    }
-  }
+    /* ═══════════ Event Emitters ═══════════ */
+
+    handleNodeClick(data, elNode) {
+      this.$emit('node-click', data, elNode)
+    },
+
+    emitToggleRanking(node) {
+      if (node._hasChildren) {
+        const newVal = !(node.isRankingSelected == 1 || node.isRankingSelected === true)
+        this.$emit('toggle-ranking', node)
+        this.$emit('cascade-ranking', node, newVal)
+        return
+      }
+      this.$emit('toggle-ranking', node)
+    },
+
+    emitToggleDisplay(node) {
+      if (node._hasChildren) {
+        const newVal = !(node.isDisplaySelected == 1 || node.isDisplaySelected === true)
+        this.$emit('toggle-display', node)
+        this.$emit('cascade-display', node, newVal)
+        return
+      }
+      this.$emit('toggle-display', node)
+    },
+
+    emitAdd(node) {
+      this.$emit('add-node', node)
+    },
+    emitDelete(node) {
+      this.$emit('delete-node', node)
+    },
+  },
 }
 </script>
 
 <style>
-/* 每行作为独立布局/样式/绘制容器，避免展开时触发全量 layout 回溯 */
-.group { contain: layout style paint; }
-/* 隐藏（替代 v-show / :style display）
- * 使用 .group.th 提升特异性，确保始终覆盖 Tailwind 的 .flex { display:flex }，
- * 避免 CSS 加载顺序不同导致 .flex 胜出产生"幽灵"可见行。 */
-.group.th { display: none !important; }
-/* 缩进层级（CSS class 比 :style 的 js 对象 diff 快得多） */
-.d0 { margin-left: 0; }
-.d1 { margin-left: 24px; }
-.d2 { margin-left: 48px; }
-.d3 { margin-left: 72px; }
-.d4 { margin-left: 96px; }
-.d5 { margin-left: 120px; }
-.d6 { margin-left: 144px; }
-/* 展开箭头旋转（替代 :style transform） */
+/* Override el-tree default styles for consistency */
+.org-el-tree .el-tree-node__content {
+  height: auto;
+  padding: 0;
+  border-radius: 8px;
+  margin-bottom: 2px;
+}
+.org-el-tree .el-tree-node {
+  position: relative;
+}
+/* Hide default el-tree expand icon (we render custom chevron in scoped slot) */
+.org-el-tree .el-tree-node__expand-icon {
+  display: none !important;
+}
+/* Remove el-tree default hover highlight */
+.org-el-tree .el-tree-node__content:hover {
+  background-color: transparent;
+}
+/* Row styles */
+.org-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+.org-tree-row:hover {
+  border-color: rgba(var(--outline-variant-rgb, 200,200,200), 0.3);
+  background-color: rgba(var(--surface-container-low-rgb, 245,245,245), 0.8);
+}
+/* Expand arrow rotation */
 .tree-chevron { transition: transform .12s ease; }
 .tree-copen { transform: rotate(90deg); }
 </style>
