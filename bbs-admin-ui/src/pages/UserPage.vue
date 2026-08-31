@@ -75,9 +75,12 @@
                   <input type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded" :checked="isSelected(user)" :disabled="!canCheck(user)" @change="toggleSelect(user)">
                 </td>
                 <td class="p-4">
-                  <div v-if="canShowOperation(user)">
+                  <div v-if="canShowOperation(user)" class="flex items-center gap-1">
                     <button class="inline-flex items-center justify-center w-8 h-8 rounded-full text-info bg-info/5 hover:bg-info/15 hover:text-info transition-colors" title="编辑" @click="handleOpenEditDialog(user)">
                       <span class="material-symbols-outlined text-[18px]">edit</span>
+                    </button>
+                    <button class="inline-flex items-center justify-center w-8 h-8 rounded-full transition-colors" :class="user.postRestricted === 1 ? 'text-warning bg-warning/5 hover:bg-warning/15 hover:text-warning' : 'text-error bg-error/5 hover:bg-error/15 hover:text-error'" :title="user.postRestricted === 1 ? '解除限制' : '限制发帖'" @click="handleOpenRestrictDialog(user)">
+                      <span class="material-symbols-outlined text-[18px]">{{ user.postRestricted === 1 ? 'lock_open' : 'lock' }}</span>
                     </button>
                   </div>
                   <span v-else class="text-on-surface-variant text-body-md">-</span>
@@ -92,10 +95,16 @@
                   <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="roleClass(user.userType)">{{ roleLabel(user.userType) }}</span>
                 </td>
                 <td class="p-4">
-                  <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="user.isAlive === 0 ? 'bg-green-50 text-green-700' : 'bg-error-container text-error'">
-                    <span class="w-1.5 h-1.5 rounded-full" :class="user.isAlive === 0 ? 'bg-green-500' : 'bg-error'"></span>
-                    {{ user.isAlive === 0 ? '活跃' : '禁用' }}
-                  </span>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="user.isAlive === 0 ? 'bg-green-50 text-green-700' : 'bg-error-container text-error'">
+                      <span class="w-1.5 h-1.5 rounded-full" :class="user.isAlive === 0 ? 'bg-green-500' : 'bg-error'"></span>
+                      {{ user.isAlive === 0 ? '活跃' : '禁用' }}
+                    </span>
+                    <span v-if="user.postRestricted === 1" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700" :title="user.postRestrictedUntil ? '限制至 ' + user.postRestrictedUntil : '永久限制'">
+                      <span class="material-symbols-outlined text-[12px]">lock</span>
+                      发帖受限
+                    </span>
+                  </div>
                 </td>
                 <td class="p-4 font-body-md text-on-surface-variant">{{ user.createTime }}</td>
               </tr>
@@ -441,6 +450,70 @@
         @close="addOrgPickerVisible = false"
       />
 
+      <!-- Restrict Post Dialog -->
+      <div v-show="restrictDialogVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/30" @click="restrictDialogVisible = false"></div>
+        <div class="relative bg-container w-full max-w-sm rounded-xl shadow-2xl">
+          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+            <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-warning">lock</span>
+              {{ restrictForm.currentRestricted ? '解除发帖限制' : '限制发帖' }}
+            </h3>
+            <button class="text-outline hover:text-error transition-colors" @click="restrictDialogVisible = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="p-5 space-y-4">
+            <p class="text-body-md text-on-surface-variant">
+              用户：<span class="font-medium text-on-surface">{{ restrictForm.userNickname }}</span>
+              <span class="text-on-surface-variant">（{{ restrictForm.userUsername }}）</span>
+            </p>
+            <!-- 已被限制时显示解除选项 -->
+            <div v-if="restrictForm.currentRestricted">
+              <p class="text-body-md text-warning">
+                <span class="material-symbols-outlined text-[16px] align-middle">info</span>
+                该用户当前已被限制发帖
+                <span v-if="restrictForm.currentUntil" class="text-on-surface-variant">，截止 {{ restrictForm.currentUntil }}</span>
+                <span v-else>（永久限制）</span>
+              </p>
+            </div>
+            <!-- 未被限制时显示限制选项 -->
+            <div v-else class="space-y-3">
+              <div class="flex items-center gap-3">
+                <input id="restrictPermanent" v-model="restrictForm.type" type="radio" value="permanent" class="w-4 h-4 text-primary">
+                <label for="restrictPermanent" class="text-body-md text-on-surface cursor-pointer">永久限制</label>
+              </div>
+              <div class="flex items-center gap-3">
+                <input id="restrictUntil" v-model="restrictForm.type" type="radio" value="until" class="w-4 h-4 text-primary">
+                <label for="restrictUntil" class="text-body-md text-on-surface cursor-pointer">截止时间</label>
+              </div>
+              <div v-if="restrictForm.type === 'until'" class="pl-7">
+                <input v-model="restrictForm.until" type="datetime-local" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
+            <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="restrictDialogVisible = false">取消</button>
+            <button
+              v-if="restrictForm.currentRestricted"
+              class="px-7 py-2 bg-warning text-on-warning rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm"
+              :disabled="restrictSaving"
+              @click="handleRestrictPost(0)"
+            >
+              {{ restrictSaving ? '处理中...' : '解除限制' }}
+            </button>
+            <button
+              v-else
+              class="px-7 py-2 bg-error text-on-error rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm disabled:opacity-50"
+              :disabled="restrictSaving || (restrictForm.type === 'until' && !restrictForm.until)"
+              @click="handleRestrictPost(1)"
+            >
+              {{ restrictSaving ? '处理中...' : '确认限制' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- User Hover Tooltip -->
       <div v-if="hoverUser" class="fixed z-[100]" :style="tooltipStyle" @mouseenter="keepTooltipVisible" @mouseleave="hideUserTooltip">
         <div class="bg-container border border-border rounded-xl shadow-2xl p-3" style="width:420px">
@@ -534,11 +607,24 @@ export default {
       },
       addOrgPickerVisible: false,
       // 编辑用户 - end
+      // 限制发帖
+      restrictDialogVisible: false,
+      restrictSaving: false,
+      restrictForm: {
+        userId: null,
+        userNickname: '',
+        userUsername: '',
+        currentRestricted: false,
+        currentUntil: '',
+        type: 'permanent',
+        until: '',
+      },
       // 弹窗拖动
       dialogPos: {
         edit: { x: 0, y: 0 },
         preview: { x: 0, y: 0 },
         add: { x: 0, y: 0 },
+        restrict: { x: 0, y: 0 },
       },
       dialogDrag: null, // { name, startX, startY, origX, origY }
     }
@@ -953,6 +1039,51 @@ export default {
         console.warn('[UserPage] handleSaveAdd', err)
         this.addSaving = false
       })
+    },
+    // ====== 限制发帖 ======
+    handleOpenRestrictDialog(user) {
+      this.restrictForm = {
+        userId: user.id,
+        userNickname: user.nickname || '',
+        userUsername: user.username || '',
+        currentRestricted: user.postRestricted === 1,
+        currentUntil: user.postRestrictedUntil || '',
+        type: 'permanent',
+        until: '',
+      }
+      this.restrictDialogVisible = true
+    },
+    handleRestrictPost(restricted) {
+      if (restricted === 1 && this.restrictForm.type === 'until' && !this.restrictForm.until) {
+        this.$message.warning('请选择截止时间')
+        return
+      }
+      const until = restricted === 1 && this.restrictForm.type === 'until'
+        ? this.restrictForm.until.replace('T', ' ') + ':00'
+        : null
+      this.restrictSaving = true
+      this.postRequest('/admin/user/restrictPost', {
+        userId: this.restrictForm.userId,
+        restricted,
+        until,
+        adminId: this.getAdminId(),
+      }).then(resp => {
+        this.restrictSaving = false
+        if (resp) {
+          this.$message.success(restricted === 1 ? '已限制发帖' : '已解除发帖限制')
+          this.restrictDialogVisible = false
+          this.getAllUserPage()
+        }
+      }).catch(() => {
+        this.restrictSaving = false
+      })
+    },
+    getAdminId() {
+      try {
+        const admin = window.sessionStorage.getItem('admin')
+        if (admin) return JSON.parse(admin).id
+      } catch (e) {}
+      return 1
     },
     // ====== 弹窗拖动（直接DOM操作） ======
     showUserTooltip(user, event) {
