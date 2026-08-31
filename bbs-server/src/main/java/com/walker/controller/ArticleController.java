@@ -1,23 +1,26 @@
 package com.walker.controller;
 
 
+import com.alibaba.excel.EasyExcel;
+import cn.hutool.core.date.DateUtil;
 import com.walker.pojo.Article;
 import com.walker.pojo.ArticleLabel;
+import com.walker.pojo.PointsLog;
+import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
-import com.walker.service.ArticleLabelService;
-import com.walker.service.NotificationService;
-import com.walker.service.PointsLogService;
-import com.walker.service.UserService;
+import com.walker.service.*;
 import com.walker.utils.ConstantUtil;
 import com.walker.utils.FilePathNormalizer;
 import com.walker.utils.SensitiveWordUtil;
 import com.walker.vo.InformationVO;
+import com.walker.vo.PersonalPointsRankVO;
+import com.walker.vo.PointsRankVO;
 import com.walker.vo.ResultBean;
-import com.walker.service.ArticleService;
 import com.walker.vo.param.ArticleParam;
 import com.walker.vo.param.ArticleStatisticParam;
 import com.walker.vo.param.PersonalPointsRankParam;
 import com.walker.vo.param.PointsRankParam;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import java.util.Map;
@@ -27,11 +30,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * <p>
@@ -59,6 +63,15 @@ public class ArticleController {
 
     @Autowired
     private ArticleLabelService articleLabelService;
+
+    @Autowired
+    private com.walker.service.DictService dictService;
+
+    @Autowired
+    private com.walker.mapper.SaOrgMapper saOrgMapper;
+
+    @Autowired
+    private com.walker.mapper.PointsLogMapper pointsLogMapper;
 
     @Value("${storage.path}")
     private String basePath;
@@ -524,5 +537,193 @@ public class ArticleController {
                 "article", articleId);
 
         return ResultBean.success("采纳成功");
+    }
+
+    // ==================== 积分排名导出 ====================
+
+    /** EasyExcel 自定义表头行类 */
+    public static class RankHeader {
+        public String ranking;
+        public String orgName;
+        public String orgName2; // 个人排名用
+        public String nickname;
+        public String posts;
+        public String replies;
+        public String points;
+    }
+
+    @ApiOperation(value = "积分排名导出 Excel（单位排名 + 个人排名 + 积分明细）")
+    @GetMapping("/admin/points/export")
+    public void exportPointsRank(
+            @RequestParam(required = false, defaultValue = "01") String rankType,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime,
+            @RequestParam(required = false, defaultValue = "51404") String orgNo,
+            HttpServletResponse response) throws IOException {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        String fileName = URLEncoder.encode("积分排名_" + new SimpleDateFormat("yyyyMMdd").format(new Date()), "UTF-8");
+        response.setHeader("Content-Disposition", "attachment;filename=" + fileName + ".xlsx");
+
+        // ── 1. 准备查询参数（复用已有逻辑） ──
+        PointsRankParam rankParam = new PointsRankParam();
+        rankParam.setRankType(rankType);
+        rankParam.setOrgNo(orgNo);
+        rankParam.setStartTime(startTime);
+        rankParam.setEndTime(endTime);
+
+        if (StringUtils.isEmpty(rankParam.getStartTime()) || StringUtils.isEmpty(rankParam.getEndTime())) {
+            if ("01".equals(rankParam.getRankType())) {
+                rankParam.setStartTime(new SimpleDateFormat("yyyy-MM-dd").format(DateUtil.beginOfMonth(new Date())));
+                rankParam.setEndTime(new SimpleDateFormat("yyyy-MM-dd").format(DateUtil.endOfMonth(new Date())));
+            } else {
+                List<com.walker.pojo.Dict> startList = dictService.listDictByType(ConstantUtil.MANA_POINTS_START_TIME);
+                List<com.walker.pojo.Dict> endList = dictService.listDictByType(ConstantUtil.MANA_POINTS_END_TIME);
+                if (startList != null && !startList.isEmpty() && endList != null && !endList.isEmpty()) {
+                    rankParam.setStartTime(startList.get(0).getDictValue());
+                    rankParam.setEndTime(endList.get(0).getDictValue());
+                } else {
+                    rankParam.setStartTime("2000-01-01");
+                    rankParam.setEndTime(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
+                }
+            }
+        }
+        rankParam.setOrgLength(rankParam.getOrgNo().length() + 2);
+
+        // ── 2. 查询单位排名 ──
+        ResultBean unitResult = articleService.pointsRank(rankParam);
+        @SuppressWarnings("unchecked")
+        List<PointsRankVO> unitList = (unitResult.getObj() != null)
+                ? (List<PointsRankVO>) unitResult.getObj()
+                : new ArrayList<>();
+
+        // ── 3. 查询个人排名（全量导出） ──
+        PersonalPointsRankParam personalParam = new PersonalPointsRankParam();
+        personalParam.setRankType(rankType);
+        personalParam.setStartTime(rankParam.getStartTime());
+        personalParam.setEndTime(rankParam.getEndTime());
+        personalParam.setSize(9999);
+        ResultBean personalResult = articleService.personalPointsRank(personalParam);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> personalData = (Map<String, Object>) personalResult.getObj();
+        @SuppressWarnings("unchecked")
+        List<PersonalPointsRankVO> personalList = (personalData != null && personalData.get("list") != null)
+                ? (List<PersonalPointsRankVO>) personalData.get("list")
+                : new ArrayList<>();
+
+        // ── 4. 查询积分明细 ──
+        String startFull = rankParam.getStartTime() + " 00:00:00";
+        String endFull = rankParam.getEndTime() + " 23:59:59";
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.walker.pojo.PointsLog> logWrapper =
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        logWrapper.ge(com.walker.pojo.PointsLog::getCreateTime, startFull)
+                .le(com.walker.pojo.PointsLog::getCreateTime, endFull)
+                .orderByDesc(com.walker.pojo.PointsLog::getCreateTime);
+        List<com.walker.pojo.PointsLog> pointsLogs = pointsLogMapper.selectList(logWrapper);
+
+        // ── 5. 写入 Excel（3 个 Sheet） ──
+        com.alibaba.excel.ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).build();
+        try {
+            // Sheet1：单位排名
+            com.alibaba.excel.write.metadata.WriteSheet sheet1 =
+                    EasyExcel.writerSheet("单位排名").head(unitRankHeader()).build();
+            excelWriter.write(buildUnitRankData(unitList), sheet1);
+
+            // Sheet2：个人排名
+            com.alibaba.excel.write.metadata.WriteSheet sheet2 =
+                    EasyExcel.writerSheet("个人排名").head(personalRankHeader()).build();
+            excelWriter.write(buildPersonalRankData(personalList), sheet2);
+
+            // Sheet3：积分明细
+            com.alibaba.excel.write.metadata.WriteSheet sheet3 =
+                    EasyExcel.writerSheet("积分明细").head(pointsLogHeader()).build();
+            excelWriter.write(buildPointsLogData(pointsLogs), sheet3);
+        } finally {
+            excelWriter.finish();
+        }
+    }
+
+    // ── 导出表头定义 ──
+
+    private List<List<String>> unitRankHeader() {
+        List<List<String>> header = new ArrayList<>();
+        header.add(Arrays.asList("排名", "单位编号", "单位名称", "发帖数", "回帖数", "积分"));
+        return header;
+    }
+
+    private List<List<String>> personalRankHeader() {
+        List<List<String>> header = new ArrayList<>();
+        header.add(Arrays.asList("排名", "用户ID", "昵称", "单位编号", "单位名称", "发帖数", "回帖数", "积分"));
+        return header;
+    }
+
+    private List<List<String>> pointsLogHeader() {
+        List<List<String>> header = new ArrayList<>();
+        header.add(Arrays.asList("时间", "用户ID", "昵称", "单位名称", "积分变动", "变动原因", "关联类型", "关联ID"));
+        return header;
+    }
+
+    // ── 数据转换 ──
+
+    private List<List<Object>> buildUnitRankData(List<PointsRankVO> list) {
+        List<List<Object>> data = new ArrayList<>();
+        if (list == null) return data;
+        for (PointsRankVO item : list) {
+            data.add(Arrays.asList(
+                    item.getRankNum(),
+                    item.getOrgNo(),
+                    item.getOrgName(),
+                    item.getPosts() != null ? item.getPosts() : 0,
+                    item.getReplies() != null ? item.getReplies() : 0,
+                    item.getPoints() != null ? item.getPoints() : 0
+            ));
+        }
+        return data;
+    }
+
+    private List<List<Object>> buildPersonalRankData(List<PersonalPointsRankVO> list) {
+        List<List<Object>> data = new ArrayList<>();
+        if (list == null) return data;
+        for (PersonalPointsRankVO item : list) {
+            data.add(Arrays.asList(
+                    item.getRankNum(),
+                    item.getUserId(),
+                    item.getNickName(),
+                    item.getOrgNo(),
+                    item.getOrgName(),
+                    item.getPosts() != null ? item.getPosts() : 0,
+                    item.getReplies() != null ? item.getReplies() : 0,
+                    item.getPoints() != null ? item.getPoints() : 0
+            ));
+        }
+        return data;
+    }
+
+    private List<List<Object>> buildPointsLogData(List<com.walker.pojo.PointsLog> logs) {
+        List<List<Object>> data = new ArrayList<>();
+        if (logs == null) return data;
+        for (com.walker.pojo.PointsLog log : logs) {
+            String userName = "";
+            String orgName = "";
+            User u = userService.getById(log.getUserId());
+            if (u != null) {
+                userName = u.getNickname() != null ? u.getNickname() : "";
+                if (u.getOrgNo() != null) {
+                    SaOrg org = saOrgMapper.selectOne(
+                            new LambdaQueryWrapper<SaOrg>().eq(SaOrg::getOrgNo, u.getOrgNo()));
+                    orgName = (org != null) ? org.getOrgName() : u.getOrgNo();
+                }
+            }
+            data.add(Arrays.asList(
+                    log.getCreateTime(),
+                    log.getUserId(),
+                    userName,
+                    orgName,
+                    log.getPointsChange(),
+                    log.getReason() != null ? log.getReason() : "",
+                    log.getRelatedType() != null ? log.getRelatedType() : "",
+                    log.getRelatedId() != null ? log.getRelatedId() : ""
+            ));
+        }
+        return data;
     }
 }

@@ -68,8 +68,7 @@
                 SELECT s.org_no, s.org_name
                 FROM bbs_sa_org s
                 WHERE s.is_delete = 0
-                  AND s.org_no LIKE concat(#{orgNo}, '%')
-                  AND s.org_no != #{orgNo}
+                  AND s.p_org_no = #{orgNo}
                   AND length(s.org_no) <![CDATA[<=]]> ${orgLength}
             ) t1
             LEFT JOIN (

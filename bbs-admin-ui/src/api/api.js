@@ -146,3 +146,19 @@ export const uploadFile = (url, formData) => {
         headers: { 'Content-Type': 'multipart/form-data' }
     })
 }
+
+// 下载文件（GET，返回 Blob）
+export const downloadFile = (url, params) => {
+    // 将 params 对象转为 query string
+    const query = params
+        ? '?' + Object.entries(params)
+            .filter(([, v]) => v !== undefined && v !== null && v !== '')
+            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+            .join('&')
+        : ''
+    return axios({
+        method: 'get',
+        url: `${process.env.VUE_APP_BBS_API}${url}${query}`,
+        responseType: 'blob'
+    })
+}
