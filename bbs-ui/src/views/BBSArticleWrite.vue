@@ -191,6 +191,7 @@ export default {
     },
   },
   mounted() {
+    this.checkPostRestriction()
     this.loadLabels()
     if (this.articleId) {
       this.loadArticleForEdit(this.articleId)
@@ -200,6 +201,30 @@ export default {
     }
   },
   methods: {
+    checkPostRestriction() {
+      const userStr = window.sessionStorage.getItem('user')
+      if (!userStr) {
+        this.$alert('请先登录后再发帖', '提示', {
+          confirmButtonText: '确定',
+          type: 'warning',
+          showClose: false,
+        }).then(() => { this.$router.back() })
+        return
+      }
+      const userId = JSON.parse(userStr).id
+      this.getRequest('/common/user/checkPostRestriction?userId=' + userId).then(resp => {
+        if (resp && resp.restricted) {
+          const msg = resp.until
+            ? '您的发帖权限已被限制，截止时间：' + resp.until
+            : '您的发帖权限已被永久限制，如有疑问请联系管理员'
+          this.$alert(msg, '发帖受限', {
+            confirmButtonText: '确定',
+            type: 'error',
+            showClose: false,
+          }).then(() => { this.$router.back() })
+        }
+      }).catch(() => {})
+    },
     autoResizeTitle() {
       const el = this.$refs.titleInput
       if (el) {

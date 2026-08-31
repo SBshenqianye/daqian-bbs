@@ -37,6 +37,7 @@ Vue.component(Tooltip.name,Tooltip)
 
 
 Vue.prototype.$confirm = MessageBox.confirm;
+Vue.prototype.$alert = MessageBox.alert;
 
 //插件形式使用请求
 Vue.prototype.postRequest = postRequest;
