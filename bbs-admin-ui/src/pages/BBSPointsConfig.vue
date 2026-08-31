@@ -19,19 +19,28 @@
         </div>
       </div>
 
-      <!-- Loading -->
-      <div v-if="loading" class="flex items-center justify-center py-16">
+      <!-- Loading（始终挂载，CSS 切换，避免 v-if 销毁树 DOM） -->
+      <div
+        class="flex items-center justify-center py-16"
+        :class="loading ? '' : 'hidden'"
+      >
         <span class="inline-block w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
       </div>
 
-      <!-- Error -->
-      <div v-else-if="loadError" class="bg-error-container border border-error/20 rounded-xl p-8 text-center">
+      <!-- Error（始终挂载，CSS 切换） -->
+      <div
+        class="bg-error-container border border-error/20 rounded-xl p-8 text-center"
+        :class="!loading && loadError ? '' : 'hidden'"
+      >
         <span class="material-symbols-outlined" style="font-size:48px;color:rgba(var(--error-rgb),0.6)">error_outline</span>
         <p class="text-body-md text-error mt-2">{{ loadError }}</p>
       </div>
 
-      <!-- Org Tree -->
-      <div v-else class="bg-container border border-border rounded-xl p-6">
+      <!-- Org Tree（始终挂载，CSS 切换，OrgTree 内部已处理空状态） -->
+      <div
+        class="bg-container border border-border rounded-xl p-6"
+        :class="loading || loadError ? 'hidden' : ''"
+      >
         <!-- Search -->
         <div class="mb-4 grid grid-cols-1 grid-rows-1">
           <input
@@ -49,61 +58,53 @@
           </button>
         </div>
 
-        <template v-if="!orgTree.length">
-          <div class="text-center py-12 text-on-surface-variant">
-            <span class="material-symbols-outlined opacity-20" style="font-size:48px">account_tree</span>
-            <p class="text-body-md mt-2">暂无可配置的单位数据</p>
-          </div>
-        </template>
-        <template v-else>
-          <!-- Selected summary -->
-          <div v-if="selectedCount > 0" class="mb-4 p-3 bg-primary/5 border border-primary/15 rounded-lg flex items-center gap-2 text-body-md text-primary">
-            <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
-            已勾选 <strong>{{ selectedCount }}</strong> 个单位参与排名
-          </div>
+        <!-- Selected summary -->
+        <div v-if="selectedCount > 0" class="mb-4 p-3 bg-primary/5 border border-primary/15 rounded-lg flex items-center gap-2 text-body-md text-primary">
+          <span class="material-symbols-outlined" style="font-size:18px">check_circle</span>
+          已勾选 <strong>{{ selectedCount }}</strong> 个单位参与排名
+        </div>
 
-          <OrgTree
-            ref="orgTree"
-            :nodes="orgTree"
-            :filter-text="filterText"
-            :default-expanded="false"
-            :loading="false"
-          >
-            <template #node-actions="{ node }">
-              <div class="flex items-center gap-1">
-                <!-- 级联操作按钮（仅父节点显示） -->
-                <template v-if="node._hasChildren">
-                  <button
-                    class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-primary hover:bg-primary/10 transition-all opacity-60 hover:opacity-100"
-                    title="勾选所有子级单位"
-                    @click.stop="cascadeSelect(node, true)"
-                  >
-                    <span class="material-symbols-outlined" style="font-size:16px">done_all</span>
-                  </button>
-                  <button
-                    class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-error hover:bg-error/10 transition-all opacity-60 hover:opacity-100"
-                    title="取消所有子级单位"
-                    @click.stop="cascadeSelect(node, false)"
-                  >
-                    <span class="material-symbols-outlined" style="font-size:16px">indeterminate_check_box</span>
-                  </button>
-                </template>
-                <!-- Switch toggle -->
+        <OrgTree
+          ref="orgTree"
+          :nodes="orgTree"
+          :filter-text="filterText"
+          :default-expanded="false"
+          :loading="false"
+        >
+          <template #node-actions="{ node }">
+            <div class="flex items-center gap-1">
+              <!-- 级联操作按钮（仅父节点显示） -->
+              <template v-if="node._hasChildren">
                 <button
-                  class="relative w-10 h-5 rounded-full transition-all duration-200 flex-shrink-0"
-                  :class="node.isRankingSelected ? 'bg-primary' : 'bg-gray-300'"
-                  :title="node.isRankingSelected ? '取消参与排名' : '参与排名'"
-                  @click.stop="toggleOrg(node)"
+                  class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-primary hover:bg-primary/10 transition-all opacity-60 hover:opacity-100"
+                  title="勾选所有子级单位"
+                  @click.stop="cascadeSelect(node, true)"
                 >
-                  <span
-                    class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-200"
-                    :style="node.isRankingSelected ? 'left:22px' : 'left:2px'"
-                  ></span>
+                  <span class="material-symbols-outlined" style="font-size:16px">done_all</span>
                 </button>
-              </div>
-            </template>
-          </OrgTree>
-        </template>
+                <button
+                  class="w-6 h-6 flex items-center justify-center rounded text-outline hover:text-error hover:bg-error/10 transition-all opacity-60 hover:opacity-100"
+                  title="取消所有子级单位"
+                  @click.stop="cascadeSelect(node, false)"
+                >
+                  <span class="material-symbols-outlined" style="font-size:16px">indeterminate_check_box</span>
+                </button>
+              </template>
+              <!-- Switch toggle -->
+              <button
+                class="relative w-10 h-5 rounded-full transition-all duration-200 flex-shrink-0"
+                :class="node.isRankingSelected ? 'bg-primary' : 'bg-gray-300'"
+                :title="node.isRankingSelected ? '取消参与排名' : '参与排名'"
+                @click.stop="toggleOrg(node)"
+              >
+                <span
+                  class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-200"
+                  :style="node.isRankingSelected ? 'left:22px' : 'left:2px'"
+                ></span>
+              </button>
+            </div>
+          </template>
+        </OrgTree>
       </div>
     </div>
   </div>

@@ -12,19 +12,19 @@
           :class="rowCls(node)"
         >
           <!--
-            v-once：仅包含树结构静态部分（箭头、图标、标签），
-            toggle 按钮在其外，通过 Vue 响应式直接更新。
+            v-once：仅包含树结构静态部分（图标、标签），
+            toggle 按钮始终挂载、用 CSS 控制可见性（避免 v-if 在 v-once 内导致 elm 丢失）。
           -->
           <div v-once class="flex items-center gap-1 min-w-0 flex-1 w-full">
-            <!-- Chevron -->
+            <!-- Chevron：始终挂载，CSS 切换（v-once 内禁止 v-if/v-else） -->
             <button
-              v-if="node._hasChildren"
               class="w-5 h-5 flex items-center justify-center rounded hover:bg-surface-variant transition-colors flex-shrink-0 -ml-0.5"
-              @click.stop="onToggle(node)"
+              :class="node._hasChildren ? '' : 'hidden'"
+              @click.stop="node._hasChildren && onToggle(node)"
             >
               <span class="material-symbols-outlined tree-chevron" style="font-size:14px">chevron_right</span>
             </button>
-            <span v-else class="w-5 h-5 flex-shrink-0"></span>
+            <span class="w-5 h-5 flex-shrink-0" :class="node._hasChildren ? 'hidden' : ''"></span>
 
             <!-- Icon -->
             <span class="material-symbols-outlined flex-shrink-0 text-outline" style="font-size: 18px;">{{ node._hasChildren ? 'folder' : 'description' }}</span>
@@ -161,28 +161,40 @@ export default {
     nodes: {
       immediate: true,
       handler(val) {
-        if (val && val.length) {
-          this.treeData = val.map(n => this._decorate(n, null, this.defaultExpanded ? 2 : false, 0))
-          this.initialized = true
-        } else {
+        try {
+          if (val && val.length) {
+            this.treeData = val.map(n => this._decorate(n, null, this.defaultExpanded ? 2 : false, 0))
+            this.initialized = true
+          } else {
+            this.treeData = []
+            this.flatList = []
+            this.initialized = false
+            this.matchCount = 0
+            return
+          }
+          this._buildFlatList()
+          this._syncVisibility()
+          this.$forceUpdate()
+          this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+        } catch (e) {
+          console.error('[OrgTree] nodes handler error:', e)
           this.treeData = []
           this.flatList = []
           this.initialized = false
           this.matchCount = 0
-          return
         }
-        this._buildFlatList()
-        this._syncVisibility()
-        this.$forceUpdate()
-        this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
       }
     },
     filterText() {
-      this._syncVisibility()
-      this.$forceUpdate()
-      // 树始终挂载，搜索条件变化后需同步 chevron 旋转状态
-      if (this.showTree) {
-        this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+      try {
+        this._syncVisibility()
+        this.$forceUpdate()
+        // 树始终挂载，搜索条件变化后需同步 chevron 旋转状态
+        if (this.showTree) {
+          this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+        }
+      } catch (e) {
+        console.error('[OrgTree] filterText handler error:', e)
       }
     },
   },
@@ -316,86 +328,112 @@ export default {
     /* ===================== 公开方法 ===================== */
 
     toggleNode(node) {
-      if (!node._hasChildren) return
-      node._expanded = !node._expanded
-      // 直接操作 DOM 旋转 chevron（v-once 冻结了模板，但 DOM 操作不受影响）
-      const row = this.$el.querySelector(`[data-nid="${node.id}"]`)
-      if (row) {
-        const chevron = row.querySelector('.tree-chevron')
-        if (chevron) chevron.classList.toggle('tree-copen', node._expanded)
+      if (!node || !node._hasChildren) return
+      try {
+        node._expanded = !node._expanded
+        // 直接操作 DOM 旋转 chevron（v-once 冻结了模板，但 DOM 操作不受影响）
+        const row = this.$el && this.$el.querySelector(`[data-nid="${node.id}"]`)
+        if (row) {
+          const chevron = row.querySelector('.tree-chevron')
+          if (chevron) chevron.classList.toggle('tree-copen', node._expanded)
+        }
+        if (!(this.filterText || '').trim()) this._propagateVisibility(node)
+        this._updateAndRender()
+      } catch (e) {
+        console.error('[OrgTree] toggleNode error:', e)
       }
-      if (!(this.filterText || '').trim()) this._propagateVisibility(node)
-      this._updateAndRender()
     },
 
     expandAll() {
-      this._walkTree(this.treeData, n => { n._expanded = true })
-      this._syncVisibility()
-      this.$forceUpdate()
-      this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+      try {
+        this._walkTree(this.treeData, n => { n._expanded = true })
+        this._syncVisibility()
+        this.$forceUpdate()
+        this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+      } catch (e) {
+        console.error('[OrgTree] expandAll error:', e)
+      }
     },
 
     collapseAll() {
-      this._walkTree(this.treeData, n => { n._expanded = false })
-      this._syncVisibility()
-      this.$forceUpdate()
-      this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+      try {
+        this._walkTree(this.treeData, n => { n._expanded = false })
+        this._syncVisibility()
+        this.$forceUpdate()
+        this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+      } catch (e) {
+        console.error('[OrgTree] collapseAll error:', e)
+      }
     },
 
     /** 展开到指定节点（向上展开所有祖先），确保节点可见。
      *  返回 true 如果找到并展开，false 如果未找到。 */
     expandToNode(id) {
-      const findNode = (nodes, targetId) => {
-        for (const n of nodes) {
-          if (n.id === targetId) return n
-          if (n.children && n.children.length) {
-            const found = findNode(n.children, targetId)
-            if (found) return found
+      try {
+        const findNode = (nodes, targetId) => {
+          for (const n of nodes) {
+            if (n.id === targetId) return n
+            if (n.children && n.children.length) {
+              const found = findNode(n.children, targetId)
+              if (found) return found
+            }
           }
+          return null
         }
-        return null
+        const node = findNode(this.treeData, id)
+        if (!node) return false
+        // 向上展开所有祖先
+        let current = node
+        while (current._parent) {
+          current = current._parent
+          if (!current._expanded) current._expanded = true
+        }
+        this._syncVisibility()
+        this.$forceUpdate()
+        this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
+        return true
+      } catch (e) {
+        console.error('[OrgTree] expandToNode error:', e)
+        return false
       }
-      const node = findNode(this.treeData, id)
-      if (!node) return false
-      // 向上展开所有祖先
-      let current = node
-      while (current._parent) {
-        current = current._parent
-        if (!current._expanded) current._expanded = true
-      }
-      this._syncVisibility()
-      this.$forceUpdate()
-      this.$nextTick(() => { if (!this._isDestroyed) this._syncChevrons() })
-      return true
     },
 
     /** 按 ID toggle 节点的展开/折叠状态 */
     toggleNodeById(id) {
-      const findNode = (nodes, targetId) => {
-        for (const n of nodes) {
-          if (n.id === targetId) return n
-          if (n.children && n.children.length) {
-            const found = findNode(n.children, targetId)
-            if (found) return found
+      try {
+        const findNode = (nodes, targetId) => {
+          for (const n of nodes) {
+            if (n.id === targetId) return n
+            if (n.children && n.children.length) {
+              const found = findNode(n.children, targetId)
+              if (found) return found
+            }
           }
+          return null
         }
-        return null
+        const node = findNode(this.treeData, id)
+        if (!node || !node._hasChildren) return false
+        this.toggleNode(node)
+        return true
+      } catch (e) {
+        console.error('[OrgTree] toggleNodeById error:', e)
+        return false
       }
-      const node = findNode(this.treeData, id)
-      if (!node || !node._hasChildren) return false
-      this.toggleNode(node)
-      return true
     },
 
     /** 同步所有节点的 chevron 旋转状态（v-once 冻结了模板，须 DOM 操作） */
     _syncChevrons() {
-      if (!this.$el || !this.flatList) return
-      for (const node of this.flatList) {
-        if (!node._hasChildren) continue
-        const row = this.$el.querySelector(`[data-nid="${node.id}"]`)
-        if (!row) continue
-        const chevron = row.querySelector('.tree-chevron')
-        if (chevron) chevron.classList.toggle('tree-copen', node._expanded)
+      try {
+        if (!this.$el || !this.flatList) return
+        for (const node of this.flatList) {
+          if (!node._hasChildren) continue
+          const row = this.$el.querySelector(`[data-nid="${node.id}"]`)
+          if (!row) continue
+          const chevron = row.querySelector('.tree-chevron')
+          if (chevron) chevron.classList.toggle('tree-copen', node._expanded)
+        }
+      } catch (e) {
+        console.error('[OrgTree] _syncChevrons error:', e)
       }
     },
 
@@ -498,13 +536,17 @@ export default {
 
     /** 事件委托：点击行触发 node-click */
     onTreeClick(e) {
-      const row = e.target.closest('[data-nid]')
-      if (!row) return
-      for (let i = 0; i < this.flatList.length; i++) {
-        if (this.flatList[i].id === row.dataset.nid) {
-          this.$emit('node-click', this.flatList[i])
-          return
+      try {
+        const row = e.target.closest('[data-nid]')
+        if (!row) return
+        for (let i = 0; i < this.flatList.length; i++) {
+          if (this.flatList[i].id === row.dataset.nid) {
+            this.$emit('node-click', this.flatList[i])
+            return
+          }
         }
+      } catch (e) {
+        console.error('[OrgTree] onTreeClick error:', e)
       }
     },
 

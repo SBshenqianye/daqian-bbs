@@ -116,35 +116,34 @@
         </div>
       </div>
 
-      <!-- Loading -->
-      <div v-if="loading" class="flex items-center justify-center py-16">
+      <!-- Loading（始终挂载，CSS 切换，避免 v-if 销毁树 DOM 导致白屏） -->
+      <div
+        class="flex items-center justify-center py-16"
+        :class="loading ? '' : 'hidden'"
+      >
         <span class="inline-block w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
       </div>
 
-      <!-- Tree Card -->
-      <div v-else ref="treeCard" class="bg-container border border-border rounded-xl p-card-padding">
-        <template v-if="!orgTree.length">
-          <div class="text-center py-12 text-on-surface-variant flex flex-col items-center gap-2">
-            <span class="material-symbols-outlined opacity-20" style="font-size:48px">account_tree</span>
-            <p class="text-body-md">暂无组织数据</p>
-          </div>
-        </template>
-        <template v-else>
-          <OrgTree
-            ref="orgTree"
-            mode="unit-manage"
-            :nodes="orgTree"
-            :filter-text="filterText"
-            :loading="false"
-            @node-click="onNodeClick"
-            @toggle-ranking="toggleRanking"
-            @toggle-display="toggleDisplay"
-            @cascade-ranking="cascadeRanking"
-            @cascade-display="cascadeDisplay"
-            @add-node="openAdd"
-            @delete-node="handleRemove"
-          />
-        </template>
+      <!-- Tree Card（始终挂载，CSS 切换，OrgTree 内部已处理空状态） -->
+      <div
+        ref="treeCard"
+        class="bg-container border border-border rounded-xl p-card-padding"
+        :class="loading ? 'hidden' : ''"
+      >
+        <OrgTree
+          ref="orgTree"
+          mode="unit-manage"
+          :nodes="orgTree"
+          :filter-text="filterText"
+          :loading="false"
+          @node-click="onNodeClick"
+          @toggle-ranking="toggleRanking"
+          @toggle-display="toggleDisplay"
+          @cascade-ranking="cascadeRanking"
+          @cascade-display="cascadeDisplay"
+          @add-node="openAdd"
+          @delete-node="handleRemove"
+        />
       </div>
 
       <!-- Add Dialog -->

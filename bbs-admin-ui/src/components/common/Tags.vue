@@ -124,8 +124,8 @@ export default {
         return
       }
       const item = this.tagsList[index] || this.tagsList[index - 1]
-      if (item && delItem.path === this.$route.fullPath) {
-        this.$router.push(item.path)
+      if (item && delItem.path === this.$route.fullPath && item.path !== this.$route.fullPath) {
+        this.$router.push(item.path).catch(() => {})
       }
     },
     closeAll() {

@@ -102,6 +102,24 @@ CREATE TABLE bbs_schema_version (
 
 **浮层消息**（loading/empty/no-match）是简单 div，可用独立 v-if 链切换，无风险。详见 `OrgTree.vue`。
 
+### v-once 内禁止 v-if/v-else
+
+**禁止**在 `v-once` 元素内部使用 `v-if`/`v-else`。`v-once` 会缓存渲染后的 vnode，当外层 `v-for` 销毁旧节点时，缓存的 vnode 中 `v-if` 分支的 `elm` 引用可能丢失（变为 `undefined`），导致 Vue 事件清理时 `removeEventListener` 报错。应改为始终挂载两个元素 + CSS class 切换：
+
+```vue
+<!-- ✅ 正确：v-once 内始终挂载，CSS 切换 -->
+<div v-once>
+  <button :class="condition ? '' : 'hidden'" @click.stop="handler">...</button>
+  <span :class="condition ? 'hidden' : ''"></span>
+</div>
+
+<!-- ❌ 错误：v-once 内 v-if/v-else 会导致 elm 丢失 -->
+<div v-once>
+  <button v-if="condition" @click.stop="handler">...</button>
+  <span v-else></span>
+</div>
+```
+
 ### 动态 :key 陷阱
 
 在 v-for 或 v-if 分支上使用动态 `:key="reactiveValue"`，每次值变化都会销毁重建子树。若值在交互中频繁变化（如每次按键），会触发大量 DOM 操作。应使用静态 key 或稳定标识。

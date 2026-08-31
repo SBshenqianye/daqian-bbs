@@ -56,6 +56,13 @@ export function installErrorHandler(router) {
         // 只有 nextTick/render 层的错误（如 patch 中途异常）才会导致内容区空白；
         // watcher 回调/生命周期等局部错误不触发修复，避免误伤正常页面
         if (info === 'nextTick' || info === 'render') {
+            // 排除无害的事件清理错误：组件销毁时 vnode.elm 为 undefined 导致
+            // removeEventListener 失败，不影响功能，不应触发白屏修复
+            const msg = (err && err.message) || ''
+            if (msg.includes('removeEventListener')) {
+                console.warn('[VueError:cleanup] 事件清理错误已忽略，不触发修复')
+                return
+            }
             setTimeout(() => attemptRepair(router), 50) // 等当前微任务队列沉淀
         }
     }
