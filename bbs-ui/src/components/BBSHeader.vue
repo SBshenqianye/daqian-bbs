@@ -85,6 +85,12 @@
               class="w-10 h-10 rounded-full border border-outline-variant object-cover"
               :src="portrait"
             >
+            <!-- 用户等级徽章 -->
+            <span
+              v-if="userLevel != null"
+              class="absolute -bottom-1 -right-1 min-w-[20px] h-4 px-1 bg-amber-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none border-2 border-container"
+              :title="'等级 ' + userLevel"
+            >Lv.{{ userLevel }}</span>
             <!-- 未读通知角标（全部未读 = 各分类之和） -->
             <span
               v-if="unreadTotal > 0"
@@ -281,6 +287,7 @@ export default {
       heartbeatTimer: null,
       dailyLoginCalled: false,
       pointsAlreadyAwarded: false,
+      userLevel: null,
     }
   },
   computed: {
@@ -366,6 +373,7 @@ export default {
       if (token) {
         this.isLogin = true
         this.user = getUser()
+        this.fetchUserLevel()
         notificationStore.startPolling()
         // 登录状态下，若在浏览页面则启动心跳
         if (this.isBrowsingPage(this.$route.path) && !this.heartbeatTimer) {
@@ -376,9 +384,20 @@ export default {
         this.user = null
         this.dailyLoginCalled = false
         this.pointsAlreadyAwarded = false
+        this.userLevel = null
         notificationStore.reset()
         this.stopHeartbeat()
       }
+    },
+    /** 获取用户等级（徽章展示） */
+    fetchUserLevel() {
+      const user = getUser()
+      if (!user || !user.id) return
+      this.getRequest(`/user/level?userId=${user.id}`).then(res => {
+        if (res && res.code == 200 && res.obj) {
+          this.userLevel = res.obj.level
+        }
+      }).catch(() => {})
     },
     handleScroll() {
       this.scrolled = window.scrollY > 10
