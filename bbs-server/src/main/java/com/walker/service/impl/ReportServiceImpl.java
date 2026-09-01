@@ -280,12 +280,16 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             else if ("reply".equals(r.getTargetType())) replyIds.add(r.getTargetId());
         }
         if (!articleIds.isEmpty()) {
-            for (Article a : articleService.listByIds(articleIds)) {
-                String key = "article|" + a.getArticleId();
-                targetAuthorMap.put(key, a.getUserId());
-                targetTitleMap.put(key, a.getArticleTitle());
-                targetContentMap.put(key, truncate(a.getArticleContent(), 200));
-                targetContentHtmlMap.put(key, a.getArticleContentHtml());
+            for (Integer artId : articleIds) {
+                // 使用 selectByIdRaw 绕过 @TableLogic，确保已删除文章也能被查到
+                Article a = articleService.getArticleByIdRaw(artId);
+                if (a != null) {
+                    String key = "article|" + a.getArticleId();
+                    targetAuthorMap.put(key, a.getUserId());
+                    targetTitleMap.put(key, a.getArticleTitle());
+                    targetContentMap.put(key, truncate(a.getArticleContent(), 200));
+                    targetContentHtmlMap.put(key, a.getArticleContentHtml());
+                }
             }
         }
         // 评论/回复 → 所属文章 ID 映射（用于前端加载完整文章上下文 + 高亮定位）

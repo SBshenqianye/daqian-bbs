@@ -373,6 +373,22 @@ public class ArticleController {
         return ResultBean.error("查询文章id不能为空！");
     }
 
+    @ApiOperation(value = "通过文章id获取文章信息（含已删除，管理员用）")
+    @GetMapping("/admin/getArticleByIdInclDeleted/{articleId}")
+    public ResultBean getArticleByIdInclDeleted(@PathVariable Integer articleId){
+        if (articleId != null){
+            Article article = articleService.getArticleByIdRaw(articleId);
+            if (article != null) {
+                normalizeArticle(article);
+            }
+            if (article == null) {
+                return ResultBean.error("文章不存在");
+            }
+            return ResultBean.success("成功查询文章！", article);
+        }
+        return ResultBean.error("查询文章id不能为空！");
+    }
+
 
     @ApiOperation(value = "获取文章总数")
     @GetMapping("/admin/getArticleCount/all")

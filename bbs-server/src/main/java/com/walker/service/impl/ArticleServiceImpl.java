@@ -590,6 +590,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
+    public Article getArticleByIdRaw(Integer articleId) {
+        return articleMapper.selectByIdRaw(articleId);
+    }
+
+    @Override
     public ResultBean getArticleCount() {
 
         Long count = articleMapper.selectCount(null);

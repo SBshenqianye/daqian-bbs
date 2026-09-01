@@ -11,6 +11,7 @@ import com.walker.vo.param.PointsRankParam;
 import com.walker.vo.param.PersonalPointsRankParam;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 import java.util.Map;
@@ -87,4 +88,10 @@ public interface ArticleMapper extends BaseMapper<Article> {
      * 查询指定用户在当前时间范围内的积分和排名
      */
     PersonalPointsRankVO getUserPersonalRank(PersonalPointsRankParam param);
+
+    /**
+     * 按 ID 查询文章（绕过 @TableLogic 逻辑删除过滤，管理员使用）
+     */
+    @Select("SELECT * FROM bbs_article WHERE article_id = #{articleId}")
+    Article selectByIdRaw(@Param("articleId") Integer articleId);
 }

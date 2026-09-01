@@ -262,8 +262,9 @@ CREATE TABLE `bbs_sa_org` (
 DROP TABLE IF EXISTS `bbs_sensitive_word`;
 CREATE TABLE `bbs_sensitive_word` (
   `id`      int(11) NOT NULL AUTO_INCREMENT COMMENT '唯一标识',
-  `keyword` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '敏感词',
-  PRIMARY KEY (`id`) USING BTREE
+  `keyword` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '敏感词',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_sensitive_word_keyword` (`keyword`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------

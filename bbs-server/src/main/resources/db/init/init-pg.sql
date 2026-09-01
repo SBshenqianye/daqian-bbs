@@ -228,7 +228,8 @@ CREATE TABLE IF NOT EXISTS bbs_sa_org (
 -- ----------------------------
 CREATE TABLE IF NOT EXISTS bbs_sensitive_word (
     id      SERIAL PRIMARY KEY,
-    keyword varchar(255)
+    keyword varchar(255) NOT NULL,
+    CONSTRAINT uk_sensitive_word_keyword UNIQUE (keyword)
 );
 
 -- ----------------------------

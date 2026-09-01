@@ -139,34 +139,49 @@
 
             <!-- 文章详情（复用 ArticlePage 帖子详情样式） -->
             <template v-if="isArticleContext">
-              <div v-if="detailTitle" class="mb-4 relative">
+              <!-- 文章彻底不存在（非软删除，数据库中无记录） -->
+              <div v-if="articleLoadFailed" class="py-12 text-center">
+                <span class="material-symbols-outlined text-outline text-[48px]">article</span>
+                <p class="mt-3 text-body-md text-on-surface-variant">该文章已被彻底删除（数据库中无记录）</p>
+              </div>
+              <template v-else>
+              <!-- 整篇文章（标题+正文+附件）高亮容器 -->
+              <div v-if="detailTitle" class="mb-6 relative report-highlighted rounded-lg p-5 border border-amber-300">
                 <div class="absolute -left-3 top-0 bottom-0 w-1 bg-amber-500 rounded-full"></div>
-                <h2 class="font-headline-md text-headline-md text-on-surface">标题：《{{ detailTitle }}》</h2>
+                <h2 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+                  标题：《{{ detailTitle }}》
+                  <span v-if="articleDeleted" class="px-2 py-0.5 rounded text-[12px] font-medium bg-red-100 text-red-700 border border-red-200">已删除</span>
+                </h2>
                 <div class="flex items-center gap-3 mt-2">
                   <span class="text-body-md text-on-surface-variant flex items-center gap-1">
                     <span class="material-symbols-outlined text-[16px]">person</span>
                     {{ previewItem.targetAuthorName || '未知' }} (ID: {{ previewItem.targetAuthorId || '?' }})
                   </span>
                 </div>
-                <div class="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg inline-flex items-center gap-2">
+                <div class="mt-2 px-3 py-2 bg-amber-100 border border-amber-200 rounded-lg inline-flex items-center gap-2">
                   <span class="material-symbols-outlined text-amber-600 text-[16px]">flag</span>
-                  <span class="text-[12px] font-medium text-amber-700">举报原因：</span>
-                  <span class="text-[13px] text-amber-800">{{ previewItem.reason || '无' }}</span>
+                  <span class="text-[12px] font-medium text-amber-700">被举报内容 — {{ previewItem.reason || '无原因' }}</span>
                 </div>
-              </div>
-              <div class="markdown-body detail-content" v-html="renderedContent"></div>
-              <!-- 附件 -->
-              <div v-if="detailFileList && detailFileList.length > 0" class="mt-6 bg-surface-container-low rounded-lg p-4">
-                <h4 class="font-headline-sm text-headline-sm text-on-surface mb-3 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-primary text-[20px]">attach_file</span>
-                  附件列表
-                </h4>
-                <div class="space-y-2">
-                  <div v-for="(file, index) in detailFileList" :key="index" class="flex items-center justify-between p-3 bg-container rounded border border-outline-variant/50">
-                    <span class="font-body-md text-on-surface flex items-center gap-2">
-                      <span class="material-symbols-outlined text-outline text-[18px]">description</span>
-                      {{ file.fileName }}
-                    </span>
+                <!-- 已删除文章提示 -->
+                <div v-if="articleDeleted" class="mt-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                  <span class="material-symbols-outlined text-red-500 text-[16px]">info</span>
+                  <span class="text-[13px] text-red-700">该文章已被用户删除（管理员仍可查看内容）</span>
+                </div>
+                <!-- 正文 -->
+                <div class="mt-4 markdown-body detail-content" v-html="renderedContent"></div>
+                <!-- 附件 -->
+                <div v-if="detailFileList && detailFileList.length > 0" class="mt-6 bg-surface-container-low rounded-lg p-4">
+                  <h4 class="font-headline-sm text-headline-sm text-on-surface mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-[20px]">attach_file</span>
+                    附件列表
+                  </h4>
+                  <div class="space-y-2">
+                    <div v-for="(file, index) in detailFileList" :key="index" class="flex items-center justify-between p-3 bg-container rounded border border-outline-variant/50">
+                      <span class="font-body-md text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-outline text-[18px]">description</span>
+                        {{ file.fileName }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -180,7 +195,7 @@
                   <div v-for="(item, index) in detailComments" :key="item.commentId || index"
                     :class="[
                       'rounded-lg p-4 border',
-                      isHighlightedComment(item) ? 'bg-amber-50 border-amber-300 relative' : 'bg-surface-container-low border-outline-variant/50'
+                      isHighlightedComment(item) ? 'bg-amber-50 border-amber-300 relative report-highlighted' : 'bg-surface-container-low border-outline-variant/50'
                     ]">
                     <!-- 被举报评论的高亮标识 -->
                     <div v-if="isHighlightedComment(item)" data-report-highlight class="absolute -left-3 top-0 bottom-0 w-1 bg-amber-500 rounded-full"></div>
@@ -200,7 +215,7 @@
                       <div v-for="(reply, rIdx) in item.reply" :key="reply.replyId || rIdx"
                         :class="[
                           'rounded-lg p-3 relative',
-                          isHighlightedReply(reply) ? 'bg-amber-50 border border-amber-300' : 'bg-surface-container'
+                          isHighlightedReply(reply) ? 'bg-amber-50 border border-amber-300 relative report-highlighted' : 'bg-surface-container'
                         ]">
                         <!-- 被举报回复的高亮标识 -->
                         <div v-if="isHighlightedReply(reply)" data-report-highlight class="absolute -left-3 top-0 bottom-0 w-1 bg-amber-500 rounded-full"></div>
@@ -225,6 +240,7 @@
                   暂无评论
                 </div>
               </div>
+              </template>
             </template>
 
             <!-- 评论/回复详情（所属文章不存在或无 articleId 时） -->
@@ -307,6 +323,8 @@ export default {
       defaultAvatar: require('../assets/img/img.jpeg'),
       // 文章上下文加载状态（用于评论/回复举报时判断文章是否存在）
       articleLoadFailed: false,
+      // 文章是否已被删除（软删除，管理员仍可见内容）
+      articleDeleted: false,
       // 转违规对话框
       violationDialogVisible: false,
       violationDialogItem: null,
@@ -372,8 +390,8 @@ export default {
       return this.previewItem.targetType === 'reply' &&
         String(this.previewItem.targetId) === String(reply.replyId)
     },
-    /** 滚动到被举报的评论/回复 */
-    scrollToHighlighted() {
+    /** 滚动到被举报的评论/回复（带重试，确保 DOM 已渲染） */
+    scrollToHighlighted(retries = 3) {
       if (!this.previewItem) return
       const panel = this.$el.querySelector('.z-50')
       if (!panel) return
@@ -384,7 +402,12 @@ export default {
         const card = highlighted.closest('.rounded-lg')
         if (card) {
           card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return
         }
+      }
+      // DOM 可能还没渲染完，重试
+      if (retries > 0) {
+        setTimeout(() => this.scrollToHighlighted(retries - 1), 200)
       }
     },
     _renderMarkdown(content) {
@@ -407,6 +430,7 @@ export default {
       this.detailComments = []
       this.detailFileList = []
       this.articleLoadFailed = false
+      this.articleDeleted = false
       if (item.targetType === 'article') {
         this.loadArticleDetail(item.targetId)
       } else if (item.targetType === 'comment' || item.targetType === 'reply') {
@@ -425,19 +449,24 @@ export default {
       this.detailComments = []
       this.detailFileList = []
       this.articleLoadFailed = false
+      this.articleDeleted = false
     },
     loadArticleDetail(articleId) {
       this.previewLoading = true
       this.articleLoadFailed = false
-      this.getRequest('/admin/getArticleByArticleId', articleId).then(resp => {
+      this.articleDeleted = false
+      // 使用含已删除的接口，管理员可查看已删除文章
+      this.getRequest('/admin/getArticleByIdInclDeleted', articleId).then(resp => {
         this.previewLoading = false
         if (resp && resp.obj) {
           this.detailContent = resp.obj.articleContent || ''
           this.detailTitle = resp.obj.articleTitle || ''
+          // 检测是否已删除（isDelete: 1 = 已删除）
+          this.articleDeleted = resp.obj.isDelete === 1
           this.loadArticleFiles(articleId)
           this.loadArticleComments(articleId)
         } else {
-          // 文章已被删除或不存在，标记失败
+          // 文章真正不存在（被彻底删除）
           this.articleLoadFailed = true
         }
       }).catch(() => { this.previewLoading = false; this.articleLoadFailed = true })
@@ -462,11 +491,11 @@ export default {
             portrait: r.portrait || '',
           }))
         }))
-        // 加载完成后滚动到被举报的评论/回复
+        // 加载完成后滚动到被举报的评论/回复（setTimeout 确保 DOM 已渲染）
         if (this.previewItem && this.previewItem.targetType !== 'article') {
-          this.$nextTick(() => {
+          setTimeout(() => {
             this.scrollToHighlighted()
-          })
+          }, 150)
         }
       }).catch(() => { this.detailComments = [] })
     },
@@ -562,3 +591,15 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+/* 被举报内容高亮脉冲动画 */
+@keyframes report-highlight-pulse {
+  0%, 100% { background-color: rgb(255 251 235); }   /* amber-50 */
+  50%      { background-color: rgb(254 243 199); }   /* amber-100 */
+}
+.report-highlighted {
+  animation: report-highlight-pulse 2s ease-in-out 3;
+  box-shadow: inset 0 0 0 2px rgb(251 191 36);      /* amber-400 border */
+}
+</style>

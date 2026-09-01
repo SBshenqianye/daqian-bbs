@@ -540,3 +540,15 @@ SET @sql_dict_extra_drop = IF(@col_dict_extra_exists2 > 0, 'ALTER TABLE `bbs_dic
 PREPARE stmt_dict_extra_drop FROM @sql_dict_extra_drop;
 EXECUTE stmt_dict_extra_drop;
 DEALLOCATE PREPARE stmt_dict_extra_drop;
+
+-- @migration: v021-dedup-sensitive-words 清理敏感词重复数据并加唯一约束
+DELETE FROM `bbs_sensitive_word` WHERE `id` NOT IN (
+    SELECT min_id FROM (
+        SELECT MIN(`id`) AS min_id FROM `bbs_sensitive_word` GROUP BY `keyword`
+    ) tmp
+);
+SELECT COUNT(*) INTO @uk_sw_exists FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_sensitive_word' AND INDEX_NAME = 'uk_sensitive_word_keyword';
+SET @uk_sw_sql = IF(@uk_sw_exists = 0, 'ALTER TABLE `bbs_sensitive_word` ADD UNIQUE INDEX `uk_sensitive_word_keyword` (`keyword`)', 'SELECT 1');
+PREPARE uk_sw_stmt FROM @uk_sw_sql;
+EXECUTE uk_sw_stmt;
+DEALLOCATE uk_sw_stmt;

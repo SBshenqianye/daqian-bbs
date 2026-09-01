@@ -163,6 +163,11 @@ public interface ArticleService extends IService<Article> {
      */
     ResultBean getArticleByArticle(Integer articleId);
 
+    /**
+     * 通过文章id获取文章信息（含已删除，管理员用）
+     */
+    Article getArticleByIdRaw(Integer articleId);
+
 
     /**
      * 查询文章总数

@@ -461,3 +461,9 @@ DELETE FROM bbs_dict WHERE dict_type = 'violation' AND dict_value IN ('illegal',
 
 -- 清理 dict_extra 列（如已存在）
 ALTER TABLE bbs_dict DROP COLUMN IF EXISTS dict_extra;
+
+-- @migration: v021-dedup-sensitive-words 清理敏感词重复数据并加唯一约束
+DELETE FROM bbs_sensitive_word WHERE id NOT IN (
+    SELECT MIN(id) FROM bbs_sensitive_word GROUP BY keyword
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_sensitive_word_keyword ON bbs_sensitive_word (keyword);
