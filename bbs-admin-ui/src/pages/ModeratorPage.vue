@@ -61,11 +61,14 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="block text-body-sm text-on-surface-variant mb-1">选择用户</label>
-            <UserSelect v-model="form.userId" placeholder="搜索用户名或昵称..." @select="onUserSelect" />
+            <UserSelect v-model="form.userId" placeholder="搜索用户名或昵称..." />
           </div>
           <div>
-            <label class="block text-body-sm text-on-surface-variant mb-1">版块标签ID</label>
-            <input v-model="form.labelId" type="number" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none" placeholder="输入标签ID">
+            <label class="block text-body-sm text-on-surface-variant mb-1">选择板块</label>
+            <select v-model="form.labelId" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none">
+              <option value="" disabled>请选择板块</option>
+              <option v-for="label in labelList" :key="label.labelId" :value="label.labelId">{{ label.labelName }}</option>
+            </select>
           </div>
           <div class="flex items-end">
             <button class="px-5 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 disabled:opacity-60" :disabled="appointing" @click="handleAppoint">
@@ -87,7 +90,7 @@
               <tr>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">ID</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">用户</th>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">版块标签ID</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">管理板块</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">角色</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">任命时间</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">操作</th>
@@ -101,7 +104,7 @@
                     <span class="cursor-help text-primary hover:underline">{{ userDisplayName(item.userId) }}</span>
                   </el-tooltip>
                 </td>
-                <td class="px-4 py-3 text-body-sm">{{ item.labelId }}</td>
+                <td class="px-4 py-3 text-body-sm">{{ labelNameById(item.labelId) }}</td>
                 <td class="px-4 py-3 text-body-sm">{{ item.roleType === 'admin' ? '管理员' : '版主' }}</td>
                 <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.appointTime }}</td>
                 <td class="px-4 py-3 text-body-sm">
@@ -166,15 +169,32 @@ export default {
       cancelDialogVisible: false,
       cancelSaving: false,
       cancelForm: { userId: null, userName: '', remark: '' },
-      userMap: {} // userId -> { username, nickname, orgName, portrait }
+      userMap: {}, // userId -> { username, nickname, orgName, portrait }
+      labelList: [] // labelId -> { labelId, labelName }
     }
   },
   mounted() {
     this.loadList()
     this.loadAutoConfig()
     this.loadCancelledList()
+    this.loadLabels()
   },
   methods: {
+    async loadLabels() {
+      try {
+        const res = await axios.get(`${process.env.VUE_APP_BBS_API}/common/getArticleLabel`)
+        const data = res && res.data ? res.data : res
+        if (Array.isArray(data)) {
+          this.labelList = data
+        } else if (data && data.code == 200 && Array.isArray(data.obj)) {
+          this.labelList = data.obj
+        }
+      } catch (e) { /* ignore */ }
+    },
+    labelNameById(labelId) {
+      const label = this.labelList.find(l => l.labelId === labelId)
+      return label ? label.labelName : '标签#' + labelId
+    },
     async loadList() {
       this.loading = true
       try {
@@ -211,9 +231,6 @@ export default {
       const u = this.userMap[userId]
       if (!u) return '用户ID: ' + userId
       return `ID: ${userId} | 用户名: ${u.username} | 昵称: ${u.nickname || '无'} | 单位: ${u.orgName || '未分配'}`
-    },
-    onUserSelect(user) {
-      // UserSelect 已通过 v-model 更新 form.userId
     },
     async loadAutoConfig() {
       try {
@@ -313,7 +330,7 @@ export default {
     },
     async handleAppoint() {
       if (!this.form.userId || !this.form.labelId) {
-        this.$message.warning('请填写用户ID和版块标签ID')
+        this.$message.warning('请选择用户和板块')
         return
       }
       this.appointing = true

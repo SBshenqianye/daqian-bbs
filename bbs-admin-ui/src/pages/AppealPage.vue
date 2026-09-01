@@ -60,7 +60,7 @@
                     <el-tooltip placement="top" :open-delay="300">
                       <div slot="content" class="max-w-xs">
                         <p v-if="item.violation.remark">原因: {{ item.violation.remark }}</p>
-                        <p v-if="item.violation.relatedType">关联: {{ item.violation.relatedType }}#{{ item.violation.relatedId }}</p>
+                        <p v-if="item.violation.relatedType">关联: {{ getRelatedTypeLabel(item.violation.relatedType) }}#{{ item.violation.relatedId }}</p>
                       </div>
                       <span class="cursor-help text-red-600">
                         {{ item.violation.violationLabel }} (-{{ item.violation.pointsDeducted }}分)
@@ -135,6 +135,7 @@ export default {
   methods: {
     getStatusLabel(s) { return { pending: '待审核', accepted: '已通过', rejected: '已驳回' }[s] || s },
     getAppealLabel(t) { return { violation: '违规申诉', points: '积分申诉', other: '其他' }[t] || t },
+    getRelatedTypeLabel(t) { return { article: '帖子', comment: '评论', reply: '回复' }[t] || t },
     async loadList() {
       this.loading = true
       try {

@@ -91,7 +91,7 @@
                 <td class="px-4 py-3 text-body-sm text-error font-medium">-{{ item.pointsDeducted }}</td>
                 <!-- 关联内容 -->
                 <td class="px-4 py-3 text-body-sm">
-                  <span v-if="item.relatedType" class="text-primary cursor-pointer hover:underline">{{ item.relatedType }}#{{ item.relatedId }}</span>
+                  <span v-if="item.relatedType" class="text-primary cursor-pointer hover:underline">{{ getRelatedTypeLabel(item.relatedType) }}#{{ item.relatedId }}</span>
                   <span v-else class="text-on-surface-variant">-</span>
                 </td>
                 <!-- 备注 -->
@@ -200,6 +200,9 @@ export default {
         }
       } catch (e) { this.$message.error('操作失败') }
       finally { this.submitting = false }
+    },
+    getRelatedTypeLabel(t) {
+      return { article: '帖子', comment: '评论', reply: '回复' }[t] || t
     },
     changePage(page) {
       this.currentPage = page
