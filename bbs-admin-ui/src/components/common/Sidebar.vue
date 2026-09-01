@@ -1,10 +1,10 @@
 <template>
   <aside
-    class="stitch-sidebar bg-surface-container-lowest border-r border-outline-variant overflow-y-auto overflow-x-hidden transition-all duration-300 ease-in-out flex flex-col"
+    class="stitch-sidebar bg-surface-container-lowest border-r border-outline-variant overflow-x-hidden transition-all duration-300 ease-in-out flex flex-col h-full"
     :class="collapse ? 'w-16' : 'w-64'"
     @dragleave="onSidebarDragLeave"
   >
-    <nav class="flex-1 py-3 px-2 space-y-0.5">
+    <nav class="stitch-nav flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-0.5">
       <template v-for="(item, index) in menuItems">
         <div
           :key="item.label"
@@ -79,7 +79,7 @@
     </nav>
 
     <!-- Bottom collapse toggle -->
-    <div class="p-2 border-t border-outline-variant/50">
+    <div class="p-2 border-t border-outline-variant/50 flex-shrink-0">
       <button
         class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md text-label-md"
         @click="toggleSidebar"
@@ -288,21 +288,21 @@ export default {
 </script>
 
 <style scoped>
-.stitch-sidebar {
+.stitch-nav {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
 }
-.stitch-sidebar:hover {
+.stitch-nav:hover {
   scrollbar-color: #c3c6d7 transparent;
 }
-.stitch-sidebar::-webkit-scrollbar {
+.stitch-nav::-webkit-scrollbar {
   width: 4px;
 }
-.stitch-sidebar::-webkit-scrollbar-thumb {
+.stitch-nav::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 4px;
 }
-.stitch-sidebar:hover::-webkit-scrollbar-thumb {
+.stitch-nav:hover::-webkit-scrollbar-thumb {
   background: #c3c6d7;
 }
 

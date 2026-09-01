@@ -44,7 +44,7 @@
               <td class="px-4 py-3 text-body-sm">{{ item.id }}</td>
               <td class="px-4 py-3 text-body-sm">{{ item.reporterName || '用户#' + item.reporterId }}</td>
               <td class="px-4 py-3 text-body-sm">{{ item.moderatorName || (item.moderatorId ? '用户#' + item.moderatorId : '未指定') }}</td>
-              <td class="px-4 py-3 text-body-sm max-w-xs truncate" :title="item.content">{{ item.content }}</td>
+              <td class="px-4 py-3 text-body-sm max-w-xs truncate cursor-pointer text-primary hover:underline" @click="showContent(item.content)">{{ item.content }}</td>
               <td class="px-4 py-3 text-body-sm">
                 <span class="px-2 py-0.5 rounded text-[11px] font-medium"
                   :class="{
@@ -99,6 +99,20 @@
         </div>
       </div>
     </div>
+
+    <!-- 投诉内容查看弹窗 -->
+    <div v-show="contentDialogVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black/30" @click="contentDialogVisible = false"></div>
+      <div class="relative bg-container rounded-xl shadow-xl w-full max-w-lg p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-headline-sm text-headline-sm">投诉内容</h3>
+          <button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-low text-on-surface-variant" @click="contentDialogVisible = false">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+        <div class="text-body-md text-on-surface whitespace-pre-wrap break-words max-h-[60vh] overflow-y-auto">{{ contentDialogText }}</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -123,7 +137,9 @@ export default {
       ],
       reviewDialogVisible: false,
       reviewSaving: false,
-      reviewForm: { id: null, status: '', remark: '' }
+      reviewForm: { id: null, status: '', remark: '' },
+      contentDialogVisible: false,
+      contentDialogText: ''
     }
   },
   mounted() { this.loadList() },
@@ -173,7 +189,11 @@ export default {
       } catch (e) { this.$message.error('审核失败') }
       finally { this.reviewSaving = false }
     },
-    changePage(page) { this.currentPage = page; this.loadList() }
+    changePage(page) { this.currentPage = page; this.loadList() },
+    showContent(text) {
+      this.contentDialogText = text || '（无内容）'
+      this.contentDialogVisible = true
+    }
   }
 }
 </script>
