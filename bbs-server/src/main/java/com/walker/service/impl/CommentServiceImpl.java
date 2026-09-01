@@ -79,18 +79,23 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         this.save(comment);
 
         // 评论积分：只有通过质量检测的评论才计分，且同一篇帖子下同一用户最多3次
+        // 运营方案：回帖人在自己的帖子内进行回复不再获得积分
         if (quality.isPassed()) {
-            // 检查该用户在此文章下已获得的回帖积分次数
-            int existingCount = pointsLogService.countReplyPointsForArticle(
-                    commentParam.getCommentUserId(), commentParam.getCommentArticleId());
-            if (existingCount < 3) {
-                int replyPoints = 1; // default
-                try {
-                    String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
-                    if (val != null) replyPoints = Integer.parseInt(val);
-                } catch (Exception e) { /* use default */ }
-                pointsLogService.adjustUserPoints(commentParam.getCommentUserId(), replyPoints, "评论积分",
-                        "comment", comment.getCommentId(), null);
+            Article article = articleService.getById(commentParam.getCommentArticleId());
+            // 自己帖子内评论不计分
+            if (article != null && !article.getUserId().equals(commentParam.getCommentUserId())) {
+                // 检查该用户在此文章下已获得的回帖积分次数
+                int existingCount = pointsLogService.countReplyPointsForArticle(
+                        commentParam.getCommentUserId(), commentParam.getCommentArticleId());
+                if (existingCount < 3) {
+                    int replyPoints = 1; // default
+                    try {
+                        String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
+                        if (val != null) replyPoints = Integer.parseInt(val);
+                    } catch (Exception e) { /* use default */ }
+                    pointsLogService.adjustUserPoints(commentParam.getCommentUserId(), replyPoints, "评论积分",
+                            "comment", comment.getCommentId(), null);
+                }
             }
         }
 

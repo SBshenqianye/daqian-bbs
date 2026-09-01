@@ -3,9 +3,11 @@ package com.walker.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.ReplyMapper;
+import com.walker.pojo.Article;
 import com.walker.pojo.Comment;
 import com.walker.pojo.Dict;
 import com.walker.pojo.Reply;
+import com.walker.service.ArticleService;
 import com.walker.service.CommentService;
 import com.walker.service.DictService;
 import com.walker.service.NotificationService;
@@ -44,6 +46,9 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
 
     @Autowired
     private PointsLogService pointsLogService;
+
+    @Autowired
+    private ArticleService articleService;
 
     @Autowired
     private DictService dictService;
@@ -88,21 +93,26 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
         this.save(reply);
 
         // 回复积分：只有通过质量检测的回复才计分，且同一篇帖子下同一用户最多3次
+        // 运营方案：回帖人在自己的帖子内进行回复不再获得积分
         Comment commentForArticle = null;
         if (quality.isPassed()) {
             // 通过评论找到文章ID，检查该用户在此文章下已获得的回帖积分次数
             commentForArticle = commentService.getById(replyParam.getCommentId());
             if (commentForArticle != null) {
-                int existingCount = pointsLogService.countReplyPointsForArticle(
-                        replyParam.getReplyUserId(), commentForArticle.getCommentArticleId());
-                if (existingCount < 3) {
-                    int replyPoints = 1; // default
-                    try {
-                        String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
-                        if (val != null) replyPoints = Integer.parseInt(val);
-                    } catch (Exception e) { /* use default */ }
-                    pointsLogService.adjustUserPoints(replyParam.getReplyUserId(), replyPoints, "回复积分",
-                            "reply", reply.getReplyId(), null);
+                Article article = articleService.getById(commentForArticle.getCommentArticleId());
+                // 自己帖子内回复不计分
+                if (article != null && !article.getUserId().equals(replyParam.getReplyUserId())) {
+                    int existingCount = pointsLogService.countReplyPointsForArticle(
+                            replyParam.getReplyUserId(), commentForArticle.getCommentArticleId());
+                    if (existingCount < 3) {
+                        int replyPoints = 1; // default
+                        try {
+                            String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
+                            if (val != null) replyPoints = Integer.parseInt(val);
+                        } catch (Exception e) { /* use default */ }
+                        pointsLogService.adjustUserPoints(replyParam.getReplyUserId(), replyPoints, "回复积分",
+                                "reply", reply.getReplyId(), null);
+                    }
                 }
             }
         }
