@@ -15,9 +15,7 @@ setupInterceptors({
     })
     const currentPath = router.currentRoute.fullPath
     router.replace(currentPath !== '/login' ? `/login?redirect=${encodeURIComponent(currentPath)}` : '/login')
-  },
-  noSuccessTipUrls: [], // 管理后台所有POST操作都显示成功提示
-  noSuccessTipForGet: false // GET请求也显示成功提示（如果后端返回message）
+  }
 })
 
 // 创建API方法并导出

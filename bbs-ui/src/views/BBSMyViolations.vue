@@ -54,6 +54,8 @@
 </template>
 
 <script>
+import { handleResponse } from '../../../shared/feedback'
+
 export default {
   name: 'BBSMyViolations',
   data() { return { loading: false, list: [] } },
@@ -72,8 +74,11 @@ export default {
       this.loading = true
       try {
         const res = await this.postRequest('/user/violation/myList', { userId, page: 1, size: 100 })
-        if (res && res.code == 200 && res.obj) this.list = res.obj.records || []
-        else this.list = []
+        handleResponse(res, {
+          silent: true,
+          onSuccess: (resp) => { this.list = (resp.obj && resp.obj.records) || [] },
+          onError: () => { this.list = [] },
+        })
       } catch (e) { this.list = [] }
       finally { this.loading = false }
     }

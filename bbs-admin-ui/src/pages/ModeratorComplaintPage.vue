@@ -103,6 +103,8 @@
 </template>
 
 <script>
+import { handleResponse } from '../../../shared/feedback'
+
 export default {
   name: 'ModeratorComplaintPage',
   data() {
@@ -135,10 +137,14 @@ export default {
         const res = await this.postRequest('/admin/moderatorComplaint/list', {
           page: this.currentPage, size: this.pageSize, status: this.currentStatus || undefined
         })
-        if (res && res.code == 200 && res.obj) {
-          this.list = res.obj.records || []
-          this.total = res.obj.total || 0
-        } else { this.list = [] }
+        handleResponse(res, {
+          errorMsg: '加载投诉列表失败',
+          onSuccess: () => {
+            this.list = (res.obj && res.obj.records) || []
+            this.total = (res.obj && res.obj.total) || 0
+          },
+          onError: () => { this.list = [] }
+        })
       } catch (e) { this.list = [] }
       finally { this.loading = false }
     },
@@ -156,13 +162,14 @@ export default {
           remark: this.reviewForm.remark || null,
           reviewerId: user.id || 1
         })
-        if (res && res.code == 200) {
-          this.$message.success(res.message || '审核完成')
-          this.reviewDialogVisible = false
-          await this.loadList()
-        } else {
-          this.$message.error((res && res.message) || '审核失败')
-        }
+        handleResponse(res, {
+          successMsg: '审核完成',
+          errorMsg: '审核失败',
+          onSuccess: async () => {
+            this.reviewDialogVisible = false
+            await this.loadList()
+          }
+        })
       } catch (e) { this.$message.error('审核失败') }
       finally { this.reviewSaving = false }
     },

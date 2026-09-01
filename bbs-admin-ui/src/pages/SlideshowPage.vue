@@ -106,6 +106,8 @@
 </template>
 
 <script>
+import { handleResponse } from '../../../shared/feedback'
+
 export default {
   name: 'SlideshowPage',
   data() {
@@ -142,16 +144,18 @@ export default {
       const formData = new FormData()
       formData.append('image', file)
       this.postRequest('/admin/addSlideshowReturnImageUrl', formData).then(resp => {
-        if (resp) this.addForm.imageUrl = resp
+        handleResponse(resp, { silent: true, onSuccess: () => { this.addForm.imageUrl = resp } })
       })
     },
     addSlideshow() {
       this.postRequest('/admin/addSlideshow', this.addForm).then(resp => {
-        if (resp) {
-          this.addVisible = false
-          this.getSlideshow()
-          this.$message.success('添加成功！')
-        }
+        handleResponse(resp, {
+          successMsg: '添加成功！',
+          onSuccess: () => {
+            this.addVisible = false
+            this.getSlideshow()
+          }
+        })
       })
     },
     saveSuccessive(slideshowId, successive) {

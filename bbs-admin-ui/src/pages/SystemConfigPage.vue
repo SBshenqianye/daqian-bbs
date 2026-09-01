@@ -178,6 +178,8 @@
 </template>
 
 <script>
+import { handleResponse } from '../../../shared/feedback'
+
 export default {
   name: 'SystemConfigPage',
   data() {
@@ -217,7 +219,7 @@ export default {
         configGroup: (this.addForm.configGroup || 'default').trim(),
         sortOrder: Number(this.addForm.sortOrder) || 0,
       }).then(resp => {
-        if (resp) { this.$message.success('添加成功'); this.addVisible = false; this.loadList() }
+        handleResponse(resp, { successMsg: '添加成功', onSuccess: () => { this.addVisible = false; this.loadList() } })
       })
     },
     openEdit(row) {
@@ -241,14 +243,14 @@ export default {
       this.postRequest('/admin/systemConfig/update', {
         id, configValue: configValue.trim()
       }).then(resp => {
-        if (resp) { this.$message.success('修改成功'); this.editVisible = false; this.loadList() }
+        handleResponse(resp, { successMsg: '修改成功', onSuccess: () => { this.editVisible = false; this.loadList() } })
       })
     },
     handleDelete(row) {
       if (!row || row.id == null) { this.$message.warning('无法获取记录ID'); return }
       this.$confirm('确定要删除该配置项吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/systemConfig/delete', { id: row.id }).then(resp => {
-          if (resp) { this.$message.success('删除成功'); this.loadList() }
+          handleResponse(resp, { successMsg: '删除成功', onSuccess: () => { this.loadList() } })
         })
       }).catch(() => {})
     },
@@ -295,7 +297,7 @@ export default {
           remark: '配置使用反馈弹窗中的联系人信息'
         })
       }).then(resp => {
-        if (resp) { this.$message.success('联系方式已保存'); this.loadList(); this.loadContactInfo() }
+        handleResponse(resp, { successMsg: '联系方式已保存', onSuccess: () => { this.loadList(); this.loadContactInfo() } })
       }).catch(() => {}).finally(() => { this.contactSaving = false })
     }
   }

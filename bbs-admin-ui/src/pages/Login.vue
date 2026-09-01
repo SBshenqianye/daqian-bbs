@@ -89,11 +89,9 @@ export default {
       this.postRequest('/common/login', { ...this.param, channel: '02' }).then(resp => {
         this.loading = false
         if (resp && resp.obj) {
-          this.loading = false
           const tokenStr = resp.obj.tokenHead + resp.obj.token
           window.sessionStorage.setItem('tokenStr', tokenStr)
           window.sessionStorage.setItem('admin', JSON.stringify(resp.obj.user))
-          this.$message.success('登录成功！')
           const redirect = this.$route.query.redirect || '/'
           this.$router.push(redirect)
         } else {

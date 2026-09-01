@@ -204,6 +204,7 @@ import { normalizeFileUrl, normalizeUrls } from '@/utils/utils'
 import { mdToHtml } from '@/utils/markdown'
 import { dateStr } from '@/utils/time'
 import { Message } from 'element-ui'
+import { handleResponse } from '../../../shared/feedback'
 
 // 保持 github-markdown 样式用于 v-html 渲染的 markdown-body
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
@@ -544,13 +545,7 @@ export default {
           params.commentId = id
         }
         this.postRequest('/reply/article/adoptReply', params).then(resp => {
-          // 拦截器已处理非200响应（弹出错误提示并返回undefined），此处无需再提示
-          if (!resp) return
-          if (resp.code === 200) {
-            this.loadComments(this.articleId)
-          } else {
-            Message({ type: 'warning', message: resp.message || '操作失败', offset: 54 })
-          }
+          handleResponse(resp, { successMsg: resp && resp.message, onSuccess: () => this.loadComments(this.articleId) })
         }).catch(err => { console.warn('[BBSArticleDetails] handleAdopt', err) })
       }).catch(() => {})
     },
@@ -569,15 +564,11 @@ export default {
       }).then(() => {
         if (isReply) {
           this.postRequest('/reply/deleteReplyById', { replyId: commentId }).then(resp => {
-            if (resp) {
-              this.loadComments(this.articleId)
-            }
+            handleResponse(resp, { silent: true, onSuccess: () => this.loadComments(this.articleId) })
           }).catch(err => { console.warn('[BBSArticleDetails] deleteReply', err) })
         } else {
           this.postRequest('/comment/deleteCommentById', { commentId }).then(resp => {
-            if (resp) {
-              this.loadComments(this.articleId)
-            }
+            handleResponse(resp, { silent: true, onSuccess: () => this.loadComments(this.articleId) })
           }).catch(err => { console.warn('[BBSArticleDetails] deleteComment', err) })
         }
       }).catch(() => {})

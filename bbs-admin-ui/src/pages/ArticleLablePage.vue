@@ -221,6 +221,8 @@
 </template>
 
 <script>
+import { handleResponse, handleBatchResponse } from '../../../shared/feedback'
+
 export default {
   name: 'ArticleLablePage',
   components: {
@@ -304,11 +306,13 @@ export default {
       const labelName = (this.addForm.labelName || '').trim()
       if (!labelName) { this.$message.warning('标签名称不能为空'); return }
       this.postRequest('/admin/addArticleLabel', { labelName, icon: this.addForm.icon, description: this.addForm.description, enabled: this.addForm.isDisable === 1 ? 0 : 1 }).then(resp => {
-        if (resp) {
-          this.$message.success('添加成功')
-          this.addVisible = false
-          this.getArticleLabelPage()
-        }
+        handleResponse(resp, {
+          successMsg: '添加成功',
+          onSuccess: () => {
+            this.addVisible = false
+            this.getArticleLabelPage()
+          }
+        })
       })
     },
     openEdit(row) {
@@ -328,22 +332,24 @@ export default {
       if (!labelId) { this.$message.warning('标签ID不能为空'); return }
       if (!labelName) { this.$message.warning('标签名称不能为空'); return }
       this.postRequest('/admin/updArticleLabel', { labelId, labelName, icon: this.editForm.icon, description: this.editForm.description, enabled: this.editForm.enabled }).then(resp => {
-        if (resp) {
-          this.$message.success('修改成功')
-          this.editVisible = false
-          // 本地更新该行数据，避免后端排序差异导致行位移
-          const item = this.labelsRaw.find(r => this.getLabelId(r) === labelId)
-          if (item) {
-            const updated = { ...item }
-            updated.labelName = labelName
-            updated.icon = this.editForm.icon
-            updated.description = this.editForm.description
-            updated.enabled = this.editForm.enabled
-            updated.isDisable = Number(this.editForm.enabled === 0 ? 1 : 0)
-            const idx = this.labelsRaw.indexOf(item)
-            this.$set(this.labelsRaw, idx, updated)
+        handleResponse(resp, {
+          successMsg: '修改成功',
+          onSuccess: () => {
+            this.editVisible = false
+            // 本地更新该行数据，避免后端排序差异导致行位移
+            const item = this.labelsRaw.find(r => this.getLabelId(r) === labelId)
+            if (item) {
+              const updated = { ...item }
+              updated.labelName = labelName
+              updated.icon = this.editForm.icon
+              updated.description = this.editForm.description
+              updated.enabled = this.editForm.enabled
+              updated.isDisable = Number(this.editForm.enabled === 0 ? 1 : 0)
+              const idx = this.labelsRaw.indexOf(item)
+              this.$set(this.labelsRaw, idx, updated)
+            }
           }
-        }
+        })
       })
     },
     openIconPicker(target) {
@@ -364,7 +370,7 @@ export default {
       if (!labelId) return
       this.$confirm('确定要删除该标签吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/delArticleLabel', { labelId }).then(resp => {
-          if (resp) { this.$message.success('删除成功'); this.getArticleLabelPage() }
+          handleResponse(resp, { successMsg: '删除成功', onSuccess: () => this.getArticleLabelPage() })
         })
       }).catch(() => {})
     },
@@ -374,16 +380,24 @@ export default {
       const labelIds = rows.map(r => this.getLabelId(r))
       if (labelIds.length === 0) return
       this.$confirm(`确定要删除选中的 ${labelIds.length} 个标签吗？`, '提示', { type: 'warning' }).then(() => {
-        Promise.all(labelIds.map(id => this.postRequest('/admin/delArticleLabel', { labelId: id })))
-          .then(results => {
-            const success = results.filter(Boolean).length
-            const fail = results.length - success
-            if (success === results.length) this.$message.success(`批量删除完成（${success} 个）`)
-            else if (success > 0) this.$message.warning(`${success} 个删除成功，${fail} 个失败`)
-            else this.$message.error('批量删除失败')
-            this.multipleSelection = []
-            if (success > 0) this.getArticleLabelPage()
-          })
+        handleBatchResponse(
+          labelIds.map(id => this.postRequest('/admin/delArticleLabel', { labelId: id })),
+          {
+            successMsg: `批量删除完成（${labelIds.length} 个）`,
+            partialMsg: `{success} 个删除成功，{fail} 个失败`,
+            onSuccess: () => {
+              this.multipleSelection = []
+              this.getArticleLabelPage()
+            },
+            onPartial: () => {
+              this.multipleSelection = []
+              this.getArticleLabelPage()
+            },
+            onError: () => {
+              this.multipleSelection = []
+            }
+          }
+        )
       }).catch(() => {})
     }
   }

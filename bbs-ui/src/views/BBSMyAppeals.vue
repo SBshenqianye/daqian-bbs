@@ -121,7 +121,7 @@
 </template>
 
 <script>
-import { Message } from 'element-ui'
+import { handleResponse } from '../../../shared/feedback'
 
 export default {
   name: 'BBSMyAppeals',
@@ -165,20 +165,25 @@ export default {
       this.violationsLoading = true
       try {
         const res = await this.postRequest('/user/violation/myList', { userId, page: 1, size: 100 })
-        if (res && res.code == 200 && res.obj) this.violations = res.obj.records || []
-        else this.violations = []
-        // 从路由 query 预选违规记录（从违规记录页"申诉"按钮跳转过来）
-        const preselectId = this.$route.query.violationId
-        if (preselectId) {
-          const target = this.violations.find(v => String(v.id) === String(preselectId))
-          if (target && !this.isAppealed(target.id)) {
-            this.selectedViolation = target
-          }
-          // 清除 query 参数，避免刷新重复选中
-          if (this.$route.query.violationId) {
-            this.$router.replace({ path: '/my-appeals' })
-          }
-        }
+        handleResponse(res, {
+          silent: true,
+          onSuccess: (resp) => {
+            this.violations = (resp.obj && resp.obj.records) || []
+            // 从路由 query 预选违规记录（从违规记录页"申诉"按钮跳转过来）
+            const preselectId = this.$route.query.violationId
+            if (preselectId) {
+              const target = this.violations.find(v => String(v.id) === String(preselectId))
+              if (target && !this.isAppealed(target.id)) {
+                this.selectedViolation = target
+              }
+              // 清除 query 参数，避免刷新重复选中
+              if (this.$route.query.violationId) {
+                this.$router.replace({ path: '/my-appeals' })
+              }
+            }
+          },
+          onError: () => { this.violations = [] },
+        })
       } catch (e) { this.violations = [] }
       finally { this.violationsLoading = false }
     },
@@ -188,15 +193,17 @@ export default {
       this.loading = true
       try {
         const res = await this.postRequest('/user/appeal/myList', { userId, page: 1, size: 100 })
-        if (res && res.code == 200 && res.obj) {
-          this.list = res.obj.records || []
-          // 记录已有待审核申诉的违规ID，防止重复申诉
-          this.appealedViolationIds = this.list
-            .filter(a => a.status === 'pending' && a.appealType === 'violation' && a.relatedId != null)
-            .map(a => a.relatedId)
-        } else {
-          this.list = []
-        }
+        handleResponse(res, {
+          silent: true,
+          onSuccess: (resp) => {
+            this.list = (resp.obj && resp.obj.records) || []
+            // 记录已有待审核申诉的违规ID，防止重复申诉
+            this.appealedViolationIds = this.list
+              .filter(a => a.status === 'pending' && a.appealType === 'violation' && a.relatedId != null)
+              .map(a => a.relatedId)
+          },
+          onError: () => { this.list = [] },
+        })
       } catch (e) { this.list = [] }
       finally { this.loading = false }
     },
@@ -221,15 +228,19 @@ export default {
           relatedId: this.selectedViolation.id,
           content: this.appealContent.trim(),
         })
-        if (res && res.code == 200) {
-          this.appealContent = ''
-          this.selectedViolation = null
-          this.submitSuccess = true
-          await this.loadList()
-          await this.loadViolations() // 刷新违规列表（可能需要更新已申诉状态）
-        } else {
-          this.submitError = (res && res.message) || '提交失败，请稍后重试'
-        }
+        handleResponse(res, {
+          successMsg: '申诉已提交',
+          onSuccess: async () => {
+            this.appealContent = ''
+            this.selectedViolation = null
+            this.submitSuccess = true
+            await this.loadList()
+            await this.loadViolations() // 刷新违规列表（可能需要更新已申诉状态）
+          },
+          onError: (resp) => {
+            this.submitError = (resp && resp.message) || '提交失败，请稍后重试'
+          },
+        })
       } catch (e) {
         this.submitError = '网络异常，请稍后重试'
       } finally {

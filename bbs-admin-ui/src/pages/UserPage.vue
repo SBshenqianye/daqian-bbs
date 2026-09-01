@@ -550,6 +550,7 @@
 <script>
 import OrgTreePicker from '@/components/OrgTreePicker.vue'
 import { importStore, resetImport } from '@/utils/importStore'
+import { handleResponse } from '../../../shared/feedback'
 
 export default {
   name: 'UserPage',
@@ -742,10 +743,7 @@ export default {
     handleDelete(index, userId) {
       this.$confirm('确定要删除吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/deleteUserByUserId', { userId }).then(resp => {
-          if (resp) {
-            this.$message.success('删除成功')
-            this.getAllUserPage()
-          }
+          handleResponse(resp, { successMsg: '删除成功', onSuccess: () => this.getAllUserPage() })
         })
       }).catch(() => {})
     },
@@ -754,20 +752,14 @@ export default {
       const tip = row.userType == 1 ? '确定将该用户转为管理员吗？' : '确定将该用户转为普通用户吗？'
       this.$confirm(tip, '提示', { type: 'warning' }).then(() => {
         this.postRequest('/updateUserRole', { userId: row.id, roleType }).then(resp => {
-          if (resp) {
-            this.$message.success('修改成功')
-            this.getAllUserPage()
-          }
+          handleResponse(resp, { successMsg: '修改成功', onSuccess: () => this.getAllUserPage() })
         })
       }).catch(() => {})
     },
     handleUpdateAlive(index, userId) {
       this.$confirm('确定要修改状态吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/updateUserAliveByUserId', { userId }).then(resp => {
-          if (resp) {
-            this.$message.success('修改成功')
-            this.getAllUserPage()
-          }
+          handleResponse(resp, { successMsg: '修改成功', onSuccess: () => this.getAllUserPage() })
         })
       }).catch(() => {})
     },
@@ -780,10 +772,7 @@ export default {
       const userIds = users.map(u => u.id).join(',')
       this.$confirm('确定要删除选中的用户吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/batchDeleteUsersByUserIds', { userIds }).then(resp => {
-          if (resp) {
-            this.$message.success('修改成功')
-            this.getAllUserPage()
-          }
+          handleResponse(resp, { successMsg: '修改成功', onSuccess: () => this.getAllUserPage() })
         })
       }).catch(() => {})
     },
@@ -924,9 +913,7 @@ export default {
           id: this.editUser.id,
           resetPassword: true,
         }).then(resp => {
-          if (resp) {
-            this.$message.success('密码已重置为 1234@abcD，用户下次登录将强制修改密码')
-          }
+          handleResponse(resp, { successMsg: '密码已重置为 1234@abcD，用户下次登录将强制修改密码' })
         })
       }).catch(() => {})
     },
@@ -950,11 +937,13 @@ export default {
       this.editSaving = true
       this.postRequest('/admin/updateUserDetail', params).then(resp => {
         this.editSaving = false
-        if (resp) {
-          this.$message.success('保存成功')
-          this.editDialogVisible = false
-          this.getAllUserPage()
-        }
+        handleResponse(resp, {
+          successMsg: '保存成功',
+          onSuccess: () => {
+            this.editDialogVisible = false
+            this.getAllUserPage()
+          }
+        })
       }).catch(err => {
         console.warn('[UserPage] handleSaveEdit', err)
         this.editSaving = false
@@ -965,11 +954,13 @@ export default {
       if (!userId) { this.$message.error('用户信息有误'); return }
       this.$confirm('确定要删除该用户吗？此操作不可恢复。', '删除确认', { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' }).then(() => {
         this.postRequest('/admin/deleteUserByUserId', { userId }).then(resp => {
-          if (resp) {
-            this.$message.success('删除成功')
-            this.editDialogVisible = false
-            this.getAllUserPage()
-          }
+          handleResponse(resp, {
+            successMsg: '删除成功',
+            onSuccess: () => {
+              this.editDialogVisible = false
+              this.getAllUserPage()
+            }
+          })
         })
       }).catch(() => {})
     },
@@ -1030,11 +1021,13 @@ export default {
         password: this.addForm.password || null,
       }).then(resp => {
         this.addSaving = false
-        if (resp) {
-          this.$message.success('用户创建成功')
-          this.addDialogVisible = false
-          this.getAllUserPage()
-        }
+        handleResponse(resp, {
+          successMsg: '用户创建成功',
+          onSuccess: () => {
+            this.addDialogVisible = false
+            this.getAllUserPage()
+          }
+        })
       }).catch(err => {
         console.warn('[UserPage] handleSaveAdd', err)
         this.addSaving = false
@@ -1069,12 +1062,15 @@ export default {
         adminId: this.getAdminId(),
       }).then(resp => {
         this.restrictSaving = false
-        if (resp) {
-          this.$message.success(restricted === 1 ? '已限制发帖' : '已解除发帖限制')
-          this.restrictDialogVisible = false
-          this.getAllUserPage()
-        }
-      }).catch(() => {
+        handleResponse(resp, {
+          successMsg: restricted === 1 ? '已限制发帖' : '已解除发帖限制',
+          onSuccess: () => {
+            this.restrictDialogVisible = false
+            this.getAllUserPage()
+          }
+        })
+      }).catch(err => {
+        console.warn('[UserPage] handleRestrictPost', err)
         this.restrictSaving = false
       })
     },

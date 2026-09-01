@@ -464,6 +464,7 @@
 import MarkdownIt from 'markdown-it/dist/markdown-it'
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
 import paginationMixin from '@/mixins/pagination'
+import { handleResponse } from '../../../shared/feedback'
 
 export default {
   name: 'ArticlePage',
@@ -601,10 +602,10 @@ export default {
       const action = newVal === 1 ? '设为精华帖' : '取消精华帖'
       this.$confirm(`确定${action}吗？`, '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/featured/set', { articleId: article.articleId, isFeatured: newVal }).then(resp => {
-          if (resp) {
-            this.$message.success(resp.message || (newVal === 1 ? '已设为精华帖' : '已取消精华帖'))
-            this.fetchList()
-          }
+          handleResponse(resp, {
+            successMsg: newVal === 1 ? '已设为精华帖' : '已取消精华帖',
+            onSuccess: () => this.fetchList()
+          })
         })
       }).catch(() => {})
     },
@@ -626,15 +627,11 @@ export default {
           articleId: article.articleId,
           operatorId: this.getAdminId(),
         }).then(resp => {
-          if (resp && resp.code == 200) {
-            this.$message.success('采纳成功，作者已获得+5积分')
-            this.fetchList()
-          } else {
-            this.$message.error((resp && resp.message) || '采纳失败')
-          }
-        }).catch(err => {
-          console.warn('[ArticlePage] handleAdoptSuggestion', err)
-          this.$message.error('采纳失败')
+          handleResponse(resp, {
+            successMsg: '采纳成功，作者已获得+5积分',
+            errorMsg: '采纳失败',
+            onSuccess: () => this.fetchList()
+          })
         })
       }).catch(() => {})
     },
@@ -724,57 +721,42 @@ export default {
     handleDel(articleId) {
       this.$confirm('删除文章会连评论一并删除，确定要删除该文章吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/deleteArticleByArticleId', { articleId }).then(resp => {
-          if (resp) {
-            this.$message.success('删除成功！')
-            this.fetchList()
-          }
+          handleResponse(resp, { successMsg: '删除成功！', onSuccess: () => this.fetchList() })
         })
       }).catch(() => {})
     },
     handleAudit(articleId) {
       this.$confirm('确定此篇文章通过审核吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/auditArticleByArticleId', { articleId }).then(resp => {
-          if (resp) {
-            this.$message.success('审核通过！')
-            this.fetchList()
-          }
+          handleResponse(resp, { successMsg: '审核通过！', onSuccess: () => this.fetchList() })
         })
       }).catch(() => {})
     },
     handleBatchDeleteArticlesByAlive() {
       this.$confirm('确定要删除所有已审核文章吗？', '提示', { type: 'error' }).then(() => {
         this.postRequest('/admin/handleBatchDeleteArticlesByAlive/all', {}).then(resp => {
-          if (resp) { this.fetchList() }
+          handleResponse(resp, { successMsg: '批量删除成功！', onSuccess: () => this.fetchList() })
         })
       }).catch(() => {})
     },
     handleBatchAudit() {
       this.$confirm('确定全部通过审核吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/batchAudit/', {}).then(resp => {
-          if (resp) {
-            this.$message.success('全部审核通过！')
-            this.fetchList()
-          }
+          handleResponse(resp, { successMsg: '全部审核通过！', onSuccess: () => this.fetchList() })
         })
       }).catch(() => {})
     },
     handleDeleteComment(commentId) {
       this.$confirm('确定要删除该评论吗？删除后将无法恢复。', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/comment/deleteCommentById', { commentId }).then(resp => {
-          if (resp) {
-            this.$message.success('评论删除成功！')
-            this.getCommentByArticleId(this.detailArticleId)
-          }
+          handleResponse(resp, { successMsg: '评论删除成功！', onSuccess: () => this.getCommentByArticleId(this.detailArticleId) })
         })
       }).catch(() => {})
     },
     handleDeleteReply(replyId) {
       this.$confirm('确定要删除该回复吗？删除后将无法恢复。', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/reply/deleteReplyById', { replyId }).then(resp => {
-          if (resp) {
-            this.$message.success('回复删除成功！')
-            this.getCommentByArticleId(this.detailArticleId)
-          }
+          handleResponse(resp, { successMsg: '回复删除成功！', onSuccess: () => this.getCommentByArticleId(this.detailArticleId) })
         })
       }).catch(() => {})
     },
@@ -805,18 +787,18 @@ export default {
       this.pointsDialogSubmitting = true
       this.postRequest('/admin/points/adjust', params).then(resp => {
         this.pointsDialogSubmitting = false
-        if (resp) {
-          this.$message.success('积分调整成功！')
-          this.pointsDialogVisible = false
-          // 刷新评论列表以更新积分显示
-          if (this.detailArticleId) {
-            this.getCommentByArticleId(this.detailArticleId)
+        handleResponse(resp, {
+          successMsg: '积分调整成功！',
+          onSuccess: () => {
+            this.pointsDialogVisible = false
+            if (this.detailArticleId) {
+              this.getCommentByArticleId(this.detailArticleId)
+            }
+            if (this.pointsDialogUser.id === this.detailUserId) {
+              this.fetchArticleAuthorPoints(this.detailUserId)
+            }
           }
-          // 如果调整的是帖子作者的积分，刷新帖子区域的积分显示
-          if (this.pointsDialogUser.id === this.detailUserId) {
-            this.fetchArticleAuthorPoints(this.detailUserId)
-          }
-        }
+        })
       }).catch(() => {
         this.pointsDialogSubmitting = false
       })
@@ -857,19 +839,18 @@ export default {
     handleUndoPointsLog(log) {
       this.$confirm(`确定要撤销这条积分调整吗？\n\n${log.pointsChange > 0 ? '加 ' : '扣 '}${Math.abs(log.pointsChange)} 积分`, '撤销确认', { type: 'warning' }).then(() => {
         this.postRequest(`/admin/points/undo/${log.id}`, {}).then(resp => {
-          if (resp) {
-            this.$message.success('撤销成功！')
-            // 刷新记录列表
-            this.fetchPointsLog(this.pointsLogDialogUser.id)
-            // 刷新帖子区域积分（如果调整的是帖子作者）
-            if (this.pointsLogDialogUser.id === this.detailUserId) {
-              this.fetchArticleAuthorPoints(this.detailUserId)
+          handleResponse(resp, {
+            successMsg: '撤销成功！',
+            onSuccess: () => {
+              this.fetchPointsLog(this.pointsLogDialogUser.id)
+              if (this.pointsLogDialogUser.id === this.detailUserId) {
+                this.fetchArticleAuthorPoints(this.detailUserId)
+              }
+              if (this.detailArticleId) {
+                this.getCommentByArticleId(this.detailArticleId)
+              }
             }
-            // 刷新评论列表积分
-            if (this.detailArticleId) {
-              this.getCommentByArticleId(this.detailArticleId)
-            }
-          }
+          })
         })
       }).catch(() => {})
     },

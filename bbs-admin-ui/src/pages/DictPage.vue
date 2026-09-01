@@ -164,6 +164,8 @@
 </template>
 
 <script>
+import { handleResponse } from '../../../shared/feedback'
+
 export default {
   name: 'DictPage',
   data() {
@@ -234,7 +236,7 @@ export default {
         createBy: this.getCurrentUsername(), remark: (this.addForm.remark || '').trim(),
         dictKey: (this.addForm.dictKey || '').trim() || null
       }).then(resp => {
-        if (resp) { this.$message.success('添加成功'); this.addVisible = false; this.loadDictList() }
+        handleResponse(resp, { successMsg: '添加成功', onSuccess: () => { this.addVisible = false; this.loadDictList() } })
       })
     },
     openEdit(row) {
@@ -262,14 +264,14 @@ export default {
         updateBy: this.getCurrentUsername(), remark: (remark || '').trim(),
         dictKey: (dictKey || '').trim() || null
       }).then(resp => {
-        if (resp) { this.$message.success('修改成功'); this.editVisible = false; this.loadDictList() }
+        handleResponse(resp, { successMsg: '修改成功', onSuccess: () => { this.editVisible = false; this.loadDictList() } })
       })
     },
     handleDelete(row) {
       if (!row || (row.id == null)) { this.$message.warning('无法获取记录ID'); return }
       this.$confirm('确定要删除该字典项吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/deleteDict', { id: row.id }).then(resp => {
-          if (resp) { this.$message.success('删除成功'); this.loadDictList() }
+          handleResponse(resp, { successMsg: '删除成功', onSuccess: () => this.loadDictList() })
         })
       }).catch(() => {})
     }

@@ -231,6 +231,7 @@
 <script>
 import { getUser } from '@/utils/auth'
 import { normalizeFileUrl } from '@/utils/utils'
+import { handleResponse } from '../../../shared/feedback'
 
 const RANK_COLORS = [
   { rankBg: 'bg-rank-gold', cardClass: 'rank-card-1', orderClass: 'order-1 md:order-2' },
@@ -465,15 +466,21 @@ export default {
           startTime: range.start,
           endTime: range.end,
         })
-        const list = this.parseRespList(resp)
-        this.orgRankList = list.map(item => ({
-          rank: item.rankNum || 0,
-          name: item.orgName || '',
-          score: item.points || 0,
-          posts: item.posts || 0,
-          replies: item.replies || 0,
-          orgNo: item.orgNo || '',
-        })).filter(item => item.orgNo !== this.activeOrgNo) // 点4：只展示第三级，排除本级单位
+        handleResponse(resp, {
+          silent: true,
+          onSuccess: (r) => {
+            const list = this.parseRespList(r)
+            this.orgRankList = list.map(item => ({
+              rank: item.rankNum || 0,
+              name: item.orgName || '',
+              score: item.points || 0,
+              posts: item.posts || 0,
+              replies: item.replies || 0,
+              orgNo: item.orgNo || '',
+            })).filter(item => item.orgNo !== this.activeOrgNo) // 点4：只展示第三级，排除本级单位
+          },
+          onError: () => { this.orgRankList = [] },
+        })
       } catch (e) {
         console.warn('[BBSPoints] fetchOrgRank', e)
         this.orgRankList = []
@@ -495,9 +502,18 @@ export default {
           currentUserId: user ? user.id : null,
           size: 20,
         })
-        const data = resp && resp.obj
-        this.personalRankList = (data && data.list) || []
-        this.currentUserInfo = (data && data.currentUser) || null
+        handleResponse(resp, {
+          silent: true,
+          onSuccess: (r) => {
+            const data = r && r.obj
+            this.personalRankList = (data && data.list) || []
+            this.currentUserInfo = (data && data.currentUser) || null
+          },
+          onError: () => {
+            this.personalRankList = []
+            this.currentUserInfo = null
+          },
+        })
       } catch (e) {
         console.warn('[BBSPoints] fetchPersonalRank', e)
         this.personalRankList = []

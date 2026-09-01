@@ -112,6 +112,7 @@
 
 <script>
 import OrgTree from '@/components/OrgTree.vue'
+import { handleResponse } from '../../../shared/feedback'
 
 function walkTree(nodes, fn) {
   if (!nodes || !Array.isArray(nodes)) return
@@ -199,9 +200,7 @@ export default {
       this.saving = true
       try {
         const resp = await this.postRequest('/common/saOrg/batchUpdateRanking', this.rankingMap)
-        if (resp) {
-          this.$message.success('保存成功')
-          // 更新原始状态
+        if (handleResponse(resp, { successMsg: '保存成功', errorMsg: '保存失败' })) {
           Object.keys(this.rankingMap).forEach(k => { this.originalState[k] = this.rankingMap[k] })
         }
       } catch (e) {

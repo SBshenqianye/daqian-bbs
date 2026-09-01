@@ -29,15 +29,11 @@ function buildErrorMessage(resData) {
  * @param {Function} options.getToken 获取token的函数
  * @param {Function} options.onUnauthorized 401时的处理函数（如跳转登录）
  * @param {Function} options.onForbidden 403时的处理函数
- * @param {string[]} options.noSuccessTipUrls 不显示成功提示的URL列表
- * @param {boolean} options.noSuccessTipForGet 是否对所有GET请求不显示成功提示
  */
 export function setupInterceptors({
   getToken = () => null,
   onUnauthorized = () => {},
-  onForbidden = () => {},
-  noSuccessTipUrls = [],
-  noSuccessTipForGet = true
+  onForbidden = () => {}
 } = {}) {
   // 请求拦截器
   axios.interceptors.request.use(
@@ -82,22 +78,8 @@ export function setupInterceptors({
           })
           return
         }
-        if (success.data.message) {
-          const url = (success.config && success.config.url) || ''
-          const method = (success.config && success.config.method) || ''
-          
-          // 判断是否显示成功提示
-          const noSuccessTip = (noSuccessTipForGet && method.toLowerCase() === 'get')
-            || noSuccessTipUrls.some(noUrl => url.includes(noUrl))
-          
-          if (!noSuccessTip) {
-            Message({
-              type: 'success',
-              message: success.data.message,
-              offset: 54
-            })
-          }
-        }
+        // 注意：成功提示已移至 shared/feedback.js 的 handleResponse 中统一处理
+        // 拦截器不再自动弹出成功 Toast，避免与组件的 Toast 重复
       }
       return success.data
     },

@@ -300,6 +300,7 @@
 <script>
 import MarkdownIt from 'markdown-it/dist/markdown-it'
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
+import { handleResponse } from '../../../shared/feedback'
 
 export default {
   name: 'ReportPage',
@@ -525,13 +526,8 @@ export default {
     async doReview(reportId, status, remark) {
       try {
         const res = await this.postRequest('/admin/report/review', { reportId, reviewerId: 1, status, remark })
-        if (res && res.code == 200) {
-          this.$message.success('审核完成')
-          await this.loadList()
-        } else {
-          this.$message.error((res && res.message) || '审核失败')
-        }
-      } catch (e) { this.$message.error('审核失败') }
+        handleResponse(res, { successMsg: '审核完成', errorMsg: '审核失败', onSuccess: () => this.loadList() })
+      } catch (e) { console.warn('[ReportPage]', e) }
     },
     // 转违规
     openViolationDialog(item) {
@@ -562,27 +558,24 @@ export default {
           operatorId: 1,
           remark: remark
         })
-        if (!vRes || vRes.code != 200) {
-          this.$message.error((vRes && vRes.message) || '创建违规失败')
-          return
-        }
+        let firstFailed = false
+        handleResponse(vRes, { errorMsg: '创建违规失败', onError: () => { firstFailed = true } })
+        if (firstFailed) return
+
         const rRes = await this.postRequest('/admin/report/review', {
           reportId: this.violationDialogItem.id,
           reviewerId: 1,
           status: 'confirmed',
           remark: remark || '已转违规处理'
         })
-        if (rRes && rRes.code == 200) {
-          this.$message.success('违规已创建，举报已确认')
-          this.violationDialogVisible = false
-          await this.loadList()
-        } else {
-          this.$message.warning('违规已创建，但举报确认失败，请手动处理')
-          this.violationDialogVisible = false
-          await this.loadList()
-        }
+        handleResponse(rRes, {
+          successMsg: '违规已创建，举报已确认',
+          errorMsg: '违规已创建，但举报确认失败，请手动处理',
+          onSuccess: () => { this.violationDialogVisible = false; this.loadList() },
+          onError: () => { this.violationDialogVisible = false; this.loadList() }
+        })
       } catch (e) {
-        this.$message.error('操作失败')
+        console.warn('[ReportPage]', e)
       } finally {
         this.violationSubmitting = false
       }

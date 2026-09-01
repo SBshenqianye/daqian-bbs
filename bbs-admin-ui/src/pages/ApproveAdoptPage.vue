@@ -118,6 +118,7 @@
 </template>
 
 <script>
+import { handleResponse } from '../../../shared/feedback'
 export default {
   name: 'ApproveAdoptPage',
   data() {
@@ -150,12 +151,14 @@ export default {
           size: this.pageSize,
           adminId: this.getAdminId(),
         })
-        if (res && res.code == 200 && res.obj) {
-          this.list = res.obj.records || []
-          this.total = res.obj.total || 0
-        } else {
-          this.list = []
-        }
+        handleResponse(res, {
+          silent: true,
+          onSuccess: (resp) => {
+            this.list = (resp.obj && resp.obj.records) || []
+            this.total = (resp.obj && resp.obj.total) || 0
+          },
+          onError: () => { this.list = [] },
+        })
       } catch (e) {
         this.list = []
       } finally {
@@ -193,14 +196,13 @@ export default {
           params.commentId = item.id
         }
         const res = await this.postRequest('/reply/admin/approveAdopt', params)
-        if (res && res.code == 200) {
-          this.$message.success(action === 'confirm' ? '已通过' : '已拒绝')
-          await this.loadList()
-        } else {
-          this.$message.error((res && res.message) || '操作失败')
-        }
+        handleResponse(res, {
+          successMsg: action === 'confirm' ? '已通过' : '已拒绝',
+          errorMsg: '操作失败',
+          onSuccess: () => this.loadList(),
+        })
       } catch (e) {
-        this.$message.error('操作失败')
+        console.warn('doApprove error:', e)
       }
     },
     changePage(page) {

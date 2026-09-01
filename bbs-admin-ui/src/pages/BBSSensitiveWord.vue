@@ -137,6 +137,8 @@
 </template>
 
 <script>
+import { handleResponse } from '../../../shared/feedback'
+
 export default {
   name: 'BBSSensitiveWord',
   data() {
@@ -200,14 +202,15 @@ export default {
       this.adding = true
       try {
         const res = await this.getRequestUrl(`/sensitiveWord/addSensitiveWord?keyword=${encodeURIComponent(kw)}`)
-        if (res && res.code == 200) {
-          this.$message.success('添加成功')
-          this.keyword = ''
-          this.currentPage = 1
-          await this.loadPage()
-        } else {
-          this.$message.error((res && res.message) ? res.message : '添加失败')
-        }
+        handleResponse(res, {
+          successMsg: '添加成功',
+          errorMsg: '添加失败',
+          onSuccess: () => {
+            this.keyword = ''
+            this.currentPage = 1
+            this.loadPage()
+          }
+        })
       } catch (e) { this.$message.error('添加失败') }
       finally { this.adding = false }
     },
@@ -222,12 +225,11 @@ export default {
       this.deletingId = item.id
       try {
         const res = await this.getRequestUrl(`/sensitiveWord/delSensitiveWord?id=${item.id}`)
-        if (res && res.code == 200) {
-          this.$message.success('删除成功')
-          await this.loadPage()
-        } else {
-          this.$message.error((res && res.message) ? res.message : '删除失败')
-        }
+        handleResponse(res, {
+          successMsg: '删除成功',
+          errorMsg: '删除失败',
+          onSuccess: () => { this.loadPage() }
+        })
       } catch (e) { this.$message.error('删除失败') }
       finally { this.deletingId = null }
     },
@@ -277,15 +279,16 @@ export default {
         const formData = new FormData()
         formData.append('file', file)
         const res = await this.uploadFile('/sensitiveWord/importExcel', formData)
-        if (res && res.code == 200) {
-          this.$message.success(res.message || '导入成功')
-          this.importResult = res.obj
-          this.importResultVisible = true
-          this.currentPage = 1
-          await this.loadPage()
-        } else {
-          this.$message.error((res && res.message) ? res.message : '导入失败')
-        }
+        handleResponse(res, {
+          successMsg: res.message || '导入成功',
+          errorMsg: '导入失败',
+          onSuccess: () => {
+            this.importResult = res.obj
+            this.importResultVisible = true
+            this.currentPage = 1
+            this.loadPage()
+          }
+        })
       } catch (e) {
         this.$message.error('导入失败')
       } finally {

@@ -144,6 +144,8 @@
 </template>
 
 <script>
+import { handleResponse } from '../../../shared/feedback'
+
 export default {
   name: 'BBSModeratorComplaint',
   data() {
@@ -248,15 +250,16 @@ export default {
           labelId: this.selectedLabelId,
           content: this.form.content.trim()
         })
-        if (res && res.code == 200) {
-          this.$message.success(res.message || '投诉已提交')
-          this.form = { content: '' }
-          this.selectedModerator = null
-          this.moderatorSearch = ''
-          await this.loadComplaints()
-        } else {
-          this.$message.error((res && res.message) || '提交失败')
-        }
+        handleResponse(res, {
+          successMsg: '投诉已提交',
+          errorMsg: '提交失败',
+          onSuccess: () => {
+            this.form = { content: '' }
+            this.selectedModerator = null
+            this.moderatorSearch = ''
+            this.loadComplaints()
+          }
+        })
       } catch (e) { this.$message.error('提交失败') }
       finally { this.submitting = false }
     }

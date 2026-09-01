@@ -188,6 +188,7 @@
 
 <script>
 import OrgTree from '../components/OrgTree.vue'
+import { handleResponse, handleBatchResponse } from '../../../shared/feedback'
 
 function walkTree(nodes, fn) {
   if (!nodes || !Array.isArray(nodes)) return
@@ -547,19 +548,16 @@ export default {
           promises.push(this.postRequest('/common/saOrg/batchUpdateDisplay', this.displayMap))
         }
 
-        const results = await Promise.all(promises)
-        const allOk = results.every(r => r && r.code === 200)
-
-        if (allOk) {
-          this.$message.success('保存成功')
-          // 更新原始状态
-          Object.keys(this.rankingMap).forEach(k => { this.originalRanking[k] = this.rankingMap[k] })
-          Object.keys(this.displayMap).forEach(k => { this.originalDisplay[k] = this.displayMap[k] })
-        } else {
-          // 部分失败时重新加载数据以恢复真实状态
-          this.$message.error('部分配置保存失败，已重置')
-          this.loadData()
-        }
+        await handleBatchResponse(promises, {
+          successMsg: '保存成功',
+          partialMsg: '部分配置保存失败，已重置',
+          onSuccess: () => {
+            Object.keys(this.rankingMap).forEach(k => { this.originalRanking[k] = this.rankingMap[k] })
+            Object.keys(this.displayMap).forEach(k => { this.originalDisplay[k] = this.displayMap[k] })
+          },
+          onPartial: () => { this.loadData() },
+          onError: () => { this.loadData() }
+        })
       } catch (e) {
         this.$message.error('保存失败')
         this.loadData()
@@ -581,13 +579,10 @@ export default {
       if (!this.addOrgName.trim()) { this.$message.warning('请输入单位名称'); return }
       try {
         const res = await this.getRequestUrl(`/saOrg/addSaOrg?pOrgNo=${this.addPOrgNo}&orgName=${encodeURIComponent(this.addOrgName.trim())}`)
-        if (res.code == 200) {
-          this.$message.success('新增成功')
+        if (handleResponse(res, { successMsg: '新增成功', errorMsg: '新增失败' })) {
           this.dialogVisible = false
           this.addOrgName = ''
           this.loadData()
-        } else {
-          this.$message.error(res.message || '新增失败')
         }
       } catch (e) { this.$message.error('新增失败') }
     },
@@ -597,8 +592,9 @@ export default {
       this.$confirm('确定删除该单位吗？', '提示', { type: 'warning' }).then(async () => {
         try {
           const res = await this.getRequestUrl(`/saOrg/deleteSaOrgByOrgNo?orgNo=${data.id}`)
-          if (res.code == 200) { this.$message.success('删除成功'); this.loadData() }
-          else { this.$message.error(res.message || '删除失败') }
+          if (handleResponse(res, { successMsg: '删除成功', errorMsg: '删除失败' })) {
+            this.loadData()
+          }
         } catch (e) { this.$message.error('删除失败') }
       }).catch(() => {})
     },

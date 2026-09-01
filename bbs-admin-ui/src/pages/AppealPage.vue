@@ -119,6 +119,8 @@
 </template>
 
 <script>
+import { handleResponse } from '../../../shared/feedback'
+
 export default {
   name: 'AppealPage',
   data() {
@@ -158,12 +160,11 @@ export default {
     async doReview(appealId, status, remark) {
       try {
         const res = await this.postRequest('/admin/appeal/review', { appealId, reviewerId: 1, status, remark })
-        if (res && res.code == 200) {
-          this.$message.success('审核完成')
-          await this.loadList()
-        } else {
-          this.$message.error((res && res.message) || '审核失败')
-        }
+        handleResponse(res, {
+          successMsg: '审核完成',
+          errorMsg: '审核失败',
+          onSuccess: async () => { await this.loadList() }
+        })
       } catch (e) { this.$message.error('审核失败') }
     },
     changePage(page) { this.currentPage = page; this.loadList() }

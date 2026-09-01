@@ -13,26 +13,7 @@ setupInterceptors({
     removeUser()
     const currentPath = router.currentRoute.fullPath
     router.replace(currentPath !== '/login' ? `/login?redirect=${encodeURIComponent(currentPath)}` : '/login')
-  },
-  noSuccessTipUrls: [
-    'listDictByType',
-    'saOrgTree',
-    'listByGroup',
-    'login',
-    'dailyLogin',
-    'browseHeartbeat',
-    'pointsRank',
-    'personalPointsRank',
-    'markRead',
-    'markAllRead',
-    'points/myLog',
-    'violation/myList',
-    'appeal/myList',
-    'appeal/submit',
-    'moderatorComplaint/myList',
-    'moderatorComplaint/submit'
-  ],
-  noSuccessTipForGet: true
+  }
 })
 
 // 创建API方法并导出

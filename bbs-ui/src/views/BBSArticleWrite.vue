@@ -146,6 +146,7 @@
 import { Message, Loading } from 'element-ui'
 import { getArticleById, getArticleFileByArticleId } from '@/api/article'
 import { mdToHtml, htmlToMd } from '@/utils/markdown'
+import { handleResponse } from '../../../shared/feedback'
 
 export default {
   name: 'BBSArticleWrite',
@@ -576,9 +577,7 @@ export default {
       this.postRequest(endpoint, article).then(resp => {
         loading.close()
         this.publishing = false
-        if (resp) {
-          this.$router.push('/stat')
-        }
+        handleResponse(resp, { silent: true, onSuccess: () => this.$router.push('/stat') })
       }).catch(err => {
         console.warn('[BBSArticleWrite] publish', err)
         loading.close()

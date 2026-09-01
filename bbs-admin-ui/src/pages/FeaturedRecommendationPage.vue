@@ -101,6 +101,8 @@
 </template>
 
 <script>
+import { handleResponse } from '../../../shared/feedback'
+
 export default {
   name: 'FeaturedRecommendationPage',
   data() {
@@ -154,13 +156,14 @@ export default {
           remark: this.reviewForm.remark || null,
           reviewerId: user.id || 1
         })
-        if (res && res.code == 200) {
-          this.$message.success(res.message || '审核完成')
-          this.reviewDialogVisible = false
-          await this.loadList()
-        } else {
-          this.$message.error((res && res.message) || '审核失败')
-        }
+        handleResponse(res, {
+          successMsg: '审核完成',
+          errorMsg: '审核失败',
+          onSuccess: () => {
+            this.reviewDialogVisible = false
+            this.loadList()
+          }
+        })
       } catch (e) { this.$message.error('审核失败') }
       finally { this.reviewSaving = false }
     },

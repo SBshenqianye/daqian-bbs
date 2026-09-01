@@ -149,6 +149,7 @@
 <script>
 import UserSelect from '@/components/UserSelect.vue'
 import axios from 'axios'
+import { handleResponse } from '../../../shared/feedback'
 
 export default {
   name: 'ModeratorPage',
@@ -248,10 +249,7 @@ export default {
       try {
         // 先获取字典列表，找到对应记录的 id
         const listRes = await this.postRequest('/admin/listDict', {})
-        if (!listRes || listRes.code != 200 || !Array.isArray(listRes.obj)) {
-          this.$message.error('获取字典数据失败')
-          return
-        }
+        if (!handleResponse(listRes, { errorMsg: '获取字典数据失败' })) return
         const dictList = listRes.obj
         const autoItem = dictList.find(r => r.dictKey === 'moderator_reward_auto')
         const dayItem = dictList.find(r => r.dictKey === 'moderator_reward_day')
@@ -269,8 +267,8 @@ export default {
             dictLabel: '版主奖励发放日', dictKey: 'moderator_reward_day'
           })
         }
-        this.$message.success('设置已保存')
-      } catch (e) { this.$message.error('保存失败') }
+        handleResponse({ code: 200, message: '设置已保存' })
+      } catch (e) { console.warn('[ModeratorPage]', e) }
       finally { this.savingConfig = false }
     },
     handleTriggerAuto() {
@@ -278,12 +276,8 @@ export default {
         .then(async () => {
           try {
             const res = await this.postRequest('/admin/moderator/triggerAutoReward', {})
-            if (res && res.code == 200) {
-              this.$message.success(res.message || '触发成功')
-            } else {
-              this.$message.error((res && res.message) || '触发失败')
-            }
-          } catch (e) { this.$message.error('触发失败') }
+            handleResponse(res, { successMsg: '触发成功', errorMsg: '触发失败' })
+          } catch (e) { console.warn('[ModeratorPage]', e) }
         }).catch(() => {})
     },
     async loadCancelledList() {
@@ -307,26 +301,26 @@ export default {
           operatorId: user.id || 1,
           remark: this.cancelForm.remark || null
         })
-        if (res && res.code == 200) {
-          this.$message.success(res.message || '已取消')
-          this.cancelDialogVisible = false
-          await this.loadCancelledList()
-        } else {
-          this.$message.error((res && res.message) || '取消失败')
-        }
-      } catch (e) { this.$message.error('取消失败') }
+        handleResponse(res, {
+          successMsg: '已取消',
+          errorMsg: '取消失败',
+          onSuccess: async () => {
+            this.cancelDialogVisible = false
+            await this.loadCancelledList()
+          }
+        })
+      } catch (e) { console.warn('[ModeratorPage]', e) }
       finally { this.cancelSaving = false }
     },
     async handleRestore(item) {
       try {
         const res = await this.postRequest('/admin/moderator/restoreReward', { userId: item.userId })
-        if (res && res.code == 200) {
-          this.$message.success('已恢复')
-          await this.loadCancelledList()
-        } else {
-          this.$message.error((res && res.message) || '恢复失败')
-        }
-      } catch (e) { this.$message.error('恢复失败') }
+        handleResponse(res, {
+          successMsg: '已恢复',
+          errorMsg: '恢复失败',
+          onSuccess: () => this.loadCancelledList()
+        })
+      } catch (e) { console.warn('[ModeratorPage]', e) }
     },
     async handleAppoint() {
       if (!this.form.userId || !this.form.labelId) {
@@ -338,14 +332,15 @@ export default {
         const res = await this.postRequest('/admin/moderator/appoint', {
           userId: parseInt(this.form.userId), labelId: parseInt(this.form.labelId), operatorId: 1
         })
-        if (res && res.code == 200) {
-          this.$message.success('任命成功')
-          this.form = { userId: '', labelId: '' }
-          await this.loadList()
-        } else {
-          this.$message.error((res && res.message) || '任命失败')
-        }
-      } catch (e) { this.$message.error('任命失败') }
+        handleResponse(res, {
+          successMsg: '任命成功',
+          errorMsg: '任命失败',
+          onSuccess: () => {
+            this.form = { userId: '', labelId: '' }
+            this.loadList()
+          }
+        })
+      } catch (e) { console.warn('[ModeratorPage]', e) }
       finally { this.appointing = false }
     },
     handleDismiss(item) {
@@ -356,13 +351,12 @@ export default {
     async doDismiss(item) {
       try {
         const res = await this.postRequest('/admin/moderator/dismiss', { userId: item.userId, labelId: item.labelId })
-        if (res && res.code == 200) {
-          this.$message.success('已撤销')
-          await this.loadList()
-        } else {
-          this.$message.error((res && res.message) || '撤销失败')
-        }
-      } catch (e) { this.$message.error('撤销失败') }
+        handleResponse(res, {
+          successMsg: '已撤销',
+          errorMsg: '撤销失败',
+          onSuccess: () => this.loadList()
+        })
+      } catch (e) { console.warn('[ModeratorPage]', e) }
     },
     changePage(page) { this.currentPage = page; this.loadList() },
     handleMonthlyReward() {
@@ -375,12 +369,8 @@ export default {
       try {
         const user = JSON.parse(sessionStorage.getItem('user') || '{}')
         const res = await this.postRequest('/admin/moderator/monthlyReward', { operatorId: user.id || 1 })
-        if (res && res.code == 200) {
-          this.$message.success(res.message || '发放成功')
-        } else {
-          this.$message.error((res && res.message) || '发放失败')
-        }
-      } catch (e) { this.$message.error('发放失败') }
+        handleResponse(res, { successMsg: '发放成功', errorMsg: '发放失败' })
+      } catch (e) { console.warn('[ModeratorPage]', e) }
       finally { this.rewarding = false }
     }
   }

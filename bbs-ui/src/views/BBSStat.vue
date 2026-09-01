@@ -65,10 +65,10 @@
 </template>
 
 <script>
-import { Message } from 'element-ui'
 import { getUser } from '@/utils/auth'
 import { normalizeFileUrl, friendlyTime } from '@/utils/utils'
 import BBSUserBadge from '@/components/BBSUserBadge'
+import { handleResponse } from '../../../shared/feedback'
 
 export default {
   name: 'BBSStat',
@@ -130,9 +130,10 @@ export default {
         type: 'warning',
       }).then(() => {
         this.postRequest('/article/deleteArticleByArticleId', { articleId: article.articleId }).then(resp => {
-          if (resp) {
-            this.fetchMyArticles()
-          }
+          handleResponse(resp, {
+            successMsg: '删除成功',
+            onSuccess: () => { this.fetchMyArticles() },
+          })
         })
       }).catch(() => {})
     },

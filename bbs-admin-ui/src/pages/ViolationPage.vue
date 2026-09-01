@@ -126,6 +126,7 @@
 
 <script>
 import UserSelect from '@/components/UserSelect.vue'
+import { handleResponse } from '../../../shared/feedback'
 
 export default {
   name: 'ViolationPage',
@@ -191,13 +192,14 @@ export default {
         const params = { ...this.form, userId: parseInt(this.form.userId), operatorId: 1 }
         if (this.form.relatedId) params.relatedId = parseInt(this.form.relatedId)
         const res = await this.postRequest('/admin/violation/add', params)
-        if (res && res.code == 200) {
-          this.$message.success('违规记录已添加')
-          this.form = { userId: '', violationType: '', relatedType: '', relatedId: '', remark: '' }
-          await this.loadList()
-        } else {
-          this.$message.error((res && res.message) || '操作失败')
-        }
+        handleResponse(res, {
+          successMsg: '违规记录已添加',
+          errorMsg: '操作失败',
+          onSuccess: async () => {
+            this.form = { userId: '', violationType: '', relatedType: '', relatedId: '', remark: '' }
+            await this.loadList()
+          }
+        })
       } catch (e) { this.$message.error('操作失败') }
       finally { this.submitting = false }
     },
