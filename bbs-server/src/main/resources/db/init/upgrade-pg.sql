@@ -426,3 +426,38 @@ ALTER TABLE bbs_notification ALTER COLUMN category SET NOT NULL;
 
 -- 分类维度的未读计数索引
 CREATE INDEX IF NOT EXISTS idx_notification_user_cat_read ON bbs_notification (user_id, category, is_read);
+
+-- @migration: v019-report-violation-type 举报表增加违规类型字段，支持管理员"确认并扣分"时自动填写
+ALTER TABLE bbs_report ADD COLUMN IF NOT EXISTS violation_type varchar(50);
+
+-- 回填历史数据：从 reason 字段解析 【label】 格式的违规类型
+UPDATE bbs_report SET violation_type = 'spam'      WHERE violation_type IS NULL AND reason LIKE '【恶意灌水%';
+UPDATE bbs_report SET violation_type = 'plagiarism' WHERE violation_type IS NULL AND reason LIKE '【抄袭剽窃%';
+UPDATE bbs_report SET violation_type = 'illegal'    WHERE violation_type IS NULL AND reason LIKE '【违规%';
+UPDATE bbs_report SET violation_type = 'attack'     WHERE violation_type IS NULL AND reason LIKE '【人身攻击%';
+UPDATE bbs_report SET violation_type = 'leak'       WHERE violation_type IS NULL AND reason LIKE '【泄露%';
+
+-- @migration: v020-dict-extra 字典表增加键字段dict_key，违规扣分统一存入dict_value
+ALTER TABLE bbs_dict ADD COLUMN IF NOT EXISTS dict_key varchar(100);
+
+-- 回填：所有字典条目的 dict_key
+UPDATE bbs_dict SET dict_key = 'post'                 WHERE dict_type = 'post' AND dict_key IS NULL;
+UPDATE bbs_dict SET dict_key = 'reply'                WHERE dict_type = 'reply' AND dict_key IS NULL;
+UPDATE bbs_dict SET dict_key = 'switch'               WHERE dict_type = 'switch' AND dict_key IS NULL;
+UPDATE bbs_dict SET dict_key = 'featured'             WHERE dict_type = 'featured' AND dict_key IS NULL;
+UPDATE bbs_dict SET dict_key = 'hot_threshold'        WHERE dict_type = 'hot_threshold' AND dict_key IS NULL;
+UPDATE bbs_dict SET dict_key = 'login_browse_minutes' WHERE dict_type = 'login_browse_minutes' AND dict_key IS NULL;
+
+-- 违规类型：dict_key = 类型标识，dict_value = 扣分值
+UPDATE bbs_dict SET dict_key = 'illegal',      dict_value = '15'  WHERE dict_type = 'violation' AND dict_value = 'illegal';
+UPDATE bbs_dict SET dict_key = 'attack',       dict_value = '10'  WHERE dict_type = 'violation' AND dict_value = 'attack';
+UPDATE bbs_dict SET dict_key = 'spam',         dict_value = '4'   WHERE dict_type = 'violation' AND dict_value = 'spam';
+UPDATE bbs_dict SET dict_key = 'plagiarism',   dict_value = '12'  WHERE dict_type = 'violation' AND dict_value = 'plagiarism';
+UPDATE bbs_dict SET dict_key = 'false_report', dict_value = '3'   WHERE dict_type = 'violation' AND dict_value = 'false_report';
+UPDATE bbs_dict SET dict_key = 'leak',         dict_value = '20'  WHERE dict_type = 'violation' AND dict_value = 'leak';
+
+-- 清理旧的违规字典条目（dict_value 为旧格式字符串 key 的重复行）
+DELETE FROM bbs_dict WHERE dict_type = 'violation' AND dict_value IN ('illegal', 'attack', 'spam', 'plagiarism', 'false_report', 'leak');
+
+-- 清理 dict_extra 列（如已存在）
+ALTER TABLE bbs_dict DROP COLUMN IF EXISTS dict_extra;

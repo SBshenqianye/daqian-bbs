@@ -34,6 +34,7 @@
               <tr class="bg-surface-container-low border-b border-border">
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[120px]">中文描述</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[120px]">值</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[100px]">键</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[150px]">备注说明</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[140px]">操作</th>
               </tr>
@@ -42,6 +43,7 @@
               <tr v-for="(item, index) in dictList" :key="item.id || index" class="border-b border-border hover:bg-surface-container-low/50 transition-colors">
                 <td class="p-4 font-body-md text-on-surface">{{ item.dictLabel }}</td>
                 <td class="p-4 font-body-md text-on-surface-variant">{{ formatDictValue(item) }}</td>
+                <td class="p-4 font-body-md text-on-surface-variant">{{ item.dictKey || '-' }}</td>
                 <td class="p-4 font-body-md text-on-surface-variant max-w-[200px] truncate" :title="item.remark">{{ item.remark || '-' }}</td>
                 <td class="p-4">
                   <div class="flex items-center gap-2">
@@ -57,7 +59,7 @@
                 </td>
               </tr>
               <tr v-if="dictList.length === 0">
-                <td colspan="4" class="p-12 text-center">
+                <td colspan="5" class="p-12 text-center">
                   <div class="flex flex-col items-center gap-2 text-on-surface-variant">
                     <span class="material-symbols-outlined text-[48px] opacity-20">settings</span>
                     <p class="text-body-md">暂无配置数据</p>
@@ -98,6 +100,10 @@
             <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">排序序号</label>
               <input v-model.number="addForm.dictSort" type="number" min="0" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md">
+            </div>
+            <div>
+              <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">键</label>
+              <input v-model="addForm.dictKey" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md" placeholder="违规类型标识(如illegal)" maxlength="100">
             </div>
             <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">备注说明</label>
@@ -142,6 +148,10 @@
               <input v-else-if="isEditDateType" v-model="editForm.dictValue" type="date" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md">
               <input v-else v-model="editForm.dictValue" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md" placeholder="请输入值" maxlength="100">
             </div>
+            <div>
+              <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">键</label>
+              <input v-model="editForm.dictKey" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md" placeholder="违规类型标识(如illegal)" maxlength="100">
+            </div>
           </div>
           <div class="flex justify-end gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
             <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="editVisible = false">取消</button>
@@ -161,8 +171,8 @@ export default {
       dictList: [],
       addVisible: false,
       editVisible: false,
-      addForm: { dictType: '', dictValue: '', dictLabel: '', dictSort: 0, remark: '' },
-      editForm: { id: null, dictType: '', dictValue: '', dictLabel: '', dictSort: 0, remark: '' }
+      addForm: { dictType: '', dictValue: '', dictLabel: '', dictSort: 0, remark: '', dictKey: '' },
+      editForm: { id: null, dictType: '', dictValue: '', dictLabel: '', dictSort: 0, remark: '', dictKey: '' }
     }
   },
   computed: {
@@ -209,7 +219,7 @@ export default {
       })
     },
     openAdd() {
-      this.addForm = { dictType: '', dictValue: '', dictLabel: '', dictSort: 0, remark: '' }
+      this.addForm = { dictType: '', dictValue: '', dictLabel: '', dictSort: 0, remark: '', dictKey: '' }
       this.addVisible = true
     },
     submitAdd() {
@@ -221,7 +231,8 @@ export default {
       if (!dictLabel) { this.$message.warning('中文描述不能为空'); return }
       this.postRequest('/admin/addDict', {
         dictType, dictValue, dictLabel, dictSort: Number(this.addForm.dictSort) || 0,
-        createBy: this.getCurrentUsername(), remark: (this.addForm.remark || '').trim()
+        createBy: this.getCurrentUsername(), remark: (this.addForm.remark || '').trim(),
+        dictKey: (this.addForm.dictKey || '').trim() || null
       }).then(resp => {
         if (resp) { this.$message.success('添加成功'); this.addVisible = false; this.loadDictList() }
       })
@@ -234,12 +245,13 @@ export default {
       this.editForm = {
         id: row.id, dictType, dictLabel: row.dictLabel || '',
         dictValue: (rawVal != null && rawVal !== '') ? String(rawVal) : (isSwitch ? '0' : ''),
-        dictSort: Number(row.dictSort) || 0, remark: row.remark || ''
+        dictSort: Number(row.dictSort) || 0, remark: row.remark || '',
+        dictKey: row.dictKey || ''
       }
       this.editVisible = true
     },
     submitEdit() {
-      const { id, dictType, dictValue, dictLabel, dictSort, remark } = this.editForm
+      const { id, dictType, dictValue, dictLabel, dictSort, remark, dictKey } = this.editForm
       if (id == null || id === '') { this.$message.warning('ID不能为空'); return }
       if (!dictType) { this.$message.warning('字典类型不能为空'); return }
       if (!dictValue) { this.$message.warning('值不能为空'); return }
@@ -247,7 +259,8 @@ export default {
       if (dictSort === '' || isNaN(dictSort) || dictSort < 0) { this.$message.warning('排序序号无效'); return }
       this.postRequest('/admin/updateDict', {
         id, dictType, dictValue, dictLabel, dictSort: Number(dictSort),
-        updateBy: this.getCurrentUsername(), remark: (remark || '').trim()
+        updateBy: this.getCurrentUsername(), remark: (remark || '').trim(),
+        dictKey: (dictKey || '').trim() || null
       }).then(resp => {
         if (resp) { this.$message.success('修改成功'); this.editVisible = false; this.loadDictList() }
       })

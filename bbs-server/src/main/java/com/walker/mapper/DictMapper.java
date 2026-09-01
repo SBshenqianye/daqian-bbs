@@ -27,4 +27,10 @@ public interface DictMapper extends BaseMapper<Dict> {
      */
     @Select("SELECT dict_value FROM bbs_dict WHERE dict_type = #{type} ORDER BY dict_sort LIMIT 1")
     String selectValueByType(@Param("type") String type);
+
+    /**
+     * 根据字典键获取dict_value（统一查询入口）
+     */
+    @Select("SELECT dict_value FROM bbs_dict WHERE dict_key = #{key} LIMIT 1")
+    String selectValueByKey(@Param("key") String key);
 }

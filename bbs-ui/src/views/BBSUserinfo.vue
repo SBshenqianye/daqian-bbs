@@ -20,6 +20,23 @@
             >
               密码修改
             </button>
+
+            <div class="border-t border-outline-variant my-2 mx-2"></div>
+
+            <router-link
+              to="/my-violations"
+              class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low flex items-center gap-2"
+            >
+              <span class="material-symbols-outlined text-[18px]">gavel</span>
+              违规记录
+            </router-link>
+            <router-link
+              to="/my-appeals"
+              class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low flex items-center gap-2"
+            >
+              <span class="material-symbols-outlined text-[18px]">assignment</span>
+              申诉记录
+            </router-link>
           </nav>
         </div>
       </aside>

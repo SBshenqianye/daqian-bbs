@@ -493,3 +493,50 @@ SET @sql_notif_cat_idx = IF(@idx_notif_cat_exists = 0, 'ALTER TABLE `bbs_notific
 PREPARE stmt_notif_cat_idx FROM @sql_notif_cat_idx;
 EXECUTE stmt_notif_cat_idx;
 DEALLOCATE PREPARE stmt_notif_cat_idx;
+
+-- @migration: v019-report-violation-type 举报表增加违规类型字段，支持管理员"确认并扣分"时自动填写
+SELECT COUNT(*) INTO @col_report_vtype_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_report' AND COLUMN_NAME = 'violation_type';
+SET @sql_report_vtype = IF(@col_report_vtype_exists = 0, 'ALTER TABLE `bbs_report` ADD COLUMN `violation_type` varchar(50) COMMENT ''违规类型(spam/plagiarism/illegal/attack/leak)''', 'SELECT 1');
+PREPARE stmt_report_vtype FROM @sql_report_vtype;
+EXECUTE stmt_report_vtype;
+DEALLOCATE PREPARE stmt_report_vtype;
+
+-- 回填历史数据：从 reason 字段解析 【label】 格式的违规类型
+UPDATE `bbs_report` SET `violation_type` = 'spam'      WHERE `violation_type` IS NULL AND `reason` LIKE '【恶意灌水%';
+UPDATE `bbs_report` SET `violation_type` = 'plagiarism' WHERE `violation_type` IS NULL AND `reason` LIKE '【抄袭剽窃%';
+UPDATE `bbs_report` SET `violation_type` = 'illegal'    WHERE `violation_type` IS NULL AND `reason` LIKE '【违规%';
+UPDATE `bbs_report` SET `violation_type` = 'attack'     WHERE `violation_type` IS NULL AND `reason` LIKE '【人身攻击%';
+UPDATE `bbs_report` SET `violation_type` = 'leak'       WHERE `violation_type` IS NULL AND `reason` LIKE '【泄露%';
+
+-- @migration: v020-dict-extra 字典表增加键字段dict_key，违规扣分统一存入dict_value
+SELECT COUNT(*) INTO @col_dict_key_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_dict' AND COLUMN_NAME = 'dict_key';
+SET @sql_dict_key = IF(@col_dict_key_exists = 0, 'ALTER TABLE `bbs_dict` ADD COLUMN `dict_key` varchar(100) COMMENT ''键(违规类型标识)''', 'SELECT 1');
+PREPARE stmt_dict_key FROM @sql_dict_key;
+EXECUTE stmt_dict_key;
+DEALLOCATE PREPARE stmt_dict_key;
+
+-- 回填：所有字典条目的 dict_key
+UPDATE `bbs_dict` SET `dict_key` = 'post'                 WHERE `dict_type` = 'post' AND `dict_key` IS NULL;
+UPDATE `bbs_dict` SET `dict_key` = 'reply'                WHERE `dict_type` = 'reply' AND `dict_key` IS NULL;
+UPDATE `bbs_dict` SET `dict_key` = 'switch'               WHERE `dict_type` = 'switch' AND `dict_key` IS NULL;
+UPDATE `bbs_dict` SET `dict_key` = 'featured'             WHERE `dict_type` = 'featured' AND `dict_key` IS NULL;
+UPDATE `bbs_dict` SET `dict_key` = 'hot_threshold'        WHERE `dict_type` = 'hot_threshold' AND `dict_key` IS NULL;
+UPDATE `bbs_dict` SET `dict_key` = 'login_browse_minutes' WHERE `dict_type` = 'login_browse_minutes' AND `dict_key` IS NULL;
+
+-- 违规类型：dict_key = 类型标识，dict_value = 扣分值
+UPDATE `bbs_dict` SET `dict_key` = 'illegal',      `dict_value` = '15'  WHERE `dict_type` = 'violation' AND `dict_value` = 'illegal';
+UPDATE `bbs_dict` SET `dict_key` = 'attack',       `dict_value` = '10'  WHERE `dict_type` = 'violation' AND `dict_value` = 'attack';
+UPDATE `bbs_dict` SET `dict_key` = 'spam',         `dict_value` = '4'   WHERE `dict_type` = 'violation' AND `dict_value` = 'spam';
+UPDATE `bbs_dict` SET `dict_key` = 'plagiarism',   `dict_value` = '12'  WHERE `dict_type` = 'violation' AND `dict_value` = 'plagiarism';
+UPDATE `bbs_dict` SET `dict_key` = 'false_report', `dict_value` = '3'   WHERE `dict_type` = 'violation' AND `dict_value` = 'false_report';
+UPDATE `bbs_dict` SET `dict_key` = 'leak',         `dict_value` = '20'  WHERE `dict_type` = 'violation' AND `dict_value` = 'leak';
+
+-- 清理旧的违规字典条目（dict_value 为旧格式字符串 key 的重复行）
+DELETE FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_value` IN ('illegal', 'attack', 'spam', 'plagiarism', 'false_report', 'leak');
+
+-- 清理 dict_extra 列（如已存在）
+SELECT COUNT(*) INTO @col_dict_extra_exists2 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_dict' AND COLUMN_NAME = 'dict_extra';
+SET @sql_dict_extra_drop = IF(@col_dict_extra_exists2 > 0, 'ALTER TABLE `bbs_dict` DROP COLUMN `dict_extra`', 'SELECT 1');
+PREPARE stmt_dict_extra_drop FROM @sql_dict_extra_drop;
+EXECUTE stmt_dict_extra_drop;
+DEALLOCATE PREPARE stmt_dict_extra_drop;

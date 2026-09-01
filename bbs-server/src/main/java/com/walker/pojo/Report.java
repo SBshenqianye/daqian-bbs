@@ -39,6 +39,10 @@ public class Report implements Serializable {
     @TableField("reason")
     private String reason;
 
+    @ApiModelProperty("违规类型(spam/plagiarism/illegal/attack/leak)")
+    @TableField("violation_type")
+    private String violationType;
+
     @ApiModelProperty("状态(pending/confirmed/rejected)")
     @TableField("status")
     private String status;

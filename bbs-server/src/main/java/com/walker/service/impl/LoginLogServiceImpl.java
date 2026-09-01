@@ -105,7 +105,7 @@ public class LoginLogServiceImpl extends ServiceImpl<LoginLogMapper, LoginLog> i
         // 获取阈值（从字典获取，缺省10）
         int threshold = 10;
         try {
-            String val = dictMapper.selectValueByType("login_browse_minutes");
+            String val = dictMapper.selectValueByKey("login_browse_minutes");
             if (val != null) threshold = Integer.parseInt(val);
         } catch (Exception e) {
             // 使用默认值

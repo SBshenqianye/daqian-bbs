@@ -98,10 +98,8 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
                 if (existingCount < 3) {
                     int replyPoints = 1; // default
                     try {
-                        List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
-                        if (replyList != null && !replyList.isEmpty()) {
-                            replyPoints = Integer.parseInt(replyList.get(0).getDictValue());
-                        }
+                        String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
+                        if (val != null) replyPoints = Integer.parseInt(val);
                     } catch (Exception e) { /* use default */ }
                     pointsLogService.adjustUserPoints(replyParam.getReplyUserId(), replyPoints, "回复积分",
                             "reply", reply.getReplyId(), null);
@@ -147,10 +145,8 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
         if (reply != null && reply.getEnable() != null && reply.getEnable() == 1) {
             int replyPoints = 1; // default
             try {
-                List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
-                if (replyList != null && !replyList.isEmpty()) {
-                    replyPoints = Integer.parseInt(replyList.get(0).getDictValue());
-                }
+                String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
+                if (val != null) replyPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(reply.getReplyUserId(), -replyPoints, "删除回复扣回积分",
                     "reply", replyId, null);

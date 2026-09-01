@@ -42,4 +42,9 @@ public interface DictService {
      * 根据字典类型查询数据字典列表
      */
     List<Dict> listDictByType(String dictType);
+
+    /**
+     * 根据字典键获取值（统一查询入口）
+     */
+    String getValueByKey(String key);
 }

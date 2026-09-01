@@ -50,4 +50,7 @@ public class Dict implements Serializable {
 
     @ApiModelProperty("备注说明")
     private String remark;
+
+    @ApiModelProperty("键(违规类型标识)")
+    private String dictKey;
 }

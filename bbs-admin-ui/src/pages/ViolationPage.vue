@@ -24,12 +24,7 @@
             <label class="block text-body-sm text-on-surface-variant mb-1">违规类型</label>
             <select v-model="form.violationType" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none">
               <option value="">请选择</option>
-              <option value="illegal">违法违规内容 (-15分)</option>
-              <option value="attack">人身攻击/争吵引战 (-10分)</option>
-              <option value="spam">恶意灌水/刷屏 (-4分)</option>
-              <option value="plagiarism">抄袭剽窃 (-12分)</option>
-              <option value="false_report">虚假恶意举报 (-3分)</option>
-              <option value="leak">泄露企业秘密 (-20分)</option>
+              <option v-for="opt in violationOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
           </div>
           <div>
@@ -73,23 +68,46 @@
           <table v-else class="w-full text-left">
             <thead class="bg-surface-container-low">
               <tr>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">ID</th>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">用户ID</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">用户</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">违规类型</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">扣分</th>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">关联</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">关联内容</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">备注</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">申诉状态</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">时间</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-outline-variant/50">
               <tr v-for="item in list" :key="item.id" class="hover:bg-surface-container-low/50">
-                <td class="px-4 py-3 text-body-sm">{{ item.id }}</td>
-                <td class="px-4 py-3 text-body-sm">{{ item.userId }}</td>
-                <td class="px-4 py-3 text-body-sm">{{ getViolationLabel(item.violationType) }}</td>
+                <!-- 用户 -->
+                <td class="px-4 py-3 text-body-sm">
+                  <el-tooltip :content="'用户ID: ' + item.userId" placement="top" :open-delay="300">
+                    <span class="cursor-help">{{ item.nickname || item.userId }}</span>
+                  </el-tooltip>
+                </td>
+                <!-- 违规类型 -->
+                <td class="px-4 py-3 text-body-sm">{{ item.violationLabel || item.violationType }}</td>
+                <!-- 扣分 -->
                 <td class="px-4 py-3 text-body-sm text-error font-medium">-{{ item.pointsDeducted }}</td>
-                <td class="px-4 py-3 text-body-sm">{{ item.relatedType ? item.relatedType + '#' + item.relatedId : '-' }}</td>
-                <td class="px-4 py-3 text-body-sm max-w-[200px] truncate">{{ item.remark || '-' }}</td>
+                <!-- 关联内容 -->
+                <td class="px-4 py-3 text-body-sm">
+                  <span v-if="item.relatedType" class="text-primary cursor-pointer hover:underline">{{ item.relatedType }}#{{ item.relatedId }}</span>
+                  <span v-else class="text-on-surface-variant">-</span>
+                </td>
+                <!-- 备注 -->
+                <td class="px-4 py-3 text-body-sm max-w-[180px]">
+                  <el-tooltip :content="item.remark" placement="top" :open-delay="300" :disabled="!item.remark || item.remark.length <= 20">
+                    <span class="truncate block cursor-help">{{ item.remark || '-' }}</span>
+                  </el-tooltip>
+                </td>
+                <!-- 申诉状态 -->
+                <td class="px-4 py-3 text-body-sm">
+                  <span v-if="item.appealStatus === 'pending'" class="px-2 py-0.5 rounded text-[12px] font-medium bg-yellow-100 text-yellow-800">申诉中</span>
+                  <span v-else-if="item.appealStatus === 'accepted'" class="px-2 py-0.5 rounded text-[12px] font-medium bg-green-100 text-green-800">申诉通过</span>
+                  <span v-else-if="item.appealStatus === 'rejected'" class="px-2 py-0.5 rounded text-[12px] font-medium bg-red-100 text-red-800">申诉驳回</span>
+                  <span v-else class="text-on-surface-variant text-[12px]">-</span>
+                </td>
+                <!-- 时间 -->
                 <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.createTime }}</td>
               </tr>
             </tbody>
@@ -118,6 +136,7 @@ export default {
       currentPage: 1,
       pageSize: 10,
       searchUserId: '',
+      violationOptions: [],
       form: {
         userId: '',
         violationType: '',
@@ -127,11 +146,24 @@ export default {
       }
     }
   },
-  mounted() { this.loadList() },
+  mounted() {
+    this.loadViolationOptions()
+    this.loadList()
+  },
   methods: {
-    getViolationLabel(type) {
-      const map = { illegal: '违法违规内容', attack: '人身攻击', spam: '恶意灌水', plagiarism: '抄袭剽窃', false_report: '虚假举报', leak: '泄露秘密' }
-      return map[type] || type
+    async loadViolationOptions() {
+      try {
+        const res = await this.postRequest('/admin/listDict', {})
+        if (res && res.code == 200 && Array.isArray(res.obj)) {
+          this.violationOptions = res.obj
+            .filter(d => d.dictType === 'violation')
+            .sort((a, b) => (a.dictSort || 0) - (b.dictSort || 0))
+            .map(d => ({
+              value: d.dictKey,
+              label: d.dictLabel + (d.dictValue ? ' (-' + d.dictValue + '分)' : '')
+            }))
+        }
+      } catch (e) { /* ignore */ }
     },
     async loadList() {
       this.loading = true

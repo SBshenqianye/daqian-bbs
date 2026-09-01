@@ -34,21 +34,48 @@
           <table v-else class="w-full text-left">
             <thead class="bg-surface-container-low">
               <tr>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">ID</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">用户</th>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">类型</th>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">内容</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">申诉类型</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">关联违规</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">申诉内容</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">状态</th>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">时间</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">审核结果</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">提交时间</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">操作</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-outline-variant/50">
               <tr v-for="item in list" :key="item.id" class="hover:bg-surface-container-low/50">
-                <td class="px-4 py-3 text-body-sm">{{ item.id }}</td>
-                <td class="px-4 py-3 text-body-sm">{{ item.userId }}</td>
+                <!-- 用户 -->
+                <td class="px-4 py-3 text-body-sm">
+                  <el-tooltip :content="'用户ID: ' + item.userId" placement="top" :open-delay="300">
+                    <span class="cursor-help">{{ item.nickname || item.userId }}</span>
+                  </el-tooltip>
+                </td>
+                <!-- 申诉类型 -->
                 <td class="px-4 py-3 text-body-sm">{{ getAppealLabel(item.appealType) }}</td>
-                <td class="px-4 py-3 text-body-sm max-w-[250px] truncate">{{ item.content }}</td>
+                <!-- 关联违规 -->
+                <td class="px-4 py-3 text-body-sm">
+                  <template v-if="item.violation">
+                    <el-tooltip placement="top" :open-delay="300">
+                      <div slot="content" class="max-w-xs">
+                        <p v-if="item.violation.remark">原因: {{ item.violation.remark }}</p>
+                        <p v-if="item.violation.relatedType">关联: {{ item.violation.relatedType }}#{{ item.violation.relatedId }}</p>
+                      </div>
+                      <span class="cursor-help text-red-600">
+                        {{ item.violation.violationLabel }} (-{{ item.violation.pointsDeducted }}分)
+                      </span>
+                    </el-tooltip>
+                  </template>
+                  <span v-else class="text-on-surface-variant">-</span>
+                </td>
+                <!-- 申诉内容 -->
+                <td class="px-4 py-3 text-body-sm max-w-[220px]">
+                  <el-tooltip :content="item.content" placement="top" :open-delay="300" :disabled="!item.content || item.content.length <= 25">
+                    <span class="truncate block cursor-help">{{ item.content }}</span>
+                  </el-tooltip>
+                </td>
+                <!-- 状态 -->
                 <td class="px-4 py-3 text-body-sm">
                   <span :class="{
                     'px-2 py-0.5 rounded text-[12px] font-medium': true,
@@ -57,13 +84,25 @@
                     'bg-red-100 text-red-800': item.status === 'rejected'
                   }">{{ getStatusLabel(item.status) }}</span>
                 </td>
+                <!-- 审核结果 -->
+                <td class="px-4 py-3 text-body-sm">
+                  <template v-if="item.status !== 'pending'">
+                    <div class="text-[13px]">
+                      <p class="text-on-surface-variant">{{ item.reviewTime || '-' }}</p>
+                      <p v-if="item.reviewRemark" class="text-on-surface mt-0.5">{{ item.reviewRemark }}</p>
+                    </div>
+                  </template>
+                  <span v-else class="text-outline">-</span>
+                </td>
+                <!-- 提交时间 -->
                 <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.createTime }}</td>
+                <!-- 操作 -->
                 <td class="px-4 py-3 text-body-sm">
                   <div v-if="item.status === 'pending'" class="flex gap-1">
                     <button class="px-2 py-1 bg-green-50 text-green-700 rounded text-[12px] hover:bg-green-100" @click="handleReview(item, 'accepted')">通过</button>
                     <button class="px-2 py-1 bg-red-50 text-red-700 rounded text-[12px] hover:bg-red-100" @click="handleReview(item, 'rejected')">驳回</button>
                   </div>
-                  <span v-else class="text-on-surface-variant text-[12px]">{{ item.reviewRemark || '已处理' }}</span>
+                  <span v-else class="text-on-surface-variant text-[12px]">已处理</span>
                 </td>
               </tr>
             </tbody>

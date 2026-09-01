@@ -66,7 +66,7 @@
 const VIOLATION_TYPES = [
   { value: 'spam', label: '恶意灌水' },
   { value: 'plagiarism', label: '抄袭剽窃' },
-  { value: 'illegal', label: '违规言论' },
+  { value: 'illegal', label: '违法违规内容' },
   { value: 'attack', label: '人身攻击' },
   { value: 'leak', label: '泄露秘密' },
   { value: 'other', label: '其他' },
@@ -132,6 +132,7 @@ export default {
         reporterId: Number(reporterId),
         targetType: this.targetType,
         targetId,
+        violationType: this.violationType,
         reason,
       }).then(resp => {
         this.submitting = false

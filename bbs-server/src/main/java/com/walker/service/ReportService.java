@@ -14,7 +14,7 @@ public interface ReportService extends IService<Report> {
     /**
      * 用户提交举报
      */
-    ResultBean submitReport(Integer reporterId, String targetType, Integer targetId, String reason);
+    ResultBean submitReport(Integer reporterId, String targetType, Integer targetId, String violationType, String reason);
 
     /**
      * 管理员审核举报

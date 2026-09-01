@@ -53,4 +53,9 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
     public List<Dict> listDictByType(String dictType) {
         return lambdaQuery().eq(Dict::getDictType, dictType).list();
     }
+
+    @Override
+    public String getValueByKey(String key) {
+        return getBaseMapper().selectValueByKey(key);
+    }
 }

@@ -3,7 +3,6 @@ package com.walker.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.CommentMapper;
-import com.walker.mapper.DictMapper;
 import com.walker.pojo.Article;
 import com.walker.pojo.Comment;
 import com.walker.pojo.Dict;
@@ -55,8 +54,6 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     @Autowired
     private ReplyService replyService;
 
-    @Autowired
-    private DictMapper dictMapper;
     /**
      * 保存用户的评论 一级
      * @param commentParam
@@ -89,10 +86,8 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
             if (existingCount < 3) {
                 int replyPoints = 1; // default
                 try {
-                    List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
-                    if (replyList != null && !replyList.isEmpty()) {
-                        replyPoints = Integer.parseInt(replyList.get(0).getDictValue());
-                    }
+                    String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
+                    if (val != null) replyPoints = Integer.parseInt(val);
                 } catch (Exception e) { /* use default */ }
                 pointsLogService.adjustUserPoints(commentParam.getCommentUserId(), replyPoints, "评论积分",
                         "comment", comment.getCommentId(), null);
@@ -147,10 +142,8 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         if (comment != null && comment.getEnable() != null && comment.getEnable() == 1) {
             int replyPoints = 1; // default
             try {
-                List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
-                if (replyList != null && !replyList.isEmpty()) {
-                    replyPoints = Integer.parseInt(replyList.get(0).getDictValue());
-                }
+                String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
+                if (val != null) replyPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(comment.getCommentUserId(), -replyPoints, "删除评论扣回积分",
                     "comment", commentId, null);
@@ -169,7 +162,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         // 获取热度阈值（默认10）
         int threshold = 10;
         try {
-            String val = dictMapper.selectValueByType("hot_threshold");
+            String val = dictService.getValueByKey("hot_threshold");
             if (val != null) threshold = Integer.parseInt(val);
         } catch (Exception e) {
             // 使用默认值

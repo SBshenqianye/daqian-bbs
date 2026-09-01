@@ -170,10 +170,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (quality.isPassed()) {
             int postPoints = 2; // default
             try {
-                List<Dict> postList = dictService.listDictByType(ConstantUtil.MANA_POST);
-                if (postList != null && !postList.isEmpty()) {
-                    postPoints = Integer.parseInt(postList.get(0).getDictValue());
-                }
+                String val = dictService.getValueByKey(ConstantUtil.MANA_POST);
+                if (val != null) postPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(articleParam.getUserId(), postPoints, "发帖积分",
                     "article", article.getArticleId(), null);
@@ -617,10 +615,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (article != null && article.getEnable() != null && article.getEnable() == 1) {
             int postPoints = 2; // default
             try {
-                List<Dict> postList = dictService.listDictByType(ConstantUtil.MANA_POST);
-                if (postList != null && !postList.isEmpty()) {
-                    postPoints = Integer.parseInt(postList.get(0).getDictValue());
-                }
+                String val = dictService.getValueByKey(ConstantUtil.MANA_POST);
+                if (val != null) postPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(article.getUserId(), -postPoints, "删除帖子扣回积分",
                     "article", articleId, null);
@@ -629,10 +625,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             if (article.getIsFeatured() != null && article.getIsFeatured() == 1) {
                 int featuredPoints = 10; // default
                 try {
-                    List<Dict> featuredList = dictService.listDictByType(ConstantUtil.MANA_FEATURED);
-                    if (featuredList != null && !featuredList.isEmpty()) {
-                        featuredPoints = Integer.parseInt(featuredList.get(0).getDictValue());
-                    }
+                    String val = dictService.getValueByKey(ConstantUtil.MANA_FEATURED);
+                    if (val != null) featuredPoints = Integer.parseInt(val);
                 } catch (Exception e) { /* use default */ }
                 pointsLogService.adjustUserPoints(article.getUserId(), -featuredPoints, "删除精华帖扣回加分",
                         "article", articleId, null);
@@ -717,11 +711,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 pointsRankParam.setEndTime(DateUtil.formatDate(DateUtil.endOfMonth(new Date())));
             } else {
                 // 累计排名：优先从配置读取，没有则覆盖全部历史
-                List<Dict> startTimeList = dictService.listDictByType(ConstantUtil.MANA_POINTS_START_TIME);
-                List<Dict> endTimeList = dictService.listDictByType(ConstantUtil.MANA_POINTS_END_TIME);
-                if (!CollectionUtils.isEmpty(startTimeList) && !CollectionUtils.isEmpty(endTimeList)) {
-                    pointsRankParam.setStartTime(startTimeList.get(0).getDictValue());
-                    pointsRankParam.setEndTime(endTimeList.get(0).getDictValue());
+                String startTime = dictService.getValueByKey(ConstantUtil.MANA_POINTS_START_TIME);
+                String endTime = dictService.getValueByKey(ConstantUtil.MANA_POINTS_END_TIME);
+                if (startTime != null && endTime != null) {
+                    pointsRankParam.setStartTime(startTime);
+                    pointsRankParam.setEndTime(endTime);
                 } else {
                     // 未配置 → 覆盖全部历史
                     pointsRankParam.setStartTime("2000-01-01");
@@ -773,15 +767,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      * 获取积分配置（发帖/回帖/精华帖分值）
      */
     private int[] getPointsConfig() {
-        List<Dict> postList = dictService.listDictByType(ConstantUtil.MANA_POST);
-        List<Dict> replyList = dictService.listDictByType(ConstantUtil.MANA_REPLY);
-        int post = Integer.parseInt(postList.get(0).getDictValue());
-        int reply = Integer.parseInt(replyList.get(0).getDictValue());
-        int featured = 0;
-        List<Dict> featuredList = dictService.listDictByType(ConstantUtil.MANA_FEATURED);
-        if (!CollectionUtils.isEmpty(featuredList)) {
-            featured = Integer.parseInt(featuredList.get(0).getDictValue());
-        }
+        int post = 3, reply = 1, featured = 10;
+        try { String v = dictService.getValueByKey(ConstantUtil.MANA_POST); if (v != null) post = Integer.parseInt(v); } catch (Exception e) {}
+        try { String v = dictService.getValueByKey(ConstantUtil.MANA_REPLY); if (v != null) reply = Integer.parseInt(v); } catch (Exception e) {}
+        try { String v = dictService.getValueByKey(ConstantUtil.MANA_FEATURED); if (v != null) featured = Integer.parseInt(v); } catch (Exception e) {}
         return new int[]{post, reply, featured};
     }
 
@@ -932,10 +921,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             // 设为精华 → 加分
             int featuredPoints = 10; // default
             try {
-                List<Dict> featuredList = dictService.listDictByType(ConstantUtil.MANA_FEATURED);
-                if (featuredList != null && !featuredList.isEmpty()) {
-                    featuredPoints = Integer.parseInt(featuredList.get(0).getDictValue());
-                }
+                String val = dictService.getValueByKey(ConstantUtil.MANA_FEATURED);
+                if (val != null) featuredPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(article.getUserId(), featuredPoints, "精华帖奖励积分",
                     "article", articleId, null);
@@ -943,10 +930,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             // 取消精华 → 扣回
             int featuredPoints = 10;
             try {
-                List<Dict> featuredList = dictService.listDictByType(ConstantUtil.MANA_FEATURED);
-                if (featuredList != null && !featuredList.isEmpty()) {
-                    featuredPoints = Integer.parseInt(featuredList.get(0).getDictValue());
-                }
+                String val = dictService.getValueByKey(ConstantUtil.MANA_FEATURED);
+                if (val != null) featuredPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(article.getUserId(), -featuredPoints, "取消精华帖扣回积分",
                     "article", articleId, null);

@@ -25,8 +25,9 @@ public class ReportController {
         Integer reporterId = (Integer) params.get("reporterId");
         String targetType = (String) params.get("targetType");
         Integer targetId = (Integer) params.get("targetId");
+        String violationType = (String) params.get("violationType");
         String reason = (String) params.get("reason");
-        return reportService.submitReport(reporterId, targetType, targetId, reason);
+        return reportService.submitReport(reporterId, targetType, targetId, violationType, reason);
     }
 
     @ApiOperation(value = "管理员审核举报")

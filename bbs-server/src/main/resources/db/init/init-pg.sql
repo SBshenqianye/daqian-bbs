@@ -145,7 +145,8 @@ CREATE TABLE IF NOT EXISTS bbs_dict (
     create_time varchar(20),
     update_by   varchar(50),
     update_time varchar(20),
-    remark      varchar(256)
+    remark      varchar(256),
+    dict_key    varchar(100)
 );
 
 -- ----------------------------
@@ -339,19 +340,19 @@ ON CONFLICT (id) DO NOTHING;
 -- ----------------------------
 -- 数据字典
 -- ----------------------------
-INSERT INTO bbs_dict (id, dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark) VALUES
-(1, 'post', '3', '发帖积分', 1, '系统', '2026-06-26 00:00:00', '发一个帖子所得积分'),
-(2, 'reply', '1', '回帖积分', 0, '系统', '2026-06-26 00:00:00', '回帖一次所得积分'),
-(3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）'),
-(4, 'featured', '10', '精华帖积分', 2, '系统', '2026-07-13 00:00:00', '被设为精华帖额外获得的积分'),
-(5, 'violation', 'illegal', '违法违规内容', 1, '系统', '2026-08-25 00:00:00', '扣15分'),
-(6, 'violation', 'attack', '人身攻击/争吵引战', 2, '系统', '2026-08-25 00:00:00', '扣10分'),
-(7, 'violation', 'spam', '恶意灌水/刷屏', 3, '系统', '2026-08-25 00:00:00', '扣4分'),
-(8, 'violation', 'plagiarism', '抄袭剽窃', 4, '系统', '2026-08-25 00:00:00', '扣12分'),
-(9, 'violation', 'false_report', '虚假恶意举报', 5, '系统', '2026-08-25 00:00:00', '扣3分'),
-(10, 'violation', 'leak', '泄露企业秘密', 6, '系统', '2026-08-25 00:00:00', '扣20分'),
-(11, 'hot_threshold', '10', '帖子热度回复阈值', 10, '系统', '2026-08-25 00:00:00', '回复数超过此值触发热度奖励'),
-(12, 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', '2026-08-25 00:00:00', '登录后需浏览满此分钟数才计分')
+INSERT INTO bbs_dict (id, dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key) VALUES
+(1, 'post', '3', '发帖积分', 1, '系统', '2026-06-26 00:00:00', '发一个帖子所得积分', 'post'),
+(2, 'reply', '1', '回帖积分', 0, '系统', '2026-06-26 00:00:00', '回帖一次所得积分', 'reply'),
+(3, 'switch', '1', '排名功能是否开启', 1, '系统', '2026-06-26 00:00:00', '值：积分排名开关（0不开放，1开放）', 'switch'),
+(4, 'featured', '10', '精华帖积分', 2, '系统', '2026-07-13 00:00:00', '被设为精华帖额外获得的积分', 'featured'),
+(5, 'violation', '15', '违法违规内容', 1, '系统', '2026-08-25 00:00:00', '扣15分', 'illegal'),
+(6, 'violation', '10', '人身攻击/争吵引战', 2, '系统', '2026-08-25 00:00:00', '扣10分', 'attack'),
+(7, 'violation', '4', '恶意灌水/刷屏', 3, '系统', '2026-08-25 00:00:00', '扣4分', 'spam'),
+(8, 'violation', '12', '抄袭剽窃', 4, '系统', '2026-08-25 00:00:00', '扣12分', 'plagiarism'),
+(9, 'violation', '3', '虚假恶意举报', 5, '系统', '2026-08-25 00:00:00', '扣3分', 'false_report'),
+(10, 'violation', '20', '泄露企业秘密', 6, '系统', '2026-08-25 00:00:00', '扣20分', 'leak'),
+(11, 'hot_threshold', '10', '帖子热度回复阈值', 10, '系统', '2026-08-25 00:00:00', '回复数超过此值触发热度奖励', 'hot_threshold'),
+(12, 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', '2026-08-25 00:00:00', '登录后需浏览满此分钟数才计分', 'login_browse_minutes')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------
@@ -461,6 +462,7 @@ CREATE TABLE IF NOT EXISTS bbs_report (
     target_type     varchar(20) NOT NULL,
     target_id       integer NOT NULL,
     reason          varchar(500),
+    violation_type  varchar(50),
     status          varchar(20) DEFAULT 'pending',
     reviewer_id     integer,
     review_time     varchar(20),

@@ -70,6 +70,9 @@ axios.interceptors.response.use(success=>{
                 || url.indexOf('markRead') !== -1
                 || url.indexOf('markAllRead') !== -1
                 || url.indexOf('points/myLog') !== -1
+                || url.indexOf('violation/myList') !== -1
+                || url.indexOf('appeal/myList') !== -1
+                || url.indexOf('appeal/submit') !== -1
             if (!noSuccessTip) {
                 Message({
                     type: 'success',

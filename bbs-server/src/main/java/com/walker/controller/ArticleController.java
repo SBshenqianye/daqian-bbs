@@ -576,11 +576,11 @@ public class ArticleController {
                 rankParam.setStartTime(new SimpleDateFormat("yyyy-MM-dd").format(DateUtil.beginOfMonth(new Date())));
                 rankParam.setEndTime(new SimpleDateFormat("yyyy-MM-dd").format(DateUtil.endOfMonth(new Date())));
             } else {
-                List<com.walker.pojo.Dict> startList = dictService.listDictByType(ConstantUtil.MANA_POINTS_START_TIME);
-                List<com.walker.pojo.Dict> endList = dictService.listDictByType(ConstantUtil.MANA_POINTS_END_TIME);
-                if (startList != null && !startList.isEmpty() && endList != null && !endList.isEmpty()) {
-                    rankParam.setStartTime(startList.get(0).getDictValue());
-                    rankParam.setEndTime(endList.get(0).getDictValue());
+                String cfgStart = dictService.getValueByKey(ConstantUtil.MANA_POINTS_START_TIME);
+                String cfgEnd = dictService.getValueByKey(ConstantUtil.MANA_POINTS_END_TIME);
+                if (cfgStart != null && cfgEnd != null) {
+                    rankParam.setStartTime(cfgStart);
+                    rankParam.setEndTime(cfgEnd);
                 } else {
                     rankParam.setStartTime("2000-01-01");
                     rankParam.setEndTime(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));

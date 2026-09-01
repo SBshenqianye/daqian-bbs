@@ -8,12 +8,14 @@ import com.walker.pojo.Article;
 import com.walker.pojo.Comment;
 import com.walker.pojo.Reply;
 import com.walker.pojo.Report;
+import com.walker.pojo.User;
 import com.walker.service.ArticleService;
 import com.walker.service.CommentService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
 import com.walker.service.ReplyService;
 import com.walker.service.ReportService;
+import com.walker.service.UserService;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,9 +25,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> implements ReportService {
@@ -51,9 +55,12 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     @Autowired
     private ReplyService replyService;
 
+    @Autowired
+    private UserService userService;
+
     @Override
     @Transactional
-    public ResultBean submitReport(Integer reporterId, String targetType, Integer targetId, String reason) {
+    public ResultBean submitReport(Integer reporterId, String targetType, Integer targetId, String violationType, String reason) {
         if (reporterId == null || targetType == null || targetId == null) {
             return ResultBean.error("参数不完整");
         }
@@ -100,6 +107,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         report.setReporterId(reporterId);
         report.setTargetType(targetType);
         report.setTargetId(targetId);
+        report.setViolationType(violationType);
         report.setReason(reason);
         report.setStatus("pending");
         report.setPointsAwarded(0);
@@ -243,6 +251,77 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         wrapper.orderByAsc(Report::getCreateTime);
         List<Report> all = this.list(wrapper);
 
+        // 批量查询举报人昵称
+        Set<Integer> reporterIds = new HashSet<>();
+        for (Report r : all) {
+            if (r.getReporterId() != null) reporterIds.add(r.getReporterId());
+        }
+        Map<Integer, String> reporterNameMap = new HashMap<>();
+        if (!reporterIds.isEmpty()) {
+            List<User> users = userService.listByIds(reporterIds);
+            for (User u : users) {
+                reporterNameMap.put(u.getId(), u.getNickname() != null ? u.getNickname() : u.getUsername());
+            }
+        }
+
+        // 批量查询被举报内容的作者和正文预览（用于"确认并扣分"自动填入 + 内容预览）
+        Map<String, Integer> targetAuthorMap = new HashMap<>(); // "type|id" → userId
+        Map<String, String> targetTitleMap = new HashMap<>();   // "type|id" → 标题（仅文章）
+        Map<String, String> targetContentMap = new HashMap<>(); // "type|id" → 正文预览（前200字）
+        Map<String, String> targetContentHtmlMap = new HashMap<>(); // "type|id" → 正文 HTML（仅文章）
+        Set<Integer> articleIds = new HashSet<>();
+        Set<Integer> commentIds = new HashSet<>();
+        Set<Integer> replyIds = new HashSet<>();
+        for (Report r : all) {
+            String key = r.getTargetType() + "|" + r.getTargetId();
+            if (targetAuthorMap.containsKey(key)) continue;
+            if ("article".equals(r.getTargetType())) articleIds.add(r.getTargetId());
+            else if ("comment".equals(r.getTargetType())) commentIds.add(r.getTargetId());
+            else if ("reply".equals(r.getTargetType())) replyIds.add(r.getTargetId());
+        }
+        if (!articleIds.isEmpty()) {
+            for (Article a : articleService.listByIds(articleIds)) {
+                String key = "article|" + a.getArticleId();
+                targetAuthorMap.put(key, a.getUserId());
+                targetTitleMap.put(key, a.getArticleTitle());
+                targetContentMap.put(key, truncate(a.getArticleContent(), 200));
+                targetContentHtmlMap.put(key, a.getArticleContentHtml());
+            }
+        }
+        // 评论/回复 → 所属文章 ID 映射（用于前端加载完整文章上下文 + 高亮定位）
+        Map<String, Integer> targetArticleIdMap = new HashMap<>();
+        if (!commentIds.isEmpty()) {
+            for (Comment c : commentService.listByIds(commentIds)) {
+                String key = "comment|" + c.getCommentId();
+                targetAuthorMap.put(key, c.getCommentUserId());
+                targetContentMap.put(key, truncate(c.getCommentContent(), 200));
+                targetArticleIdMap.put(key, c.getCommentArticleId());
+            }
+        }
+        if (!replyIds.isEmpty()) {
+            for (Reply rp : replyService.listByIds(replyIds)) {
+                String key = "reply|" + rp.getReplyId();
+                targetAuthorMap.put(key, rp.getReplyUserId());
+                targetContentMap.put(key, truncate(rp.getReplyContent(), 200));
+                // reply → comment → article
+                if (rp.getCommentId() != null) {
+                    Comment parentComment = commentService.getById(rp.getCommentId());
+                    if (parentComment != null) {
+                        targetArticleIdMap.put(key, parentComment.getCommentArticleId());
+                    }
+                }
+            }
+        }
+        // 批量查询作者昵称
+        Set<Integer> authorIds = new HashSet<>(targetAuthorMap.values());
+        Map<Integer, String> authorNameMap = new HashMap<>();
+        if (!authorIds.isEmpty()) {
+            List<User> authors = userService.listByIds(authorIds);
+            for (User u : authors) {
+                authorNameMap.put(u.getId(), u.getNickname() != null ? u.getNickname() : u.getUsername());
+            }
+        }
+
         // 按 targetType|targetId 分组，LinkedHashMap 保持最早举报在前
         Map<String, List<Report>> groups = new LinkedHashMap<>();
         for (Report r : all) {
@@ -264,9 +343,26 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                     break;
                 }
             }
+
+            // 将 Report 转为 Map 并附加 reporterName + 目标作者 + 内容预览
+            Map<String, Object> repMap = reportToMap(representative, reporterNameMap);
+            String targetKey = representative.getTargetType() + "|" + representative.getTargetId();
+            Integer authorId = targetAuthorMap.get(targetKey);
+            repMap.put("targetAuthorId", authorId);
+            repMap.put("targetAuthorName", authorId != null ? authorNameMap.getOrDefault(authorId, "用户" + authorId) : null);
+            repMap.put("targetTitle", targetTitleMap.get(targetKey));
+            repMap.put("targetContent", targetContentMap.get(targetKey));
+            repMap.put("targetContentHtml", targetContentHtmlMap.get(targetKey));
+            repMap.put("targetArticleId", targetArticleIdMap.get(targetKey));
+
+            List<Map<String, Object>> memberMaps = new ArrayList<>();
+            for (Report m : members) {
+                memberMaps.add(reportToMap(m, reporterNameMap));
+            }
+
             Map<String, Object> group = new HashMap<>();
-            group.put("representative", representative);
-            group.put("members", members);
+            group.put("representative", repMap);
+            group.put("members", memberMaps);
             group.put("totalCount", members.size());
             group.put("targetType", representative.getTargetType());
             group.put("targetId", representative.getTargetId());
@@ -290,5 +386,45 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         data.put("records", result.getRecords());
         data.put("total", result.getTotal());
         return ResultBean.success("查询成功", data);
+    }
+
+    /**
+     * 截断文本并清理 Markdown 语法，用于内容预览
+     */
+    private String truncate(String text, int maxLen) {
+        if (text == null || text.isEmpty()) return null;
+        // 去掉常见 Markdown 标记，只保留纯文本预览
+        String plain = text
+                .replaceAll("!\\[.*?]\\(.*?\\)", "")       // 图片
+                .replaceAll("\\[(.*?)\\]\\(.*?\\)", "$1")  // 链接保留文字
+                .replaceAll("```[\\s\\S]*?```", "[代码]")   // 代码块
+                .replaceAll("`([^`]+)`", "$1")              // 行内代码
+                .replaceAll("#{1,6}\\s*", "")               // 标题
+                .replaceAll("\\*\\*(.+?)\\*\\*", "$1")     // 粗体
+                .replaceAll("\\*(.+?)\\*", "$1")            // 斜体
+                .replaceAll("\\n+", " ")                    // 换行变空格
+                .trim();
+        return plain.length() > maxLen ? plain.substring(0, maxLen) + "..." : plain;
+    }
+
+    /**
+     * 将 Report 转为 Map 并附加 reporterName
+     */
+    private Map<String, Object> reportToMap(Report r, Map<Integer, String> nameMap) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", r.getId());
+        map.put("reporterId", r.getReporterId());
+        map.put("reporterName", nameMap.getOrDefault(r.getReporterId(), "用户" + r.getReporterId()));
+        map.put("targetType", r.getTargetType());
+        map.put("targetId", r.getTargetId());
+        map.put("violationType", r.getViolationType());
+        map.put("reason", r.getReason());
+        map.put("status", r.getStatus());
+        map.put("reviewerId", r.getReviewerId());
+        map.put("reviewRemark", r.getReviewRemark());
+        map.put("reviewTime", r.getReviewTime());
+        map.put("createTime", r.getCreateTime());
+        map.put("pointsAwarded", r.getPointsAwarded());
+        return map;
     }
 }
