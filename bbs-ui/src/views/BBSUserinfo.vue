@@ -37,6 +37,13 @@
               <span class="material-symbols-outlined text-[18px]">assignment</span>
               申诉记录
             </router-link>
+            <router-link
+              to="/moderator-complaint"
+              class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low flex items-center gap-2"
+            >
+              <span class="material-symbols-outlined text-[18px]">feedback</span>
+              版主投诉
+            </router-link>
           </nav>
         </div>
       </aside>

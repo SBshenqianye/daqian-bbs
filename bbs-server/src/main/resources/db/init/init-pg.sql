@@ -526,6 +526,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_board_mod_user_label ON bbs_board_moderator
 CREATE INDEX IF NOT EXISTS idx_board_mod_label ON bbs_board_moderator (label_id);
 
 -- ----------------------------
+-- Table: bbs_moderator_complaint（版主投诉）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_moderator_complaint (
+    id            SERIAL PRIMARY KEY,
+    reporter_id   integer NOT NULL,
+    moderator_id  integer NOT NULL,
+    label_id      integer DEFAULT NULL,
+    content       text NOT NULL,
+    status        varchar(20) NOT NULL DEFAULT 'pending',
+    reviewer_id   integer DEFAULT NULL,
+    review_remark varchar(500) DEFAULT NULL,
+    review_time   varchar(20) DEFAULT NULL,
+    create_time   varchar(20) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_mc_moderator ON bbs_moderator_complaint (moderator_id);
+CREATE INDEX IF NOT EXISTS idx_mc_reporter ON bbs_moderator_complaint (reporter_id);
+CREATE INDEX IF NOT EXISTS idx_mc_status ON bbs_moderator_complaint (status);
+
+-- ----------------------------
 -- 重置序列，使后续自增从正确值开始
 -- 仅当序列当前值小于 max(id) 时才更新
 -- ----------------------------

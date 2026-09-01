@@ -102,6 +102,11 @@ export default new Router({
                     meta: { title: '版主管理' }
                 },
                 {
+                    path: '/moderator-complaint',
+                    component: () => import('../pages/ModeratorComplaintPage.vue'),
+                    meta: { title: '版主投诉管理' }
+                },
+                {
                     path: '/approve-adopt',
                     component: () => import('../pages/ApproveAdoptPage.vue'),
                     meta: { title: '采纳审批' }

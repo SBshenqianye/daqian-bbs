@@ -578,4 +578,25 @@ CREATE TABLE `bbs_board_moderator` (
   INDEX `idx_board_mod_label` (`label_id`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '版块管理员';
 
+-- ----------------------------
+-- Table: bbs_moderator_complaint（版主投诉）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_moderator_complaint`;
+CREATE TABLE `bbs_moderator_complaint` (
+  `id`            int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `reporter_id`   int(11) NOT NULL COMMENT '投诉人用户ID',
+  `moderator_id`  int(11) NOT NULL COMMENT '被投诉版主用户ID',
+  `label_id`      int(11) DEFAULT NULL COMMENT '被投诉版主管理的标签ID',
+  `content`       text NOT NULL COMMENT '投诉内容',
+  `status`        varchar(20) NOT NULL DEFAULT 'pending' COMMENT '处理状态(pending/accepted/rejected)',
+  `reviewer_id`   int(11) DEFAULT NULL COMMENT '审核人ID',
+  `review_remark` varchar(500) DEFAULT NULL COMMENT '审核备注',
+  `review_time`   varchar(20) DEFAULT NULL COMMENT '审核时间',
+  `create_time`   varchar(20) NOT NULL COMMENT '投诉时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_mc_moderator` (`moderator_id`),
+  INDEX `idx_mc_reporter` (`reporter_id`),
+  INDEX `idx_mc_status` (`status`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '版主投诉表';
+
 SET FOREIGN_KEY_CHECKS = 1;

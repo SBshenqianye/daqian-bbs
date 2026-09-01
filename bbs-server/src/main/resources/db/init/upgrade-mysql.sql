@@ -552,3 +552,21 @@ SET @uk_sw_sql = IF(@uk_sw_exists = 0, 'ALTER TABLE `bbs_sensitive_word` ADD UNI
 PREPARE uk_sw_stmt FROM @uk_sw_sql;
 EXECUTE uk_sw_stmt;
 DEALLOCATE uk_sw_stmt;
+
+-- @migration: v022-moderator-complaint 版主投诉表（用户可投诉版主违规操作）
+CREATE TABLE IF NOT EXISTS `bbs_moderator_complaint` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `reporter_id` int(11) NOT NULL COMMENT '投诉人用户ID',
+    `moderator_id` int(11) NOT NULL COMMENT '被投诉版主用户ID',
+    `label_id` int(11) DEFAULT NULL COMMENT '被投诉版主管理的标签ID',
+    `content` text NOT NULL COMMENT '投诉内容',
+    `status` varchar(20) NOT NULL DEFAULT 'pending' COMMENT '处理状态(pending/accepted/rejected)',
+    `reviewer_id` int(11) DEFAULT NULL COMMENT '审核人ID',
+    `review_remark` varchar(500) DEFAULT NULL COMMENT '审核备注',
+    `review_time` varchar(20) DEFAULT NULL COMMENT '审核时间',
+    `create_time` varchar(20) NOT NULL COMMENT '投诉时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_moderator_id` (`moderator_id`),
+    KEY `idx_reporter_id` (`reporter_id`),
+    KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='版主投诉表';

@@ -467,3 +467,20 @@ DELETE FROM bbs_sensitive_word WHERE id NOT IN (
     SELECT MIN(id) FROM bbs_sensitive_word GROUP BY keyword
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uk_sensitive_word_keyword ON bbs_sensitive_word (keyword);
+
+-- @migration: v022-moderator-complaint 版主投诉表（用户可投诉版主违规操作）
+CREATE TABLE IF NOT EXISTS bbs_moderator_complaint (
+    id SERIAL PRIMARY KEY,
+    reporter_id integer NOT NULL,
+    moderator_id integer NOT NULL,
+    label_id integer DEFAULT NULL,
+    content text NOT NULL,
+    status varchar(20) NOT NULL DEFAULT 'pending',
+    reviewer_id integer DEFAULT NULL,
+    review_remark varchar(500) DEFAULT NULL,
+    review_time varchar(20) DEFAULT NULL,
+    create_time varchar(20) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_moderator_id ON bbs_moderator_complaint (moderator_id);
+CREATE INDEX IF NOT EXISTS idx_reporter_id ON bbs_moderator_complaint (reporter_id);
+CREATE INDEX IF NOT EXISTS idx_mc_status ON bbs_moderator_complaint (status);

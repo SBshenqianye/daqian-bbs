@@ -185,6 +185,10 @@ export default {
         case 'suggestion_adopted':
           this.$router.push('/my-points-log')
           return
+        case 'moderator_complaint':
+        case 'complaint_review':
+          this.$router.push('/moderator-complaint')
+          return
       }
 
       // 其余类型（reply/comment/adopt/adopt_rejected/hot_bonus/suggestion_adopted）
@@ -227,6 +231,8 @@ export default {
         report_pending: 'flag',
         appeal_review: 'assignment',
         moderator_reward: 'payments',
+        moderator_complaint: 'flag',
+        complaint_review: 'assignment',
       }
       return icons[type] || 'notifications'
     },
@@ -245,6 +251,8 @@ export default {
         report_pending: 'bg-yellow-50',
         appeal_review: 'bg-indigo-50',
         moderator_reward: 'bg-emerald-50',
+        moderator_complaint: 'bg-orange-50',
+        complaint_review: 'bg-indigo-50',
       }
       return map[type] || 'bg-gray-50'
     },
@@ -263,6 +271,8 @@ export default {
         report_pending: 'text-yellow-600',
         appeal_review: 'text-indigo-600',
         moderator_reward: 'text-emerald-600',
+        moderator_complaint: 'text-orange-600',
+        complaint_review: 'text-indigo-600',
       }
       return map[type] || 'text-gray-600'
     },
@@ -281,6 +291,8 @@ export default {
         report_pending: '举报待审',
         appeal_review: '申诉审核',
         moderator_reward: '版主奖励',
+        moderator_complaint: '版主投诉',
+        complaint_review: '投诉审核',
       }
       return labels[type] || '通知'
     },

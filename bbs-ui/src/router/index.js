@@ -102,6 +102,12 @@ const router = new VueRouter({
             meta: { auth: true }
         },
         {
+            name: 'BBSModeratorComplaint',
+            path: '/moderator-complaint',
+            component: () => import('@/views/BBSModeratorComplaint.vue'),
+            meta: { auth: true }
+        },
+        {
             name: 'BBSNotifications',
             path: '/notifications',
             component: () => import('@/views/BBSNotifications.vue'),
