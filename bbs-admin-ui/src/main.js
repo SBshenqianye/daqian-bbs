@@ -10,6 +10,7 @@ import './assets/tailwind.css';
 import {postRequest,putRequest,getRequest,getRequestUrl,deleteRequest,uploadFile,downloadFile} from "@/api/api";
 import * as echarts from 'echarts'
 import {installErrorHandler} from "./utils/errorHandler";
+import adminStore from "./utils/adminStore";
 
 
 Vue.prototype.$echarts = echarts
@@ -28,15 +29,20 @@ Vue.use(ElementUI, {
     size: 'small'
 });
 
+// 初始化管理员状态 Store
+adminStore.init();
+
 //使用钩子函数对路由进行权限跳转
 router.beforeEach((to, from, next) => {
     document.title = `大千智荟创新创意交流论坛`;
-    const role = window.sessionStorage.getItem('admin');
+    const isLoggedIn = adminStore.isLoggedIn();
     const publicPaths = ['/login'];
-    if (!role && !publicPaths.includes(to.path)) {
+    if (!isLoggedIn && !publicPaths.includes(to.path)) {
         next('/login');
     } else if (to.meta.permission) {
         // 如果是管理员权限则可进入
+        const admin = adminStore.state.admin;
+        const role = admin ? admin.username : null;
         role === 'admin' ? next() : next('/403');
     } else {
         next();

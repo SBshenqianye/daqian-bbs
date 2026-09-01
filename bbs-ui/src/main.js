@@ -26,6 +26,8 @@ import {getRequest} from "@/api/api";
 import {deleteRequest} from "@/api/api";
 //引入 身份认证工具
 import {getToken, getUser} from "@/utils/auth";
+//引入 用户状态 Store
+import userStore from "@/utils/userStore";
 
 
 
@@ -50,6 +52,9 @@ Vue.prototype.deleteRequest = deleteRequest;
 // 需要登录才能访问的路径（未登录时直接跳转登录页）
 const authPaths = ['/write', '/userinfo', '/stat', '/my-replies'];
 const needAuth = (path) => authPaths.some(p => path === p || path.startsWith(p + '/'));
+
+// 初始化用户状态 Store
+userStore.init();
 
 router.beforeEach(((to, from, next) => {
     var hasToken = getToken();
