@@ -383,7 +383,9 @@ INSERT INTO `bbs_dict` (`id`, `dict_type`, `dict_value`, `dict_label`, `dict_sor
 (9, 'violation', '3', '虚假恶意举报', 5, '系统', '2026-08-25 00:00:00', '扣3分', 'false_report'),
 (10, 'violation', '20', '泄露企业秘密', 6, '系统', '2026-08-25 00:00:00', '扣20分', 'leak'),
 (11, 'hot_threshold', '10', '帖子热度回复阈值', 10, '系统', '2026-08-25 00:00:00', '回复数超过此值触发热度奖励', 'hot_threshold'),
-(12, 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', '2026-08-25 00:00:00', '登录后需浏览满此分钟数才计分', 'login_browse_minutes');
+(12, 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', '2026-08-25 00:00:00', '登录后需浏览满此分钟数才计分', 'login_browse_minutes'),
+(13, 'moderator_reward_auto', '0', '版主奖励自动发放开关', 13, '系统', '2026-09-01 00:00:00', '值：0关闭，1开启', 'moderator_reward_auto'),
+(14, 'moderator_reward_day', '1', '版主奖励发放日', 14, '系统', '2026-09-01 00:00:00', '每月发放日（1-28）', 'moderator_reward_day');
 
 -- ----------------------------
 -- 系统配置（使用反馈联系方式）
@@ -617,5 +619,21 @@ CREATE TABLE `bbs_featured_recommendation` (
   INDEX `idx_fr_article` (`article_id`),
   INDEX `idx_fr_status` (`status`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '精华帖推荐审批表';
+
+-- ----------------------------
+-- Table: bbs_moderator_reward_cancel（版主履职奖励取消记录）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_moderator_reward_cancel`;
+CREATE TABLE `bbs_moderator_reward_cancel` (
+  `id`          int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `year_month`  varchar(7) NOT NULL COMMENT '年月(yyyy-MM)',
+  `user_id`     int(11) NOT NULL COMMENT '被取消奖励的版主用户ID',
+  `operator_id` int(11) DEFAULT NULL COMMENT '操作人ID',
+  `remark`      varchar(500) DEFAULT NULL COMMENT '取消原因',
+  `create_time` varchar(20) NOT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_mrc_ym` (`year_month`),
+  UNIQUE KEY `uk_mrc_ym_user` (`year_month`, `user_id`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '版主履职奖励取消记录';
 
 SET FOREIGN_KEY_CHECKS = 1;

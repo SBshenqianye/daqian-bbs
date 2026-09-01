@@ -42,6 +42,7 @@ public final class NotificationCategory {
         m.put("violation", SYSTEM);             // 违规记录
         m.put("post_restricted", SYSTEM);       // 发帖权限限制
         m.put("moderator_reward", SYSTEM);      // 版主月度履职奖励
+        m.put("moderator_reward_cancelled", SYSTEM); // 版主奖励被取消
         m.put("moderator_complaint", SYSTEM);    // 版主投诉（通知超管）
         m.put("complaint_review", SYSTEM);       // 投诉审核结果（通知投诉人）
         m.put("featured_recommend", SYSTEM);      // 精华帖推荐（通知超管）

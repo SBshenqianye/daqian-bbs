@@ -62,4 +62,14 @@ public class ConstantUtil {
      * 魔法值-精华帖积分-键
      */
     public static final String MANA_FEATURED = "featured";
+
+    /**
+     * 版主履职奖励-自动发放开关（dict_value='1'开启）
+     */
+    public static final String MODERATOR_REWARD_AUTO = "moderator_reward_auto";
+
+    /**
+     * 版主履职奖励-发放日（dict_value=日期，1-28）
+     */
+    public static final String MODERATOR_REWARD_DAY = "moderator_reward_day";
 }

@@ -36,4 +36,33 @@ public interface BoardModeratorService extends IService<BoardModerator> {
      * @return 发放结果
      */
     ResultBean monthlyReward(Integer operatorId);
+
+    /**
+     * 取消指定版主下月履职奖励
+     * @param userId 被取消的版主用户ID
+     * @param operatorId 操作人ID
+     * @param remark 取消原因
+     * @return 操作结果
+     */
+    ResultBean cancelReward(Integer userId, Integer operatorId, String remark);
+
+    /**
+     * 恢复指定版主下月履职奖励（取消取消）
+     * @param userId 被恢复的版主用户ID
+     * @return 操作结果
+     */
+    ResultBean restoreReward(Integer userId);
+
+    /**
+     * 查询当前月取消列表
+     * @return 取消记录列表
+     */
+    ResultBean listCancelledRewards();
+
+    /**
+     * 自动发放版主履职奖励（定时任务调用）
+     * 检查当前日期是否为发放日，若是则自动发放
+     * @return 发放结果
+     */
+    ResultBean autoMonthlyReward();
 }

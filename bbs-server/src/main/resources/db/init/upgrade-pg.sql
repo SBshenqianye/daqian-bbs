@@ -499,3 +499,15 @@ CREATE TABLE IF NOT EXISTS bbs_featured_recommendation (
 );
 CREATE INDEX IF NOT EXISTS idx_fr_article ON bbs_featured_recommendation (article_id);
 CREATE INDEX IF NOT EXISTS idx_fr_status ON bbs_featured_recommendation (status);
+
+-- @migration: v024-moderator-reward-auto 版主履职奖励自动发放+取消机制
+CREATE TABLE IF NOT EXISTS bbs_moderator_reward_cancel (
+    id SERIAL PRIMARY KEY,
+    year_month varchar(7) NOT NULL,
+    user_id integer NOT NULL,
+    operator_id integer DEFAULT NULL,
+    remark varchar(500) DEFAULT NULL,
+    create_time varchar(20) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_mrc_ym ON bbs_moderator_reward_cancel (year_month);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_mrc_ym_user ON bbs_moderator_reward_cancel (year_month, user_id);

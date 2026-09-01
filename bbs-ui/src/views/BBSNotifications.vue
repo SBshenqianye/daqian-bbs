@@ -181,6 +181,7 @@ export default {
           this.$router.push('/my-violations')
           return
         case 'moderator_reward':
+        case 'moderator_reward_cancelled':
         case 'hot_bonus':
         case 'suggestion_adopted':
           this.$router.push('/my-points-log')
@@ -235,6 +236,7 @@ export default {
         report_pending: 'flag',
         appeal_review: 'assignment',
         moderator_reward: 'payments',
+        moderator_reward_cancelled: 'cancel',
         moderator_complaint: 'flag',
         complaint_review: 'assignment',
         featured_recommend: 'stars',
@@ -257,6 +259,7 @@ export default {
         report_pending: 'bg-yellow-50',
         appeal_review: 'bg-indigo-50',
         moderator_reward: 'bg-emerald-50',
+        moderator_reward_cancelled: 'bg-red-50',
         moderator_complaint: 'bg-orange-50',
         complaint_review: 'bg-indigo-50',
         featured_recommend: 'bg-amber-50',
@@ -279,6 +282,7 @@ export default {
         report_pending: 'text-yellow-600',
         appeal_review: 'text-indigo-600',
         moderator_reward: 'text-emerald-600',
+        moderator_reward_cancelled: 'text-red-600',
         moderator_complaint: 'text-orange-600',
         complaint_review: 'text-indigo-600',
         featured_recommend: 'text-amber-600',
@@ -301,6 +305,7 @@ export default {
         report_pending: '举报待审',
         appeal_review: '申诉审核',
         moderator_reward: '版主奖励',
+        moderator_reward_cancelled: '奖励取消',
         moderator_complaint: '版主投诉',
         complaint_review: '投诉审核',
         featured_recommend: '精华推荐',

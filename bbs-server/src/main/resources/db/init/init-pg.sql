@@ -353,7 +353,9 @@ INSERT INTO bbs_dict (id, dict_type, dict_value, dict_label, dict_sort, create_b
 (9, 'violation', '3', '虚假恶意举报', 5, '系统', '2026-08-25 00:00:00', '扣3分', 'false_report'),
 (10, 'violation', '20', '泄露企业秘密', 6, '系统', '2026-08-25 00:00:00', '扣20分', 'leak'),
 (11, 'hot_threshold', '10', '帖子热度回复阈值', 10, '系统', '2026-08-25 00:00:00', '回复数超过此值触发热度奖励', 'hot_threshold'),
-(12, 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', '2026-08-25 00:00:00', '登录后需浏览满此分钟数才计分', 'login_browse_minutes')
+(12, 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', '2026-08-25 00:00:00', '登录后需浏览满此分钟数才计分', 'login_browse_minutes'),
+(13, 'moderator_reward_auto', '0', '版主奖励自动发放开关', 13, '系统', '2026-09-01 00:00:00', '值：0关闭，1开启', 'moderator_reward_auto'),
+(14, 'moderator_reward_day', '1', '版主奖励发放日', 14, '系统', '2026-09-01 00:00:00', '每月发放日（1-28）', 'moderator_reward_day')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------
@@ -560,6 +562,20 @@ CREATE TABLE IF NOT EXISTS bbs_featured_recommendation (
 );
 CREATE INDEX IF NOT EXISTS idx_fr_article ON bbs_featured_recommendation (article_id);
 CREATE INDEX IF NOT EXISTS idx_fr_status ON bbs_featured_recommendation (status);
+
+-- ----------------------------
+-- Table: bbs_moderator_reward_cancel（版主履职奖励取消记录）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_moderator_reward_cancel (
+    id          SERIAL PRIMARY KEY,
+    year_month  varchar(7) NOT NULL,
+    user_id     integer NOT NULL,
+    operator_id integer DEFAULT NULL,
+    remark      varchar(500) DEFAULT NULL,
+    create_time varchar(20) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_mrc_ym ON bbs_moderator_reward_cancel (year_month);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_mrc_ym_user ON bbs_moderator_reward_cancel (year_month, user_id);
 
 -- ----------------------------
 -- 重置序列，使后续自增从正确值开始

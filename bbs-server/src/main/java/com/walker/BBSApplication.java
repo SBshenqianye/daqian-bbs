@@ -4,6 +4,7 @@ import com.walker.config.DatabaseInitHelper;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.InputStream;
@@ -13,6 +14,7 @@ import java.util.regex.Pattern;
 
 @SpringBootApplication
 @MapperScan("com.walker.mapper")
+@EnableScheduling
 public class BBSApplication {
 
     public static void main(String[] args) {

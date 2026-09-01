@@ -167,7 +167,7 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
         }
         if (!articleIds.isEmpty()) {
             List<Article> articles = articleService.listByIds(articleIds);
-            for (Article a : articles) articleMap.put(a.getId(), a);
+            for (Article a : articles) articleMap.put(a.getArticleId(), a);
         }
 
         for (FeaturedRecommendation r : result.getRecords()) {

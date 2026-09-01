@@ -61,4 +61,32 @@ public class BoardModeratorController {
                 ? Integer.parseInt(params.get("operatorId").toString()) : null;
         return boardModeratorService.monthlyReward(operatorId);
     }
+
+    @ApiOperation(value = "取消版主本月履职奖励")
+    @PostMapping("/admin/moderator/cancelReward")
+    public ResultBean cancelReward(@RequestBody Map<String, Object> params) {
+        Integer userId = params.get("userId") != null ? Integer.parseInt(params.get("userId").toString()) : null;
+        Integer operatorId = params.get("operatorId") != null ? Integer.parseInt(params.get("operatorId").toString()) : null;
+        String remark = (String) params.get("remark");
+        return boardModeratorService.cancelReward(userId, operatorId, remark);
+    }
+
+    @ApiOperation(value = "恢复版主本月履职奖励")
+    @PostMapping("/admin/moderator/restoreReward")
+    public ResultBean restoreReward(@RequestBody Map<String, Object> params) {
+        Integer userId = params.get("userId") != null ? Integer.parseInt(params.get("userId").toString()) : null;
+        return boardModeratorService.restoreReward(userId);
+    }
+
+    @ApiOperation(value = "查询本月被取消奖励的版主列表")
+    @PostMapping("/admin/moderator/cancelledRewards")
+    public ResultBean cancelledRewards() {
+        return boardModeratorService.listCancelledRewards();
+    }
+
+    @ApiOperation(value = "手动触发自动发放（测试用）")
+    @PostMapping("/admin/moderator/triggerAutoReward")
+    public ResultBean triggerAutoReward() {
+        return boardModeratorService.autoMonthlyReward();
+    }
 }
