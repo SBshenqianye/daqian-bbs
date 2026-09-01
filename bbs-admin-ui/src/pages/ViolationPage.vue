@@ -17,8 +17,8 @@
         <h3 class="font-title-lg text-title-lg mb-4">新增违规记录</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-body-sm text-on-surface-variant mb-1">用户ID</label>
-            <input v-model="form.userId" type="number" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none" placeholder="输入用户ID">
+            <label class="block text-body-sm text-on-surface-variant mb-1">选择用户</label>
+            <UserSelect v-model="form.userId" placeholder="搜索用户名或昵称..." />
           </div>
           <div>
             <label class="block text-body-sm text-on-surface-variant mb-1">违规类型</label>
@@ -81,8 +81,8 @@
               <tr v-for="item in list" :key="item.id" class="hover:bg-surface-container-low/50">
                 <!-- 用户 -->
                 <td class="px-4 py-3 text-body-sm">
-                  <el-tooltip :content="'用户ID: ' + item.userId" placement="top" :open-delay="300">
-                    <span class="cursor-help">{{ item.nickname || item.userId }}</span>
+                  <el-tooltip :content="'ID: ' + item.userId + ' | 昵称: ' + (item.nickname || '无')" placement="top" :open-delay="300">
+                    <span class="cursor-help text-primary hover:underline">{{ item.nickname || '用户#' + item.userId }}</span>
                   </el-tooltip>
                 </td>
                 <!-- 违规类型 -->
@@ -125,8 +125,11 @@
 </template>
 
 <script>
+import UserSelect from '@/components/UserSelect.vue'
+
 export default {
   name: 'ViolationPage',
+  components: { UserSelect },
   data() {
     return {
       loading: false,
