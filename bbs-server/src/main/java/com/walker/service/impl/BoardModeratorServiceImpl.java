@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.BoardModeratorMapper;
 import com.walker.pojo.BoardModerator;
+import com.walker.pojo.PointsLog;
 import com.walker.service.BoardModeratorService;
+import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
 import com.walker.service.UserService;
 import com.walker.vo.ResultBean;
@@ -14,9 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper, BoardModerator> implements BoardModeratorService {
@@ -29,6 +30,9 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @Override
     @Transactional
@@ -99,5 +103,68 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
     public boolean isModerator(Integer userId, Integer labelId) {
         BoardModerator mod = boardModeratorMapper.findByUserAndLabel(userId, labelId);
         return mod != null;
+    }
+
+    @Override
+    @Transactional
+    public ResultBean monthlyReward(Integer operatorId) {
+        // 1. 查询所有有效版主
+        LambdaQueryWrapper<BoardModerator> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(BoardModerator::getStatus, 1);
+        List<BoardModerator> moderators = this.list(wrapper);
+
+        if (moderators.isEmpty()) {
+            return ResultBean.success("当前无有效版主，无需发放奖励");
+        }
+
+        // 2. 去重（同一用户可能任多个版块版主，每月只发一次）
+        Set<Integer> uniqueModeratorIds = moderators.stream()
+                .map(BoardModerator::getUserId)
+                .collect(Collectors.toSet());
+
+        // 3. 获取当前月份前缀（用于检查是否已发放）
+        SimpleDateFormat monthFmt = new SimpleDateFormat("yyyy-MM");
+        String currentMonth = monthFmt.format(new Date()) + "-";
+
+        int rewardPoints = 15;
+        int rewarded = 0;
+        List<Integer> alreadyRewarded = new ArrayList<>();
+
+        for (Integer userId : uniqueModeratorIds) {
+            // 检查本月是否已发放过版主履职奖励
+            LambdaQueryWrapper<PointsLog> checkWrapper = new LambdaQueryWrapper<>();
+            checkWrapper.eq(PointsLog::getUserId, userId)
+                    .likeRight(PointsLog::getCreateTime, currentMonth)
+                    .eq(PointsLog::getReason, "版主月度履职奖励");
+            long existingCount = pointsLogService.count(checkWrapper);
+
+            if (existingCount > 0) {
+                alreadyRewarded.add(userId);
+                continue;
+            }
+
+            // 发放15积分
+            pointsLogService.adjustUserPoints(userId, rewardPoints, "版主月度履职奖励",
+                    "moderator_reward", null, operatorId);
+
+            // 通知版主
+            notificationService.createNotification(userId, operatorId, "moderator_reward",
+                    "恭喜！您获得本月版主履职奖励 +" + rewardPoints + "积分",
+                    "user", userId);
+
+            rewarded++;
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("totalModerators", uniqueModeratorIds.size());
+        data.put("rewarded", rewarded);
+        data.put("alreadyRewarded", alreadyRewarded.size());
+
+        String msg = "版主履职奖励发放完成：共" + uniqueModeratorIds.size() + "位版主，"
+                + "发放" + rewarded + "人";
+        if (!alreadyRewarded.isEmpty()) {
+            msg += "，" + alreadyRewarded.size() + "人本月已发放跳过";
+        }
+        return ResultBean.success(msg, data);
     }
 }

@@ -41,6 +41,7 @@ public final class NotificationCategory {
         m.put("report_pending", SYSTEM);        // 实名举报待审核（通知超级管理员）
         m.put("violation", SYSTEM);             // 违规记录
         m.put("post_restricted", SYSTEM);       // 发帖权限限制
+        m.put("moderator_reward", SYSTEM);      // 版主月度履职奖励
         TYPE_CATEGORY = Collections.unmodifiableMap(m);
     }
 

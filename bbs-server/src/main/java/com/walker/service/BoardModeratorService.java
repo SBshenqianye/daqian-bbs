@@ -28,4 +28,12 @@ public interface BoardModeratorService extends IService<BoardModerator> {
      * 检查用户是否为某标签版主
      */
     boolean isModerator(Integer userId, Integer labelId);
+
+    /**
+     * 发放本月版主履职奖励（每月一次性15积分）
+     * 运营方案：圆满完成月度版务工作，每月给予一次性15积分履职奖励
+     * @param operatorId 操作人ID（管理员触发）
+     * @return 发放结果
+     */
+    ResultBean monthlyReward(Integer operatorId);
 }

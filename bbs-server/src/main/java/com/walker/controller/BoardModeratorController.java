@@ -53,4 +53,12 @@ public class BoardModeratorController {
         data.put("isModerator", isMod);
         return ResultBean.success("查询成功", data);
     }
+
+    @ApiOperation(value = "发放本月版主履职奖励（每月一次性15积分）")
+    @PostMapping("/admin/moderator/monthlyReward")
+    public ResultBean monthlyReward(@RequestBody Map<String, Object> params) {
+        Integer operatorId = params.get("operatorId") != null
+                ? Integer.parseInt(params.get("operatorId").toString()) : null;
+        return boardModeratorService.monthlyReward(operatorId);
+    }
 }

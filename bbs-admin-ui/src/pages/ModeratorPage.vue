@@ -10,6 +10,12 @@
           </h1>
           <p class="text-body-md text-secondary mt-1">任命和撤销版块管理员</p>
         </div>
+        <div class="flex items-center gap-2">
+          <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60 text-body-sm flex items-center gap-1" :disabled="rewarding" @click="handleMonthlyReward">
+            <span class="material-symbols-outlined text-[16px]" style="vertical-align: text-bottom;">payments</span>
+            {{ rewarding ? '发放中...' : '发放本月履职奖励' }}
+          </button>
+        </div>
       </div>
 
       <!-- Appoint Dialog -->
@@ -81,6 +87,7 @@ export default {
     return {
       loading: false,
       appointing: false,
+      rewarding: false,
       list: [],
       total: 0,
       currentPage: 1,
@@ -137,7 +144,25 @@ export default {
         }
       } catch (e) { this.$message.error('撤销失败') }
     },
-    changePage(page) { this.currentPage = page; this.loadList() }
+    changePage(page) { this.currentPage = page; this.loadList() },
+    handleMonthlyReward() {
+      this.$confirm('确定为所有有效版主发放本月履职奖励（每人15积分）？已发放过的版主将自动跳过。', '发放履职奖励', { type: 'info' })
+        .then(() => this.doMonthlyReward())
+        .catch(() => {})
+    },
+    async doMonthlyReward() {
+      this.rewarding = true
+      try {
+        const user = JSON.parse(sessionStorage.getItem('user') || '{}')
+        const res = await this.postRequest('/admin/moderator/monthlyReward', { operatorId: user.id || 1 })
+        if (res && res.code == 200) {
+          this.$message.success(res.message || '发放成功')
+        } else {
+          this.$message.error((res && res.message) || '发放失败')
+        }
+      } catch (e) { this.$message.error('发放失败') }
+      finally { this.rewarding = false }
+    }
   }
 }
 </script>

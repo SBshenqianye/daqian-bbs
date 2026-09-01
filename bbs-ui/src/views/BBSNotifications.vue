@@ -180,6 +180,11 @@ export default {
         case 'post_restricted':
           this.$router.push('/my-violations')
           return
+        case 'moderator_reward':
+        case 'hot_bonus':
+        case 'suggestion_adopted':
+          this.$router.push('/my-points-log')
+          return
       }
 
       // 其余类型（reply/comment/adopt/adopt_rejected/hot_bonus/suggestion_adopted）
@@ -221,6 +226,7 @@ export default {
         report_confirmed: 'flag',
         report_pending: 'flag',
         appeal_review: 'assignment',
+        moderator_reward: 'payments',
       }
       return icons[type] || 'notifications'
     },
@@ -238,6 +244,7 @@ export default {
         report_confirmed: 'bg-rose-50',
         report_pending: 'bg-yellow-50',
         appeal_review: 'bg-indigo-50',
+        moderator_reward: 'bg-emerald-50',
       }
       return map[type] || 'bg-gray-50'
     },
@@ -255,6 +262,7 @@ export default {
         report_confirmed: 'text-rose-600',
         report_pending: 'text-yellow-600',
         appeal_review: 'text-indigo-600',
+        moderator_reward: 'text-emerald-600',
       }
       return map[type] || 'text-gray-600'
     },
@@ -272,6 +280,7 @@ export default {
         report_confirmed: '举报确认',
         report_pending: '举报待审',
         appeal_review: '申诉审核',
+        moderator_reward: '版主奖励',
       }
       return labels[type] || '通知'
     },
