@@ -1,14 +1,17 @@
 package com.walker.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.walker.pojo.BoardModerator;
+import com.walker.pojo.User;
 import com.walker.service.BoardModeratorService;
+import com.walker.service.UserService;
 import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 版块管理员控制器
@@ -19,6 +22,9 @@ public class BoardModeratorController {
 
     @Autowired
     private BoardModeratorService boardModeratorService;
+
+    @Autowired
+    private UserService userService;
 
     @ApiOperation(value = "任命版主")
     @PostMapping("/admin/moderator/appoint")
@@ -52,6 +58,59 @@ public class BoardModeratorController {
         Map<String, Object> data = new HashMap<>();
         data.put("isModerator", isMod);
         return ResultBean.success("查询成功", data);
+    }
+
+    @ApiOperation(value = "查询指定板块的版主列表（公开接口，用于投诉选择版主）")
+    @GetMapping("/common/moderator/listByLabel")
+    public ResultBean listModeratorsByLabel(@RequestParam Integer labelId) {
+        LambdaQueryWrapper<BoardModerator> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(BoardModerator::getLabelId, labelId)
+                .eq(BoardModerator::getStatus, 1);
+        List<BoardModerator> moderators = boardModeratorService.list(wrapper);
+        if (moderators.isEmpty()) {
+            return ResultBean.success("该板块暂无版主", new ArrayList<>());
+        }
+        return ResultBean.success("查询成功", buildModeratorInfoList(moderators));
+    }
+
+    @ApiOperation(value = "查询所有有效版主列表（公开接口，用于投诉跨板块搜索版主）")
+    @GetMapping("/common/moderator/listAll")
+    public ResultBean listAllModerators() {
+        LambdaQueryWrapper<BoardModerator> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(BoardModerator::getStatus, 1);
+        List<BoardModerator> moderators = boardModeratorService.list(wrapper);
+        if (moderators.isEmpty()) {
+            return ResultBean.success("暂无版主", new ArrayList<>());
+        }
+        return ResultBean.success("查询成功", buildModeratorInfoList(moderators));
+    }
+
+    /**
+     * 构建版主信息列表（含昵称、头像、所属板块名）
+     */
+    private List<Map<String, Object>> buildModeratorInfoList(List<BoardModerator> moderators) {
+        // 填充用户昵称
+        Set<Integer> userIds = new HashSet<>();
+        for (BoardModerator m : moderators) userIds.add(m.getUserId());
+        Map<Integer, String> nameMap = new HashMap<>();
+        Map<Integer, String> avatarMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            List<User> users = userService.listByIds(userIds);
+            for (User u : users) {
+                nameMap.put(u.getId(), u.getNickname());
+                avatarMap.put(u.getId(), u.getPortrait());
+            }
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (BoardModerator m : moderators) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("userId", m.getUserId());
+            item.put("nickname", nameMap.getOrDefault(m.getUserId(), "用户#" + m.getUserId()));
+            item.put("avatar", avatarMap.get(m.getUserId()));
+            item.put("labelId", m.getLabelId());
+            result.add(item);
+        }
+        return result;
     }
 
     @ApiOperation(value = "发放本月版主履职奖励（每月一次性15积分）")

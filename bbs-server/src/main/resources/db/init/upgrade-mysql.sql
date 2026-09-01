@@ -599,3 +599,10 @@ CREATE TABLE IF NOT EXISTS `bbs_moderator_reward_cancel` (
     KEY `idx_mrc_ym` (`year_month`),
     UNIQUE KEY `uk_mrc_ym_user` (`year_month`, `user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='版主履职奖励取消记录';
+
+-- @migration: v025-complaint-moderator-nullable 版主投诉支持不指定版主（匿名投诉）
+SELECT COUNT(*) INTO @col_mc_mod_nullable FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_moderator_complaint' AND COLUMN_NAME = 'moderator_id' AND IS_NULLABLE = 'NO';
+SET @sql_mc_mod_nullable = IF(@col_mc_mod_nullable > 0, 'ALTER TABLE `bbs_moderator_complaint` MODIFY COLUMN `moderator_id` int(11) NULL COMMENT ''被投诉版主用户ID''', 'SELECT 1');
+PREPARE stmt_mc_mod_nullable FROM @sql_mc_mod_nullable;
+EXECUTE stmt_mc_mod_nullable;
+DEALLOCATE PREPARE stmt_mc_mod_nullable;

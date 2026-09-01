@@ -73,6 +73,8 @@ axios.interceptors.response.use(success=>{
                 || url.indexOf('violation/myList') !== -1
                 || url.indexOf('appeal/myList') !== -1
                 || url.indexOf('appeal/submit') !== -1
+                || url.indexOf('moderatorComplaint/myList') !== -1
+                || url.indexOf('moderatorComplaint/submit') !== -1
             if (!noSuccessTip) {
                 Message({
                     type: 'success',

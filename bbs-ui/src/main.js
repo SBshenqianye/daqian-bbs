@@ -10,6 +10,7 @@ import './assets/tailwind.css'
 
 //按需引入element-ui
 import {
+    Message,
     MessageBox,
     Tooltip,
 } from 'element-ui';
@@ -36,6 +37,7 @@ Vue.use(VueRouter)
 Vue.component(Tooltip.name,Tooltip)
 
 
+Vue.prototype.$message = Message;
 Vue.prototype.$confirm = MessageBox.confirm;
 Vue.prototype.$alert = MessageBox.alert;
 

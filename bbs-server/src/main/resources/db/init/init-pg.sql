@@ -533,7 +533,7 @@ CREATE INDEX IF NOT EXISTS idx_board_mod_label ON bbs_board_moderator (label_id)
 CREATE TABLE IF NOT EXISTS bbs_moderator_complaint (
     id            SERIAL PRIMARY KEY,
     reporter_id   integer NOT NULL,
-    moderator_id  integer NOT NULL,
+    moderator_id  integer DEFAULT NULL,
     label_id      integer DEFAULT NULL,
     content       text NOT NULL,
     status        varchar(20) NOT NULL DEFAULT 'pending',

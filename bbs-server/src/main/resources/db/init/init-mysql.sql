@@ -587,7 +587,7 @@ DROP TABLE IF EXISTS `bbs_moderator_complaint`;
 CREATE TABLE `bbs_moderator_complaint` (
   `id`            int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `reporter_id`   int(11) NOT NULL COMMENT '投诉人用户ID',
-  `moderator_id`  int(11) NOT NULL COMMENT '被投诉版主用户ID',
+  `moderator_id`  int(11) NULL DEFAULT NULL COMMENT '被投诉版主用户ID',
   `label_id`      int(11) DEFAULT NULL COMMENT '被投诉版主管理的标签ID',
   `content`       text NOT NULL COMMENT '投诉内容',
   `status`        varchar(20) NOT NULL DEFAULT 'pending' COMMENT '处理状态(pending/accepted/rejected)',

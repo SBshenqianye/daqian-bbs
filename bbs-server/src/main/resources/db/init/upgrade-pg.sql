@@ -511,3 +511,6 @@ CREATE TABLE IF NOT EXISTS bbs_moderator_reward_cancel (
 );
 CREATE INDEX IF NOT EXISTS idx_mrc_ym ON bbs_moderator_reward_cancel (year_month);
 CREATE UNIQUE INDEX IF NOT EXISTS uk_mrc_ym_user ON bbs_moderator_reward_cancel (year_month, user_id);
+
+-- @migration: v025-complaint-moderator-nullable 版主投诉支持不指定版主
+ALTER TABLE bbs_moderator_complaint ALTER COLUMN moderator_id DROP NOT NULL;

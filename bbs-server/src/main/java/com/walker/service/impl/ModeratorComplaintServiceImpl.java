@@ -38,17 +38,19 @@ public class ModeratorComplaintServiceImpl extends ServiceImpl<ModeratorComplain
     @Override
     @Transactional
     public ResultBean submit(Integer reporterId, Integer moderatorId, Integer labelId, String content) {
-        if (reporterId == null || moderatorId == null || content == null || content.trim().isEmpty()) {
-            return ResultBean.error("参数不完整");
+        if (reporterId == null || content == null || content.trim().isEmpty()) {
+            return ResultBean.error("请填写投诉内容");
         }
         if (reporterId.equals(moderatorId)) {
             return ResultBean.error("不能投诉自己");
         }
 
-        // 检查是否已有相同版主的待审投诉
-        int pendingCount = complaintMapper.countPendingByReporterAndModerator(reporterId, moderatorId);
-        if (pendingCount > 0) {
-            return ResultBean.error("您已对该版主提交过投诉，请等待审核结果");
+        // 如果指定了版主，检查是否已有相同版主的待审投诉
+        if (moderatorId != null) {
+            int pendingCount = complaintMapper.countPendingByReporterAndModerator(reporterId, moderatorId);
+            if (pendingCount > 0) {
+                return ResultBean.error("您已对该版主提交过投诉，请等待审核结果");
+            }
         }
 
         SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -64,8 +66,9 @@ public class ModeratorComplaintServiceImpl extends ServiceImpl<ModeratorComplain
         // 通知超级管理员（bbs_user id=1）
         User reporter = userService.getById(reporterId);
         String reporterName = reporter != null ? reporter.getNickname() : "用户#" + reporterId;
+        String targetDesc = moderatorId != null ? "版主 #" + moderatorId : "（未指定具体版主）";
         notificationService.createNotification(1, reporterId, "moderator_complaint",
-                "收到新的版主投诉：「" + reporterName + "」投诉版主 #" + moderatorId,
+                "收到新的版主投诉：「" + reporterName + "」投诉" + targetDesc,
                 "moderator_complaint", complaint.getId());
 
         return ResultBean.success("投诉已提交，将在5个工作日内处理");
@@ -96,8 +99,8 @@ public class ModeratorComplaintServiceImpl extends ServiceImpl<ModeratorComplain
         complaint.setReviewTime(fmt.format(new Date()));
         this.updateById(complaint);
 
-        // 如果接受投诉，撤销版主身份
-        if ("accepted".equals(status) && complaint.getLabelId() != null) {
+        // 如果接受投诉，撤销版主身份（需要同时有 moderatorId 和 labelId）
+        if ("accepted".equals(status) && complaint.getModeratorId() != null && complaint.getLabelId() != null) {
             boardModeratorService.dismiss(complaint.getModeratorId(), complaint.getLabelId());
         }
 

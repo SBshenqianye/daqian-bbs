@@ -43,7 +43,7 @@
             <tr v-for="item in list" :key="item.id" class="hover:bg-surface-container-low/50">
               <td class="px-4 py-3 text-body-sm">{{ item.id }}</td>
               <td class="px-4 py-3 text-body-sm">{{ item.reporterName || '用户#' + item.reporterId }}</td>
-              <td class="px-4 py-3 text-body-sm">{{ item.moderatorName || '用户#' + item.moderatorId }}</td>
+              <td class="px-4 py-3 text-body-sm">{{ item.moderatorName || (item.moderatorId ? '用户#' + item.moderatorId : '未指定') }}</td>
               <td class="px-4 py-3 text-body-sm max-w-xs truncate" :title="item.content">{{ item.content }}</td>
               <td class="px-4 py-3 text-body-sm">
                 <span class="px-2 py-0.5 rounded text-[11px] font-medium"
@@ -81,7 +81,9 @@
           {{ reviewForm.status === 'accepted' ? '采纳投诉' : '驳回投诉' }}
         </h3>
         <p class="text-body-md text-on-surface-variant mb-2">
-          {{ reviewForm.status === 'accepted' ? '确认后将自动撤销该版主身份。' : '驳回该投诉，版主身份不变。' }}
+          {{ reviewForm.status === 'accepted'
+            ? (reviewForm.hasModerator ? '确认后将自动撤销该版主身份。' : '确认采纳该投诉。')
+            : '驳回该投诉，版主身份不变。' }}
         </p>
         <div class="mb-4">
           <label class="block text-body-sm text-on-surface-variant mb-1">审核备注（选填）</label>
@@ -141,7 +143,7 @@ export default {
       finally { this.loading = false }
     },
     handleReview(item, status) {
-      this.reviewForm = { id: item.id, status, remark: '' }
+      this.reviewForm = { id: item.id, status, remark: '', hasModerator: !!(item.moderatorId && item.labelId) }
       this.reviewDialogVisible = true
     },
     async doReview() {
