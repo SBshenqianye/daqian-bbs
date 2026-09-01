@@ -1019,4 +1019,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return ResultBean.success("用户创建成功");
     }
 
+    @Override
+    public void fillOrgNames(List<User> users) {
+        resolveOrgInfo(users);
+    }
+
 }
