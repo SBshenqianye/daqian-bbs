@@ -463,9 +463,11 @@
 <script>
 import MarkdownIt from 'markdown-it/dist/markdown-it'
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
+import paginationMixin from '@/mixins/pagination'
 
 export default {
   name: 'ArticlePage',
+  mixins: [paginationMixin],
   data() {
     return {
       activeTab: 'done',
@@ -477,12 +479,6 @@ export default {
         labelId: '',
         startTime: '',
         endTime: '',
-      },
-      pagination: {
-        total: 0,
-        page: 1,
-        size: 10,
-        pages: 1,
       },
       tabCounts: {
         done: 0,
@@ -529,19 +525,6 @@ export default {
       if (!this.detailContent) return ''
       return this._renderMarkdown(this.detailContent)
     },
-    pageNumbers() {
-      const pages = this.pagination.pages
-      const current = this.pagination.page
-      if (pages <= 7) return pages
-      const nums = []
-      let start = Math.max(1, current - 2)
-      let end = Math.min(pages, current + 2)
-      if (start > 2) { nums.push(1, '...') }
-      for (let i = start; i <= end; i++) nums.push(i)
-      if (end < pages - 1) { nums.push('...', pages) }
-      else if (end === pages - 1) { nums.push(pages) }
-      return nums
-    },
   },
   mounted() {
     this.loadLabels()
@@ -555,47 +538,33 @@ export default {
     },
     switchTab(tab) {
       this.activeTab = tab
-      this.pagination.page = 1
-      this.fetchList()
+      this.resetPage()
     },
     handleSearch() {
-      this.pagination.page = 1
-      this.fetchList()
+      this.resetPage()
     },
     handleReset() {
       this.searchForm = { keywords: '', labelId: '', startTime: '', endTime: '' }
-      this.pagination.page = 1
-      this.fetchList()
+      this.resetPage()
     },
-    changePage(page) {
-      if (page < 1 || page > this.pagination.pages) return
-      this.pagination.page = page
+    onPageChange() {
       this.fetchList()
     },
     fetchList() {
       this.loading = true
       const params = {
+        ...this.paginationParams,
         keywords: this.searchForm.keywords,
         labelId: this.searchForm.labelId,
         startTime: this.searchForm.startTime,
         endTime: this.searchForm.endTime,
-        page: this.pagination.page,
-        size: this.pagination.size,
       }
 
       if (this.activeTab === 'featured') {
         // 精华帖管理调专用接口
         this.postRequest('/admin/featured/list', params).then(resp => {
           this.loading = false
-          if (resp && resp.obj) {
-            this.articleList = Array.isArray(resp.obj.list) ? resp.obj.list : []
-            this.pagination.total = resp.obj.total || 0
-            this.pagination.pages = resp.obj.pages || 1
-          } else {
-            this.articleList = []
-            this.pagination.total = 0
-            this.pagination.pages = 1
-          }
+          this.articleList = this.parsePaginationResponse(resp)
         }).catch(err => {
           console.warn('[ArticlePage] fetch featured list', err)
           this.loading = false
@@ -606,15 +575,7 @@ export default {
         params.enable = this.activeTab === 'done' ? 1 : 0
         this.postRequest('/admin/article/list', params).then(resp => {
           this.loading = false
-          if (resp && resp.obj) {
-            this.articleList = Array.isArray(resp.obj.list) ? resp.obj.list : []
-            this.pagination.total = resp.obj.total || 0
-            this.pagination.pages = resp.obj.pages || 1
-          } else {
-            this.articleList = []
-            this.pagination.total = 0
-            this.pagination.pages = 1
-          }
+          this.articleList = this.parsePaginationResponse(resp)
         }).catch(err => {
           console.warn('[ArticlePage] fetch list', err)
           this.loading = false
@@ -916,7 +877,7 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 .detail-content {
   padding: 8px 0;
   background: transparent !important;
