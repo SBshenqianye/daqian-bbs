@@ -8,6 +8,7 @@ import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import javax.validation.Valid;
 
 import java.util.List;
 
@@ -26,10 +27,7 @@ public class DictController {
 
     @ApiOperation(value = "新增字典")
     @PostMapping("/admin/addDict")
-    public ResultBean addDict(@RequestBody Dict dict) {
-        if (dict == null) {
-            return ResultBean.error("参数不能为空！");
-        }
+    public ResultBean addDict(@RequestBody @Valid Dict dict) {
         boolean ok = dictService.saveDict(dict);
         return ok ? ResultBean.success("新增成功！") : ResultBean.error("新增失败！");
     }
@@ -46,8 +44,8 @@ public class DictController {
 
     @ApiOperation(value = "修改字典")
     @PostMapping("/admin/updateDict")
-    public ResultBean updateDict(@RequestBody Dict dict) {
-        if (dict == null || dict.getId() == null) {
+    public ResultBean updateDict(@RequestBody @Valid Dict dict) {
+        if (dict.getId() == null) {
             return ResultBean.error("参数有误，id不能为空！");
         }
         boolean ok = dictService.updateDict(dict);

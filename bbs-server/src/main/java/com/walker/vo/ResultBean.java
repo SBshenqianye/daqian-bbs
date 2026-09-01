@@ -1,6 +1,5 @@
 package com.walker.vo;
 
-
 import io.swagger.annotations.ApiModel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -12,56 +11,29 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ApiModel(value = "ResultBean对象",description = "公共返回对象")
-public class ResultBean {
+@ApiModel(value = "ResultBean对象", description = "公共返回对象")
+public class ResultBean<T> {
     private long code;
     private String message;
-    private Object obj;
+    private T obj;
 
-    /**
-     * 成功返回结果
-     * @param message
-     * @return
-     */
-    public static ResultBean success(String message){
-        return new ResultBean(200,message,null);
+    public static <T> ResultBean<T> success(String message) {
+        return new ResultBean<>(200, message, null);
     }
 
-    /**
-     * 成功返回结果
-     * @param message
-     * @param obj
-     * @return
-     */
-    public static ResultBean success(String message, Object obj){
-        return new ResultBean(200,message,obj);
+    public static <T> ResultBean<T> success(String message, T obj) {
+        return new ResultBean<>(200, message, obj);
     }
 
-    /**
-     * 失败返回结果
-     * @param message
-     * @return
-     */
-    public static ResultBean error(String message){
-        return new ResultBean(500,message,null);
+    public static <T> ResultBean<T> success(T obj) {
+        return new ResultBean<>(200, null, obj);
     }
 
-    /**
-     * 失败返回结果
-     * @param message
-     * @param obj
-     */
-    public static ResultBean error(String message, Object obj){
-        return new ResultBean(500,message,obj);
+    public static <T> ResultBean<T> error(String message) {
+        return new ResultBean<>(500, message, null);
     }
 
-    /**
-     * 成功返回结果
-     * @param obj
-     * @return ResultBean
-     */
-    public static ResultBean success(Object obj){
-        return new ResultBean(200,null,obj);
+    public static <T> ResultBean<T> error(String message, T obj) {
+        return new ResultBean<>(500, message, obj);
     }
-
 }

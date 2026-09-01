@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.annotation.*;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 
 import java.io.Serializable;
 
@@ -25,12 +27,15 @@ public class Dict implements Serializable {
     private Integer id;
 
     @ApiModelProperty("字典类型-键")
+    @NotBlank(message = "字典类型不能为空")
     private String dictType;
 
     @ApiModelProperty("值")
+    @NotBlank(message = "值不能为空")
     private String dictValue;
 
     @ApiModelProperty("中文翻译")
+    @NotBlank(message = "中文描述不能为空")
     private String dictLabel;
 
     @ApiModelProperty("排序序号")

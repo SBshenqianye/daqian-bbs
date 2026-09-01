@@ -6,6 +6,7 @@ import com.walker.mapper.DictMapper;
 import com.walker.pojo.Dict;
 import com.walker.service.DictService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.List;
 @Service
 public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements DictService {
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean saveDict(Dict dict) {
         String currentDateTime = DateUtil.formatDateTime(new Date());
@@ -27,6 +29,7 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
         return save(dict);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean updateDict(Dict dict) {
         String currentDateTime = DateUtil.formatDateTime(new Date());
@@ -34,6 +37,7 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
         return updateById(dict);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public boolean removeDictById(Integer id) {
         return removeById(id);
