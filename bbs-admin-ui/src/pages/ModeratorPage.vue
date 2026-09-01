@@ -60,8 +60,8 @@
         <h3 class="font-title-lg text-title-lg mb-4">任命版主</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label class="block text-body-sm text-on-surface-variant mb-1">用户ID</label>
-            <input v-model="form.userId" type="number" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none" placeholder="输入用户ID">
+            <label class="block text-body-sm text-on-surface-variant mb-1">选择用户</label>
+            <UserSelect v-model="form.userId" placeholder="搜索用户名或昵称..." @select="onUserSelect" />
           </div>
           <div>
             <label class="block text-body-sm text-on-surface-variant mb-1">版块标签ID</label>
@@ -86,7 +86,7 @@
             <thead class="bg-surface-container-low">
               <tr>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">ID</th>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">用户ID</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">用户</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">版块标签ID</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">角色</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">任命时间</th>
@@ -96,7 +96,11 @@
             <tbody class="divide-y divide-outline-variant/50">
               <tr v-for="item in list" :key="item.id" class="hover:bg-surface-container-low/50">
                 <td class="px-4 py-3 text-body-sm">{{ item.id }}</td>
-                <td class="px-4 py-3 text-body-sm">{{ item.userId }}</td>
+                <td class="px-4 py-3 text-body-sm">
+                  <el-tooltip :content="userTooltip(item.userId)" placement="top" :open-delay="300">
+                    <span class="cursor-help text-primary hover:underline">{{ userDisplayName(item.userId) }}</span>
+                  </el-tooltip>
+                </td>
                 <td class="px-4 py-3 text-body-sm">{{ item.labelId }}</td>
                 <td class="px-4 py-3 text-body-sm">{{ item.roleType === 'admin' ? '管理员' : '版主' }}</td>
                 <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.appointTime }}</td>
@@ -140,8 +144,12 @@
 </template>
 
 <script>
+import UserSelect from '@/components/UserSelect.vue'
+import axios from 'axios'
+
 export default {
   name: 'ModeratorPage',
+  components: { UserSelect },
   data() {
     return {
       loading: false,
@@ -157,7 +165,8 @@ export default {
       cancelledList: [],
       cancelDialogVisible: false,
       cancelSaving: false,
-      cancelForm: { userId: null, userName: '', remark: '' }
+      cancelForm: { userId: null, userName: '', remark: '' },
+      userMap: {} // userId -> { username, nickname, orgName, portrait }
     }
   },
   mounted() {
@@ -173,20 +182,46 @@ export default {
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0
+          await this.fetchUsersForList()
         } else { this.list = [] }
       } catch (e) { this.list = [] }
       finally { this.loading = false }
     },
+    async fetchUsersForList() {
+      const headers = {}
+      const token = window.sessionStorage.getItem('tokenStr')
+      if (token) headers['Authorization'] = token
+      const ids = [...new Set(this.list.map(i => i.userId).filter(Boolean))]
+      for (const id of ids) {
+        if (this.userMap[id]) continue
+        try {
+          const res = await axios.post(`${process.env.VUE_APP_BBS_API}/common/user/getUserinfoById/${id}`, null, { headers })
+          if (res && res.data && res.data.id) {
+            this.userMap[id] = { username: res.data.username, nickname: res.data.nickname, orgName: res.data.orgName, portrait: res.data.portrait }
+          }
+        } catch (e) { /* ignore */ }
+      }
+    },
+    userDisplayName(userId) {
+      const u = this.userMap[userId]
+      if (u) return u.nickname || u.username || '用户#' + userId
+      return '用户#' + userId
+    },
+    userTooltip(userId) {
+      const u = this.userMap[userId]
+      if (!u) return '用户ID: ' + userId
+      return `ID: ${userId} | 用户名: ${u.username} | 昵称: ${u.nickname || '无'} | 单位: ${u.orgName || '未分配'}`
+    },
+    onUserSelect(user) {
+      // UserSelect 已通过 v-model 更新 form.userId
+    },
     async loadAutoConfig() {
       try {
-        const res = await this.postRequest('/admin/dict/list', { dictType: 'moderator_reward_auto' })
-        if (res && res.code == 200 && res.obj && res.obj.records) {
-          const autoItem = res.obj.records.find(r => r.dictKey === 'moderator_reward_auto')
+        const res = await this.postRequest('/admin/listDict', {})
+        if (res && res.code == 200 && Array.isArray(res.obj)) {
+          const autoItem = res.obj.find(r => r.dictKey === 'moderator_reward_auto')
           if (autoItem) this.autoConfig.enabled = autoItem.dictValue || '0'
-        }
-        const res2 = await this.postRequest('/admin/dict/list', { dictType: 'moderator_reward_day' })
-        if (res2 && res2.code == 200 && res2.obj && res2.obj.records) {
-          const dayItem = res2.obj.records.find(r => r.dictKey === 'moderator_reward_day')
+          const dayItem = res.obj.find(r => r.dictKey === 'moderator_reward_day')
           if (dayItem) this.autoConfig.day = dayItem.dictValue || '1'
         }
       } catch (e) { /* ignore */ }
@@ -194,16 +229,29 @@ export default {
     async saveAutoConfig() {
       this.savingConfig = true
       try {
+        // 先获取字典列表，找到对应记录的 id
+        const listRes = await this.postRequest('/admin/listDict', {})
+        if (!listRes || listRes.code != 200 || !Array.isArray(listRes.obj)) {
+          this.$message.error('获取字典数据失败')
+          return
+        }
+        const dictList = listRes.obj
+        const autoItem = dictList.find(r => r.dictKey === 'moderator_reward_auto')
+        const dayItem = dictList.find(r => r.dictKey === 'moderator_reward_day')
         // 更新自动发放开关
-        await this.postRequest('/admin/dict/update', {
-          dictType: 'moderator_reward_auto', dictValue: this.autoConfig.enabled,
-          dictLabel: '版主奖励自动发放开关', dictKey: 'moderator_reward_auto'
-        })
+        if (autoItem) {
+          await this.postRequest('/admin/updateDict', {
+            id: autoItem.id, dictType: 'moderator_reward_auto', dictValue: this.autoConfig.enabled,
+            dictLabel: '版主奖励自动发放开关', dictKey: 'moderator_reward_auto'
+          })
+        }
         // 更新发放日
-        await this.postRequest('/admin/dict/update', {
-          dictType: 'moderator_reward_day', dictValue: this.autoConfig.day,
-          dictLabel: '版主奖励发放日', dictKey: 'moderator_reward_day'
-        })
+        if (dayItem) {
+          await this.postRequest('/admin/updateDict', {
+            id: dayItem.id, dictType: 'moderator_reward_day', dictValue: this.autoConfig.day,
+            dictLabel: '版主奖励发放日', dictKey: 'moderator_reward_day'
+          })
+        }
         this.$message.success('设置已保存')
       } catch (e) { this.$message.error('保存失败') }
       finally { this.savingConfig = false }

@@ -214,4 +214,10 @@ public interface UserService extends IService<User> {
     ResultBean adminAddUser(AdminUserAddParam param);
 
     ResultBean adminUpdateUserDetail(AdminUserUpdateParam param);
+
+    /**
+     * 批量填充用户的单位名称和部门名称（orgName/deptName）
+     * @param users 用户列表（非空，将就地填充）
+     */
+    void fillOrgNames(List<User> users);
 }

@@ -212,6 +212,35 @@ public class UserController {
         return ResultBean.error("参数不能为空");
     }
 
+    @ApiOperation(value = "用户搜索（管理员用，按用户名/昵称模糊搜索，返回精简字段供选择器使用）")
+    @GetMapping("/admin/user/search")
+    public ResultBean searchUsers(@RequestParam(value = "keyword", required = false, defaultValue = "") String keyword) {
+        if (StringUtils.isBlank(keyword) || keyword.trim().length() < 1) {
+            return ResultBean.success("搜索结果", new ArrayList<>());
+        }
+        String kw = keyword.trim();
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
+                .eq(User::getIsDelete, 0)
+                .and(w -> w.like(User::getUsername, kw).or().like(User::getNickname, kw))
+                .orderByDesc(User::getId)
+                .last("LIMIT 20");
+        List<User> users = userService.list(wrapper);
+        // 填充单位名称（orgName 是瞬态字段，需要从 bbs_sa_org 表解析）
+        userService.fillOrgNames(users);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (User u : users) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", u.getId());
+            item.put("username", u.getUsername());
+            item.put("nickname", u.getNickname());
+            item.put("orgName", u.getOrgName());
+            item.put("portrait", u.getPortrait());
+            item.put("userType", u.getUserType());
+            result.add(item);
+        }
+        return ResultBean.success("搜索结果", result);
+    }
+
     @ApiOperation(value = "通过用户id删除用户")
     @PostMapping("/admin/deleteUserByUserId")
     public ResultBean deleteUserByUserId(@RequestBody UserOperationParam userOperationParam){
