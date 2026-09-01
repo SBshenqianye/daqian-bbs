@@ -545,6 +545,23 @@ CREATE INDEX IF NOT EXISTS idx_mc_reporter ON bbs_moderator_complaint (reporter_
 CREATE INDEX IF NOT EXISTS idx_mc_status ON bbs_moderator_complaint (status);
 
 -- ----------------------------
+-- Table: bbs_featured_recommendation（精华帖推荐审批）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_featured_recommendation (
+    id              SERIAL PRIMARY KEY,
+    article_id      integer NOT NULL,
+    recommender_id  integer NOT NULL,
+    label_id        integer DEFAULT NULL,
+    status          varchar(20) NOT NULL DEFAULT 'pending',
+    reviewer_id     integer DEFAULT NULL,
+    review_remark   varchar(500) DEFAULT NULL,
+    review_time     varchar(20) DEFAULT NULL,
+    create_time     varchar(20) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fr_article ON bbs_featured_recommendation (article_id);
+CREATE INDEX IF NOT EXISTS idx_fr_status ON bbs_featured_recommendation (status);
+
+-- ----------------------------
 -- 重置序列，使后续自增从正确值开始
 -- 仅当序列当前值小于 max(id) 时才更新
 -- ----------------------------

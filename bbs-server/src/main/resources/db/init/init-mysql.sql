@@ -599,4 +599,23 @@ CREATE TABLE `bbs_moderator_complaint` (
   INDEX `idx_mc_status` (`status`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '版主投诉表';
 
+-- ----------------------------
+-- Table: bbs_featured_recommendation（精华帖推荐审批）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_featured_recommendation`;
+CREATE TABLE `bbs_featured_recommendation` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `article_id`      int(11) NOT NULL COMMENT '推荐文章ID',
+  `recommender_id`  int(11) NOT NULL COMMENT '推荐人(版主)ID',
+  `label_id`        int(11) DEFAULT NULL COMMENT '推荐人管理的标签ID',
+  `status`          varchar(20) NOT NULL DEFAULT 'pending' COMMENT '审批状态(pending/approved/rejected)',
+  `reviewer_id`     int(11) DEFAULT NULL COMMENT '审核人(总运营)ID',
+  `review_remark`   varchar(500) DEFAULT NULL COMMENT '审核备注',
+  `review_time`     varchar(20) DEFAULT NULL COMMENT '审核时间',
+  `create_time`     varchar(20) NOT NULL COMMENT '推荐时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_fr_article` (`article_id`),
+  INDEX `idx_fr_status` (`status`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '精华帖推荐审批表';
+
 SET FOREIGN_KEY_CHECKS = 1;

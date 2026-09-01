@@ -570,3 +570,19 @@ CREATE TABLE IF NOT EXISTS `bbs_moderator_complaint` (
     KEY `idx_reporter_id` (`reporter_id`),
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='版主投诉表';
+
+-- @migration: v023-featured-recommendation 精华帖推荐审批流程（版主初审→总运营终审）
+CREATE TABLE IF NOT EXISTS `bbs_featured_recommendation` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `article_id` int(11) NOT NULL COMMENT '推荐文章ID',
+    `recommender_id` int(11) NOT NULL COMMENT '推荐人(版主)ID',
+    `label_id` int(11) DEFAULT NULL COMMENT '推荐人管理的标签ID',
+    `status` varchar(20) NOT NULL DEFAULT 'pending' COMMENT '审批状态(pending/approved/rejected)',
+    `reviewer_id` int(11) DEFAULT NULL COMMENT '审核人(总运营)ID',
+    `review_remark` varchar(500) DEFAULT NULL COMMENT '审核备注',
+    `review_time` varchar(20) DEFAULT NULL COMMENT '审核时间',
+    `create_time` varchar(20) NOT NULL COMMENT '推荐时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_fr_article` (`article_id`),
+    KEY `idx_fr_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='精华帖推荐审批表';

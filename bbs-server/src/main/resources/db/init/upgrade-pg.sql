@@ -484,3 +484,18 @@ CREATE TABLE IF NOT EXISTS bbs_moderator_complaint (
 CREATE INDEX IF NOT EXISTS idx_moderator_id ON bbs_moderator_complaint (moderator_id);
 CREATE INDEX IF NOT EXISTS idx_reporter_id ON bbs_moderator_complaint (reporter_id);
 CREATE INDEX IF NOT EXISTS idx_mc_status ON bbs_moderator_complaint (status);
+
+-- @migration: v023-featured-recommendation 精华帖推荐审批流程（版主初审→总运营终审）
+CREATE TABLE IF NOT EXISTS bbs_featured_recommendation (
+    id SERIAL PRIMARY KEY,
+    article_id integer NOT NULL,
+    recommender_id integer NOT NULL,
+    label_id integer DEFAULT NULL,
+    status varchar(20) NOT NULL DEFAULT 'pending',
+    reviewer_id integer DEFAULT NULL,
+    review_remark varchar(500) DEFAULT NULL,
+    review_time varchar(20) DEFAULT NULL,
+    create_time varchar(20) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fr_article ON bbs_featured_recommendation (article_id);
+CREATE INDEX IF NOT EXISTS idx_fr_status ON bbs_featured_recommendation (status);

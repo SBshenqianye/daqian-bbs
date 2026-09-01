@@ -189,6 +189,10 @@ export default {
         case 'complaint_review':
           this.$router.push('/moderator-complaint')
           return
+        case 'featured_recommend':
+        case 'featured_review':
+          // 跳转到关联文章详情
+          break
       }
 
       // 其余类型（reply/comment/adopt/adopt_rejected/hot_bonus/suggestion_adopted）
@@ -233,6 +237,8 @@ export default {
         moderator_reward: 'payments',
         moderator_complaint: 'flag',
         complaint_review: 'assignment',
+        featured_recommend: 'stars',
+        featured_review: 'stars',
       }
       return icons[type] || 'notifications'
     },
@@ -253,6 +259,8 @@ export default {
         moderator_reward: 'bg-emerald-50',
         moderator_complaint: 'bg-orange-50',
         complaint_review: 'bg-indigo-50',
+        featured_recommend: 'bg-amber-50',
+        featured_review: 'bg-amber-50',
       }
       return map[type] || 'bg-gray-50'
     },
@@ -273,6 +281,8 @@ export default {
         moderator_reward: 'text-emerald-600',
         moderator_complaint: 'text-orange-600',
         complaint_review: 'text-indigo-600',
+        featured_recommend: 'text-amber-600',
+        featured_review: 'text-amber-600',
       }
       return map[type] || 'text-gray-600'
     },
@@ -293,6 +303,8 @@ export default {
         moderator_reward: '版主奖励',
         moderator_complaint: '版主投诉',
         complaint_review: '投诉审核',
+        featured_recommend: '精华推荐',
+        featured_review: '精华审核',
       }
       return labels[type] || '通知'
     },

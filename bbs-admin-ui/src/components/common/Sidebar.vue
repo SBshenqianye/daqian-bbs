@@ -121,6 +121,7 @@ export default {
         { icon: 'shield', label: '版主管理', path: '/moderator' },
         { icon: 'feedback', label: '版主投诉', path: '/moderator-complaint' },
         { icon: 'check_circle', label: '采纳审批', path: '/approve-adopt' },
+        { icon: 'stars', label: '精华审批', path: '/featured-recommendation' },
         // { icon: 'view_carousel', label: '轮播图管理', path: '/slideshow' },
         // { icon: 'bar_chart', label: '文章统计', path: '/statistic' },
         // { icon: 'edit_note', label: '写文章', path: '/write' },

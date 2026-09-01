@@ -112,6 +112,11 @@ export default new Router({
                     meta: { title: '采纳审批' }
                 },
                 {
+                    path: '/featured-recommendation',
+                    component: () => import('../pages/FeaturedRecommendationPage.vue'),
+                    meta: { title: '精华帖审批' }
+                },
+                {
                     path: '/404',
                     component: () => import('../pages/404.vue'),
                     meta: { title: '404' }
