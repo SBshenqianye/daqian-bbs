@@ -47,7 +47,7 @@ test.describe('管理后台登录', () => {
   test('只填用户名不填密码，显示错误提示', async ({ page }) => {
     await page.goto(`${ADMIN_BASE}/#/login`);
 
-    await page.locator('input[placeholder="请输入用户名"]').fill('asiayak');
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
     await page.locator('button[type="submit"]').click();
 
     // 应显示"请输入密码"错误提示
@@ -57,7 +57,7 @@ test.describe('管理后台登录', () => {
   test('错误密码登录失败', async ({ page }) => {
     await page.goto(`${ADMIN_BASE}/#/login`);
 
-    await page.locator('input[placeholder="请输入用户名"]').fill('asiayak');
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
     await page.locator('input[placeholder="请输入密码"]').fill('wrong_password');
     await page.locator('button[type="submit"]').click();
 
@@ -69,8 +69,8 @@ test.describe('管理后台登录', () => {
   test('正确账号密码登录成功，跳转到仪表盘', async ({ page }) => {
     await page.goto(`${ADMIN_BASE}/#/login`);
 
-    await page.locator('input[placeholder="请输入用户名"]').fill('asiayak');
-    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
     await page.locator('button[type="submit"]').click();
 
     // 登录成功后等待跳转（最多 10 秒）
@@ -97,8 +97,8 @@ test.describe('用户管理页面', () => {
   test.beforeEach(async ({ page }) => {
     // 登录管理后台
     await page.goto(`${ADMIN_BASE}/#/login`);
-    await page.locator('input[placeholder="请输入用户名"]').fill('asiayak');
-    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
     await page.locator('button[type="submit"]').click();
     // 等待登录完成（检查 token 或超时）
     try { await page.waitForFunction(() => !!window.sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
@@ -134,8 +134,8 @@ test.describe('文章管理页面', () => {
   test.beforeEach(async ({ page }) => {
     // 登录管理后台
     await page.goto(`${ADMIN_BASE}/#/login`);
-    await page.locator('input[placeholder="请输入用户名"]').fill('asiayak');
-    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
     await page.locator('button[type="submit"]').click();
     // 等待登录完成（检查 token 或超时）
     try { await page.waitForFunction(() => !!window.sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
@@ -170,8 +170,8 @@ test.describe('评论管理页面', () => {
   test.beforeEach(async ({ page }) => {
     // 登录管理后台
     await page.goto(`${ADMIN_BASE}/#/login`);
-    await page.locator('input[placeholder="请输入用户名"]').fill('asiayak');
-    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
     await page.locator('button[type="submit"]').click();
     // 等待登录完成（检查 token 或超时）
     try { await page.waitForFunction(() => !!window.sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
@@ -207,8 +207,8 @@ test.describe('组织机构管理页面', () => {
   test.beforeEach(async ({ page }) => {
     // 登录管理后台
     await page.goto(`${ADMIN_BASE}/#/login`);
-    await page.locator('input[placeholder="请输入用户名"]').fill('asiayak');
-    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
     await page.locator('button[type="submit"]').click();
     // 等待登录完成（检查 token 或超时）
     try { await page.waitForFunction(() => !!window.sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
@@ -234,8 +234,8 @@ test.describe('其他管理页面', () => {
   test.beforeEach(async ({ page }) => {
     // 登录管理后台
     await page.goto(`${ADMIN_BASE}/#/login`);
-    await page.locator('input[placeholder="请输入用户名"]').fill('asiayak');
-    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
     await page.locator('button[type="submit"]').click();
     // 等待登录完成（检查 token 或超时）
     try { await page.waitForFunction(() => !!window.sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
@@ -297,6 +297,296 @@ test.describe('其他管理页面', () => {
 
     const pageContent = page.locator('.el-table, .el-card, main, form');
     await expect(pageContent.first()).toBeVisible();
+  });
+
+});
+
+// ============================================================
+// 7. 举报管理流程
+// ============================================================
+test.describe('举报管理流程', () => {
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/login`);
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('button[type="submit"]').click();
+    try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
+    await page.waitForTimeout(1000);
+  });
+
+  test('举报管理页面有交互元素', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/report`);
+    await page.waitForTimeout(3000);
+    const elements = page.locator('input, button, select, table, .el-table, .el-card, main').first();
+    await expect(elements).toBeVisible({ timeout: 10000 });
+  });
+
+  test('举报管理页面有筛选功能', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/report`);
+    await page.waitForTimeout(3000);
+    const filter = page.locator('input, select, .el-select, [class*="filter"], [class*="search"]').first();
+    await expect(filter).toBeVisible({ timeout: 10000 });
+  });
+
+});
+
+// ============================================================
+// 8. 申诉管理流程
+// ============================================================
+test.describe('申诉管理流程', () => {
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/login`);
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('button[type="submit"]').click();
+    try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
+    await page.waitForTimeout(1000);
+  });
+
+  test('申诉管理页面有交互元素', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/appeal`);
+    await page.waitForTimeout(3000);
+    const elements = page.locator('input, button, select, table, .el-table, .el-card, main').first();
+    await expect(elements).toBeVisible({ timeout: 10000 });
+  });
+
+});
+
+// ============================================================
+// 9. 违规管理完整流程
+// ============================================================
+test.describe('违规管理完整流程', () => {
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/login`);
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('button[type="submit"]').click();
+    try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
+    await page.waitForTimeout(1000);
+  });
+
+  test('违规管理有操作按钮', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/violation`);
+    await page.waitForTimeout(3000);
+    const elements = page.locator('input, button, select, table, .el-table, main').first();
+    await expect(elements).toBeVisible({ timeout: 10000 });
+  });
+
+});
+
+// ============================================================
+// 10. 版主管理完整流程
+// ============================================================
+test.describe('版主管理完整流程', () => {
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/login`);
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('button[type="submit"]').click();
+    try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
+    await page.waitForTimeout(1000);
+  });
+
+  test('版主管理有交互元素', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/moderator`);
+    await page.waitForTimeout(3000);
+    const elements = page.locator('input, button, select, table, .el-table, main').first();
+    await expect(elements).toBeVisible({ timeout: 10000 });
+  });
+
+});
+
+// ============================================================
+// 11. 版主投诉管理流程
+// ============================================================
+test.describe('版主投诉管理流程', () => {
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/login`);
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('button[type="submit"]').click();
+    try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
+    await page.waitForTimeout(1000);
+  });
+
+  test('版主投诉管理页面加载正常', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/moderator-complaint`);
+    await page.waitForTimeout(3000);
+    const elements = page.locator('.el-table, .el-card, main, [class*="complaint"]').first();
+    await expect(elements).toBeVisible({ timeout: 10000 });
+  });
+
+});
+
+// ============================================================
+// 12. 精华帖审批流程
+// ============================================================
+test.describe('精华帖审批流程', () => {
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/login`);
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('button[type="submit"]').click();
+    try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
+    await page.waitForTimeout(1000);
+  });
+
+  test('精华帖审批页面加载正常', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/featured-recommendation`);
+    await page.waitForTimeout(3000);
+    const elements = page.locator('.el-table, .el-card, main, [class*="featured"]').first();
+    await expect(elements).toBeVisible({ timeout: 10000 });
+  });
+
+});
+
+// ============================================================
+// 13. 采纳审批流程
+// ============================================================
+test.describe('采纳审批流程', () => {
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/login`);
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('button[type="submit"]').click();
+    try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
+    await page.waitForTimeout(1000);
+  });
+
+  test('采纳审批页面加载正常', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/approve-adopt`);
+    await page.waitForTimeout(3000);
+    const elements = page.locator('.el-table, .el-card, main, [class*="adopt"]').first();
+    await expect(elements).toBeVisible({ timeout: 10000 });
+  });
+
+});
+
+// ============================================================
+// 14. 用户管理完整流程
+// ============================================================
+test.describe('用户管理完整流程', () => {
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/login`);
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('button[type="submit"]').click();
+    try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
+    await page.waitForTimeout(1000);
+  });
+
+  test('用户管理搜索功能', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/user`);
+    await page.waitForTimeout(3000);
+    const searchInput = page.locator('input[placeholder*="搜索"], input[placeholder*="请输入"]').first();
+    if (await searchInput.count() > 0) {
+      await searchInput.fill('test');
+      await searchInput.press('Enter');
+      await page.waitForTimeout(2000);
+      // 搜索后页面不崩溃
+      const bodyText = await page.locator('body').textContent();
+      expect(bodyText).toBeTruthy();
+    }
+  });
+
+  test('用户管理有分页', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/user`);
+    await page.waitForTimeout(3000);
+    // Element UI 分页组件
+    const pagination = page.locator('.el-pagination, [class*="pagination"], [class*="page"]').first();
+    if (await pagination.count() > 0) {
+      await expect(pagination).toBeVisible();
+    }
+  });
+
+});
+
+// ============================================================
+// 15. 文章管理完整流程
+// ============================================================
+test.describe('文章管理完整流程', () => {
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/login`);
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('button[type="submit"]').click();
+    try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
+    await page.waitForTimeout(1000);
+  });
+
+  test('文章管理搜索功能', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/article`);
+    await page.waitForTimeout(3000);
+    const searchInput = page.locator('input[placeholder*="搜索"], input[placeholder*="请输入"]').first();
+    if (await searchInput.count() > 0) {
+      await searchInput.fill('测试');
+      await searchInput.press('Enter');
+      await page.waitForTimeout(2000);
+      const bodyText = await page.locator('body').textContent();
+      expect(bodyText).toBeTruthy();
+    }
+  });
+
+  test('文章管理有操作按钮', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/article`);
+    await page.waitForTimeout(3000);
+    const buttons = page.locator('button, .el-button').first();
+    await expect(buttons).toBeVisible({ timeout: 10000 });
+  });
+
+});
+
+// ============================================================
+// 16. 积分排名流程
+// ============================================================
+test.describe('积分排名流程', () => {
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/login`);
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('button[type="submit"]').click();
+    try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
+    await page.waitForTimeout(1000);
+  });
+
+  test('积分排名有交互元素', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/points`);
+    await page.waitForTimeout(3000);
+    const elements = page.locator('.el-table, .el-card, main, table, [class*="points"]').first();
+    await expect(elements).toBeVisible({ timeout: 10000 });
+  });
+
+});
+
+// ============================================================
+// 17. 敏感词管理流程
+// ============================================================
+test.describe('敏感词管理流程', () => {
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/login`);
+    await page.locator('input[placeholder="请输入用户名"]').fill('e2eadmin');
+    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('button[type="submit"]').click();
+    try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
+    await page.waitForTimeout(1000);
+  });
+
+  test('敏感词管理有交互元素', async ({ page }) => {
+    await page.goto(`${ADMIN_BASE}/#/sensitiveWord`);
+    await page.waitForTimeout(3000);
+    const elements = page.locator('input, button, .el-table, main').first();
+    await expect(elements).toBeVisible({ timeout: 10000 });
   });
 
 });

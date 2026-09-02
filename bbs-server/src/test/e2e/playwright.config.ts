@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 30000,
   use: {
     baseURL: 'http://localhost:9081/bbs-user',
-    headless: true,
+    headless: false,
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium', channel: 'chrome' } },
