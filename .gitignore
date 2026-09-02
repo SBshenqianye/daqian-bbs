@@ -62,7 +62,12 @@ bbs/
 bbs-server/settings-coverage.xml
 
 # Test runner output (Playwright, etc.)
-test-results/tmp/
+test-results/
+bbs-server/test-results/
+
+# Newman / Postman CLI output
+.postman/
+postman/
 
 # dsh
 .dsh/
