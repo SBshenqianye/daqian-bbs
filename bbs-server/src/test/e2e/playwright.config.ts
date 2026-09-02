@@ -8,6 +8,6 @@ export default defineConfig({
     headless: true,
   },
   projects: [
-    { name: 'chromium', use: { browserName: 'chromium' } },
+    { name: 'chromium', use: { browserName: 'chromium', channel: 'chrome' } },
   ],
 });
