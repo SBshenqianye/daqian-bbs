@@ -1,0 +1,28 @@
+# 测试环境配置（H2 内存库，不依赖外部数据库）
+server:
+  port: 0  # 随机端口，避免冲突
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:bbs_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: false
+
+# Mybatis-plus（测试用，mapper XML 可选加载）
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.walker.pojo
+  global-config:
+    db-config:
+      table-prefix: bbs_
+
+# JWT（测试用固定值）
+jwt:
+  tokenHeader: Authorization
+  secret: test-secret
+  expiration: 604800
+  tokenHead: Bearer
