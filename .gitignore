@@ -58,6 +58,9 @@ bbs-offline-latest.tar.gz
 # Build output directories
 bbs/
 
+# Maven local settings (test workaround)
+bbs-server/settings-coverage.xml
+
 # Test runner output (Playwright, etc.)
 test-results/tmp/
 
