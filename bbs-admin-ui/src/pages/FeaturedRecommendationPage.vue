@@ -44,7 +44,9 @@
               <td class="px-4 py-3 text-body-sm">
                 <span class="text-primary cursor-pointer hover:underline" @click="$router.push('/articleDetails/' + item.articleId)">{{ item.articleTitle || '帖子#' + item.articleId }}</span>
               </td>
-              <td class="px-4 py-3 text-body-sm">{{ item.recommenderName || '用户#' + item.recommenderId }}</td>
+              <td class="px-4 py-3 text-body-sm">
+                <UserCell :user-id="item.recommenderId" :name="item.recommenderName" />
+              </td>
               <td class="px-4 py-3 text-body-sm">
                 <span class="px-2 py-0.5 rounded text-[11px] font-medium"
                   :class="{
@@ -102,9 +104,11 @@
 
 <script>
 import { handleResponse } from '../../../shared/feedback'
+import UserCell from '@/components/UserCell.vue'
 
 export default {
   name: 'FeaturedRecommendationPage',
+  components: { UserCell },
   data() {
     return {
       loading: false,

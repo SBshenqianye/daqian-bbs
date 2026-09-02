@@ -44,7 +44,9 @@
             </thead>
             <tbody class="divide-y divide-outline-variant/50">
               <tr v-for="group in list" :key="group.representative.id" class="hover:bg-surface-container-low/50">
-                  <td class="px-4 py-3 text-body-sm">{{ group.representative.reporterName || group.representative.reporterId }}</td>
+                  <td class="px-4 py-3 text-body-sm">
+                    <UserCell :user-id="group.representative.reporterId" :name="group.representative.reporterName" />
+                  </td>
                   <td class="px-4 py-3 text-body-sm">
                     <div class="flex items-center gap-2">
                       <span class="text-primary cursor-pointer hover:underline" @click="openPreview(group.representative)">
@@ -301,9 +303,11 @@
 import MarkdownIt from 'markdown-it/dist/markdown-it'
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
 import { handleResponse } from '../../../shared/feedback'
+import UserCell from '@/components/UserCell.vue'
 
 export default {
   name: 'ReportPage',
+  components: { UserCell },
   data() {
     return {
       loading: false,

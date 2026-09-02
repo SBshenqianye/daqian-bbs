@@ -42,8 +42,13 @@
           <tbody class="divide-y divide-outline-variant/50">
             <tr v-for="item in list" :key="item.id" class="hover:bg-surface-container-low/50">
               <td class="px-4 py-3 text-body-sm">{{ item.id }}</td>
-              <td class="px-4 py-3 text-body-sm">{{ item.reporterName || '用户#' + item.reporterId }}</td>
-              <td class="px-4 py-3 text-body-sm">{{ item.moderatorName || (item.moderatorId ? '用户#' + item.moderatorId : '未指定') }}</td>
+              <td class="px-4 py-3 text-body-sm">
+                <UserCell :user-id="item.reporterId" :name="item.reporterName" />
+              </td>
+              <td class="px-4 py-3 text-body-sm">
+                <UserCell v-if="item.moderatorId" :user-id="item.moderatorId" :name="item.moderatorName" />
+                <span v-else class="text-gray-400">未指定</span>
+              </td>
               <td class="px-4 py-3 text-body-sm max-w-xs truncate cursor-pointer text-primary hover:underline" @click="showContent(item.content)">{{ item.content }}</td>
               <td class="px-4 py-3 text-body-sm">
                 <span class="px-2 py-0.5 rounded text-[11px] font-medium"
@@ -118,9 +123,11 @@
 
 <script>
 import { handleResponse } from '../../../shared/feedback'
+import UserCell from '@/components/UserCell.vue'
 
 export default {
   name: 'ModeratorComplaintPage',
+  components: { UserCell },
   data() {
     return {
       loading: false,

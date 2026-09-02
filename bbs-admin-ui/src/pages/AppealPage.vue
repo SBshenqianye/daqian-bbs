@@ -48,9 +48,7 @@
               <tr v-for="item in list" :key="item.id" class="hover:bg-surface-container-low/50">
                 <!-- 用户 -->
                 <td class="px-4 py-3 text-body-sm">
-                  <el-tooltip :content="'ID: ' + item.userId + ' | 昵称: ' + (item.nickname || '无')" placement="top" :open-delay="300">
-                    <span class="cursor-help text-primary hover:underline">{{ item.nickname || '用户#' + item.userId }}</span>
-                  </el-tooltip>
+                  <UserCell :user-id="item.userId" :name="item.nickname" />
                 </td>
                 <!-- 申诉类型 -->
                 <td class="px-4 py-3 text-body-sm">{{ getAppealLabel(item.appealType) }}</td>
@@ -120,9 +118,11 @@
 
 <script>
 import { handleResponse } from '../../../shared/feedback'
+import UserCell from '@/components/UserCell.vue'
 
 export default {
   name: 'AppealPage',
+  components: { UserCell },
   data() {
     return {
       loading: false,

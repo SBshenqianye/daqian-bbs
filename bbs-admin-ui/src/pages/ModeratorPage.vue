@@ -100,16 +100,14 @@
               <tr v-for="item in list" :key="item.id" class="hover:bg-surface-container-low/50">
                 <td class="px-4 py-3 text-body-sm">{{ item.id }}</td>
                 <td class="px-4 py-3 text-body-sm">
-                  <el-tooltip :content="userTooltip(item.userId)" placement="top" :open-delay="300">
-                    <span class="cursor-help text-primary hover:underline">{{ userDisplayName(item.userId) }}</span>
-                  </el-tooltip>
+                  <UserCell :user-id="item.userId" />
                 </td>
                 <td class="px-4 py-3 text-body-sm">{{ labelNameById(item.labelId) }}</td>
                 <td class="px-4 py-3 text-body-sm">{{ item.roleType === 'admin' ? '管理员' : '版主' }}</td>
                 <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.appointTime }}</td>
                 <td class="px-4 py-3 text-body-sm">
-                  <button class="px-2 py-1 bg-orange-50 text-orange-700 rounded text-[12px] hover:bg-orange-100 mr-1" @click="handleCancel(item)" title="取消本月奖励">取消奖励</button>
-                  <button class="px-2 py-1 bg-red-50 text-red-700 rounded text-[12px] hover:bg-red-100" @click="handleDismiss(item)">撤销</button>
+                  <el-button size="mini" type="warning" plain @click="handleCancel(item)" title="取消本月奖励">取消奖励</el-button>
+                  <el-button size="mini" type="danger" plain @click="handleDismiss(item)">撤销</el-button>
                 </td>
               </tr>
             </tbody>
@@ -148,12 +146,13 @@
 
 <script>
 import UserSelect from '@/components/UserSelect.vue'
+import UserCell from '@/components/UserCell.vue'
 import axios from 'axios'
 import { handleResponse } from '../../../shared/feedback'
 
 export default {
   name: 'ModeratorPage',
-  components: { UserSelect },
+  components: { UserSelect, UserCell },
   data() {
     return {
       loading: false,
@@ -164,13 +163,12 @@ export default {
       currentPage: 1,
       pageSize: 10,
       form: { userId: '', labelId: '' },
-      autoConfig: { enabled: '0', day: '1' },
+      autoConfig: { enabled: '1', day: '1' },
       savingConfig: false,
       cancelledList: [],
       cancelDialogVisible: false,
       cancelSaving: false,
       cancelForm: { userId: null, userName: '', remark: '' },
-      userMap: {}, // userId -> { username, nickname, orgName, portrait }
       labelList: [] // labelId -> { labelId, labelName }
     }
   },
@@ -184,11 +182,10 @@ export default {
     async loadLabels() {
       try {
         const res = await axios.get(`${process.env.VUE_APP_BBS_API}/common/getArticleLabel`)
-        const data = res && res.data ? res.data : res
-        if (Array.isArray(data)) {
-          this.labelList = data
-        } else if (data && data.code == 200 && Array.isArray(data.obj)) {
-          this.labelList = data.obj
+        if (Array.isArray(res)) {
+          this.labelList = res
+        } else if (res && res.code == 200 && Array.isArray(res.obj)) {
+          this.labelList = res.obj
         }
       } catch (e) { /* ignore */ }
     },
@@ -203,35 +200,9 @@ export default {
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0
-          await this.fetchUsersForList()
         } else { this.list = [] }
       } catch (e) { this.list = [] }
       finally { this.loading = false }
-    },
-    async fetchUsersForList() {
-      const headers = {}
-      const token = window.sessionStorage.getItem('tokenStr')
-      if (token) headers['Authorization'] = token
-      const ids = [...new Set(this.list.map(i => i.userId).filter(Boolean))]
-      for (const id of ids) {
-        if (this.userMap[id]) continue
-        try {
-          const res = await axios.post(`${process.env.VUE_APP_BBS_API}/common/user/getUserinfoById/${id}`, null, { headers })
-          if (res && res.data && res.data.id) {
-            this.userMap[id] = { username: res.data.username, nickname: res.data.nickname, orgName: res.data.orgName, portrait: res.data.portrait }
-          }
-        } catch (e) { /* ignore */ }
-      }
-    },
-    userDisplayName(userId) {
-      const u = this.userMap[userId]
-      if (u) return u.nickname || u.username || '用户#' + userId
-      return '用户#' + userId
-    },
-    userTooltip(userId) {
-      const u = this.userMap[userId]
-      if (!u) return '用户ID: ' + userId
-      return `ID: ${userId} | 用户名: ${u.username} | 昵称: ${u.nickname || '无'} | 单位: ${u.orgName || '未分配'}`
     },
     async loadAutoConfig() {
       try {
@@ -289,7 +260,7 @@ export default {
       } catch (e) { this.cancelledList = [] }
     },
     handleCancel(item) {
-      this.cancelForm = { userId: item.userId, userName: item.userId, remark: '' }
+      this.cancelForm = { userId: item.userId, userName: item.nickname || item.userName || ('用户#' + item.userId), remark: '' }
       this.cancelDialogVisible = true
     },
     async doCancel() {
