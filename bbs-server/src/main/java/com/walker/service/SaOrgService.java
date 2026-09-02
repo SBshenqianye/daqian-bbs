@@ -66,4 +66,11 @@ public interface SaOrgService extends IService<SaOrg> {
      * @param orgNos 组织编号集合
      */
     Map<String, String> resolveDisplayOrgNames(Collection<String> orgNos);
+
+    /**
+     * 解析组织完整层级路径，如 "国网四川内江供电公司 > 内江供电公司本部 > 党委组织部（人力资源部）"
+     * @param orgNo 组织编号
+     * @return 以 " > " 连接的层级名称串，查不到时返回 null
+     */
+    String resolveOrgPath(String orgNo);
 }

@@ -175,6 +175,7 @@ public class UserController {
         result.put("userType", user.getUserType());
         result.put("personnelId", user.getPersonnelId());
         result.put("orgNameFull", resolveFullOrgName(user.getOrgNo(), user.getOrgName()));
+        result.put("orgPath", saOrgService.resolveOrgPath(user.getOrgNo()));
         return result;
     }
 

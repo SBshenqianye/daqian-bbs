@@ -214,4 +214,25 @@ public class SaOrgServiceImpl extends ServiceImpl<SaOrgMapper, SaOrg> implements
         }
         return result;
     }
+
+    @Override
+    public String resolveOrgPath(String orgNo) {
+        if (orgNo == null || orgNo.trim().isEmpty()) return null;
+        // 加载全部组织（含已删除），通过 p_org_no 向上回溯构建完整路径，
+        // 不依赖 org_tree 字段（该字段可能不完整）
+        List<SaOrg> allOrgs = this.list(new LambdaQueryWrapper<SaOrg>());
+        if (allOrgs == null || allOrgs.isEmpty()) return null;
+        Map<String, SaOrg> orgMap = allOrgs.stream()
+                .collect(Collectors.toMap(SaOrg::getOrgNo, o -> o, (a, b) -> a));
+        SaOrg current = orgMap.get(orgNo);
+        if (current == null) return null;
+        // 从当前节点向上回溯，每级 prepend 到列表头部
+        List<String> names = new ArrayList<>();
+        while (current != null) {
+            names.add(0, current.getOrgName());
+            String pNo = current.getPOrgNo();
+            current = (pNo != null && !pNo.trim().isEmpty()) ? orgMap.get(pNo) : null;
+        }
+        return names.isEmpty() ? null : String.join(" > ", names);
+    }
 }
