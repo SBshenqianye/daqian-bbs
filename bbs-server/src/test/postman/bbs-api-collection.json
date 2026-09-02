@@ -1,0 +1,4587 @@
+{
+  "info": {
+    "name": "大千智荟 BBS API",
+    "description": "自动生成的 API 测试集合 — 包含所有后端 Controller 的接口定义",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:9083/bbs-server"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "AreaController (区域)",
+      "item": [
+        {
+          "name": "获取三个推荐区的图片和文字",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/getArea",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "getArea"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ArticleTypeController (文章类型)",
+      "item": [
+        {
+          "name": "获取文章的类型",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/getArticleType",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "getArticleType"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ArticleUserController (文章收藏)",
+      "item": [
+        {
+          "name": "用户收藏文章",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/saveUserCollection",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "saveUserCollection"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": "用户ID"
+                },
+                {
+                  "key": "articleId",
+                  "value": "1",
+                  "description": "文章ID"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取用户收藏的文章",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/getMyCollection",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "getMyCollection"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": "用户ID"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "CommunityUserController (社区用户)",
+      "item": [
+        {
+          "name": "判断是否已经加入社区",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/join",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "join"
+              ],
+              "query": [
+                {
+                  "key": "communityId",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "退出社区",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "delete"
+              ],
+              "query": [
+                {
+                  "key": "communityId",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "加入社区",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/saveCommunityUser",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "saveCommunityUser"
+              ],
+              "query": [
+                {
+                  "key": "communityId",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "FansController (关注/粉丝)",
+      "item": [
+        {
+          "name": "获取我的关注列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fans/getAttentions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fans",
+                "getAttentions"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取我的粉丝列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fans/getFans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fans",
+                "getFans"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "关注",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fans/saveFans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fans",
+                "saveFans"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"attentionId\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "取消关注",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fans/cancelFans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fans",
+                "cancelFans"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"attentionId\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "查询当前用户是否关注了发帖人",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fans/getFansInfo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fans",
+                "getFansInfo"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "attentionId",
+                  "value": "2",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "HelloController (测试)",
+      "item": [
+        {
+          "name": "Hello 测试接口",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hello",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hello"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "InventoryController (库存)",
+      "item": [
+        {
+          "name": "根据条件查询库存列表",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/inventory/getAllInventory",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "inventory",
+                "getAllInventory"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keyword\": \"\",\n  \"pageNum\": 1,\n  \"pageSize\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "根据ID查询库存",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/inventory/getInventoryById",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "inventory",
+                "getInventoryById"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "LoginController (登录)",
+      "item": [
+        {
+          "name": "登录之后返回token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"1234@abcD\",\n  \"channel\": \"web\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "退出登录",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "logout"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "TestController (文件测试)",
+      "item": [
+        {
+          "name": "测试文件接口",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/files/get",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "files",
+                "get"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "RegisterController (注册)",
+      "item": [
+        {
+          "name": "注册（已关闭）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"test\",\n  \"password\": \"1234@abcD\",\n  \"nickname\": \"测试用户\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "SystemConfigController (系统配置)",
+      "item": [
+        {
+          "name": "新增配置",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/systemConfig/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "systemConfig",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"configKey\": \"test_key\",\n  \"configValue\": \"test_value\",\n  \"configGroup\": \"test\",\n  \"description\": \"测试配置\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "修改配置",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/systemConfig/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "systemConfig",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"configKey\": \"test_key\",\n  \"configValue\": \"new_value\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "删除配置",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/systemConfig/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "systemConfig",
+                "delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "查询配置列表（不分页）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/systemConfig/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "systemConfig",
+                "list"
+              ]
+            }
+          }
+        },
+        {
+          "name": "根据分组查询配置列表",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/systemConfig/listByGroup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "systemConfig",
+                "listByGroup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"configGroup\": \"general\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "根据配置键查询",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/systemConfig/getByKey",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "systemConfig",
+                "getByKey"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"configKey\": \"ranking_switch\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "CommonController (通用功能)",
+      "item": [
+        {
+          "name": "上传图片（通用图片上传）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "upload"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "value": "",
+                  "description": "图片文件"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ArticleFileController (文章附件)",
+      "item": [
+        {
+          "name": "保存文章中的附件并返回附件id",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/articleFile/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "articleFile",
+                "upload"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "userId",
+                  "type": "text",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "value": "",
+                  "description": "附件文件"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取文章附件信息",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/getArticleFileByArticleId/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "getArticleFileByArticleId",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "CommunityController (社区管理)",
+      "item": [
+        {
+          "name": "获取所有社区名称",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/community/getCommunity",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "getCommunity"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取所有社区列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/community/getCommunityList",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "community",
+                "getCommunityList"
+              ]
+            }
+          }
+        },
+        {
+          "name": "通过社区ID获取社区信息",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/community/getCommunityById/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "getCommunityById",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "创建社区",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/community/createCommunity",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "createCommunity"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"communityName\": \"新社区\",\n  \"communityImage\": \"\",\n  \"description\": \"社区描述\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "获取所有的社区信息",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getAllCommunity/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getAllCommunity",
+                "all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "通过关键词搜索社区信息",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getCommunityByKeywords/keyword",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getCommunityByKeywords",
+                "keyword"
+              ]
+            }
+          }
+        },
+        {
+          "name": "修改社区的状态",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/updateCommunityStatus/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "updateCommunityStatus",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "通过社区id删除社区",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/deleteCommunityByCommunityId/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "deleteCommunityByCommunityId",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取社区的数量",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getCommunityCount/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getCommunityCount",
+                "all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "上传社区图片放回地址",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/community/createCommunityReturnImage",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "community",
+                "createCommunityReturnImage"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "userId",
+                  "type": "text",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "value": "",
+                  "description": "社区图片"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "SlideshowController (轮播图)",
+      "item": [
+        {
+          "name": "获取首页轮播图",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/getSlideshow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "getSlideshow"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取轮播图（管理员）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getSlideshow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getSlideshow"
+              ]
+            }
+          }
+        },
+        {
+          "name": "保存轮播图返回地址给前端",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/addSlideshowReturnImageUrl",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "addSlideshowReturnImageUrl"
+              ],
+              "query": [
+                {
+                  "key": "image",
+                  "value": "base64image...",
+                  "description": "Base64图片数据"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "添加轮播图",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/addSlideshow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "addSlideshow"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"successive\": 1,\n  \"imageUrl\": \"/bbs-server/files/xxx.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "修改优先级（slideshowId/successive）",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/editSuccessive/1/2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "editSuccessive",
+                "1",
+                "2"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AdminController (管理员)",
+      "item": [
+        {
+          "name": "管理员登录",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"1234@abcD\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "测试接口",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "test"
+              ]
+            }
+          }
+        },
+        {
+          "name": "调整用户积分",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/points/adjust",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "points",
+                "adjust"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"pointsChange\": 10,\n  \"reason\": \"手动调整\",\n  \"relatedType\": \"\",\n  \"relatedId\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "查询用户积分调整记录",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/points/log/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "points",
+                "log",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "查询用户手动积分调整总额",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/points/total/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "points",
+                "total",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "撤销一条积分调整记录",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/points/undo/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "points",
+                "undo",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AppealController (申诉管理)",
+      "item": [
+        {
+          "name": "用户提交申诉",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/appeal/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "appeal",
+                "submit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"appealType\": \"violation\",\n  \"relatedId\": 1,\n  \"content\": \"申诉内容说明\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "管理员审核申诉",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/appeal/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "appeal",
+                "review"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appealId\": 1,\n  \"reviewerId\": 1,\n  \"status\": \"approved\",\n  \"remark\": \"审核通过\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "管理员查看申诉列表",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/appeal/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "appeal",
+                "list"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"\",\n  \"page\": 1,\n  \"size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "用户查看自己的申诉记录",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/appeal/myList",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "appeal",
+                "myList"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"page\": 1,\n  \"size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "LoginLogController (登录日志/积分)",
+      "item": [
+        {
+          "name": "记录每日登录",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/dailyLogin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "dailyLogin"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "浏览心跳上报（每60秒一次）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/browseHeartbeat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "browseHeartbeat"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ReplyController (回复管理/采纳审批)",
+      "item": [
+        {
+          "name": "保存用户的回复（楼中楼）",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reply/userReply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reply",
+                "userReply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"commentId\": 1,\n  \"replyUserId\": 1,\n  \"replyToUserId\": 2,\n  \"replyContent\": \"回复内容\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "通过id删除用户回复",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reply/deleteReplyById",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reply",
+                "deleteReplyById"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"replyId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "楼主采纳（提交审批）- 支持评论和回复",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reply/article/adoptReply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reply",
+                "article",
+                "adoptReply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"replyId\": 1,\n  \"commentId\": null,\n  \"articleId\": 1,\n  \"userId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "管理员审批采纳 - 支持评论和回复",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reply/admin/approveAdopt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reply",
+                "admin",
+                "approveAdopt"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"replyId\": 1,\n  \"commentId\": null,\n  \"articleId\": 1,\n  \"action\": \"confirm\",\n  \"adminId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "获取待审批采纳列表（管理员，含评论和回复）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reply/admin/pendingAdopts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reply",
+                "admin",
+                "pendingAdopts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"page\": 1,\n  \"size\": 20,\n  \"adminId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ReplyListController (回复列表)",
+      "item": [
+        {
+          "name": "我回复的帖子列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reply/myReplies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reply",
+                "myReplies"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "回复我的列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reply/repliedToMe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reply",
+                "repliedToMe"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ViolationController (违规管理)",
+      "item": [
+        {
+          "name": "管理员记录违规并扣分",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/violation/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "violation",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"violationType\": \"spam\",\n  \"relatedType\": \"article\",\n  \"relatedId\": 1,\n  \"operatorId\": 1,\n  \"remark\": \"违规说明\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "管理员查看违规列表",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/violation/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "violation",
+                "list"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": null,\n  \"page\": 1,\n  \"size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "用户查看自己的违规记录",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/violation/myList",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "violation",
+                "myList"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"page\": 1,\n  \"size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ArticleLabelController (文章标签)",
+      "item": [
+        {
+          "name": "获取文章的标签",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/getArticleLabel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "getArticleLabel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "新增文章标签",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/addArticleLabel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "addArticleLabel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"labelName\": \"新标签\",\n  \"enabled\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "修改文章标签",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/updArticleLabel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "updArticleLabel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"labelId\": 1,\n  \"labelName\": \"修改后标签\",\n  \"enabled\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "删除文章标签",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/delArticleLabel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "delArticleLabel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"labelId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "分页查询文章标签（可按标签名模糊查询）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/pageArticleLabel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "pageArticleLabel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pageIndex\": 1,\n  \"pageSize\": 10,\n  \"searchInfo\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "CommentController (评论管理)",
+      "item": [
+        {
+          "name": "保存用户的评论(一级评论)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comment/userComment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comment",
+                "userComment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"commentArticleId\": 1,\n  \"commentUserId\": 1,\n  \"commentContent\": \"评论内容\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "通过文章ID获取评论和回复",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/comment/getCommentReply/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "comment",
+                "getCommentReply",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "通过评论id删除评论",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comment/deleteCommentById",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comment",
+                "deleteCommentById"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"commentId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "SaOrgController (单位管理)",
+      "item": [
+        {
+          "name": "查询单位树形结构",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/saOrgTree",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "saOrgTree"
+              ]
+            }
+          }
+        },
+        {
+          "name": "删除单位",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/saOrg/deleteSaOrgByOrgNo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "saOrg",
+                "deleteSaOrgByOrgNo"
+              ],
+              "query": [
+                {
+                  "key": "orgNo",
+                  "value": "5140401",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "添加单位",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/saOrg/addSaOrg",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "saOrg",
+                "addSaOrg"
+              ],
+              "query": [
+                {
+                  "key": "pOrgNo",
+                  "value": "51404",
+                  "description": ""
+                },
+                {
+                  "key": "orgName",
+                  "value": "新单位",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取所有单位及排名选中状态",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/saOrg/rankingOrgs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "saOrg",
+                "rankingOrgs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "批量更新排名选中状态",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/saOrg/batchUpdateRanking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "saOrg",
+                "batchUpdateRanking"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"51404\": true,\n  \"5140401\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "批量更新显示选中状态",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/saOrg/batchUpdateDisplay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "saOrg",
+                "batchUpdateDisplay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"51404\": true,\n  \"5140401\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "NotificationController (通知管理)",
+      "item": [
+        {
+          "name": "获取用户未读通知数量（全部合计）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notification/unreadCount",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "unreadCount"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取用户未读通知汇总（分类独立计数）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notification/unreadSummary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "unreadSummary"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "标记通知为已读",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notification/markRead",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "markRead"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "category",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "标记所有通知为已读",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notification/markAllRead",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "markAllRead"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取通知列表（分页，可按分类过滤）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notification/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "list"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "category",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "解析通知关联内容对应的文章定位",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notification/resolveTarget",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "resolveTarget"
+              ],
+              "query": [
+                {
+                  "key": "relatedType",
+                  "value": "reply",
+                  "description": ""
+                },
+                {
+                  "key": "relatedId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ReportController (举报管理)",
+      "item": [
+        {
+          "name": "用户提交举报",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/article/report",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "article",
+                "report"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reporterId\": 1,\n  \"targetType\": \"article\",\n  \"targetId\": 1,\n  \"violationType\": \"spam\",\n  \"reason\": \"举报原因\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "管理员审核举报",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/report/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "report",
+                "review"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reportId\": 1,\n  \"reviewerId\": 1,\n  \"status\": \"confirmed\",\n  \"remark\": \"审核意见\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "管理员查看举报列表",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/report/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "report",
+                "list"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"\",\n  \"page\": 1,\n  \"size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "管理员查看举报列表（按举报目标分组折叠）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/report/listGrouped",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "report",
+                "listGrouped"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"\",\n  \"page\": 1,\n  \"size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "用户查看自己的举报记录",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/report/myList",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "report",
+                "myList"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reporterId\": 1,\n  \"page\": 1,\n  \"size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "SensitiveWordController (敏感词管理)",
+      "item": [
+        {
+          "name": "查询敏感词列表（全量）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sensitiveWord/getList",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sensitiveWord",
+                "getList"
+              ]
+            }
+          }
+        },
+        {
+          "name": "分页查询敏感词列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sensitiveWord/getPage",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sensitiveWord",
+                "getPage"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": ""
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "添加敏感词",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sensitiveWord/addSensitiveWord",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sensitiveWord",
+                "addSensitiveWord"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "敏感词",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "删除敏感词",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sensitiveWord/delSensitiveWord",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sensitiveWord",
+                "delSensitiveWord"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "导出敏感词为 Excel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sensitiveWord/export",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sensitiveWord",
+                "export"
+              ]
+            }
+          }
+        },
+        {
+          "name": "从 Excel 导入敏感词",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sensitiveWord/importExcel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sensitiveWord",
+                "importExcel"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "value": "",
+                  "description": "Excel文件(.xlsx/.xls)"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ArticleController (文章管理)",
+      "item": [
+        {
+          "name": "保存文章中的图片并返回地址",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/article/articleImg",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "article",
+                "articleImg"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "userId",
+                  "type": "text",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "value": "",
+                  "description": "文章图片"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "保存文章封面并返回地址",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/article/coverImg",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "article",
+                "coverImg"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "userId",
+                  "type": "text",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "value": "",
+                  "description": "封面图片"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "发布文章",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/article/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "article",
+                "publish"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"articleTitle\": \"文章标题\",\n  \"articleContent\": \"文章内容\",\n  \"articleContentHtml\": \"<p>文章内容</p>\",\n  \"articleLabelId\": 1,\n  \"articleCommunityId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "获取顶部的五条推荐文章",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/article/getHeaderRecommend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "article",
+                "getHeaderRecommend"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取推荐文章",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/article/getRecommend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "article",
+                "getRecommend"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取最新文章",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/article/getNewest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "article",
+                "getNewest"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取热榜文章(10条记录)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/article/getHot",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "article",
+                "getHot"
+              ]
+            }
+          }
+        },
+        {
+          "name": "通过文章Id查询文章",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/article/getArticleById/articleId/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "article",
+                "getArticleById",
+                "articleId",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取文章列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/article/getArticle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "article",
+                "getArticle"
+              ],
+              "query": [
+                {
+                  "key": "keywords",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取社区文章（时间排序）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/article/getArticleByCommunityId/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "article",
+                "getArticleByCommunityId",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取社区文章（浏览量排序）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/article/getArticleByHotAndOrderByDesc/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "article",
+                "getArticleByHotAndOrderByDesc",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "通过关键词搜索文章(搜索框)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/article/getArticleByKeywords",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "article",
+                "getArticleByKeywords"
+              ],
+              "query": [
+                {
+                  "key": "keywords",
+                  "value": "关键词",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "通过用户id查询文章",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/article/getArticleByUserId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "article",
+                "getArticleByUserId"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取用户消息",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/article/getMyInformation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "article",
+                "getMyInformation"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "查询所有的已审核的文章",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getAliveArticles/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getAliveArticles",
+                "all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "查询所有的未审核的文章",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getNotAliveArticles/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getNotAliveArticles",
+                "all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "管理员通过文章id删除文章",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/deleteArticleByArticleId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "deleteArticleByArticleId"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"articleId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "通过文章id修改文章状态",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/auditArticleByArticleId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "auditArticleByArticleId"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"articleId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "删除所有的已通过审核的文章",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/handleBatchDeleteArticlesByAlive/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "handleBatchDeleteArticlesByAlive",
+                "all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "批量审核文章",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/batchAudit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "batchAudit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "通过文章id获取文章信息",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getArticleByArticleId/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getArticleByArticleId",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "通过文章id获取文章信息（含已删除，管理员用）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getArticleByIdInclDeleted/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getArticleByIdInclDeleted",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取文章总数",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getArticleCount/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getArticleCount",
+                "all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取未通过审核的文章数量",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getArticleCountWithNotPass/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getArticleCountWithNotPass",
+                "all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "用户通过文章id删除文章",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/article/deleteArticleByArticleId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "article",
+                "deleteArticleByArticleId"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"articleId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "编辑文章",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/article/editArticle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "article",
+                "editArticle"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"articleId\": 1,\n  \"articleTitle\": \"修改标题\",\n  \"articleContent\": \"修改内容\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "按单位统计文章数",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/articleStatisticByOrg",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "articleStatisticByOrg"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orgNo\": \"51404\",\n  \"startTime\": \"2026-01-01\",\n  \"endTime\": \"2026-12-31\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "获取积分排名",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/pointsRank",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "pointsRank"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rankType\": \"01\",\n  \"orgNo\": \"51404\",\n  \"startTime\": \"\",\n  \"endTime\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "获取个人积分排名",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/personalPointsRank",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "personalPointsRank"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rankType\": \"01\",\n  \"startTime\": \"\",\n  \"endTime\": \"\",\n  \"page\": 1,\n  \"size\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "管理员获取文章列表（支持搜索过滤分页，含标签名）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/article/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "article",
+                "list"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keywords\": \"\",\n  \"labelId\": \"\",\n  \"startTime\": \"\",\n  \"endTime\": \"\",\n  \"enable\": null,\n  \"page\": 1,\n  \"size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "设置/取消精华帖",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/featured/set",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "featured",
+                "set"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"articleId\": 1,\n  \"isFeatured\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "精华帖管理列表（支持搜索过滤分页）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/featured/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "featured",
+                "list"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keywords\": \"\",\n  \"labelId\": \"\",\n  \"startTime\": \"\",\n  \"endTime\": \"\",\n  \"page\": 1,\n  \"size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "获取最新精华帖（用户端置顶用）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/article/getFeaturedTop",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "article",
+                "getFeaturedTop"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取精华帖列表（用户端分页，可指定标签）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/article/getFeatured",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "article",
+                "getFeatured"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": ""
+                },
+                {
+                  "key": "labelId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "管理员采纳建议",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/suggestion/adopt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "suggestion",
+                "adopt"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"articleId\": 1,\n  \"operatorId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "积分排名导出 Excel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/points/export",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "points",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "rankType",
+                  "value": "01",
+                  "description": ""
+                },
+                {
+                  "key": "startTime",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "endTime",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "orgNo",
+                  "value": "51404",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ModeratorComplaintController (版主投诉)",
+      "item": [
+        {
+          "name": "用户提交版主投诉",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/moderatorComplaint/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "moderatorComplaint",
+                "submit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reporterId\": 1,\n  \"moderatorId\": 2,\n  \"labelId\": 1,\n  \"content\": \"投诉内容说明\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "管理员审核版主投诉",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/moderatorComplaint/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "moderatorComplaint",
+                "review"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"complaintId\": 1,\n  \"status\": \"approved\",\n  \"remark\": \"审核通过\",\n  \"reviewerId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "查询投诉列表（管理员端）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/moderatorComplaint/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "moderatorComplaint",
+                "list"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"page\": 1,\n  \"size\": 10,\n  \"status\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "查询用户自己的投诉记录",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/moderatorComplaint/myList",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "moderatorComplaint",
+                "myList"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reporterId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "FeaturedRecommendationController (精华帖推荐审批)",
+      "item": [
+        {
+          "name": "版主推荐帖子为精华（初审）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/article/recommendFeatured",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "article",
+                "recommendFeatured"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"articleId\": 1,\n  \"recommenderId\": 1,\n  \"labelId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "总运营审核精华推荐（终审）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/featured/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "featured",
+                "review"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recommendationId\": 1,\n  \"status\": \"approved\",\n  \"remark\": \"审核通过\",\n  \"reviewerId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "查询精华推荐列表（管理端）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/featured/recommendList",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "featured",
+                "recommendList"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"page\": 1,\n  \"size\": 10,\n  \"status\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "BoardModeratorController (版块管理员/版主)",
+      "item": [
+        {
+          "name": "任命版主",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/moderator/appoint",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "moderator",
+                "appoint"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 2,\n  \"labelId\": 1,\n  \"operatorId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "撤销版主",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/moderator/dismiss",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "moderator",
+                "dismiss"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 2,\n  \"labelId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "版主列表",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/moderator/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "moderator",
+                "list"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"page\": 1,\n  \"size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "检查用户是否为版主",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/moderator/check",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "moderator",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "labelId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "查询指定板块的版主列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/moderator/listByLabel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "moderator",
+                "listByLabel"
+              ],
+              "query": [
+                {
+                  "key": "labelId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "查询所有有效版主列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/moderator/listAll",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "moderator",
+                "listAll"
+              ]
+            }
+          }
+        },
+        {
+          "name": "发放本月版主履职奖励",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/moderator/monthlyReward",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "moderator",
+                "monthlyReward"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operatorId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "取消版主本月履职奖励",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/moderator/cancelReward",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "moderator",
+                "cancelReward"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 2,\n  \"operatorId\": 1,\n  \"remark\": \"取消原因\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "恢复版主本月履职奖励",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/moderator/restoreReward",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "moderator",
+                "restoreReward"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "查询本月被取消奖励的版主列表",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/moderator/cancelledRewards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "moderator",
+                "cancelledRewards"
+              ]
+            }
+          }
+        },
+        {
+          "name": "手动触发自动发放（测试用）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/moderator/triggerAutoReward",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "moderator",
+                "triggerAutoReward"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "DictController (数据字典)",
+      "item": [
+        {
+          "name": "新增字典",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/addDict",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "addDict"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dictType\": \"post_points\",\n  \"dictValue\": \"3\",\n  \"dictLabel\": \"发帖积分\",\n  \"description\": \"每次发帖获得的积分\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "删除字典",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/deleteDict",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "deleteDict"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "修改字典",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/updateDict",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "updateDict"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"dictType\": \"post_points\",\n  \"dictValue\": \"5\",\n  \"dictLabel\": \"发帖积分\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "根据id查询字典",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/getDictById",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "getDictById"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "查询字典列表（不分页）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/listDict",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "listDict"
+              ]
+            }
+          }
+        },
+        {
+          "name": "根据字典类型查询数据字典列表",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/listDictByType",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "listDictByType"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dictType\": \"post_points\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "UserController (用户管理)",
+      "item": [
+        {
+          "name": "获取当前登录用户信息",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/user/info",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "user",
+                "info"
+              ]
+            }
+          }
+        },
+        {
+          "name": "修改当前用户头像",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/updatePortrait",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "updatePortrait"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "userId",
+                  "type": "text",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "value": "",
+                  "description": "头像图片"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "修改当前用户信息",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/updateUserinfo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "updateUserinfo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"nickname\": \"新昵称\",\n  \"gender\": \"男\",\n  \"introduce\": \"个人简介\",\n  \"city\": \"内江\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "通过用户ID获取用户信息",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/user/getUserinfoById/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "user",
+                "getUserinfoById",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取所有用户(搜索 + 分页)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/getAllUser",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "getAllUser"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pageIndex\": 1,\n  \"pageSize\": 10,\n  \"searchInfo\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "用户搜索（管理员用，按用户名/昵称模糊搜索）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/user/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "user",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "张",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "通过用户id删除用户",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/deleteUserByUserId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "deleteUserByUserId"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "通过用户id修改用户alive值",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/updateUserAliveByUserId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "updateUserAliveByUserId"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "通过用户id批量删除用户",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/batchDeleteUsersByUserIds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "batchDeleteUsersByUserIds"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": \"2,3,4\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "获取用户总数",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getUserCount/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getUserCount",
+                "all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取地图数据(城市人数和比例)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getAllCity/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getAllCity",
+                "all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取系统最近一年的用户注册数据",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/getUserDataWithMonth/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "getUserDataWithMonth",
+                "all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "修改用户密码",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/modPwd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "modPwd"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"password\": \"oldPassword\",\n  \"newPassword\": \"newPassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "更改用户角色",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/updateUserRole",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "updateUserRole"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"roleType\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "修改用户单位",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/modOrgNo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "modOrgNo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"orgNo\": \"5140401\",\n  \"orgName\": \"新单位名称\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "导入预览：解析Excel但不存库",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/previewImport",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "previewImport"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "value": "",
+                  "description": "用户数据Excel文件"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "执行导入（异步）",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/importUsers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "importUsers"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "value": "",
+                  "description": "用户数据Excel文件"
+                },
+                {
+                  "key": "adjustments",
+                  "type": "text",
+                  "value": "",
+                  "description": "调整信息JSON"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "查询导入任务进度",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/importProgress/task123",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "importProgress",
+                "task123"
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取当前导入任务",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/import/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "import",
+                "current"
+              ]
+            }
+          }
+        },
+        {
+          "name": "管理员新增用户",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/addUser",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "addUser"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"password\": \"1234@abcD\",\n  \"nickname\": \"新用户\",\n  \"orgNo\": \"51404\",\n  \"userType\": \"normal\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "管理员更新用户详细信息",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/updateUserDetail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "updateUserDetail"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"nickname\": \"更新昵称\",\n  \"orgNo\": \"5140401\",\n  \"userType\": \"normal\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "获取当前用户等级",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/level",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "level"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "管理员限制/解除用户发帖",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/user/restrictPost",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "user",
+                "restrictPost"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"restricted\": 1,\n  \"until\": \"2026-12-31 23:59:59\",\n  \"adminId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "检查用户发帖限制状态",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/user/checkPostRestriction",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "common",
+                "user",
+                "checkPostRestriction"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "用户查看自己的积分变动记录",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/points/myLog",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "points",
+                "myLog"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"page\": 1,\n  \"size\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
