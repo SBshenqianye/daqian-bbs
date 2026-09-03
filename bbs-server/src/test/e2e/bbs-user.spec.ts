@@ -93,7 +93,7 @@ test.describe('登录流程', () => {
   test('错误密码登录失败，停留在登录页', async ({ page }) => {
     await page.goto(`${BASE}#/login`);
 
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
     await page.locator('input[placeholder="请输入密码"]').fill('wrong_password');
     await page.locator('button[type="submit"]').click();
 
@@ -105,8 +105,8 @@ test.describe('登录流程', () => {
   test('正确账号密码登录成功，跳转离开登录页', async ({ page }) => {
     await page.goto(`${BASE}#/login`);
 
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
 
     // 登录成功后应跳转离开登录页（跳到首页或改密页）
@@ -212,8 +212,8 @@ test.describe('发帖流程', () => {
   test('已登录用户访问发帖页，显示编辑器', async ({ page }) => {
     // 先登录
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     await page.waitForTimeout(3000);
 
@@ -238,8 +238,8 @@ test.describe('发帖流程', () => {
   test('发帖页标题不能为空', async ({ page }) => {
     // 先登录
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     await page.waitForTimeout(3000);
 
@@ -257,8 +257,8 @@ test.describe('发帖流程', () => {
   test('发帖页内容不能为空', async ({ page }) => {
     // 先登录
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     await page.waitForTimeout(3000);
 
@@ -284,8 +284,8 @@ test.describe('评论流程', () => {
   test('帖子详情页评论输入框和按钮存在', async ({ page }) => {
     // 先登录
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     await page.waitForTimeout(3000);
 
@@ -310,8 +310,8 @@ test.describe('评论流程', () => {
   test('空评论提交被拦截', async ({ page }) => {
     // 先登录
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     await page.waitForTimeout(3000);
 
@@ -387,8 +387,8 @@ test.describe('个人中心', () => {
   test('登录后访问个人中心，验证信息显示', async ({ page }) => {
     // 先登录
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     await page.waitForTimeout(3000);
 
@@ -410,8 +410,8 @@ test.describe('个人中心', () => {
   test('个人中心侧边栏可切换标签页', async ({ page }) => {
     // 先登录
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     await page.waitForTimeout(3000);
 
@@ -430,8 +430,8 @@ test.describe('个人中心', () => {
   test('个人中心侧边栏链接到违规记录', async ({ page }) => {
     // 先登录
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     await page.waitForTimeout(3000);
 
@@ -491,8 +491,8 @@ test.describe('举报流程', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
     await page.waitForTimeout(1000);
@@ -539,8 +539,8 @@ test.describe('修改密码', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
     await page.waitForTimeout(1000);
@@ -577,8 +577,8 @@ test.describe('通知中心', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
     await page.waitForTimeout(1000);
@@ -600,8 +600,8 @@ test.describe('违规记录', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
     await page.waitForTimeout(1000);
@@ -623,8 +623,8 @@ test.describe('申诉记录', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
     await page.waitForTimeout(1000);
@@ -646,8 +646,8 @@ test.describe('举报记录', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
     await page.waitForTimeout(1000);
@@ -677,8 +677,8 @@ test.describe('版主投诉', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
     await page.waitForTimeout(1000);
@@ -700,8 +700,8 @@ test.describe('积分明细', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
     await page.waitForTimeout(1000);
@@ -723,8 +723,8 @@ test.describe('我的回复', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE}#/login`);
-    await page.locator('input[placeholder="请输入账号"]').fill('e2etest');
-    await page.locator('input[placeholder="请输入密码"]').fill('Test@1234');
+    await page.locator('input[placeholder="请输入账号"]').fill('testuser');
+    await page.locator('input[placeholder="请输入密码"]').fill('1234@abcD');
     await page.locator('button[type="submit"]').click();
     try { await page.waitForFunction(() => !!sessionStorage.getItem('tokenStr'), { timeout: 8000 }); } catch {}
     await page.waitForTimeout(1000);
