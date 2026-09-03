@@ -568,14 +568,14 @@ CREATE INDEX IF NOT EXISTS idx_fr_status ON bbs_featured_recommendation (status)
 -- ----------------------------
 CREATE TABLE IF NOT EXISTS bbs_moderator_reward_cancel (
     id          SERIAL PRIMARY KEY,
-    year_month  varchar(7) NOT NULL,
+    ym          varchar(7) NOT NULL,
     user_id     integer NOT NULL,
     operator_id integer DEFAULT NULL,
     remark      varchar(500) DEFAULT NULL,
     create_time varchar(20) NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_mrc_ym ON bbs_moderator_reward_cancel (year_month);
-CREATE UNIQUE INDEX IF NOT EXISTS uk_mrc_ym_user ON bbs_moderator_reward_cancel (year_month, user_id);
+CREATE INDEX IF NOT EXISTS idx_mrc_ym ON bbs_moderator_reward_cancel (ym);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_mrc_ym_user ON bbs_moderator_reward_cancel (ym, user_id);
 
 -- ----------------------------
 -- 重置序列，使后续自增从正确值开始

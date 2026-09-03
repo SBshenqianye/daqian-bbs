@@ -606,3 +606,339 @@ SET @sql_mc_mod_nullable = IF(@col_mc_mod_nullable > 0, 'ALTER TABLE `bbs_modera
 PREPARE stmt_mc_mod_nullable FROM @sql_mc_mod_nullable;
 EXECUTE stmt_mc_mod_nullable;
 DEALLOCATE PREPARE stmt_mc_mod_nullable;
+
+-- @migration: v026-fix-missing-columns 修复因 baseline 逻辑导致的缺失列
+-- 历史 bug：DatabaseInitializer.baselineExistingMigrations() 在旧数据库上
+-- 将所有迁移标记为"已执行"但未实际运行，导致 v012 添加的列缺失。
+-- 此迁移用 information_schema 检查安全补列，幂等可重复执行。
+
+-- bbs_user.post_restricted
+SELECT COUNT(*) INTO @col_pr_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_user' AND COLUMN_NAME = 'post_restricted';
+SET @sql_pr = IF(@col_pr_exists = 0, 'ALTER TABLE `bbs_user` ADD COLUMN `post_restricted` tinyint(1) DEFAULT 0 COMMENT ''是否限制发帖(0=否,1=是)''', 'SELECT 1');
+PREPARE stmt_pr FROM @sql_pr;
+EXECUTE stmt_pr;
+DEALLOCATE PREPARE stmt_pr;
+
+-- bbs_user.post_restricted_until
+SELECT COUNT(*) INTO @col_pru_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_user' AND COLUMN_NAME = 'post_restricted_until';
+SET @sql_pru = IF(@col_pru_exists = 0, 'ALTER TABLE `bbs_user` ADD COLUMN `post_restricted_until` varchar(20) DEFAULT NULL COMMENT ''限制发帖截止时间''', 'SELECT 1');
+PREPARE stmt_pru FROM @sql_pru;
+EXECUTE stmt_pru;
+DEALLOCATE PREPARE stmt_pru;
+
+-- bbs_article.is_hot_bonus
+SELECT COUNT(*) INTO @col_ihb_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_article' AND COLUMN_NAME = 'is_hot_bonus';
+SET @sql_ihb = IF(@col_ihb_exists = 0, 'ALTER TABLE `bbs_article` ADD COLUMN `is_hot_bonus` tinyint(1) DEFAULT 0 COMMENT ''热度奖励是否已发放(0=否,1=是)''', 'SELECT 1');
+PREPARE stmt_ihb FROM @sql_ihb;
+EXECUTE stmt_ihb;
+DEALLOCATE PREPARE stmt_ihb;
+
+-- bbs_comment.adopt_status
+SELECT COUNT(*) INTO @col_ca_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_comment' AND COLUMN_NAME = 'adopt_status';
+SET @sql_ca = IF(@col_ca_exists = 0, 'ALTER TABLE `bbs_comment` ADD COLUMN `adopt_status` tinyint(1) DEFAULT 0 COMMENT ''采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)''', 'SELECT 1');
+PREPARE stmt_ca FROM @sql_ca;
+EXECUTE stmt_ca;
+DEALLOCATE PREPARE stmt_ca;
+
+-- bbs_reply.is_adopted
+SELECT COUNT(*) INTO @col_ra_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_reply' AND COLUMN_NAME = 'is_adopted';
+SET @sql_ra = IF(@col_ra_exists = 0, 'ALTER TABLE `bbs_reply` ADD COLUMN `is_adopted` tinyint(1) DEFAULT 0 COMMENT ''是否被采纳(0=否,1=是)''', 'SELECT 1');
+PREPARE stmt_ra FROM @sql_ra;
+EXECUTE stmt_ra;
+DEALLOCATE PREPARE stmt_ra;
+
+-- bbs_reply.adopt_status
+SELECT COUNT(*) INTO @col_ras_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_reply' AND COLUMN_NAME = 'adopt_status';
+SET @sql_ras = IF(@col_ras_exists = 0, 'ALTER TABLE `bbs_reply` ADD COLUMN `adopt_status` tinyint(1) DEFAULT 0 COMMENT ''采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)''', 'SELECT 1');
+PREPARE stmt_ras FROM @sql_ras;
+EXECUTE stmt_ras;
+DEALLOCATE PREPARE stmt_ras;
+
+-- @migration: v027-fix-missing-tables 修复因 baseline 逻辑导致的缺失表
+-- 与 v026 同源：旧数据库的基线跳过了 v008/v010/v012 等迁移的建表语句。
+-- 此迁移用 CREATE TABLE IF NOT EXISTS 安全补建，幂等可重复执行。
+CREATE TABLE IF NOT EXISTS `bbs_points_log` (
+  `id`               int(11) NOT NULL AUTO_INCREMENT,
+  `user_id`          int(11) NOT NULL,
+  `points_change`    int(11) NOT NULL,
+  `reason`           varchar(500) DEFAULT NULL,
+  `related_type`     varchar(20) DEFAULT NULL,
+  `related_id`       int(11) DEFAULT NULL,
+  `operator_id`      int(11) DEFAULT NULL,
+  `create_time`      varchar(20) DEFAULT NULL,
+  `is_reversed`      tinyint(1) NOT NULL DEFAULT 0,
+  `reversed_by`      int(11) DEFAULT NULL,
+  `reversing_record` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_points_log_user_id` (`user_id`),
+  KEY `idx_points_log_is_reversed` (`is_reversed`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `bbs_notification` (
+  `id`             int(11) NOT NULL AUTO_INCREMENT,
+  `user_id`        int(11) NOT NULL,
+  `from_user_id`   int(11) DEFAULT NULL,
+  `type`           varchar(20) NOT NULL,
+  `title`          varchar(255) DEFAULT NULL,
+  `related_type`   varchar(20) DEFAULT NULL,
+  `related_id`     int(11) DEFAULT NULL,
+  `is_read`        tinyint(1) NOT NULL DEFAULT 0,
+  `create_time`    varchar(20) DEFAULT NULL,
+  `category`       varchar(20) NOT NULL DEFAULT 'system',
+  PRIMARY KEY (`id`),
+  KEY `idx_notification_user_id` (`user_id`),
+  KEY `idx_notification_user_read` (`user_id`, `is_read`),
+  KEY `idx_notification_user_cat_read` (`user_id`, `category`, `is_read`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `bbs_login_log` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT,
+  `user_id`         int(11) NOT NULL,
+  `login_date`      varchar(10) NOT NULL,
+  `login_time`      varchar(20) DEFAULT NULL,
+  `browse_minutes`  int(11) DEFAULT 0,
+  `points_awarded`  tinyint(1) DEFAULT 0,
+  `create_time`     varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_login_log_user_date` (`user_id`, `login_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `bbs_report` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT,
+  `reporter_id`     int(11) NOT NULL,
+  `target_type`     varchar(20) NOT NULL,
+  `target_id`       int(11) NOT NULL,
+  `reason`          varchar(500) DEFAULT NULL,
+  `status`          varchar(20) DEFAULT 'pending',
+  `reviewer_id`     int(11) DEFAULT NULL,
+  `review_time`     varchar(20) DEFAULT NULL,
+  `review_remark`   varchar(500) DEFAULT NULL,
+  `points_awarded`  tinyint(1) DEFAULT 0,
+  `create_time`     varchar(20) DEFAULT NULL,
+  `violation_type`  varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_report_reporter` (`reporter_id`),
+  KEY `idx_report_target` (`target_type`, `target_id`),
+  KEY `idx_report_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `bbs_violation` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT,
+  `user_id`         int(11) NOT NULL,
+  `violation_type`  varchar(50) NOT NULL,
+  `points_deducted` int(11) NOT NULL,
+  `related_type`    varchar(20) DEFAULT NULL,
+  `related_id`      int(11) DEFAULT NULL,
+  `operator_id`     int(11) NOT NULL,
+  `remark`          varchar(500) DEFAULT NULL,
+  `create_time`     varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_violation_user` (`user_id`),
+  KEY `idx_violation_type` (`violation_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `bbs_appeal` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT,
+  `user_id`         int(11) NOT NULL,
+  `appeal_type`     varchar(20) NOT NULL,
+  `related_id`      int(11) DEFAULT NULL,
+  `content`         text NOT NULL,
+  `status`          varchar(20) DEFAULT 'pending',
+  `reviewer_id`     int(11) DEFAULT NULL,
+  `review_remark`   varchar(500) DEFAULT NULL,
+  `review_time`     varchar(20) DEFAULT NULL,
+  `create_time`     varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_appeal_user` (`user_id`),
+  KEY `idx_appeal_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `bbs_board_moderator` (
+  `id`           int(11) NOT NULL AUTO_INCREMENT,
+  `user_id`      int(11) NOT NULL,
+  `label_id`     int(11) NOT NULL,
+  `role_type`    varchar(20) DEFAULT 'moderator',
+  `status`       tinyint(1) DEFAULT 1,
+  `appoint_time` varchar(20) DEFAULT NULL,
+  `create_time`  varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_board_mod_user_label` (`user_id`, `label_id`),
+  KEY `idx_board_mod_label` (`label_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `bbs_moderator_complaint` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `reporter_id` int(11) NOT NULL,
+  `moderator_id` int(11) DEFAULT NULL,
+  `label_id` int(11) DEFAULT NULL,
+  `content` text NOT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'pending',
+  `reviewer_id` int(11) DEFAULT NULL,
+  `review_remark` varchar(500) DEFAULT NULL,
+  `review_time` varchar(20) DEFAULT NULL,
+  `create_time` varchar(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_moderator_id` (`moderator_id`),
+  KEY `idx_reporter_id` (`reporter_id`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `bbs_featured_recommendation` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `article_id` int(11) NOT NULL,
+  `recommender_id` int(11) NOT NULL,
+  `label_id` int(11) DEFAULT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'pending',
+  `reviewer_id` int(11) DEFAULT NULL,
+  `review_remark` varchar(500) DEFAULT NULL,
+  `review_time` varchar(20) DEFAULT NULL,
+  `create_time` varchar(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_fr_article` (`article_id`),
+  KEY `idx_fr_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `bbs_moderator_reward_cancel` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `year_month` varchar(7) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `operator_id` int(11) DEFAULT NULL,
+  `remark` varchar(500) DEFAULT NULL,
+  `create_time` varchar(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_mrc_ym` (`year_month`),
+  UNIQUE KEY `uk_mrc_ym_user` (`year_month`, `user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ===== 补字典数据（幂等：WHERE NOT EXISTS） =====
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'violation', '15', '违法违规内容', 1, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '扣15分', 'illegal'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_key` = 'illegal');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'violation', '10', '人身攻击/争吵引战', 2, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '扣10分', 'attack'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_key` = 'attack');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'violation', '4', '恶意灌水/刷屏', 3, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '扣4分', 'spam'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_key` = 'spam');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'violation', '12', '抄袭剽窃', 4, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '扣12分', 'plagiarism'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_key` = 'plagiarism');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'violation', '3', '虚假恶意举报', 5, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '扣3分', 'false_report'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_key` = 'false_report');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'violation', '20', '泄露企业秘密', 6, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '扣20分', 'leak'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_key` = 'leak');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'featured', '10', '精华帖积分', 2, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '被设为精华帖额外获得的积分', 'featured'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'featured');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'hot_threshold', '10', '帖子热度回复阈值', 10, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '回复数超过此值触发热度奖励', 'hot_threshold'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'hot_threshold');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '登录后需浏览满此分钟数才计分', 'login_browse_minutes'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'login_browse_minutes');
+
+-- ===== 补初始配置和标签（幂等） =====
+INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
+SELECT 'feedback_contact', '{"name":"","email":""}', '使用反馈联系方式', 'contact', 'json', 0, '配置使用反馈弹窗中的联系人信息', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'feedback_contact');
+INSERT INTO `bbs_article_label` (`label_id`, `label_name`, `enabled`, `icon`, `description`)
+SELECT 4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM `bbs_article_label` WHERE `label_id` = 4);
+INSERT IGNORE INTO `bbs_sensitive_word` (`keyword`) VALUES
+('哈哈哈'),('嘻嘻嘻'),('嘿嘿嘿'),('啊啊啊'),('嗯嗯嗯'),('哦哦哦'),('呵呵呵'),
+('啦啦啦'),('呜呜呜'),('沙发'),('占位'),('占楼'),('路过'),('马克'),('mark'),('mark一下'),
+('顶贴'),('灌水'),('水水水'),('水帖'),('来了'),('看看'),('打卡'),('签到'),
+('666666'),('8888'),('11111'),('123456'),('测试测试'),('测试一下'),('testtest');
+
+-- ===== 领导干部默认不展示排名 =====
+UPDATE `bbs_sa_org` SET `is_display_selected` = 0
+WHERE `org_name` = '领导干部' AND `is_delete` = 0 AND `is_display_selected` = 1;
+
+-- @migration: v028-dict-backfill 补充字典数据幂等迁移（MySQL 版）
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'violation', '15', '违法违规内容', 1, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '扣15分', 'illegal'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_key` = 'illegal');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'violation', '10', '人身攻击/争吵引战', 2, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '扣10分', 'attack'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_key` = 'attack');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'violation', '4', '恶意灌水/刷屏', 3, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '扣4分', 'spam'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_key` = 'spam');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'violation', '12', '抄袭剽窃', 4, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '扣12分', 'plagiarism'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_key` = 'plagiarism');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'violation', '3', '虚假恶意举报', 5, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '扣3分', 'false_report'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_key` = 'false_report');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'violation', '20', '泄露企业秘密', 6, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '扣20分', 'leak'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'violation' AND `dict_key` = 'leak');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'featured', '10', '精华帖积分', 2, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '被设为精华帖额外获得的积分', 'featured'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'featured');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'hot_threshold', '10', '帖子热度回复阈值', 10, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '回复数超过此值触发热度奖励', 'hot_threshold'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'hot_threshold');
+INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)
+SELECT 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '登录后需浏览满此分钟数才计分', 'login_browse_minutes'
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_type` = 'login_browse_minutes');
+INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
+SELECT 'feedback_contact', '{"name":"","email":""}', '使用反馈联系方式', 'contact', 'json', 0, '配置使用反馈弹窗中的联系人信息', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'feedback_contact');
+INSERT INTO `bbs_article_label` (`label_id`, `label_name`, `enabled`, `icon`, `description`)
+SELECT 4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM `bbs_article_label` WHERE `label_id` = 4);
+INSERT IGNORE INTO `bbs_sensitive_word` (`keyword`) VALUES
+('哈哈哈'),('嘻嘻嘻'),('嘿嘿嘿'),('啊啊啊'),('嗯嗯嗯'),('哦哦哦'),('呵呵呵'),
+('啦啦啦'),('呜呜呜'),('沙发'),('占位'),('占楼'),('路过'),('马克'),('mark'),('mark一下'),
+('顶贴'),('灌水'),('水水水'),('水帖'),('来了'),('看看'),('打卡'),('签到'),
+('666666'),('8888'),('11111'),('123456'),('测试测试'),('测试一下'),('testtest');
+
+-- @migration: v028-reconcile-all 幂等补齐所有可能缺失的 DDL + DML（MySQL 版）
+-- 与 PG v028 同步。设计原则：不管数据库处于哪个历史版本，跑完后结构和基础数据一致。
+
+-- ===== 补列（幂等：information_schema 检查） =====
+SELECT COUNT(*) INTO @col_if FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_article' AND COLUMN_NAME = 'is_featured';
+SET @sql_if = IF(@col_if = 0, 'ALTER TABLE `bbs_article` ADD COLUMN `is_featured` tinyint(1) NOT NULL DEFAULT 0 COMMENT ''是否为精华帖''', 'SELECT 1');
+PREPARE stmt_if FROM @sql_if; EXECUTE stmt_if; DEALLOCATE PREPARE stmt_if;
+
+SELECT COUNT(*) INTO @col_ihb FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_article' AND COLUMN_NAME = 'is_hot_bonus';
+SET @sql_ihb = IF(@col_ihb = 0, 'ALTER TABLE `bbs_article` ADD COLUMN `is_hot_bonus` tinyint(1) DEFAULT 0 COMMENT ''热度奖励是否已发放''', 'SELECT 1');
+PREPARE stmt_ihb FROM @sql_ihb; EXECUTE stmt_ihb; DEALLOCATE PREPARE stmt_ihb;
+
+SELECT COUNT(*) INTO @col_icon FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_article_label' AND COLUMN_NAME = 'icon';
+SET @sql_icon = IF(@col_icon = 0, 'ALTER TABLE `bbs_article_label` ADD COLUMN `icon` varchar(50) DEFAULT NULL COMMENT ''标签图标''', 'SELECT 1');
+PREPARE stmt_icon FROM @sql_icon; EXECUTE stmt_icon; DEALLOCATE PREPARE stmt_icon;
+
+SELECT COUNT(*) INTO @col_desc FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_article_label' AND COLUMN_NAME = 'description';
+SET @sql_desc = IF(@col_desc = 0, 'ALTER TABLE `bbs_article_label` ADD COLUMN `description` varchar(200) DEFAULT NULL COMMENT ''标签描述''', 'SELECT 1');
+PREPARE stmt_desc FROM @sql_desc; EXECUTE stmt_desc; DEALLOCATE PREPARE stmt_desc;
+
+SELECT COUNT(*) INTO @col_dk FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_dict' AND COLUMN_NAME = 'dict_key';
+SET @sql_dk = IF(@col_dk = 0, 'ALTER TABLE `bbs_dict` ADD COLUMN `dict_key` varchar(100) COMMENT ''键''', 'SELECT 1');
+PREPARE stmt_dk FROM @sql_dk; EXECUTE stmt_dk; DEALLOCATE PREPARE stmt_dk;
+
+SELECT COUNT(*) INTO @col_disp FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_sa_org' AND COLUMN_NAME = 'is_display_selected';
+SET @sql_disp = IF(@col_disp = 0, 'ALTER TABLE `bbs_sa_org` ADD COLUMN `is_display_selected` tinyint(1) DEFAULT 1 COMMENT ''是否显示在用户前台''', 'SELECT 1');
+PREPARE stmt_disp FROM @sql_disp; EXECUTE stmt_disp; DEALLOCATE PREPARE stmt_disp;
+
+-- ===== 补索引（幂等：information_schema 检查） =====
+SELECT COUNT(*) INTO @idx_ft FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_article' AND INDEX_NAME = 'idx_article_featured_time';
+SET @sql_ft = IF(@idx_ft = 0, 'ALTER TABLE `bbs_article` ADD INDEX `idx_article_featured_time` (`is_featured`, `create_time`)', 'SELECT 1');
+PREPARE stmt_ft FROM @sql_ft; EXECUTE stmt_ft; DEALLOCATE PREPARE stmt_ft;
+
+SELECT COUNT(*) INTO @idx_uksc FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_system_config' AND INDEX_NAME = 'uk_config_key';
+SET @sql_uksc = IF(@idx_uksc = 0, 'ALTER TABLE `bbs_system_config` ADD UNIQUE INDEX `uk_config_key` (`config_key`)', 'SELECT 1');
+PREPARE stmt_uksc FROM @sql_uksc; EXECUTE stmt_uksc; DEALLOCATE PREPARE stmt_uksc;
+
+SELECT COUNT(*) INTO @idx_uksw FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_sensitive_word' AND INDEX_NAME = 'uk_sensitive_word_keyword';
+SET @sql_uksw = IF(@idx_uksw = 0, 'ALTER TABLE `bbs_sensitive_word` ADD UNIQUE INDEX `uk_sensitive_word_keyword` (`keyword`)', 'SELECT 1');
+PREPARE stmt_uksw FROM @sql_uksw; EXECUTE stmt_uksw; DEALLOCATE PREPARE stmt_uksw;
+
+-- @migration: v029-rename-year-month 列名 year_month → ym（MySQL 8.0 保留字）
+ALTER TABLE `bbs_moderator_reward_cancel` RENAME COLUMN `year_month` TO `ym`;
+
+-- @migration: v030-rename-ym-mysql 重试改名（v029 被占位语句占用）
+ALTER TABLE `bbs_moderator_reward_cancel` RENAME COLUMN `year_month` TO `ym`;

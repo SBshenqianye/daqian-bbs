@@ -43,10 +43,12 @@ UPDATE bbs_yyy SET ...;
 
 ### 幂等要求
 
-由于迁移只执行一次，**不再要求 DML 操作天然幂等**。但仍建议保留 DDL 幂等（`IF NOT EXISTS`）作为安全网：
+**所有迁移必须全幂等**（DDL + DML），不管数据库处于哪个历史版本，跑完后结构和基础数据一致：
 
-- **MySQL `upgrade-mysql.sql`**: DDL 用 `information_schema` 条件判断 + `PREPARE`/`EXECUTE`；DML 无需特殊处理（迁移框架保证只执行一次）。
-- **PostgreSQL `upgrade-pg.sql`**: 利用原生 `IF NOT EXISTS` / `ON CONFLICT DO NOTHING`。
+- **DDL 幂等**：`CREATE TABLE IF NOT EXISTS`、`ADD COLUMN IF NOT EXISTS`、`CREATE INDEX IF NOT EXISTS`——有就跳过，没有就建。
+- **DML 幂等**：`INSERT ... ON CONFLICT DO NOTHING`、`UPDATE ... WHERE NOT EXISTS`、`INSERT IGNORE`——没数据就插，有数据就跳过。
+- **推荐写法**：每个迁移块从 DDL 到 DML 全幂等，一个块补齐所有缺失对象（列+表+索引+数据），不需要依赖特定 baseline 状态。
+- **禁止 baseline 逻辑**：`DatabaseInitializer` 不得盲目将所有迁移标记为"已执行"。已因 baseline 跳过而缺失的对象，用新迁移（带 `IF NOT EXISTS`）补齐，不改旧迁移。
 - **`init-*.sql`**: 使用 `CREATE TABLE IF NOT EXISTS` / `INSERT ... ON CONFLICT DO NOTHING`，幂等安全。
 
 ### 版本追踪表

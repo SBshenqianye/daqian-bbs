@@ -8,12 +8,8 @@ import './assets/css/icon.css';
 import 'babel-polyfill';
 import './assets/tailwind.css';
 import {postRequest,putRequest,getRequest,getRequestUrl,deleteRequest,uploadFile,downloadFile} from "@/api/api";
-import * as echarts from 'echarts'
 import {installErrorHandler} from "./utils/errorHandler";
 import adminStore from "./utils/adminStore";
-
-
-Vue.prototype.$echarts = echarts
 
 //插件形式使用请求
 Vue.prototype.postRequest = postRequest;

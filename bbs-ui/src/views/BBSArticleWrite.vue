@@ -16,17 +16,91 @@
         <span class="material-symbols-outlined absolute right-0 text-gray-300 pointer-events-none group-hover:text-gray-400">edit</span>
       </div>
 
-      <!-- 操作栏：链接/图片 -->
-      <div class="flex items-center gap-1 px-3 py-2 border border-gray-200 rounded-t-lg bg-gray-50/50">
+      <!-- Markdown 格式操作栏 -->
+      <div class="flex items-center gap-0.5 px-3 py-2 border border-gray-200 rounded-t-lg bg-gray-50/50 flex-wrap">
+        <!-- 格式按钮 -->
         <button
-          class="inline-flex items-center gap-1 px-2.5 py-1 text-sm text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          title="加粗 (Ctrl+B)"
+          @click="insertMdFormat('bold')"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
+        </button>
+        <button
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          title="斜体 (Ctrl+I)"
+          @click="insertMdFormat('italic')"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 4h4m-2 0v16m-4 0h8"/></svg>
+        </button>
+        <button
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          title="删除线"
+          @click="insertMdFormat('strikethrough')"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 12H7m10-4H9m8 8H5"/></svg>
+        </button>
+        <span class="w-px h-5 bg-gray-200 mx-1"></span>
+        <button
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          title="标题"
+          @click="insertMdFormat('heading')"
+        >
+          <span class="text-sm font-bold">H</span>
+        </button>
+        <button
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          title="引用块"
+          @click="insertMdFormat('quote')"
+        >
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
+        </button>
+        <button
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          title="行内代码"
+          @click="insertMdFormat('code')"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        </button>
+        <button
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          title="代码块"
+          @click="insertMdFormat('codeblock')"
+        >
+          <span class="text-xs font-mono font-bold">{ }</span>
+        </button>
+        <span class="w-px h-5 bg-gray-200 mx-1"></span>
+        <button
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          title="无序列表"
+          @click="insertMdFormat('ul')"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"/><circle cx="2" cy="6" r="1" fill="currentColor"/><circle cx="2" cy="12" r="1" fill="currentColor"/><circle cx="2" cy="18" r="1" fill="currentColor"/></svg>
+        </button>
+        <button
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          title="有序列表"
+          @click="insertMdFormat('ol')"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 6h13M7 12h13M7 18h13"/><text x="2" y="7.5" font-size="7" fill="currentColor" font-weight="bold">1</text><text x="2" y="13.5" font-size="7" fill="currentColor" font-weight="bold">2</text><text x="2" y="19.5" font-size="7" fill="currentColor" font-weight="bold">3</text></svg>
+        </button>
+        <button
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          title="分割线"
+          @click="insertMdFormat('hr')"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14"/></svg>
+        </button>
+        <span class="w-px h-5 bg-gray-200 mx-1"></span>
+        <button
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
           title="插入链接"
           @click="openLinkDialog"
         >
           <span class="material-symbols-outlined text-[18px]">link</span>
         </button>
         <button
-          class="inline-flex items-center gap-1 px-2.5 py-1 text-sm text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
           title="插入图片"
           @mousedown="saveSelection"
           @click="triggerImgUpload"
@@ -34,6 +108,17 @@
           <span class="material-symbols-outlined text-[18px]">image</span>
         </button>
         <input ref="imgInput" type="file" accept="image/jpeg,image/png,image/gif,image/bmp,image/webp" hidden @change="handleImgUpload">
+        <!-- 右侧：预览切换 -->
+        <div class="flex-1"></div>
+        <button
+          class="inline-flex items-center gap-1 px-3 py-1 text-sm rounded transition-colors"
+          :class="showPreview ? 'bg-blue-100 text-primary' : 'text-gray-600 hover:text-primary hover:bg-blue-50'"
+          title="预览 Markdown"
+          @click="togglePreview"
+        >
+          <span class="material-symbols-outlined text-[18px]">visibility</span>
+          <span>预览</span>
+        </button>
       </div>
 
       <!-- 链接弹窗（点击周围不会关闭，避免误触丢失编辑） -->
@@ -66,16 +151,25 @@
         </div>
       </div>
 
-      <!-- 可视化编辑器 (contenteditable) -->
-      <div
-        ref="editorDiv"
-        contenteditable="true"
-        data-placeholder="请输入正文内容"
-        class="editor-content w-full border border-t-0 border-gray-200 rounded-b-lg p-4 text-sm text-gray-800 leading-normal outline-none transition-colors min-h-[500px] focus:border-gray-300"
-        @blur="syncContent"
-        @paste="handlePaste"
-        @click="handleEditorClick"
-      ></div>
+      <!-- 编辑器 + 预览面板 -->
+      <div class="flex border border-t-0 border-gray-200 rounded-b-lg min-h-[500px]">
+        <!-- 可视化编辑器 (contenteditable) -->
+        <div
+          ref="editorDiv"
+          contenteditable="true"
+          data-placeholder="请输入正文内容"
+          class="editor-content p-4 text-sm text-gray-800 leading-normal outline-none transition-colors focus:border-gray-300"
+          :class="showPreview ? 'border-r border-gray-200 w-1/2' : 'w-full'"
+          @blur="syncContent"
+          @input="onEditorInput"
+          @paste="handlePaste"
+          @click="handleEditorClick"
+        ></div>
+        <!-- Markdown 预览面板 -->
+        <div v-if="showPreview" class="w-1/2 p-4 overflow-y-auto bg-white border-l border-gray-200" style="max-height: 600px;">
+          <div class="markdown-body" v-html="mdToHtml(markdownContent)"></div>
+        </div>
+      </div>
 
       <!-- Tags Section -->
       <div class="mt-8">
@@ -148,6 +242,9 @@ import { getArticleById, getArticleFileByArticleId } from '@/api/article'
 import { mdToHtml, htmlToMd } from '@/utils/markdown'
 import { handleResponse } from '../../../shared/feedback'
 
+// 复用正文 markdown 渲染样式（与 BBSArticleDetails 一致）
+import 'mavon-editor/dist/markdown/github-markdown.min.css'
+
 export default {
   name: 'BBSArticleWrite',
   data() {
@@ -168,6 +265,7 @@ export default {
       publishing: false,
       syncingContent: false,
       savedRange: null,
+      showPreview: false,
     }
   },
   computed: {
@@ -202,6 +300,112 @@ export default {
     }
   },
   methods: {
+    togglePreview() {
+      if (!this.showPreview) {
+        // 切换到预览前，先把编辑器内容同步到 markdownContent
+        this.syncContent()
+      }
+      this.showPreview = !this.showPreview
+    },
+    onEditorInput() {
+      // 实时同步编辑器内容到 markdownContent，预览面板通过 mdToHtml(markdownContent) 实时渲染
+      if (!this.$refs.editorDiv || this.syncingContent) return
+      this.syncingContent = true
+      this.markdownContent = this.htmlToMd(this.$refs.editorDiv.innerHTML)
+      this.$nextTick(() => { this.syncingContent = false })
+    },
+    insertMdFormat(type) {
+      // 在 contenteditable 编辑器中插入 markdown 格式文本
+      const sel = window.getSelection()
+      const editor = this.$refs.editorDiv
+      if (!editor) return
+
+      // 聚焦编辑器
+      editor.focus()
+
+      const hasSelection = sel && sel.rangeCount && !sel.isCollapsed
+      const selectedText = hasSelection ? sel.toString() : ''
+
+      let insertBefore = ''
+      let insertAfter = ''
+      let placeholder = ''
+
+      switch (type) {
+        case 'bold':
+          insertBefore = '**'
+          insertAfter = '**'
+          placeholder = '粗体文字'
+          break
+        case 'italic':
+          insertBefore = '*'
+          insertAfter = '*'
+          placeholder = '斜体文字'
+          break
+        case 'strikethrough':
+          insertBefore = '~~'
+          insertAfter = '~~'
+          placeholder = '删除线文字'
+          break
+        case 'heading':
+          insertBefore = '### '
+          insertAfter = ''
+          placeholder = '标题'
+          break
+        case 'quote':
+          insertBefore = '> '
+          insertAfter = ''
+          placeholder = '引用内容'
+          break
+        case 'code':
+          insertBefore = '`'
+          insertAfter = '`'
+          placeholder = '代码'
+          break
+        case 'codeblock':
+          insertBefore = '```\n'
+          insertAfter = '\n```'
+          placeholder = '代码块'
+          break
+        case 'ul':
+          insertBefore = '- '
+          insertAfter = ''
+          placeholder = '列表项'
+          break
+        case 'ol':
+          insertBefore = '1. '
+          insertAfter = ''
+          placeholder = '列表项'
+          break
+        case 'hr':
+          insertBefore = '\n---\n'
+          insertAfter = ''
+          placeholder = ''
+          break
+        default:
+          return
+      }
+
+      const text = selectedText || placeholder
+      const mdText = insertBefore + text + insertAfter
+
+      // 使用 execCommand 插入文本（会保留 undo 历史）
+      document.execCommand('insertText', false, mdText)
+
+      // 如果没有选中文字，选中占位符文本方便用户直接输入替换
+      if (!hasSelection && placeholder) {
+        const newSel = window.getSelection()
+        if (newSel && newSel.rangeCount) {
+          const range = newSel.getRangeAt(0)
+          // 往前回退 placeholder 长度
+          range.setStart(range.startContainer, range.startOffset - placeholder.length)
+          range.setEnd(range.startContainer, range.startOffset + placeholder.length)
+          newSel.removeAllRanges()
+          newSel.addRange(range)
+        }
+      }
+
+      this.syncContent()
+    },
     checkPostRestriction() {
       const userStr = window.sessionStorage.getItem('user')
       if (!userStr) {
@@ -614,5 +818,104 @@ textarea:focus {
 .editor-content a:hover {
   color: #1d4ed8 !important;
   background-color: rgba(37, 99, 235, 0.06);
+}
+
+/* 编辑器内容撑满当无预览时 */
+.editor-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Markdown 预览样式 —— 覆盖 Tailwind Preflight 对 p/h1-h6/ul/ol/blockquote/pre/hr 的重置 */
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.markdown-body h1 { font-size: 2em; }
+.markdown-body h2 { font-size: 1.5em; }
+.markdown-body h3 { font-size: 1.25em; }
+.markdown-body p {
+  margin-top: 0;
+  margin-bottom: 16px;
+  line-height: 1.8;
+  color: #434654;
+}
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 2em;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+.markdown-body ul { list-style: disc; }
+.markdown-body ol { list-style: decimal; }
+.markdown-body li {
+  margin-bottom: 4px;
+  line-height: 1.8;
+}
+.markdown-body blockquote {
+  margin: 0 0 16px 0;
+  padding: 0 1em;
+  color: #6a737d;
+  border-left: 0.25em solid #dfe2e5;
+}
+.markdown-body pre {
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding: 16px;
+  overflow-x: auto;
+  background-color: #f6f8fa;
+  border-radius: 6px;
+  line-height: 1.5;
+}
+.markdown-body code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 85%;
+  background-color: rgba(27,31,35,0.05);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+.markdown-body pre code {
+  background: none;
+  padding: 0;
+  font-size: 100%;
+}
+.markdown-body img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 8px 0;
+  height: auto;
+}
+.markdown-body a {
+  color: #0366d6;
+  text-decoration: none;
+}
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+.markdown-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 16px;
+}
+.markdown-body table th,
+.markdown-body table td {
+  border: 1px solid #dfe2e5;
+  padding: 6px 13px;
+}
+.markdown-body table th {
+  background-color: #f6f8fa;
+  font-weight: 600;
+}
+.markdown-body hr {
+  border: 0;
+  border-top: 1px solid #e1e4e8;
+  margin: 24px 0;
 }
 </style>

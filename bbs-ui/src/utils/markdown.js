@@ -227,8 +227,8 @@ export function htmlToMd(html) {
     }
   }
 
-  // 6. 组装
-  md = lines.join('\n')
+  // 6. 组装（\n\n 分段：markdown 中单 \n 是同段落软换行，\n\n 才是段落分隔）
+  md = lines.join('\n\n')
 
   // 7. 清理
   md = md.replace(/<[^>]*>/g, '')     // 移除漏网的 HTML 标签

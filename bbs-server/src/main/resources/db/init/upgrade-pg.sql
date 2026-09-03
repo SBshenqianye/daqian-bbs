@@ -514,3 +514,260 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_mrc_ym_user ON bbs_moderator_reward_cancel 
 
 -- @migration: v025-complaint-moderator-nullable 版主投诉支持不指定版主
 ALTER TABLE bbs_moderator_complaint ALTER COLUMN moderator_id DROP NOT NULL;
+
+-- @migration: v026-fix-missing-columns 修复因 baseline 逻辑导致的缺失列
+-- 历史 bug：DatabaseInitializer.baselineExistingMigrations() 在旧数据库上
+-- 将所有迁移标记为"已执行"但未实际运行，导致 v012 添加的列缺失。
+-- 此迁移用 IF NOT EXISTS 安全补列，幂等可重复执行。
+ALTER TABLE bbs_user ADD COLUMN IF NOT EXISTS post_restricted smallint DEFAULT 0;
+ALTER TABLE bbs_user ADD COLUMN IF NOT EXISTS post_restricted_until varchar(20);
+ALTER TABLE bbs_article ADD COLUMN IF NOT EXISTS is_hot_bonus smallint DEFAULT 0;
+ALTER TABLE bbs_comment ADD COLUMN IF NOT EXISTS adopt_status smallint DEFAULT 0;
+ALTER TABLE bbs_reply ADD COLUMN IF NOT EXISTS is_adopted smallint DEFAULT 0;
+ALTER TABLE bbs_reply ADD COLUMN IF NOT EXISTS adopt_status smallint DEFAULT 0;
+
+-- @migration: v027-fix-missing-tables 修复因 baseline 逻辑导致的缺失对象
+-- 与 v026 同源：旧数据库的基线跳过了 v001-v025 的建表/建列/数据迁移。
+-- 此迁移用 IF NOT EXISTS / ON CONFLICT 安全补齐所有缺失对象，幂等可重复执行。
+
+-- === 补列 ===
+ALTER TABLE bbs_dict ADD COLUMN IF NOT EXISTS dict_key varchar(100);
+
+-- === 唯一索引 ===
+CREATE UNIQUE INDEX IF NOT EXISTS uk_sensitive_word_keyword ON bbs_sensitive_word (keyword);
+
+-- === 建表（含所有列，包括后续迁移追加的列） ===
+CREATE TABLE IF NOT EXISTS bbs_points_log (
+    id               SERIAL PRIMARY KEY,
+    user_id          integer NOT NULL,
+    points_change    integer NOT NULL,
+    reason           varchar(500),
+    related_type     varchar(20),
+    related_id       integer,
+    operator_id      integer,
+    create_time      varchar(20),
+    is_reversed      smallint NOT NULL DEFAULT 0,
+    reversed_by      integer,
+    reversing_record integer
+);
+CREATE INDEX IF NOT EXISTS idx_points_log_user_id ON bbs_points_log (user_id);
+CREATE INDEX IF NOT EXISTS idx_points_log_is_reversed ON bbs_points_log (is_reversed);
+
+CREATE TABLE IF NOT EXISTS bbs_notification (
+    id             SERIAL PRIMARY KEY,
+    user_id        integer NOT NULL,
+    from_user_id   integer,
+    type           varchar(20) NOT NULL,
+    title          varchar(255),
+    related_type   varchar(20),
+    related_id     integer,
+    is_read        smallint NOT NULL DEFAULT 0,
+    create_time    varchar(20),
+    category       varchar(20) NOT NULL DEFAULT 'system'
+);
+CREATE INDEX IF NOT EXISTS idx_notification_user_id ON bbs_notification (user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_user_read ON bbs_notification (user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notification_user_cat_read ON bbs_notification (user_id, category, is_read);
+
+CREATE TABLE IF NOT EXISTS bbs_login_log (
+    id              SERIAL PRIMARY KEY,
+    user_id         integer NOT NULL,
+    login_date      varchar(10) NOT NULL,
+    login_time      varchar(20),
+    browse_minutes  integer DEFAULT 0,
+    points_awarded  smallint DEFAULT 0,
+    create_time     varchar(20)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_login_log_user_date ON bbs_login_log (user_id, login_date);
+
+CREATE TABLE IF NOT EXISTS bbs_report (
+    id              SERIAL PRIMARY KEY,
+    reporter_id     integer NOT NULL,
+    target_type     varchar(20) NOT NULL,
+    target_id       integer NOT NULL,
+    reason          varchar(500),
+    status          varchar(20) DEFAULT 'pending',
+    reviewer_id     integer,
+    review_time     varchar(20),
+    review_remark   varchar(500),
+    points_awarded  smallint DEFAULT 0,
+    create_time     varchar(20),
+    violation_type  varchar(50)
+);
+CREATE INDEX IF NOT EXISTS idx_report_reporter ON bbs_report (reporter_id);
+CREATE INDEX IF NOT EXISTS idx_report_target ON bbs_report (target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_report_status ON bbs_report (status);
+
+CREATE TABLE IF NOT EXISTS bbs_violation (
+    id              SERIAL PRIMARY KEY,
+    user_id         integer NOT NULL,
+    violation_type  varchar(50) NOT NULL,
+    points_deducted integer NOT NULL,
+    related_type    varchar(20),
+    related_id      integer,
+    operator_id     integer NOT NULL,
+    remark          varchar(500),
+    create_time     varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_violation_user ON bbs_violation (user_id);
+CREATE INDEX IF NOT EXISTS idx_violation_type ON bbs_violation (violation_type);
+
+CREATE TABLE IF NOT EXISTS bbs_appeal (
+    id              SERIAL PRIMARY KEY,
+    user_id         integer NOT NULL,
+    appeal_type     varchar(20) NOT NULL,
+    related_id      integer,
+    content         text NOT NULL,
+    status          varchar(20) DEFAULT 'pending',
+    reviewer_id     integer,
+    review_remark   varchar(500),
+    review_time     varchar(20),
+    create_time     varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_appeal_user ON bbs_appeal (user_id);
+CREATE INDEX IF NOT EXISTS idx_appeal_status ON bbs_appeal (status);
+
+CREATE TABLE IF NOT EXISTS bbs_board_moderator (
+    id           SERIAL PRIMARY KEY,
+    user_id      integer NOT NULL,
+    label_id     integer NOT NULL,
+    role_type    varchar(20) DEFAULT 'moderator',
+    status       smallint DEFAULT 1,
+    appoint_time varchar(20),
+    create_time  varchar(20)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_board_mod_user_label ON bbs_board_moderator (user_id, label_id);
+CREATE INDEX IF NOT EXISTS idx_board_mod_label ON bbs_board_moderator (label_id);
+
+CREATE TABLE IF NOT EXISTS bbs_moderator_complaint (
+    id SERIAL PRIMARY KEY,
+    reporter_id integer NOT NULL,
+    moderator_id integer DEFAULT NULL,
+    label_id integer DEFAULT NULL,
+    content text NOT NULL,
+    status varchar(20) NOT NULL DEFAULT 'pending',
+    reviewer_id integer DEFAULT NULL,
+    review_remark varchar(500) DEFAULT NULL,
+    review_time varchar(20) DEFAULT NULL,
+    create_time varchar(20) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_moderator_id ON bbs_moderator_complaint (moderator_id);
+CREATE INDEX IF NOT EXISTS idx_reporter_id ON bbs_moderator_complaint (reporter_id);
+CREATE INDEX IF NOT EXISTS idx_mc_status ON bbs_moderator_complaint (status);
+
+CREATE TABLE IF NOT EXISTS bbs_featured_recommendation (
+    id SERIAL PRIMARY KEY,
+    article_id integer NOT NULL,
+    recommender_id integer NOT NULL,
+    label_id integer DEFAULT NULL,
+    status varchar(20) NOT NULL DEFAULT 'pending',
+    reviewer_id integer DEFAULT NULL,
+    review_remark varchar(500) DEFAULT NULL,
+    review_time varchar(20) DEFAULT NULL,
+    create_time varchar(20) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fr_article ON bbs_featured_recommendation (article_id);
+CREATE INDEX IF NOT EXISTS idx_fr_status ON bbs_featured_recommendation (status);
+
+CREATE TABLE IF NOT EXISTS bbs_moderator_reward_cancel (
+    id SERIAL PRIMARY KEY,
+    year_month varchar(7) NOT NULL,
+    user_id integer NOT NULL,
+    operator_id integer DEFAULT NULL,
+    remark varchar(500) DEFAULT NULL,
+    create_time varchar(20) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_mrc_ym ON bbs_moderator_reward_cancel (year_month);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_mrc_ym_user ON bbs_moderator_reward_cancel (year_month, user_id);
+
+-- ===== 补字典数据（幂等：WHERE NOT EXISTS） =====
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'violation', '15', '违法违规内容', 1, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣15分', 'illegal'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_key = 'illegal');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'violation', '10', '人身攻击/争吵引战', 2, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣10分', 'attack'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_key = 'attack');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'violation', '4', '恶意灌水/刷屏', 3, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣4分', 'spam'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_key = 'spam');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'violation', '12', '抄袭剽窃', 4, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣12分', 'plagiarism'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_key = 'plagiarism');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'violation', '3', '虚假恶意举报', 5, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣3分', 'false_report'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_key = 'false_report');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'violation', '20', '泄露企业秘密', 6, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣20分', 'leak'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_key = 'leak');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'featured', '10', '精华帖积分', 2, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '被设为精华帖额外获得的积分', 'featured'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'featured');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'hot_threshold', '10', '帖子热度回复阈值', 10, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '回复数超过此值触发热度奖励', 'hot_threshold'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'hot_threshold');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '登录后需浏览满此分钟数才计分', 'login_browse_minutes'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'login_browse_minutes');
+
+-- ===== 补初始配置和标签（幂等） =====
+INSERT INTO bbs_system_config (config_key, config_value, config_label, config_group, config_type, sort_order, remark, create_by, create_time)
+SELECT 'feedback_contact', '{"name":"","email":""}', '使用反馈联系方式', 'contact', 'json', 0, '配置使用反馈弹窗中的联系人信息', '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+WHERE NOT EXISTS (SELECT 1 FROM bbs_system_config WHERE config_key = 'feedback_contact');
+INSERT INTO bbs_article_label (label_id, label_name, enabled, icon, description)
+VALUES (4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分')
+ON CONFLICT (label_id) DO NOTHING;
+INSERT INTO bbs_sensitive_word (keyword) VALUES
+('哈哈哈'),('嘻嘻嘻'),('嘿嘿嘿'),('啊啊啊'),('嗯嗯嗯'),('哦哦哦'),('呵呵呵'),
+('啦啦啦'),('呜呜呜'),('沙发'),('占位'),('占楼'),('路过'),('马克'),('mark'),('mark一下'),
+('顶贴'),('灌水'),('水水水'),('水帖'),('来了'),('看看'),('打卡'),('签到'),
+('666666'),('8888'),('11111'),('123456'),('测试测试'),('测试一下'),('testtest')
+ON CONFLICT DO NOTHING;
+
+-- ===== 领导干部默认不展示排名 =====
+UPDATE bbs_sa_org SET is_display_selected = 0
+WHERE org_name = '领导干部' AND is_delete = 0 AND is_display_selected = 1;
+
+-- @migration: v028-dict-backfill 补充字典数据幂等迁移
+-- 所有 INSERT 使用 WHERE NOT EXISTS 幂等，已存在则跳过
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'violation', '15', '违法违规内容', 1, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣15分', 'illegal'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_key = 'illegal');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'violation', '10', '人身攻击/争吵引战', 2, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣10分', 'attack'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_key = 'attack');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'violation', '4', '恶意灌水/刷屏', 3, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣4分', 'spam'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_key = 'spam');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'violation', '12', '抄袭剽窃', 4, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣12分', 'plagiarism'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_key = 'plagiarism');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'violation', '3', '虚假恶意举报', 5, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣3分', 'false_report'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_key = 'false_report');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'violation', '20', '泄露企业秘密', 6, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '扣20分', 'leak'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'violation' AND dict_key = 'leak');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'featured', '10', '精华帖积分', 2, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '被设为精华帖额外获得的积分', 'featured'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'featured');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'hot_threshold', '10', '帖子热度回复阈值', 10, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '回复数超过此值触发热度奖励', 'hot_threshold'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'hot_threshold');
+INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)
+SELECT 'login_browse_minutes', '10', '每日登录有效浏览分钟数', 11, '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), '登录后需浏览满此分钟数才计分', 'login_browse_minutes'
+WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_type = 'login_browse_minutes');
+INSERT INTO bbs_system_config (config_key, config_value, config_label, config_group, config_type, sort_order, remark, create_by, create_time)
+SELECT 'feedback_contact', '{"name":"","email":""}', '使用反馈联系方式', 'contact', 'json', 0, '配置使用反馈弹窗中的联系人信息', '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+WHERE NOT EXISTS (SELECT 1 FROM bbs_system_config WHERE config_key = 'feedback_contact');
+INSERT INTO bbs_article_label (label_id, label_name, enabled, icon, description)
+VALUES (4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分')
+ON CONFLICT (label_id) DO NOTHING;
+INSERT INTO bbs_sensitive_word (keyword) VALUES
+('哈哈哈'),('嘻嘻嘻'),('嘿嘿嘿'),('啊啊啊'),('嗯嗯嗯'),('哦哦哦'),('呵呵呵'),
+('啦啦啦'),('呜呜呜'),('沙发'),('占位'),('占楼'),('路过'),('马克'),('mark'),('mark一下'),
+('顶贴'),('灌水'),('水水水'),('水帖'),('来了'),('看看'),('打卡'),('签到'),
+('666666'),('8888'),('11111'),('123456'),('测试测试'),('测试一下'),('testtest')
+ON CONFLICT DO NOTHING;
+
+-- @migration: v029-rename-year-month 列名 year_month → ym
+ALTER TABLE bbs_moderator_reward_cancel RENAME COLUMN year_month TO ym;

@@ -18,7 +18,7 @@ public class ModeratorRewardCancel {
     private Integer id;
 
     @ApiModelProperty("年月(yyyy-MM)")
-    @TableField("year_month")
+    @TableField("ym")
     private String yearMonth;
 
     @ApiModelProperty("被取消奖励的版主用户ID")

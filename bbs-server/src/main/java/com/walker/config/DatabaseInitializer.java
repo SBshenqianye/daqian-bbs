@@ -78,7 +78,11 @@ public class DatabaseInitializer {
     public void init() {
         String dbType = detectDbType();
         ensureSchemaVersionTable(dbType);
-        baselineExistingMigrations(dbType);
+        // 注意：不再调用 baselineExistingMigrations。
+        // 旧逻辑假设"表存在 = 所有旧迁移已执行"，但 init SQL 用 CREATE TABLE IF NOT EXISTS
+        // 不会为旧表补列，导致 upgrade 迁移被错误跳过、新列缺失。
+        // 所有迁移均设计为幂等（PG: IF NOT EXISTS / ON CONFLICT DO NOTHING;
+        // MySQL: information_schema 检查 + 捕获 Duplicate column），可安全重复执行。
         executePendingMigrations(dbType);
     }
 
@@ -212,9 +216,11 @@ public class DatabaseInitializer {
                                 // 纯占位语句 / MySQL PREPARE/DEALLOCATE，跳过
                                 log.debug("Skip placeholder/prepared-stmt: {}", preview(trimmed));
                             } else if (upper.startsWith("ALTER TABLE") && e.getMessage() != null
-                                    && (e.getMessage().contains("Duplicate column") || e.getMessage().contains("already exists"))) {
-                                // 列已存在，视为成功
-                                log.debug("Column already exists, skip: {}", preview(trimmed));
+                                    && (e.getMessage().contains("Duplicate column") || e.getMessage().contains("already exists")
+                                        || e.getMessage().contains("Unknown column") || e.getMessage().contains("doesn't exist")
+                                        || e.getMessage().contains("does not exist"))) {
+                                // 列已存在 / 列不存在（已改名），视为成功
+                                log.debug("Column already/gone, skip: {}", preview(trimmed));
                             } else {
                                 log.error("Migration DDL/DML FAILED [{}]: {} — {}", block.version, preview(trimmed), e.getMessage());
                                 hasDdlError = true;

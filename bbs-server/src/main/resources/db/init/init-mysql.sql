@@ -626,14 +626,14 @@ CREATE TABLE `bbs_featured_recommendation` (
 DROP TABLE IF EXISTS `bbs_moderator_reward_cancel`;
 CREATE TABLE `bbs_moderator_reward_cancel` (
   `id`          int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `year_month`  varchar(7) NOT NULL COMMENT '年月(yyyy-MM)',
+  `ym`        varchar(7) NOT NULL COMMENT '年月(yyyy-MM)',
   `user_id`     int(11) NOT NULL COMMENT '被取消奖励的版主用户ID',
   `operator_id` int(11) DEFAULT NULL COMMENT '操作人ID',
   `remark`      varchar(500) DEFAULT NULL COMMENT '取消原因',
   `create_time` varchar(20) NOT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
-  INDEX `idx_mrc_ym` (`year_month`),
-  UNIQUE KEY `uk_mrc_ym_user` (`year_month`, `user_id`)
+  INDEX `idx_mrc_ym` (`ym`),
+  UNIQUE KEY `uk_mrc_ym_user` (`ym`, `user_id`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '版主履职奖励取消记录';
 
 SET FOREIGN_KEY_CHECKS = 1;
