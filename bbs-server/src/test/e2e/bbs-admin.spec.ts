@@ -5,16 +5,17 @@ import { test, expect } from '@playwright/test';
  * bbs-admin-ui 管理后台 E2E 测试
  * 覆盖管理流程：登录、用户管理、文章管理、评论管理、组织机构管理
  *
- * 前提条件：后端 9083 + 管理前端 9082 均已启动
- * 测试账号：asiayak / 1234@abcD（超级管理员）
+ * 前提条件：后端运行中（开发环境 9083 或测试环境 9084）
+ * 测试账号：testadmin / 1234@abcD（管理员，通过 /admin/addUser 创建）
  *
- * 注意：管理后台使用 hash 路由，URL 格式为 http://localhost:9082/bbs-admin/#/xxx
- * 本测试文件的 baseURL 在 playwright.config.ts 中配置为 bbs-ui，
- * 管理后台测试使用绝对 URL。
+ * 注意：管理后台使用 hash 路由
+ * 独立运行: npx playwright test bbs-admin.spec.ts
+ * 隔离运行: .\run-e2e.ps1（自动复制数据库到 bbs_e2e_test）
  */
 
-// 管理后台地址（独立于 playwright.config.ts 中的 baseURL）
-const ADMIN_BASE = 'http://localhost:9082/bbs-admin';
+// 管理后台地址（支持环境变量覆盖端口，E2E 隔离测试用）
+const ADMIN_PORT = process.env.E2E_ADMIN_PORT || '9082';
+const ADMIN_BASE = `http://localhost:${ADMIN_PORT}/bbs-admin`;
 
 // ============================================================
 // 1. 管理后台登录

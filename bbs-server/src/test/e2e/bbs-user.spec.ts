@@ -5,8 +5,10 @@ import { test, expect } from '@playwright/test';
  * bbs-ui 用户前台 E2E 测试
  * 覆盖核心用户流程：首页、登录、浏览帖子、发帖、评论、搜索、个人中心
  *
- * 前提条件：后端 9083 + 前端 9081 均已启动
- * 测试账号：asiayak / 1234@abcD（超级管理员，可用于用户端登录）
+ * 前提条件：后端运行中（开发环境 9083 或测试环境 9084）
+ * 测试账号：testuser / 1234@abcD（普通用户，通过 /admin/addUser 创建）
+ *
+ * baseURL 由 playwright.config.ts 配置（支持 E2E_USER_PORT 环境变量）
  */
 
 const BASE = '/';
