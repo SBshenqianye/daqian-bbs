@@ -4259,6 +4259,276 @@
           }
         }
       ]
+    },
+    {
+      "name": "🔒 安全验证 — 未认证访问危险接口应返回401",
+      "item": [
+        {
+          "name": "删除用户(无token → 应返回401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('应返回 code=401 拒绝访问', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.code).to.eql(401);",
+                  "});",
+                  "pm.test('不执行危险操作（不应返回 code=200）', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.code).to.not.eql(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/deleteUserByUserId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "deleteUserByUserId"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"userId\": 1 }"
+            }
+          }
+        },
+        {
+          "name": "批量删除用户(无token → 应返回401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('应返回 code=401 拒绝访问', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.code).to.eql(401);",
+                  "});",
+                  "pm.test('不执行危险操作（不应返回 code=200）', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.code).to.not.eql(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/batchDeleteUsersByUserIds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "batchDeleteUsersByUserIds"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"userIds\": [1, 2] }"
+            }
+          }
+        },
+        {
+          "name": "删除文章(无token → 应返回401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('应返回 code=401 拒绝访问', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.code).to.eql(401);",
+                  "});",
+                  "pm.test('不执行危险操作（不应返回 code=200）', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.code).to.not.eql(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/deleteArticleByArticleId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "deleteArticleByArticleId"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"articleId\": 1 }"
+            }
+          }
+        },
+        {
+          "name": "限制用户发帖(无token → 应返回401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('应返回 code=401 拒绝访问', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.code).to.eql(401);",
+                  "});",
+                  "pm.test('不执行危险操作（不应返回 code=200）', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.code).to.not.eql(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/user/restrictPost",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "user",
+                "restrictPost"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"userId\": 1, \"restricted\": 1 }"
+            }
+          }
+        },
+        {
+          "name": "修改用户状态(无token → 应返回401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('应返回 code=401 拒绝访问', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.code).to.eql(401);",
+                  "});",
+                  "pm.test('不执行危险操作（不应返回 code=200）', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.code).to.not.eql(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/updateUserAliveByUserId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "updateUserAliveByUserId"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"userId\": 1 }"
+            }
+          }
+        },
+        {
+          "name": "删除字典配置(无token → 应返回401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('应返回 code=401 拒绝访问', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.code).to.eql(401);",
+                  "});",
+                  "pm.test('不执行危险操作（不应返回 code=200）', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.code).to.not.eql(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/deleteDict",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "deleteDict"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"id\": 1 }"
+            }
+          }
+        }
+      ]
     }
   ]
 }
