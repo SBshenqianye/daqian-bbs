@@ -1,11 +1,14 @@
 package com.walker.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.walker.pojo.Article;
 import com.walker.pojo.Report;
 import com.walker.mapper.ReportMapper;
 import com.walker.service.impl.ReportServiceImpl;
 import com.walker.vo.ResultBean;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,6 +16,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -62,8 +69,17 @@ class ReportServiceTest {
     private static final int TARGET_ID = 1;
 
     @BeforeEach
-    void setUp() {
-        // Mockito annotations already initialized by @ExtendWith
+    void setUp() throws Exception {
+        // 反射设置 baseMapper（必须）
+        Field baseMapperField = reportService.getClass().getSuperclass().getDeclaredField("baseMapper");
+        baseMapperField.setAccessible(true);
+        baseMapperField.set(reportService, reportMapper);
+
+        // 注册实体元数据（Service 使用 LambdaQueryWrapper 需要）
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""),
+                Report.class
+        );
     }
 
     // ========== submitReport 测试 ==========
@@ -178,5 +194,55 @@ class ReportServiceTest {
 
         // 验证：确实保存了记录
         verify(reportMapper, atLeastOnce()).insert(any(Report.class));
+    }
+
+    // ========== reviewReport 测试 ==========
+
+    @Test
+    @DisplayName("审核举报 → 参数不完整 → 返回错误")
+    void reviewReport_missingParams_returnsError() {
+        ResultBean result = reportService.reviewReport(null, 1, "confirmed", "同意");
+        assertEquals(500, result.getCode());
+        assertEquals("参数不完整", result.getMessage());
+    }
+
+    @Test
+    @DisplayName("审核举报 → 记录不存在 → 返回错误")
+    void reviewReport_notFound_returnsError() {
+        when(reportMapper.selectById(999)).thenReturn(null);
+        ResultBean result = reportService.reviewReport(999, 1, "confirmed", "同意");
+        assertEquals(500, result.getCode());
+        assertEquals("举报记录不存在", result.getMessage());
+    }
+
+    @Test
+    @DisplayName("审核举报 → 已处理 → 返回错误")
+    void reviewReport_alreadyProcessed_returnsError() {
+        Report report = new Report();
+        report.setId(1);
+        report.setStatus("confirmed");
+        when(reportMapper.selectById(1)).thenReturn(report);
+        ResultBean result = reportService.reviewReport(1, 1, "confirmed", "同意");
+        assertEquals(500, result.getCode());
+        assertEquals("该举报已处理", result.getMessage());
+    }
+
+    @Test
+    @DisplayName("审核举报 → 确认属实 → 给举报人加分并通知")
+    void reviewReport_confirmed_awardsPoints() {
+        Report report = new Report();
+        report.setId(1);
+        report.setReporterId(100);
+        report.setTargetType("article");
+        report.setTargetId(1);
+        report.setStatus("pending");
+        when(reportMapper.selectById(1)).thenReturn(report);
+        when(reportMapper.updateById(any(Report.class))).thenReturn(1);
+        when(reportMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(new ArrayList<>());
+
+        ResultBean result = reportService.reviewReport(1, 1, "confirmed", "属实");
+        assertEquals(200, result.getCode());
+        verify(pointsLogService).adjustUserPoints(eq(100), eq(2), contains("举报属实"), eq("report"), eq(1), eq(1));
+        verify(notificationService).createNotification(eq(100), eq(1), eq("report_confirmed"), contains("核实"), eq("report"), eq(1));
     }
 }

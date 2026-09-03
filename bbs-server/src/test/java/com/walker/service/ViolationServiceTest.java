@@ -164,4 +164,43 @@ class ViolationServiceTest {
         assertEquals(200, result.getCode());
         verify(notificationService).createNotification(eq(1), eq(1), eq("violation"), contains("恶意灌水"), eq("violation"), any());
     }
+
+    @Test
+    @DisplayName("添加违规 → 违法违规 → 从字典扣15分")
+    void addViolation_illegal_deducts15Points() {
+        when(dictMapper.selectValueByKey("illegal")).thenReturn("15");
+        when(violationMapper.insert(any(Violation.class))).thenReturn(1);
+        when(violationMapper.sumMonthlyDeductions(anyInt(), anyString(), anyString())).thenReturn(15);
+        when(pointsLogService.list(any(LambdaQueryWrapper.class))).thenReturn(new ArrayList<>());
+
+        ResultBean result = violationService.addViolation(1, "illegal", "article", 1, 1, "违法内容");
+        assertEquals(200, result.getCode());
+        verify(pointsLogService).adjustUserPoints(eq(1), eq(-15), contains("违法违规"), eq("violation"), any(), eq(1));
+    }
+
+    @Test
+    @DisplayName("添加违规 → 关联评论 → 删除评论")
+    void addViolation_withComment_deletesComment() {
+        when(dictMapper.selectValueByKey("spam")).thenReturn("4");
+        when(violationMapper.insert(any(Violation.class))).thenReturn(1);
+        when(violationMapper.sumMonthlyDeductions(anyInt(), anyString(), anyString())).thenReturn(4);
+        when(pointsLogService.list(any(LambdaQueryWrapper.class))).thenReturn(new ArrayList<>());
+
+        ResultBean result = violationService.addViolation(1, "spam", "comment", 100, 1, "违规评论");
+        assertEquals(200, result.getCode());
+        verify(commentService).deleteCommentById(100);
+    }
+
+    @Test
+    @DisplayName("添加违规 → 关联回复 → 删除回复")
+    void addViolation_withReply_deletesReply() {
+        when(dictMapper.selectValueByKey("spam")).thenReturn("4");
+        when(violationMapper.insert(any(Violation.class))).thenReturn(1);
+        when(violationMapper.sumMonthlyDeductions(anyInt(), anyString(), anyString())).thenReturn(4);
+        when(pointsLogService.list(any(LambdaQueryWrapper.class))).thenReturn(new ArrayList<>());
+
+        ResultBean result = violationService.addViolation(1, "spam", "reply", 200, 1, "违规回复");
+        assertEquals(200, result.getCode());
+        verify(replyService).deleteReplyById(200);
+    }
 }
