@@ -66,8 +66,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 // 改为认证要求后，未登录由 RestAuthorizationEntryPoint 统一返回 401
                 .antMatchers("/common/user/info")
                 .authenticated()
-                .antMatchers("/common/**","/admin/**", "/files/**")
-                .permitAll() // common下的所有资源进行放行
+                .antMatchers("/common/**", "/files/**")
+                .permitAll() // common（登录/注册等）和文件放行
+                .antMatchers("/admin/**")
+                .authenticated() // admin 接口必须登录
                 .anyRequest()
                 .authenticated()
                 .and()

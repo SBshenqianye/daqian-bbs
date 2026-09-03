@@ -150,34 +150,6 @@
           }
         },
         {
-          "name": "退出社区",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/delete",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "delete"
-              ],
-              "query": [
-                {
-                  "key": "communityId",
-                  "value": "1",
-                  "description": ""
-                },
-                {
-                  "key": "userId",
-                  "value": "1",
-                  "description": ""
-                }
-              ]
-            }
-          }
-        },
-        {
           "name": "加入社区",
           "request": {
             "method": "POST",
@@ -905,24 +877,6 @@
           }
         },
         {
-          "name": "通过社区id删除社区",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/deleteCommunityByCommunityId/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admin",
-                "deleteCommunityByCommunityId",
-                "1"
-              ]
-            }
-          }
-        },
-        {
           "name": "获取社区的数量",
           "request": {
             "method": "GET",
@@ -1412,32 +1366,6 @@
           }
         },
         {
-          "name": "通过id删除用户回复",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/reply/deleteReplyById",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "reply",
-                "deleteReplyById"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"replyId\": 1\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
           "name": "楼主采纳（提交审批）- 支持评论和回复",
           "request": {
             "method": "POST",
@@ -1852,32 +1780,6 @@
               ]
             }
           }
-        },
-        {
-          "name": "通过评论id删除评论",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/comment/deleteCommentById",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "comment",
-                "deleteCommentById"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"commentId\": 1\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
         }
       ]
     },
@@ -1897,30 +1799,6 @@
               "path": [
                 "common",
                 "saOrgTree"
-              ]
-            }
-          }
-        },
-        {
-          "name": "删除单位",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/saOrg/deleteSaOrgByOrgNo",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "saOrg",
-                "deleteSaOrgByOrgNo"
-              ],
-              "query": [
-                {
-                  "key": "orgNo",
-                  "value": "5140401",
-                  "description": ""
-                }
               ]
             }
           }
@@ -2854,32 +2732,6 @@
           }
         },
         {
-          "name": "管理员通过文章id删除文章",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/deleteArticleByArticleId",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admin",
-                "deleteArticleByArticleId"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"articleId\": 1\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
           "name": "通过文章id修改文章状态",
           "request": {
             "method": "POST",
@@ -2902,24 +2754,6 @@
                   "language": "json"
                 }
               }
-            }
-          }
-        },
-        {
-          "name": "删除所有的已通过审核的文章",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/handleBatchDeleteArticlesByAlive/all",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admin",
-                "handleBatchDeleteArticlesByAlive",
-                "all"
-              ]
             }
           }
         },
@@ -3009,32 +2843,6 @@
                 "getArticleCountWithNotPass",
                 "all"
               ]
-            }
-          }
-        },
-        {
-          "name": "用户通过文章id删除文章",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/article/deleteArticleByArticleId",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "article",
-                "deleteArticleByArticleId"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"articleId\": 1\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
             }
           }
         },
@@ -3849,32 +3657,6 @@
           }
         },
         {
-          "name": "删除字典",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/deleteDict",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admin",
-                "deleteDict"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": 1\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
           "name": "修改字典",
           "request": {
             "method": "POST",
@@ -4116,84 +3898,6 @@
                   "description": ""
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "通过用户id删除用户",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/deleteUserByUserId",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admin",
-                "deleteUserByUserId"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"userId\": 1\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "通过用户id修改用户alive值",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/updateUserAliveByUserId",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admin",
-                "updateUserAliveByUserId"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"userId\": 1\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "通过用户id批量删除用户",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/batchDeleteUsersByUserIds",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admin",
-                "batchDeleteUsersByUserIds"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"userIds\": \"2,3,4\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
             }
           }
         },
@@ -4499,33 +4203,6 @@
                   "description": ""
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "管理员限制/解除用户发帖",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/user/restrictPost",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admin",
-                "user",
-                "restrictPost"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"userId\": 1,\n  \"restricted\": 1,\n  \"until\": \"2026-12-31 23:59:59\",\n  \"adminId\": 1\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
             }
           }
         },
