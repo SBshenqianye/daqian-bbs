@@ -249,4 +249,44 @@ class BoardModeratorServiceTest {
         ResultBean result = boardModeratorService.appoint(1, 1, 1);
         assertEquals(200, result.getCode());
     }
+
+    // ========== 月度奖励/任命 补充测试 ==========
+
+    @Test
+    @DisplayName("月度奖励 → 字典值为空 → 使用默认15积分发放")
+    void monthlyReward_emptyDictValue_usesDefault() {
+        BoardModerator mod = new BoardModerator();
+        mod.setUserId(1);
+        mod.setStatus(1);
+        when(boardModeratorMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Arrays.asList(mod));
+        when(pointsLogService.count(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(cancelMapper.findCancelledUserIds(anyString())).thenReturn(new ArrayList<>());
+
+        ResultBean result = boardModeratorService.monthlyReward(1);
+        assertEquals(200, result.getCode());
+        // 验证发放了默认 15 积分（代码中硬编码 rewardPoints=15）
+        verify(pointsLogService).adjustUserPoints(
+                eq(1), eq(15), eq("版主月度履职奖励"),
+                eq("moderator_reward"), isNull(), eq(1));
+    }
+
+    @Test
+    @DisplayName("任命版主 → 成功 → 发送任命通知")
+    void appoint_valid_succeeds_andNotifies() {
+        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
+        when(pointsLogService.getPointsAdjustment(1)).thenReturn(500);
+        when(boardModeratorMapper.insert(any(BoardModerator.class))).thenReturn(1);
+
+        ResultBean result = boardModeratorService.appoint(1, 1, 1);
+        assertEquals(200, result.getCode());
+        // 验证插入了版主记录
+        verify(boardModeratorMapper).insert(argThat(m -> {
+            BoardModerator mod = (BoardModerator) m;
+            return mod.getUserId() != null
+                    && mod.getLabelId() != null
+                    && mod.getStatus() == 1
+                    && "moderator".equals(mod.getRoleType());
+        }));
+    }
 }

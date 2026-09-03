@@ -3,7 +3,9 @@ package com.walker.service;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.walker.pojo.Article;
+import com.walker.pojo.Comment;
 import com.walker.pojo.Report;
 import com.walker.mapper.ReportMapper;
 import com.walker.service.impl.ReportServiceImpl;
@@ -20,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -244,5 +247,72 @@ class ReportServiceTest {
         assertEquals(200, result.getCode());
         verify(pointsLogService).adjustUserPoints(eq(100), eq(2), contains("举报属实"), eq("report"), eq(1), eq(1));
         verify(notificationService).createNotification(eq(100), eq(1), eq("report_confirmed"), contains("核实"), eq("report"), eq(1));
+    }
+
+    // ========== listReports / listMyReports 测试 ==========
+
+    @Test
+    @DisplayName("按状态查询举报 → 返回分页结果")
+    void listReports_withStatus_returnsPage() {
+        // 模拟 selectPage 返回带记录的分页
+        Page<Report> page = new Page<>(1, 10);
+        Report r1 = new Report();
+        r1.setId(1);
+        r1.setStatus("pending");
+        page.setRecords(Arrays.asList(r1));
+        page.setTotal(1L);
+        when(reportMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+        ResultBean result = reportService.listReports("pending", 1, 10);
+        assertEquals(200, result.getCode());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) result.getObj();
+        assertNotNull(data.get("records"));
+        assertEquals(1L, data.get("total"));
+    }
+
+    @Test
+    @DisplayName("查询我的举报 → 按 reporterId 过滤返回分页")
+    void listMyReports_returnsPage() {
+        Page<Report> page = new Page<>(1, 10);
+        Report r1 = new Report();
+        r1.setId(5);
+        r1.setReporterId(REPORTER_ID);
+        page.setRecords(Arrays.asList(r1));
+        page.setTotal(1L);
+        when(reportMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+        ResultBean result = reportService.listMyReports(REPORTER_ID, 1, 10);
+        assertEquals(200, result.getCode());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) result.getObj();
+        assertNotNull(data.get("records"));
+        assertEquals(1L, data.get("total"));
+    }
+
+    // ========== submitReport 评论目标测试 ==========
+
+    @Test
+    @DisplayName("举报评论 → 评论作者非本人 → 正常提交举报成功")
+    void submitReport_commentTarget_checksCommentOwner() {
+        int commentUserId = 200;  // 评论作者 ≠ 举报人
+
+        Comment comment = new Comment();
+        comment.setCommentUserId(commentUserId);
+        when(commentService.getById(TARGET_ID)).thenReturn(comment);
+
+        // 模拟：无 confirmed、今日未超限、无重复 pending
+        when(reportMapper.selectCount(any(LambdaQueryWrapper.class)))
+                .thenReturn(0L)   // confirmedCount
+                .thenReturn(0L)   // todayCount
+                .thenReturn(0L)   // existing pending
+                .thenReturn(1L);  // pendingCount after save（通知超管）
+
+        when(reportMapper.insert(any(Report.class))).thenReturn(1);
+
+        ResultBean result = reportService.submitReport(REPORTER_ID, "comment", TARGET_ID, "spam", "测试举报评论");
+        assertEquals(200, result.getCode());
+        assertEquals("举报已提交，等待审核", result.getMessage());
+        verify(reportMapper, atLeastOnce()).insert(any(Report.class));
     }
 }

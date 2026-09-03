@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -202,5 +203,39 @@ class ViolationServiceTest {
         ResultBean result = violationService.addViolation(1, "spam", "reply", 200, 1, "违规回复");
         assertEquals(200, result.getCode());
         verify(replyService).deleteReplyById(200);
+    }
+
+    // ========== 抄袭/未知类型 补充测试 ==========
+
+    @Test
+    @DisplayName("添加违规 → 抄袭 → 按帖子所得积分扣分而非固定12分")
+    void addViolation_plagiarism_calculatesEarnedPoints() {
+        // 模拟：字典中有 plagiarism 值，但抄袭走 calculateArticleEarnedPoints 分支
+        when(dictMapper.selectValueByKey("plagiarism")).thenReturn("12");
+        when(violationMapper.insert(any(Violation.class))).thenReturn(1);
+        when(violationMapper.sumMonthlyDeductions(anyInt(), anyString(), anyString())).thenReturn(13);
+
+        // 模拟帖子获得的积分：3 + 10 = 13 分
+        PointsLog log1 = new PointsLog();
+        log1.setPointsChange(3);
+        PointsLog log2 = new PointsLog();
+        log2.setPointsChange(10);
+        when(pointsLogService.list(any(LambdaQueryWrapper.class))).thenReturn(Arrays.asList(log1, log2));
+
+        ResultBean result = violationService.addViolation(1, "plagiarism", "article", 42, 1, "抄袭帖子");
+        assertEquals(200, result.getCode());
+        // 验证扣分为帖子所得积分 13 分（而非字典/默认的 12 分）
+        verify(pointsLogService).adjustUserPoints(eq(1), eq(-13), contains("抄袭剽窃"), eq("violation"), any(), eq(1));
+    }
+
+    @Test
+    @DisplayName("添加违规 → 字典无值且不在默认映射 → 返回未知违规类型错误")
+    void addViolation_unknownType_noFallback_returnsError() {
+        // 字典无值
+        when(dictMapper.selectValueByKey("nonexistent_foo")).thenReturn(null);
+        // 该类型不在 DEFAULT_VIOLATION_POINTS 映射中 → points=0 → 报错
+        ResultBean result = violationService.addViolation(1, "nonexistent_foo", "article", 1, 1, "未知类型");
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("未知的违规类型"));
     }
 }

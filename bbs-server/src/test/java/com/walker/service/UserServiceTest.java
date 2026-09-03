@@ -9,7 +9,9 @@ import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.service.impl.SaOrgServiceImpl;
 import com.walker.service.impl.UserServiceImpl;
+import com.walker.vo.MapCityVO;
 import com.walker.vo.ResultBean;
+import com.walker.vo.UserMonthVO;
 import com.walker.vo.param.AdminUserAddParam;
 import com.walker.vo.param.AdminUserUpdateParam;
 import com.walker.vo.param.UserModOrgNoParam;
@@ -546,5 +548,203 @@ class UserServiceTest {
         assertEquals(200, result.getCode());
         assertEquals("操作成功", result.getMessage());
         verify(userMapper).updateUserRole(1, "2");
+    }
+
+    // ========== getAllCity ==========
+
+    @Test
+    @DisplayName("获取城市分布 → 多省份用户 → 按省份分组统计")
+    void getAllCity_withUsers_groupsByProvince() {
+        User user1 = new User();
+        user1.setCity("四川省-内江市");
+        User user2 = new User();
+        user2.setCity("四川省-资中县");
+        User user3 = new User();
+        user3.setCity("重庆市-渝中区");
+
+        when(userMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Arrays.asList(user1, user2, user3));
+
+        ResultBean result = userService.getAllCity();
+        assertEquals(200, result.getCode());
+
+        @SuppressWarnings("unchecked")
+        List<MapCityVO> list = (List<MapCityVO>) result.getObj();
+        assertNotNull(list);
+        // 2个省份分组：四川(2人)、重庆(1人)
+        assertEquals(2, list.size());
+        // 总人数 = 所有分组人数之和 = 3
+        int totalValue = list.stream().mapToInt(MapCityVO::getValue).sum();
+        assertEquals(3, totalValue);
+        // 应有一个分组为2人（四川），一个分组为1人（重庆）
+        boolean hasTwoUsers = list.stream().anyMatch(v -> v.getValue() == 2);
+        boolean hasOneUser = list.stream().anyMatch(v -> v.getValue() == 1);
+        assertTrue(hasTwoUsers, "应有一个2人分组");
+        assertTrue(hasOneUser, "应有一个1人分组");
+    }
+
+    // ========== getUserDataWithMonth ==========
+
+    @Test
+    @DisplayName("获取月度注册数据 → 同月用户 → 按月份分组统计")
+    void getUserDataWithMonth_withUsers_groupsByMonth() {
+        User user1 = new User();
+        user1.setCreateTime("2026-01-15 10:00:00");
+        User user2 = new User();
+        user2.setCreateTime("2026-01-20 14:30:00");
+
+        when(userMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Arrays.asList(user1, user2));
+
+        ResultBean result = userService.getUserDataWithMonth();
+        assertEquals(200, result.getCode());
+
+        @SuppressWarnings("unchecked")
+        List<UserMonthVO> list = (List<UserMonthVO>) result.getObj();
+        assertNotNull(list);
+        assertEquals(1, list.size());
+        assertEquals("2026-01", list.get(0).getTime());
+        assertEquals(2, list.get(0).getCount());
+    }
+
+    // ========== queryUserinfoById ==========
+
+    @Test
+    @DisplayName("根据ID查询用户 → 用户存在且有单位编号 → 解析单位信息")
+    void queryUserinfoById_validUser_resolvesOrgInfo() {
+        User user = new User();
+        user.setId(1);
+        user.setUsername("zhangsan");
+        user.setOrgNo("5140401");
+        when(userMapper.selectById(1)).thenReturn(user);
+
+        SaOrg org = new SaOrg();
+        org.setOrgNo("5140401");
+        org.setOrgName("内江市公司");
+        org.setPOrgNo("51404");
+        org.setOrgTree("51404|5140401");
+        org.setIsDelete(0);
+        org.setIsDisplaySelected(1);
+        when(saOrgMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(new ArrayList<>(Arrays.asList(org)));
+
+        User result = userService.queryUserinfoById(1);
+        assertNotNull(result);
+        assertEquals(1, result.getId());
+        // resolveOrgInfo 应设置 orgName（pOrgNo 是根节点 → 是单位）
+        assertEquals("内江市公司", result.getOrgName());
+    }
+
+    // ========== listUsersWithOrgInfo ==========
+
+    @Test
+    @DisplayName("批量查询用户（含单位信息） → 空ID集合 → 返回空列表")
+    void listUsersWithOrgInfo_emptyIds_returnsEmpty() {
+        List<User> result = userService.listUsersWithOrgInfo(new ArrayList<>());
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+        verify(userMapper, never()).selectBatchIds(anyCollection());
+    }
+
+    @Test
+    @DisplayName("批量查询用户（含单位信息） → 有效ID → 解析单位信息")
+    void listUsersWithOrgInfo_validIds_resolvesOrg() {
+        User user = new User();
+        user.setId(1);
+        user.setOrgNo("5140401");
+        when(userMapper.selectBatchIds(anyCollection()))
+                .thenReturn(new ArrayList<>(Arrays.asList(user)));
+
+        SaOrg org = new SaOrg();
+        org.setOrgNo("5140401");
+        org.setOrgName("内江市公司");
+        org.setPOrgNo("51404");
+        org.setOrgTree("51404|5140401");
+        org.setIsDelete(0);
+        org.setIsDisplaySelected(1);
+        when(saOrgMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(new ArrayList<>(Arrays.asList(org)));
+
+        List<User> result = userService.listUsersWithOrgInfo(Arrays.asList(1));
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("内江市公司", result.get(0).getOrgName());
+    }
+
+    // ========== modOrgNo: org not found ==========
+
+    @Test
+    @DisplayName("修改单位 → 用户存在但单位编号不存在 → 返回错误")
+    void modOrgNo_orgNotFound_returnsError() {
+        UserModOrgNoParam param = new UserModOrgNoParam();
+        param.setId(1);
+        param.setOrgNo("999999");
+
+        User user = new User();
+        user.setId(1);
+        user.setOrgNo("5140401");
+        user.setNickname("内江市公司-张三");
+
+        List<User> users = new ArrayList<>();
+        users.add(user);
+        when(userMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(users)
+                .thenReturn(new ArrayList<>());
+        // 第一次 selectList 返回用户列表（modOrgNo 内部查询）
+        // 第二次 selectList 应返回空（saOrgMapper 查询单位编号）
+        when(saOrgMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(new ArrayList<>());
+
+        ResultBean result = userService.modOrgNo(param);
+        assertEquals(500, result.getCode());
+        assertEquals("单位编号不正确", result.getMessage());
+    }
+
+    // ========== modOrgNo: valid change ==========
+
+    @Test
+    @DisplayName("修改单位 → 用户存在、不同单位、单位有效 → 成功")
+    void modOrgNo_validChange_succeeds() {
+        UserModOrgNoParam param = new UserModOrgNoParam();
+        param.setId(1);
+        param.setOrgNo("5140402");
+
+        User user = new User();
+        user.setId(1);
+        user.setOrgNo("5140401");
+        user.setNickname("内江市公司-张三");
+
+        List<User> users = new ArrayList<>();
+        users.add(user);
+        // modOrgNo 第一次调用 userMapper.selectList → 返回用户
+        when(userMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(users);
+
+        SaOrg newOrg = new SaOrg();
+        newOrg.setOrgNo("5140402");
+        newOrg.setOrgName("威远县公司");
+        // modOrgNo 调用 saOrgMapper.selectList → 返回新单位
+        when(saOrgMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(new ArrayList<>(Arrays.asList(newOrg)));
+
+        when(userMapper.update(any(User.class), any(LambdaQueryWrapper.class))).thenReturn(1);
+
+        ResultBean result = userService.modOrgNo(param);
+        assertEquals(200, result.getCode());
+        assertEquals("操作成功", result.getMessage());
+        verify(userMapper).update(any(User.class), any(LambdaQueryWrapper.class));
+    }
+
+    // ========== updateUserRole: role 01 ==========
+
+    @Test
+    @DisplayName("修改角色 → 角色类型01 → 映射为1，成功")
+    void updateUserRole_role01_succeeds() {
+        when(userMapper.updateUserRole(1, "1")).thenReturn(1);
+
+        ResultBean result = userService.updateUserRole(1, "01");
+        assertEquals(200, result.getCode());
+        assertEquals("操作成功", result.getMessage());
+        verify(userMapper).updateUserRole(1, "1");
     }
 }
