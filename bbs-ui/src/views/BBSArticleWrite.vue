@@ -165,9 +165,10 @@
           @paste="handlePaste"
           @click="handleEditorClick"
         ></div>
-        <!-- Markdown 预览面板 -->
-        <div v-if="showPreview" class="w-1/2 p-4 overflow-y-auto bg-white border-l border-gray-200" style="max-height: 600px;">
-          <div class="markdown-body" v-html="mdToHtml(markdownContent)"></div>
+        <!-- Markdown 预览面板（复用正文渲染方式） -->
+        <div v-if="showPreview" class="w-1/2 p-4 overflow-y-auto bg-white border-l border-gray-200">
+          <section class="markdown-body" v-if="renderedHtml" v-html="renderedHtml"></section>
+          <section v-else class="text-gray-300 text-sm text-center mt-20">暂无内容可预览</section>
         </div>
       </div>
 
@@ -277,12 +278,21 @@ export default {
       const found = this.labelList.find(l => String(l.labelId) === String(this.selectedLabelId))
       return found ? (found.description || '') : ''
     },
+    renderedHtml() {
+      return mdToHtml(this.markdownContent)
+    },
   },
   watch: {
     markdownContent(val) {
-      // 外部修改（加载文章时）同步到编辑区
+      // 外部修改（加载文章时）同步到编辑区——直接显示 markdown 原文，不渲染
+      // 否则 contenteditable 会把 **粗体** 渲染成 <strong>，丢失 md 语法
       if (!this.syncingContent && this.$refs.editorDiv) {
-        const html = this.mdToHtml(val)
+        const escaped = val
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\n/g, '<br>')
+        const html = '<p>' + escaped + '</p>'
         if (html !== this.$refs.editorDiv.innerHTML) {
           this.$refs.editorDiv.innerHTML = html
         }
@@ -302,13 +312,11 @@ export default {
   methods: {
     togglePreview() {
       if (!this.showPreview) {
-        // 切换到预览前，先把编辑器内容同步到 markdownContent
         this.syncContent()
       }
       this.showPreview = !this.showPreview
     },
     onEditorInput() {
-      // 实时同步编辑器内容到 markdownContent，预览面板通过 mdToHtml(markdownContent) 实时渲染
       if (!this.$refs.editorDiv || this.syncingContent) return
       this.syncingContent = true
       this.markdownContent = this.htmlToMd(this.$refs.editorDiv.innerHTML)
@@ -523,12 +531,9 @@ export default {
     mdToHtml(md) { return mdToHtml(md) },
     htmlToMd(html) { return htmlToMd(html) },
     syncContent() {
-      // 编辑区内容同步回 markdownContent
       if (!this.$refs.editorDiv || this.syncingContent) return
       this.syncingContent = true
       this.markdownContent = this.htmlToMd(this.$refs.editorDiv.innerHTML)
-      // 清除内容为空的 <br>，使 :empty 伪类能匹配，显示 placeholder
-      // 注意：图片不产生 textContent，纯图片内容不能清除
       if (!this.$refs.editorDiv.textContent.trim() && !this.$refs.editorDiv.querySelector('img')) {
         this.$refs.editorDiv.innerHTML = ''
       }

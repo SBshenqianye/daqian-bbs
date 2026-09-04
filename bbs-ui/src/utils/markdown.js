@@ -108,14 +108,14 @@ export function mdToHtml(md) {
       continue
     }
 
-    // 有序列表 1. 2. 3.
+    // 有序列表 1. 2. 3. —— 保留原始序号显示，不用 <ol> 自动编号
     if (/^\s*\d+\.\s+/.test(line)) {
       const items = []
       while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
-        items.push(lines[i].replace(/^\s*\d+\.\s+/, ''))
+        items.push(lines[i].trim())
         i++
       }
-      result.push('<ol>' + items.map(item => `<li>${renderInline(item)}</li>`).join('') + '</ol>')
+      result.push(items.map(item => `<p style="padding-left:2em;text-indent:-2em;margin:0">${renderInline(item)}</p>`).join(''))
       continue
     }
 
@@ -229,6 +229,9 @@ export function htmlToMd(html) {
 
   // 6. 组装（\n\n 分段：markdown 中单 \n 是同段落软换行，\n\n 才是段落分隔）
   md = lines.join('\n\n')
+
+  // 6.1 修复：连续列表项之间不能有空行，否则 mdToHtml 会断开为多个 <ol>/<ul>，序号重置为 1
+  md = md.replace(/((?:^\s*(?:\d+\.\s+|[-*+]\s+).+\n?)+)/gm, (m) => m.replace(/\n\n/g, '\n'))
 
   // 7. 清理
   md = md.replace(/<[^>]*>/g, '')     // 移除漏网的 HTML 标签
