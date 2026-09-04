@@ -60,6 +60,9 @@ public class DatabaseInitializer {
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter BACKUP_FMT = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
 
+    /** 最多保留的备份 schema 数量（PostgreSQL）/ 备份数量（MySQL） */
+    private static final int MAX_BACKUP_COUNT = 3;
+
     /** SQL 语句中提取表名的正则：匹配 ALTER TABLE / INSERT INTO / UPDATE / DELETE FROM / CREATE TABLE / DROP TABLE */
     private static final Pattern TABLE_NAME_PATTERN = Pattern.compile(
         "(?:ALTER\\s+TABLE|INSERT\\s+INTO|UPDATE|DELETE\\s+FROM|CREATE\\s+(?:TABLE|INDEX)|DROP\\s+TABLE)\\s+(?:IF\\s+(?:NOT\\s+EXISTS|EXISTS)\\s+)?[`\"']?([a-zA-Z_][a-zA-Z0-9_]*)[`\"']?",
@@ -371,12 +374,17 @@ public class DatabaseInitializer {
     }
 
     /**
-     * 备份受影响的表到新数据库 "原库名_yyyyMMdd_HHmmss"。
+     * 备份受影响的表到备份位置。
+     * <p>
+     * MySQL：创建新数据库 "原库名_yyyyMMdd_HHmmss"，跨库复制表。<br>
+     * PostgreSQL：创建同库内新 schema "bbs_backup_yyyyMMdd_HHmmss"，跨 schema 复制表
+     * （PostgreSQL 不支持跨数据库引用）。
+     * </p>
      * <p>
      * 流程：
      * 1. 从 DataSource 获取原始 JDBC URL
-     * 2. 构建备份数据库名 = 原库名_yyyyMMdd_HHmmss
-     * 3. 通过管理连接创建备份数据库
+     * 2. 构建备份标识（MySQL=数据库名, PG=schema名）
+     * 3. 创建备份数据库/schema
      * 4. 逐表复制（CREATE TABLE ... AS SELECT * FROM ...）
      * </p>
      */
@@ -398,27 +406,37 @@ public class DatabaseInitializer {
                 return;
             }
 
-            String backupDbName = dbName + "_" + LocalDateTime.now().format(BACKUP_FMT);
+            String backupName;
+            if ("postgresql".equals(dbType)) {
+                // PostgreSQL：在同一数据库内创建 schema，避免跨库引用
+                backupName = "bbs_backup_" + LocalDateTime.now().format(BACKUP_FMT);
+            } else {
+                // MySQL：创建新数据库（MySQL 支持跨库引用）
+                backupName = dbName + "_" + LocalDateTime.now().format(BACKUP_FMT);
+            }
             log.info("=== 开始数据库备份 ===");
-            log.info("原数据库: {}, 备份数据库: {}, 受影响表数: {}", dbName, backupDbName, affectedTables.size());
+            log.info("原数据库: {}, 备份目标: {}, 受影响表数: {}", dbName, backupName, affectedTables.size());
             log.info("受影响的表: {}", affectedTables);
 
-            // 1. 创建备份数据库
-            createBackupDatabase(dbType, backupDbName);
+            // 0. 清理旧备份，避免容量无限增长
+            cleanupOldBackups(dbType);
 
-            // 2. 逐表复制到备份库
+            // 1. 创建备份数据库/schema
+            createBackupDatabase(dbType, backupName);
+
+            // 2. 逐表复制到备份位置
             int successCount = 0;
             for (String tableName : affectedTables) {
                 try {
-                    copyTable(dbType, dbName, backupDbName, tableName);
+                    copyTable(dbType, dbName, backupName, tableName);
                     successCount++;
                 } catch (Exception e) {
                     log.warn("备份表 [{}] 失败（该表可能尚不存在）: {}", tableName, e.getMessage());
                 }
             }
 
-            log.info("=== 数据库备份完成 === 备份库: [{}], 成功备份: {}/{} 张表",
-                    backupDbName, successCount, affectedTables.size());
+            log.info("=== 数据库备份完成 === 备份目标: [{}], 成功备份: {}/{} 张表",
+                    backupName, successCount, affectedTables.size());
 
         } catch (Exception e) {
             log.warn("数据库备份失败，将继续执行迁移（建议手动备份）: {}", e.getMessage());
@@ -426,54 +444,131 @@ public class DatabaseInitializer {
     }
 
     /**
-     * 创建备份数据库。使用原始 JDBC 连接执行 CREATE DATABASE，
-     * 因为 PostgreSQL 的 CREATE DATABASE 不能在事务中执行。
+     * 清理旧备份，保留最新的 {@link #MAX_BACKUP_COUNT} 个。
+     * <p>
+     * PostgreSQL：列出所有 bbs_backup_* schema 并 DROP 掉最旧的。<br>
+     * MySQL：列出所有 原库名_* 数据库并 DROP 掉最旧的。
+     * </p>
      */
-    private void createBackupDatabase(String dbType, String backupDbName) throws Exception {
-        DataSource ds = jdbcTemplate.getDataSource();
-        Connection metaConn = ds.getConnection();
-        DatabaseMetaData metaData = metaConn.getMetaData();
-        String originalUrl = metaData.getURL();
-        metaConn.close();
+    private void cleanupOldBackups(String dbType) {
+        try {
+            DataSource ds = jdbcTemplate.getDataSource();
+            if (ds == null) return;
 
-        String username = dbUsername;
-        String password = dbPassword;
+            Connection metaConn = ds.getConnection();
+            String jdbcUrl = metaConn.getMetaData().getURL();
+            metaConn.close();
 
-        String adminUrl;
-        if ("postgresql".equals(dbType)) {
-            adminUrl = originalUrl.replaceFirst("/[^/?]+(\\?|$)", "/postgres$1");
-            // PostgreSQL: CREATE DATABASE 不能在事务中，必须用独立连接且 autoCommit=true
-            try (Connection conn = DriverManager.getConnection(adminUrl, username, password)) {
-                conn.setAutoCommit(true);
-                try (Statement stmt = conn.createStatement()) {
-                    stmt.execute("CREATE DATABASE \"" + backupDbName + "\"");
+            String dbName = extractDatabaseName(jdbcUrl);
+            if (dbName == null) return;
+
+            List<String> backupNames = new ArrayList<>();
+            if ("postgresql".equals(dbType)) {
+                // 查询所有 bbs_backup_* schema
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT schema_name FROM information_schema.schemata " +
+                    "WHERE schema_name LIKE 'bbs_backup_%' ORDER BY schema_name");
+                for (Map<String, Object> row : rows) {
+                    backupNames.add((String) row.get("schema_name"));
+                }
+            } else {
+                // 查询所有 原库名_* 数据库
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA " +
+                    "WHERE SCHEMA_NAME LIKE '" + dbName + "_%' ORDER BY SCHEMA_NAME");
+                for (Map<String, Object> row : rows) {
+                    backupNames.add((String) row.get("SCHEMA_NAME"));
                 }
             }
-        } else {
-            adminUrl = originalUrl.replaceFirst("/[^/?]+(\\?|$)", "/information_schema$1");
-            try (Connection conn = DriverManager.getConnection(adminUrl, username, password)) {
-                try (Statement stmt = conn.createStatement()) {
-                    stmt.execute("CREATE DATABASE `" + backupDbName + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
+
+            if (backupNames.size() <= MAX_BACKUP_COUNT) {
+                if (!backupNames.isEmpty()) {
+                    log.info("当前备份数: {}，保留上限: {}，无需清理。", backupNames.size(), MAX_BACKUP_COUNT);
+                }
+                return;
+            }
+
+            // 删除超出限制的旧备份（schema 名含时间戳，字母排序即时间排序）
+            int toRemove = backupNames.size() - MAX_BACKUP_COUNT;
+            for (int i = 0; i < toRemove; i++) {
+                String oldBackup = backupNames.get(i);
+                try {
+                    if ("postgresql".equals(dbType)) {
+                        // PostgreSQL：先删除 schema 内所有表，再删除 schema
+                        List<Map<String, Object>> tables = jdbcTemplate.queryForList(
+                            "SELECT tablename FROM pg_tables WHERE schemaname = ?", oldBackup);
+                        for (Map<String, Object> t : tables) {
+                            String tbl = (String) t.get("tablename");
+                            jdbcTemplate.execute("DROP TABLE IF EXISTS \"" + oldBackup + "\".\"" + tbl + "\"");
+                        }
+                        jdbcTemplate.execute("DROP SCHEMA IF EXISTS \"" + oldBackup + "\"");
+                    } else {
+                        // MySQL：删除整个数据库
+                        jdbcTemplate.execute("DROP DATABASE `" + oldBackup + "`");
+                    }
+                    log.info("已清理旧备份: {}", oldBackup);
+                } catch (Exception e) {
+                    log.warn("清理旧备份 [{}] 失败: {}", oldBackup, e.getMessage());
                 }
             }
+        } catch (Exception e) {
+            log.debug("清理旧备份时出错（不影响迁移）: {}", e.getMessage());
         }
-        log.info("备份数据库 [{}] 创建成功。", backupDbName);
     }
 
     /**
-     * 将指定表从原库复制到备份库（结构 + 数据）。
+     * 创建备份目标。
      * <p>
-     * MySQL:    CREATE TABLE `backup_db`.`table` AS SELECT * FROM `original_db`.`table`<br>
-     * PostgreSQL: CREATE TABLE "backup_db"."public"."table" AS SELECT * FROM "original_db"."public"."table"
+     * MySQL：创建新数据库（使用 information_schema 连接）。<br>
+     * PostgreSQL：在当前数据库内创建新 schema（无需跨库，直接用 JdbcTemplate 即可）。
      * </p>
      */
-    private void copyTable(String dbType, String originalDb, String backupDb, String tableName) {
+    private void createBackupDatabase(String dbType, String backupName) throws Exception {
+        if ("postgresql".equals(dbType)) {
+            // PostgreSQL：在同一数据库内创建 schema（不需要跨库）
+            // CREATE SCHEMA 可以在事务中执行，直接用 JdbcTemplate
+            jdbcTemplate.execute("CREATE SCHEMA IF NOT EXISTS \"" + backupName + "\"");
+        } else {
+            // MySQL：创建新数据库
+            DataSource ds = jdbcTemplate.getDataSource();
+            Connection metaConn = ds.getConnection();
+            DatabaseMetaData metaData = metaConn.getMetaData();
+            String originalUrl = metaData.getURL();
+            metaConn.close();
+
+            String username = dbUsername;
+            String password = dbPassword;
+
+            String adminUrl = originalUrl.replaceFirst("/[^/?]+(\\?|$)", "/information_schema$1");
+            try (Connection conn = DriverManager.getConnection(adminUrl, username, password)) {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("CREATE DATABASE `" + backupName + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
+                }
+            }
+        }
+        log.info("备份目标 [{}] 创建成功。", backupName);
+    }
+
+    /**
+     * 将指定表从原库复制到备份位置（结构 + 数据）。
+     * <p>
+     * MySQL:    CREATE TABLE `backup_db`.`table` AS SELECT * FROM `original_db`.`table`<br>
+     * PostgreSQL: CREATE TABLE "backup_schema"."table" AS SELECT * FROM "public"."table"
+     * </p>
+     * <p>
+     * PostgreSQL 使用同一数据库内的 schema（而非跨库），避免
+     * "cross-database references are not implemented" 错误。
+     * </p>
+     */
+    private void copyTable(String dbType, String originalDb, String backupName, String tableName) {
         String sql;
         if ("postgresql".equals(dbType)) {
-            sql = "CREATE TABLE \"" + backupDb + "\".public.\"" + tableName + "\"" +
-                    " AS SELECT * FROM \"" + originalDb + "\".public.\"" + tableName + "\"";
+            // PostgreSQL：同库跨 schema（backupName 是 schema 名，不是数据库名）
+            sql = "CREATE TABLE \"" + backupName + "\".\"" + tableName + "\"" +
+                    " AS SELECT * FROM \"public\".\"" + tableName + "\"";
         } else {
-            sql = "CREATE TABLE `" + backupDb + "`.`" + tableName + "`" +
+            // MySQL：跨数据库
+            sql = "CREATE TABLE `" + backupName + "`.`" + tableName + "`" +
                     " AS SELECT * FROM `" + originalDb + "`.`" + tableName + "`";
         }
         jdbcTemplate.execute(sql);
