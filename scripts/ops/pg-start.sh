@@ -13,9 +13,21 @@
 # ============================================
 set -e
 
-PG_CONTAINER="bbs-postgres"
-PG_IMAGE="docker.io/library/postgres:13-alpine"
-PG_PORT="15432"
+# ---------- 加载 .env（如果存在）----------
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ENV_FILE="${SCRIPT_DIR}/../../.env"
+if [ -f "$ENV_FILE" ]; then
+    while IFS= read -r line; do
+        case "$line" in
+            \#*|"") continue ;;
+            *) eval "export $line" 2>/dev/null ;;
+        esac
+    done < "$ENV_FILE"
+fi
+
+PG_CONTAINER="${BBS_PG_CONTAINER:-bbs-postgres}"
+PG_IMAGE="docker.io/library/postgres:16-alpine"
+PG_PORT="${BBS_DB_PORT:-15432}"
 PG_VOLUME="bbs-pgdata"
 PG_DATA_DIR="/var/lib/postgresql/data"
 

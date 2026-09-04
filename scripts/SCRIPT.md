@@ -18,7 +18,8 @@ scripts/
 ├── lib/
 │   └── progress.sh        ← 进度指示工具库（步骤计数、spinner、进度条）
 └── ops/
-    └── pg-start.sh        ← 本地 PostgreSQL 容器管理（必须挂具名卷 bbs-pgdata）
+    ├── pg-start.sh        ← 本地 PostgreSQL 容器管理（必须挂具名卷 bbs-pgdata）
+    └── pg-backup.sh       ← 数据库备份/恢复（pg_dump + gzip）
 ```
 
 > ⚠ **pg 数据持久化红线**：`bbs-postgres` 容器必须用 `-v bbs-pgdata:/var/lib/postgresql/data` 具名卷挂载。postgres 镜像不挂卷时会自动生成**匿名卷**，容器一删数据就跟容器一起消失；脚本内任何"删容器重建"逻辑都会导致换新卷、数据"丢失"（实际数据还在旧匿名卷里，可手动找回）。详见 `ops/pg-start.sh` 头注释。
@@ -90,6 +91,19 @@ bash deploy-offline.sh --upgrade bbs-upgrade-*.tar.gz  # 升级
 bash scripts/dist/package.sh                  # 轻量升级包（默认）
 bash scripts/dist/package.sh --full           # 完整环境包（含基础镜像 tar + 首次部署脚本）
 ```
+
+### pg-backup.sh — 数据库备份/恢复
+
+自动检测运行环境（容器 or 原生），容器名从 `.env` 的 `BBS_PG_CONTAINER` 读取。
+
+```bash
+bash scripts/ops/pg-backup.sh                  # 备份到当前目录（bbs_YYYYMMDD_HHMMSS.sql.gz）
+bash scripts/ops/pg-backup.sh --list           # 列出容器内可用备份
+bash scripts/ops/pg-backup.sh --env            # 显示检测到的环境信息
+bash scripts/ops/pg-backup.sh --restore bbs_20260825_120000.sql.gz  # 恢复
+```
+
+> ⚠ 生产环境容器名可能和测试不同（如 `work-flow-db`），务必在 `.env` 中配置 `BBS_PG_CONTAINER`。
 
 ### base.sh — 基础镜像管理
 
