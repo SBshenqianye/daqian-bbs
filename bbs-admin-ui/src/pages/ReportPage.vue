@@ -379,6 +379,13 @@ export default {
       } catch (e) { /* ignore */ }
     },
     getStatusLabel(s) { return { pending: '待审核', confirmed: '已确认', rejected: '已驳回' }[s] || s },
+    /** 当前登录管理员 id（登录态 sessionStorage['admin']，与后端"审核人以登录态身份为准"配套） */
+    currentAdminId() {
+      try {
+        const admin = JSON.parse(window.sessionStorage.getItem('admin') || '{}')
+        return admin.id || 1
+      } catch (e) { return 1 }
+    },
     getTargetTypeLabel(t) { return { article: '文章', comment: '评论', reply: '回复' }[t] || t },
     getHistory(group) {
       return group.members.filter(m => m.id !== group.representative.id)
@@ -529,7 +536,7 @@ export default {
     },
     async doReview(reportId, status, remark) {
       try {
-        const res = await this.postRequest('/admin/report/review', { reportId, reviewerId: 1, status, remark })
+        const res = await this.postRequest('/admin/report/review', { reportId, reviewerId: this.currentAdminId(), status, remark })
         handleResponse(res, { successMsg: '审核完成', errorMsg: '审核失败', onSuccess: () => this.loadList() })
       } catch (e) { console.warn('[ReportPage]', e) }
     },
@@ -559,7 +566,7 @@ export default {
           violationType: this.violationForm.violationType,
           relatedType: this.violationDialogItem.targetType,
           relatedId: parseInt(this.violationDialogItem.targetId),
-          operatorId: 1,
+          operatorId: this.currentAdminId(),
           remark: remark
         })
         let firstFailed = false
@@ -568,7 +575,7 @@ export default {
 
         const rRes = await this.postRequest('/admin/report/review', {
           reportId: this.violationDialogItem.id,
-          reviewerId: 1,
+          reviewerId: this.currentAdminId(),
           status: 'confirmed',
           remark: remark || '已转违规处理'
         })
