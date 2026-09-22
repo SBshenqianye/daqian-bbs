@@ -110,6 +110,7 @@ public class SensitiveWordController {
 
         // 写入 Excel
         EasyExcel.write(response.getOutputStream(), SensitiveWordExcelRow.class)
+                .inMemory(true)
                 .sheet("敏感词列表")
                 .doWrite(excelRows);
     }

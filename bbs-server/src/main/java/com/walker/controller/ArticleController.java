@@ -636,8 +636,9 @@ public class ArticleController {
                 .orderByDesc(com.walker.pojo.PointsLog::getCreateTime);
         List<com.walker.pojo.PointsLog> pointsLogs = pointsLogMapper.selectList(logWrapper);
 
-        // ── 5. 写入 Excel（3 个 Sheet） ──
-        com.alibaba.excel.ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).build();
+        // ── 5. 写入 Excel（3 个 Sheet，固定顺序：单位排名 → 个人排名 → 积分明细） ──
+        com.alibaba.excel.ExcelWriter excelWriter =
+                EasyExcel.write(response.getOutputStream()).inMemory(true).build(); // 修复容器无字体 NPE
         try {
             // Sheet1：单位排名
             com.alibaba.excel.write.metadata.WriteSheet sheet1 =
@@ -659,22 +660,43 @@ public class ArticleController {
     }
 
     // ── 导出表头定义 ──
+    // EasyExcel head 结构：外层 List 每个元素代表一列，内层 List 为该列表头（自上而下多行）；
+    // 单行表头即每列一个单元素 List；多个字段塞进同一个内层 List 会被写成单列多行（表头竖排、数据错位）
 
     private List<List<String>> unitRankHeader() {
         List<List<String>> header = new ArrayList<>();
-        header.add(Arrays.asList("排名", "单位编号", "单位名称", "发帖数", "回帖数", "积分"));
+        header.add(Arrays.asList("排名"));
+        header.add(Arrays.asList("单位编号"));
+        header.add(Arrays.asList("单位名称"));
+        header.add(Arrays.asList("发帖数"));
+        header.add(Arrays.asList("回帖数"));
+        header.add(Arrays.asList("积分"));
         return header;
     }
 
     private List<List<String>> personalRankHeader() {
         List<List<String>> header = new ArrayList<>();
-        header.add(Arrays.asList("排名", "用户ID", "昵称", "单位编号", "单位名称", "发帖数", "回帖数", "积分"));
+        header.add(Arrays.asList("排名"));
+        header.add(Arrays.asList("用户ID"));
+        header.add(Arrays.asList("昵称"));
+        header.add(Arrays.asList("单位编号"));
+        header.add(Arrays.asList("单位名称"));
+        header.add(Arrays.asList("发帖数"));
+        header.add(Arrays.asList("回帖数"));
+        header.add(Arrays.asList("积分"));
         return header;
     }
 
     private List<List<String>> pointsLogHeader() {
         List<List<String>> header = new ArrayList<>();
-        header.add(Arrays.asList("时间", "用户ID", "昵称", "单位名称", "积分变动", "变动原因", "关联类型", "关联ID"));
+        header.add(Arrays.asList("时间"));
+        header.add(Arrays.asList("用户ID"));
+        header.add(Arrays.asList("昵称"));
+        header.add(Arrays.asList("单位名称"));
+        header.add(Arrays.asList("积分变动"));
+        header.add(Arrays.asList("变动原因"));
+        header.add(Arrays.asList("关联类型"));
+        header.add(Arrays.asList("关联ID"));
         return header;
     }
 
