@@ -230,7 +230,8 @@ export default {
   methods: {
     getCurrentUserId() {
       try {
-        const raw = sessionStorage.getItem('user')
+        // 管理端登录态存 sessionStorage['admin']，勿读 'user'（那是用户端键）
+        const raw = sessionStorage.getItem('admin')
         if (raw) { const u = JSON.parse(raw); return u.id || null }
       } catch (e) { /* ignore */ }
       return null

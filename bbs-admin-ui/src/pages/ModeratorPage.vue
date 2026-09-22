@@ -179,6 +179,13 @@ export default {
     this.loadLabels()
   },
   methods: {
+    /** 当前登录管理员 id（登录态 sessionStorage['admin']，操作人不得写死为固定值） */
+    currentAdminId() {
+      try {
+        const admin = JSON.parse(window.sessionStorage.getItem('admin') || '{}')
+        return admin.id || 1
+      } catch (e) { return 1 }
+    },
     async loadLabels() {
       try {
         const res = await axios.get(`${process.env.VUE_APP_BBS_API}/common/getArticleLabel`)
@@ -266,10 +273,9 @@ export default {
     async doCancel() {
       this.cancelSaving = true
       try {
-        const user = JSON.parse(sessionStorage.getItem('user') || '{}')
         const res = await this.postRequest('/admin/moderator/cancelReward', {
           userId: this.cancelForm.userId,
-          operatorId: user.id || 1,
+          operatorId: this.currentAdminId(),
           remark: this.cancelForm.remark || null
         })
         handleResponse(res, {
@@ -301,7 +307,7 @@ export default {
       this.appointing = true
       try {
         const res = await this.postRequest('/admin/moderator/appoint', {
-          userId: parseInt(this.form.userId), labelId: parseInt(this.form.labelId), operatorId: 1
+          userId: parseInt(this.form.userId), labelId: parseInt(this.form.labelId), operatorId: this.currentAdminId()
         })
         handleResponse(res, {
           successMsg: '任命成功',
@@ -338,8 +344,7 @@ export default {
     async doMonthlyReward() {
       this.rewarding = true
       try {
-        const user = JSON.parse(sessionStorage.getItem('user') || '{}')
-        const res = await this.postRequest('/admin/moderator/monthlyReward', { operatorId: user.id || 1 })
+        const res = await this.postRequest('/admin/moderator/monthlyReward', { operatorId: this.currentAdminId() })
         handleResponse(res, { successMsg: '发放成功', errorMsg: '发放失败' })
       } catch (e) { console.warn('[ModeratorPage]', e) }
       finally { this.rewarding = false }

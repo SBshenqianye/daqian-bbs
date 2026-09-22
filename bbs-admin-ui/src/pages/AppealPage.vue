@@ -138,6 +138,13 @@ export default {
     getStatusLabel(s) { return { pending: '待审核', accepted: '已通过', rejected: '已驳回' }[s] || s },
     getAppealLabel(t) { return { violation: '违规申诉', points: '积分申诉', other: '其他' }[t] || t },
     getRelatedTypeLabel(t) { return { article: '帖子', comment: '评论', reply: '回复' }[t] || t },
+    /** 当前登录管理员 id（登录态 sessionStorage['admin']，审核人不得写死为固定值） */
+    currentAdminId() {
+      try {
+        const admin = JSON.parse(window.sessionStorage.getItem('admin') || '{}')
+        return admin.id || 1
+      } catch (e) { return 1 }
+    },
     async loadList() {
       this.loading = true
       try {
@@ -159,7 +166,7 @@ export default {
     },
     async doReview(appealId, status, remark) {
       try {
-        const res = await this.postRequest('/admin/appeal/review', { appealId, reviewerId: 1, status, remark })
+        const res = await this.postRequest('/admin/appeal/review', { appealId, reviewerId: this.currentAdminId(), status, remark })
         handleResponse(res, {
           successMsg: '审核完成',
           errorMsg: '审核失败',

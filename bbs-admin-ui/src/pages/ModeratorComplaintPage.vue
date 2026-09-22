@@ -151,6 +151,13 @@ export default {
   },
   mounted() { this.loadList() },
   methods: {
+    /** 当前登录管理员 id（登录态 sessionStorage['admin']，审核人不得写死为固定值） */
+    currentAdminId() {
+      try {
+        const admin = JSON.parse(window.sessionStorage.getItem('admin') || '{}')
+        return admin.id || 1
+      } catch (e) { return 1 }
+    },
     statusLabel(s) {
       return { pending: '待审核', accepted: '已采纳', rejected: '已驳回' }[s] || s
     },
@@ -178,12 +185,11 @@ export default {
     async doReview() {
       this.reviewSaving = true
       try {
-        const user = JSON.parse(sessionStorage.getItem('user') || '{}')
         const res = await this.postRequest('/admin/moderatorComplaint/review', {
           complaintId: this.reviewForm.id,
           status: this.reviewForm.status,
           remark: this.reviewForm.remark || null,
-          reviewerId: user.id || 1
+          reviewerId: this.currentAdminId()
         })
         handleResponse(res, {
           successMsg: '审核完成',

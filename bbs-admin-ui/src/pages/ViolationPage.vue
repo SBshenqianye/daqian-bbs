@@ -188,7 +188,7 @@ export default {
       }
       this.submitting = true
       try {
-        const params = { ...this.form, userId: parseInt(this.form.userId), operatorId: 1 }
+        const params = { ...this.form, userId: parseInt(this.form.userId), operatorId: this.currentAdminId() }
         if (this.form.relatedId) params.relatedId = parseInt(this.form.relatedId)
         const res = await this.postRequest('/admin/violation/add', params)
         handleResponse(res, {
@@ -201,6 +201,13 @@ export default {
         })
       } catch (e) { this.$message.error('操作失败') }
       finally { this.submitting = false }
+    },
+    /** 当前登录管理员 id（登录态 sessionStorage['admin']，操作人不得写死为固定值） */
+    currentAdminId() {
+      try {
+        const admin = JSON.parse(window.sessionStorage.getItem('admin') || '{}')
+        return admin.id || 1
+      } catch (e) { return 1 }
     },
     getRelatedTypeLabel(t) {
       return { article: '帖子', comment: '评论', reply: '回复' }[t] || t
