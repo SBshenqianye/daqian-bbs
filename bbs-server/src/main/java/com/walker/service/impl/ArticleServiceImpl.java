@@ -873,7 +873,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
-    public ResultBean getAdminArticleList(String keywords, String labelId, String startTime, String endTime, Integer enable, Integer page, Integer size) {
+    public ResultBean getAdminArticleList(String keywords, Integer labelId, String startTime, String endTime, Integer enable, Integer page, Integer size) {
         if (page == null || page < 1) page = 1;
         if (size == null || size < 1) size = 10;
 
@@ -949,7 +949,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
-    public ResultBean getFeaturedList(String keywords, String labelId, String startTime, String endTime, Integer page, Integer size) {
+    public ResultBean getFeaturedList(String keywords, Integer labelId, String startTime, String endTime, Integer page, Integer size) {
         if (page == null || page < 1) page = 1;
         if (size == null || size < 1) size = 10;
 

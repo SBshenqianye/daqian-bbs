@@ -455,11 +455,30 @@ public class ArticleController {
         return articleService.personalPointsRank(param);
     }
 
+    /**
+     * 解析标签筛选参数：空串/非数字一律按 null 处理，
+     * 避免 PG 严格类型检查下 integer 列与 varchar 比较报错（MySQL 隐式转换不报）
+     */
+    private Integer parseLabelId(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        String s = raw.toString().trim();
+        if (s.isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     @ApiOperation(value = "管理员获取文章列表（支持搜索过滤分页，含标签名）")
     @PostMapping("/admin/article/list")
     public ResultBean getAdminArticleList(@RequestBody Map<String, Object> params) {
         String keywords = (String) params.getOrDefault("keywords", "");
-        String labelId = (String) params.getOrDefault("labelId", "");
+        Integer labelId = parseLabelId(params.get("labelId"));
         String startTime = (String) params.getOrDefault("startTime", "");
         String endTime = (String) params.getOrDefault("endTime", "");
         Integer enable = params.get("enable") != null ? Integer.parseInt(params.get("enable").toString()) : null;
@@ -483,7 +502,7 @@ public class ArticleController {
     @PostMapping("/admin/featured/list")
     public ResultBean getFeaturedList(@RequestBody Map<String, Object> params) {
         String keywords = (String) params.getOrDefault("keywords", "");
-        String labelId = (String) params.getOrDefault("labelId", "");
+        Integer labelId = parseLabelId(params.get("labelId"));
         String startTime = (String) params.getOrDefault("startTime", "");
         String endTime = (String) params.getOrDefault("endTime", "");
         Integer page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;

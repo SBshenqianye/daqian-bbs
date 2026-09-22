@@ -218,7 +218,7 @@ public interface ArticleService extends IService<Article> {
     /**
      * 管理员获取文章列表（支持搜索过滤分页，含标签名）
      */
-    ResultBean getAdminArticleList(String keywords, String labelId, String startTime, String endTime, Integer enable, Integer page, Integer size);
+    ResultBean getAdminArticleList(String keywords, Integer labelId, String startTime, String endTime, Integer enable, Integer page, Integer size);
 
     /**
      * 设置/取消精华帖
@@ -228,7 +228,7 @@ public interface ArticleService extends IService<Article> {
     /**
      * 查询精华帖列表（管理端，支持搜索过滤分页）
      */
-    ResultBean getFeaturedList(String keywords, String labelId, String startTime, String endTime, Integer page, Integer size);
+    ResultBean getFeaturedList(String keywords, Integer labelId, String startTime, String endTime, Integer page, Integer size);
 
     /**
      * 查询精华帖列表（用户端，分页）
