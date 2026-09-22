@@ -477,6 +477,26 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         return ResultBean.success("查询成功", data);
     }
 
+    @Override
+    public ResultBean checkReported(Integer reporterId, String targetType, Integer targetId) {
+        if (reporterId == null || targetType == null || targetId == null) {
+            return ResultBean.error("参数不完整");
+        }
+        // 口径与 submitReport 的重复/已核实拦截一致：存在非 rejected 记录即视为"已举报"
+        // （pending 等待审核 / confirmed 已核实；rejected 后允许再报）。
+        Report one = this.getOne(new LambdaQueryWrapper<Report>()
+                .eq(Report::getReporterId, reporterId)
+                .eq(Report::getTargetType, targetType)
+                .eq(Report::getTargetId, targetId)
+                .ne(Report::getStatus, "rejected")
+                .orderByDesc(Report::getCreateTime)
+                .last("LIMIT 1"), false);
+        Map<String, Object> data = new HashMap<>();
+        data.put("reported", one != null);
+        data.put("status", one != null ? one.getStatus() : null);
+        return ResultBean.success("", data);
+    }
+
     /**
      * 截断文本并清理 Markdown 语法，用于内容预览
      */

@@ -49,4 +49,11 @@ public interface ReportService extends IService<Report> {
      * 用户查看自己的举报记录
      */
     ResultBean listMyReports(Integer reporterId, Integer page, Integer size);
+
+    /**
+     * 前置查询：当前用户对某目标是否已有未驳回的举报（pending/confirmed）。
+     * 供前端"点举报"时即时提醒，口径与 submitReport 的重复/已核实拦截一致。
+     * 返回 {reported: bool, status: 'pending'|'confirmed'|null}。
+     */
+    ResultBean checkReported(Integer reporterId, String targetType, Integer targetId);
 }

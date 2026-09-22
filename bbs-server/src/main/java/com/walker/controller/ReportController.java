@@ -70,4 +70,13 @@ public class ReportController {
         Integer size = params.get("size") != null ? Integer.parseInt(params.get("size").toString()) : 10;
         return reportService.listMyReports(reporterId, page, size);
     }
+
+    @ApiOperation(value = "前置查询：当前用户是否已举报过该内容（用于点击举报时即时提醒）")
+    @PostMapping("/user/report/check")
+    public ResultBean checkReported(@RequestBody Map<String, Object> params) {
+        Integer reporterId = (Integer) params.get("reporterId");
+        String targetType = (String) params.get("targetType");
+        Integer targetId = (Integer) params.get("targetId");
+        return reportService.checkReported(reporterId, targetType, targetId);
+    }
 }

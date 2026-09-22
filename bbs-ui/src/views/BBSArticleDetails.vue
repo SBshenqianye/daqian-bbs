@@ -573,12 +573,28 @@ export default {
         }
       }).catch(() => {})
     },
-    /** 打开举报弹窗（统一入口：未登录跳登录页） */
-    openReportDialog(payload) {
+    /** 打开举报弹窗（统一入口：未登录跳登录页；已举报过则即时提醒，不打开弹窗） */
+    async openReportDialog(payload) {
       if (!this.currentUser) {
         this.$router.push({ path: '/login', query: { redirect: this.$route.fullPath } })
         return
       }
+      // 前置检查：点举报即提醒是否已举报过，而不是等填完提交才提示。
+      // 口径与后端提交拦截一致（pending 等待 / confirmed 已核实；rejected 后允许再报）。
+      try {
+        const resp = await this.postRequest('/user/report/check', {
+          reporterId: Number(this.currentUser.id),
+          targetType: payload.targetType,
+          targetId: Number(payload.targetId),
+        })
+        if (resp && resp.code === 200 && resp.obj && resp.obj.reported) {
+          const msg = resp.obj.status === 'confirmed'
+            ? '该内容已被核实处理，无需重复举报'
+            : '您已举报过该内容，请等待审核结果'
+          this.$message.warning(msg)
+          return
+        }
+      } catch (e) { /* 查询异常不阻断，仍允许打开弹窗提交（后端提交时兜底拦截） */ }
       this.reportDialog = {
         visible: true,
         targetType: payload.targetType,
