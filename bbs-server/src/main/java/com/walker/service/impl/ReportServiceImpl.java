@@ -18,6 +18,8 @@ import com.walker.service.ReportService;
 import com.walker.service.UserService;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -132,10 +134,22 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     }
 
     /**
+     * 从登录态（JWT）获取当前操作人 id。
+     * /admin/** 接口已由 Spring Security 强制认证，正常情况下不为 null；
+     * 供审核等敏感操作以"服务端可信身份"为准，不信任前端传入的操作人参数。
+     */
+    private Integer getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof User) {
+            return ((User) auth.getPrincipal()).getId();
+        }
+        return null;
+    }
+
+    /**
      * 查询举报目标内容的作者 id（用于禁止自举报）；目标不存在或类型未知返回 null
      */
-    private Integer queryTargetOwnerId(String targetType, Integer targetId) {
-        if ("article".equals(targetType)) {
+    private Integer queryTargetOwnerId(String targetType, Integer targetId) {        if ("article".equals(targetType)) {
             Article article = articleService.getById(targetId);
             return article == null ? null : article.getUserId();
         }
@@ -168,6 +182,16 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     public ResultBean reviewReport(Integer reportId, Integer reviewerId, String status, String remark) {
         if (reportId == null || reviewerId == null || status == null) {
             return ResultBean.error("参数不完整");
+        }
+
+        // 审核人以登录态身份为准：前端传入的 reviewerId 必须与当前登录用户一致。
+        // 防止"审核人写死/伪造为他人 id"绕过自审拦截（P0 安全修复，超管与普通管理员一视同仁）
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (!currentUserId.equals(reviewerId)) {
+            return ResultBean.error("审核人身份校验失败，请重新登录后操作");
         }
 
         Report report = this.getById(reportId);

@@ -7,10 +7,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.walker.pojo.Article;
 import com.walker.pojo.Comment;
 import com.walker.pojo.Report;
+import com.walker.pojo.User;
 import com.walker.mapper.ReportMapper;
 import com.walker.service.impl.ReportServiceImpl;
 import com.walker.vo.ResultBean;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -84,6 +88,22 @@ class ReportServiceTest {
                 new MapperBuilderAssistant(new MybatisConfiguration(), ""),
                 Report.class
         );
+
+        // 默认当前登录用户 id=1（与初始化 SQL 的超管 id 一致），敏感用例可覆盖
+        setCurrentUser(1);
+    }
+
+    @AfterEach
+    void tearDownAuth() {
+        SecurityContextHolder.clearContext();
+    }
+
+    /** 模拟 JWT 登录态：principal 为 User 实体（与 JwtAuthenticationTokenFilter 行为一致） */
+    private void setCurrentUser(int id) {
+        User user = new User();
+        user.setId(id);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
     }
 
     // ========== submitReport 测试 ==========
@@ -251,8 +271,11 @@ class ReportServiceTest {
     }
 
     @Test
-    @DisplayName("审核举报 → 举报人即审核人 → 拒绝（P0 自报自审漏洞）")
+    @DisplayName("审核举报 → 举报人即审核人 → 拒绝（P0 自报自审漏洞，以登录态身份为准）")
     void reviewReport_selfReview_returnsError() {
+        // 当前登录用户（token 身份）就是举报人 100 —— 审核自己的举报必须被拒
+        setCurrentUser(100);
+
         Report report = new Report();
         report.setId(1);
         report.setReporterId(100);
@@ -267,6 +290,26 @@ class ReportServiceTest {
         // 不得加分、不得发通知
         verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
         verify(notificationService, never()).createNotification(any(), any(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    @DisplayName("审核举报 → 传入审核人非当前登录用户 → 拒绝（防写死/伪造 reviewerId）")
+    void reviewReport_identityMismatch_returnsError() {
+        // 当前登录用户 id=1，但请求传入 reviewerId=5（伪造他人 id）——身份校验先于业务处理直接拒绝
+        ResultBean result = reportService.reviewReport(1, 5, "confirmed", "属实");
+        assertEquals(500, result.getCode());
+        assertEquals("审核人身份校验失败，请重新登录后操作", result.getMessage());
+        verify(reportMapper, never()).selectById(any());
+        verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("审核举报 → 无登录态 → 拒绝")
+    void reviewReport_noAuth_returnsError() {
+        SecurityContextHolder.clearContext();
+        ResultBean result = reportService.reviewReport(1, 1, "confirmed", "属实");
+        assertEquals(500, result.getCode());
+        assertEquals("未获取到登录用户信息，请重新登录", result.getMessage());
     }
 
     @Test
