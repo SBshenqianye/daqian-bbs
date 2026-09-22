@@ -349,7 +349,7 @@ export default {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `积分排名_${this.activeMode === 'org' ? '单位' : '个人'}_${this.timeRange.start}_${this.timeRange.end}.xlsx`
+        a.download = `积分排名_${this.timeRange.start}_${this.timeRange.end}.xlsx`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
