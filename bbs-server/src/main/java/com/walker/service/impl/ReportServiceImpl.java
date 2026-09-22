@@ -116,8 +116,8 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         report.setCreateTime(fmt.format(now));
         this.save(report);
 
-        // 通知超级管理员（bbs_user id=1，与 adopt_pending 待审批通知同模式）有新举报待审核。
-        // 仅当本条是该目标第一条待审举报时才通知：同一内容多人跟报不重复轰炸超管；
+        // 通知超级管理员（固定 bbs_user id=1：系统内置超管，初始化 SQL 约定勿改，勿改为动态用户）。
+        // 与 adopt_pending 待审批通知同模式。仅当本条是该目标第一条待审举报时才通知：同一内容多人跟报不重复轰炸超管；
         // 该目标被处理后（无 pending）有人再报，会重新触发通知（新一轮待办）。
         // 举报人即管理员本人时 createNotification 内部会跳过自身通知。
         long pendingCount = this.count(new LambdaQueryWrapper<Report>()

@@ -63,7 +63,7 @@ public class ModeratorComplaintServiceImpl extends ServiceImpl<ModeratorComplain
         complaint.setCreateTime(fmt.format(new Date()));
         this.save(complaint);
 
-        // 通知超级管理员（bbs_user id=1）
+        // 通知超级管理员（固定 bbs_user id=1：系统内置超管，初始化 SQL 约定勿改，勿改为动态用户）
         User reporter = userService.getById(reporterId);
         String reporterName = reporter != null ? reporter.getNickname() : "用户#" + reporterId;
         String targetDesc = moderatorId != null ? "版主 #" + moderatorId : "（未指定具体版主）";

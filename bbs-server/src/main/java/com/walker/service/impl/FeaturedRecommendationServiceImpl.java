@@ -74,7 +74,7 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
         rec.setCreateTime(fmt.format(new Date()));
         this.save(rec);
 
-        // 通知超级管理员
+        // 通知超级管理员（固定 bbs_user id=1：系统内置超管，初始化 SQL 约定勿改，勿改为动态用户）
         User recommender = userService.getById(recommenderId);
         String recommenderName = recommender != null ? recommender.getNickname() : "版主#" + recommenderId;
         String articleTitle = article.getArticleTitle() != null ? article.getArticleTitle() : "";
