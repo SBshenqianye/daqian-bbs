@@ -139,6 +139,9 @@ export default {
         if (resp && resp.code === 200) {
           this.$emit('submitted')
           this.$emit('close')
+          // 拦截器对 code 200 不再自动弹成功提示（成功提示统一在调用方弹，见 api-interceptor.js 注释），
+          // 故此处手动弹一次性成功反馈，避免用户提交后零反馈；不会与拦截器双弹。
+          this.$message.success('举报已提交，管理员会尽快核实处理')
         }
         // resp 为空 = 业务错误（拦截器已弹提示，如"您已举报过该内容"），弹窗保留供用户取消
       }).catch(() => { this.submitting = false })
