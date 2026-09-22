@@ -56,6 +56,8 @@ export function setupInterceptors({
       // 业务逻辑错误
       if (success.status && success.status === 200) {
         if (success.data.code === 500) {
+          // 业务失败：在此弹出后端 message 提示后返回 undefined（标记为"拦截器已提示"），
+          // 调用方的 handleResponse(undefined) 约定不再二次弹窗，保证"一请求一提示"
           Message({
             type: 'warning',
             message: buildErrorMessage(success.data),

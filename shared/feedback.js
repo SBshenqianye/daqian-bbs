@@ -86,11 +86,9 @@ export function handleResponse(resp, options = {}) {
     silent = false
   } = options
 
-  // 请求被拦截器拒绝（返回 undefined）
+  // 请求被拦截器拒绝（返回 undefined）：拦截器已弹出后端提示（code 500/403）或已做跳转（401），
+  // 此处不再重复弹 errorMsg，保证"一请求一提示"，避免双弹窗（与 api-interceptor.js 500 分支契约一致）
   if (!resp) {
-    if (!silent && errorMsg) {
-      showUniqueMessage({ type: 'error', message: errorMsg, showClose: true, offset: 54 })
-    }
     if (onError) onError()
     return false
   }
