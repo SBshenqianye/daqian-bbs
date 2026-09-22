@@ -45,8 +45,10 @@ public class SensitiveWordUtil {
         }
 
         String result = text;
+        // 注意：必须用字面替换（replace），不能用 replaceAll——敏感词库中含正则元字符（如 *、{10}、[、.）的词条
+        // 会作为正则编译而抛 PatternSyntaxException（曾导致帖子列表接口 500）
         for (String word : sensitiveWords) {
-            result = result.replaceAll(word, "***");
+            result = result.replace(word, "***");
         }
         return result;
     }

@@ -286,6 +286,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                         .eq(Article::getEnable, 1)
                         .eq(Article::getArticleId, articleId)
         );
+        // 文章不存在（已被删除或未启用）时直接返回 null，避免 NPE
+        if (article == null) {
+            return null;
+        }
         // 更新浏览量
         article.setArticleViewNum(article.getArticleViewNum() + 1);
         articleMapper.updateById(article);
