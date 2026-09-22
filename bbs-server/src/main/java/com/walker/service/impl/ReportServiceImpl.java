@@ -177,6 +177,10 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         if (!"pending".equals(report.getStatus())) {
             return ResultBean.error("该举报已处理");
         }
+        // 权限校验：举报人不得审核自己的举报（P0 安全修复，防止"自报自审"刷举报奖励分）
+        if (report.getReporterId() != null && report.getReporterId().equals(reviewerId)) {
+            return ResultBean.error("不能审核自己提交的举报");
+        }
 
         Date now = new Date();
         SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -207,9 +211,16 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                     .ne(Report::getId, reportId));
             for (Report other : others) {
                 other.setStatus("confirmed");
-                other.setPointsAwarded(1);
                 other.setReviewerId(reviewerId);
                 other.setReviewTime(fmt.format(now));
+                // 举报人即审核人：随同组他人举报一并确认时不奖励计分（防"自报自审"经批量路径绕过）
+                if (other.getReporterId() != null && other.getReporterId().equals(reviewerId)) {
+                    other.setPointsAwarded(0);
+                    other.setReviewRemark("举报人即审核人，不予计分");
+                    this.updateById(other);
+                    continue;
+                }
+                other.setPointsAwarded(1);
                 other.setReviewRemark("同一内容举报核实，一并确认加分");
                 this.updateById(other);
 

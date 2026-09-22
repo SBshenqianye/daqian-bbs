@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -247,6 +248,63 @@ class ReportServiceTest {
         assertEquals(200, result.getCode());
         verify(pointsLogService).adjustUserPoints(eq(100), eq(2), contains("举报属实"), eq("report"), eq(1), eq(1));
         verify(notificationService).createNotification(eq(100), eq(1), eq("report_confirmed"), contains("核实"), eq("report"), eq(1));
+    }
+
+    @Test
+    @DisplayName("审核举报 → 举报人即审核人 → 拒绝（P0 自报自审漏洞）")
+    void reviewReport_selfReview_returnsError() {
+        Report report = new Report();
+        report.setId(1);
+        report.setReporterId(100);
+        report.setTargetType("article");
+        report.setTargetId(1);
+        report.setStatus("pending");
+        when(reportMapper.selectById(1)).thenReturn(report);
+
+        ResultBean result = reportService.reviewReport(1, 100, "confirmed", "属实");
+        assertEquals(500, result.getCode());
+        assertEquals("不能审核自己提交的举报", result.getMessage());
+        // 不得加分、不得发通知
+        verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
+        verify(notificationService, never()).createNotification(any(), any(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    @DisplayName("审核举报 → 批量确认时举报人即审核人的记录不予计分")
+    void reviewReport_batchConfirm_skipsSelfReviewerPoints() {
+        Report report = new Report();
+        report.setId(1);
+        report.setReporterId(100);
+        report.setTargetType("article");
+        report.setTargetId(1);
+        report.setStatus("pending");
+        when(reportMapper.selectById(1)).thenReturn(report);
+
+        // 同组另一条待审举报，举报人恰好是本次审核人（1）——不得经批量路径获得 +2
+        Report selfOther = new Report();
+        selfOther.setId(2);
+        selfOther.setReporterId(1);
+        selfOther.setTargetType("article");
+        selfOther.setTargetId(1);
+        selfOther.setStatus("pending");
+        when(reportMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(Arrays.asList(selfOther));
+        when(reportMapper.updateById(any(Report.class))).thenReturn(1);
+
+        ResultBean result = reportService.reviewReport(1, 1, "confirmed", "属实");
+        assertEquals(200, result.getCode());
+
+        // 只给举报人 100 加一次分（本次审核的主体），审核人自己的举报不参与计分
+        verify(pointsLogService, times(1)).adjustUserPoints(anyInt(), anyInt(), anyString(), anyString(), any(), any());
+
+        // 审核人自己的举报被确认但 pointsAwarded=0（不予计分并留痕）
+        ArgumentCaptor<Report> captor = ArgumentCaptor.forClass(Report.class);
+        verify(reportMapper, atLeast(2)).updateById(captor.capture());
+        Report selfUpdated = captor.getAllValues().stream()
+                .filter(r -> Integer.valueOf(2).equals(r.getId()))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(selfUpdated);
+        assertEquals(Integer.valueOf(0), selfUpdated.getPointsAwarded());
     }
 
     // ========== listReports / listMyReports 测试 ==========
