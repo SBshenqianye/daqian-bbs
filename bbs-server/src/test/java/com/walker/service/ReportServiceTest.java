@@ -350,6 +350,86 @@ class ReportServiceTest {
         assertEquals(Integer.valueOf(0), selfUpdated.getPointsAwarded());
     }
 
+    // ========== reviewReport 驳回 / 恶意举报扣分测试 ==========
+
+    @Test
+    @DisplayName("驳回并认定恶意举报 → 扣举报人分、记日志、发 report_rejected 通知")
+    void reviewReport_rejectedMalicious_deductsPoints() {
+        Report report = new Report();
+        report.setId(1);
+        report.setReporterId(100);
+        report.setTargetType("article");
+        report.setTargetId(1);
+        report.setStatus("pending");
+        when(reportMapper.selectById(1)).thenReturn(report);
+        when(reportMapper.updateById(any(Report.class))).thenReturn(1);
+
+        // 当前登录审核人 id=1，举报人 100，不触发自审
+        ResultBean result = reportService.reviewReport(1, 1, "rejected", "证据不足", true, 5);
+        assertEquals(200, result.getCode());
+
+        // 扣 5 分（负向），原因含"恶意"
+        verify(pointsLogService).adjustUserPoints(eq(100), eq(-5), contains("恶意"), eq("report"), eq(1), eq(1));
+        // 通知举报人 report_rejected，文案含"恶意"
+        verify(notificationService).createNotification(eq(100), eq(1), eq("report_rejected"),
+                contains("恶意"), eq("report"), eq(1));
+    }
+
+    @Test
+    @DisplayName("普通驳回（不勾选恶意）→ 不扣分，仅发驳回通知")
+    void reviewReport_rejectedNormal_notifiesOnly() {
+        Report report = new Report();
+        report.setId(1);
+        report.setReporterId(100);
+        report.setTargetType("article");
+        report.setTargetId(1);
+        report.setStatus("pending");
+        when(reportMapper.selectById(1)).thenReturn(report);
+        when(reportMapper.updateById(any(Report.class))).thenReturn(1);
+
+        ResultBean result = reportService.reviewReport(1, 1, "rejected", null, false, null);
+        assertEquals(200, result.getCode());
+
+        // 不得扣分
+        verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
+        // 仍通知举报人驳回结果
+        verify(notificationService).createNotification(eq(100), eq(1), eq("report_rejected"),
+                anyString(), eq("report"), eq(1));
+    }
+
+    @Test
+    @DisplayName("勾选恶意举报但未给分值 → 拒绝（参数校验）")
+    void reviewReport_rejectedMaliciousNoPoints_returnsError() {
+        Report report = new Report();
+        report.setId(1);
+        report.setReporterId(100);
+        report.setStatus("pending");
+        // 注：恶意无分值的参数校验发生在 selectById 之前，无需 stub 查询
+
+        ResultBean result = reportService.reviewReport(1, 1, "rejected", null, true, null);
+        assertEquals(500, result.getCode());
+        assertEquals("恶意举报扣分分值必须为正整数", result.getMessage());
+        verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
+        verify(notificationService, never()).createNotification(any(), any(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    @DisplayName("驳回恶意举报同样受自审拦截（#2 联动）")
+    void reviewReport_rejectedMalicious_selfReviewBlocked() {
+        // 登录态=举报人 100，试图驳回自己的举报并扣分 → 拒绝
+        setCurrentUser(100);
+        Report report = new Report();
+        report.setId(1);
+        report.setReporterId(100);
+        report.setStatus("pending");
+        when(reportMapper.selectById(1)).thenReturn(report);
+
+        ResultBean result = reportService.reviewReport(1, 100, "rejected", null, true, 5);
+        assertEquals(500, result.getCode());
+        assertEquals("不能审核自己提交的举报", result.getMessage());
+        verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
+    }
+
     // ========== listReports / listMyReports 测试 ==========
 
     @Test

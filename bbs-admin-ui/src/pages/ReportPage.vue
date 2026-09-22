@@ -93,7 +93,7 @@
                     <div v-if="group.representative.status === 'pending'" class="flex items-center gap-1 whitespace-nowrap">
                       <button class="px-2 py-1 border border-outline-variant text-on-surface-variant rounded text-[12px] hover:bg-surface-container-low transition-colors" @click="handleReview(group.representative, 'confirmed')">仅确认</button>
                       <button class="px-2 py-1 bg-error text-on-error rounded text-[12px] hover:opacity-90 transition-opacity shadow-sm" @click="openViolationDialog(group.representative)">确认并扣分</button>
-                      <button class="px-2 py-1 border border-error/40 text-error rounded text-[12px] hover:bg-error/5 transition-colors" @click="handleReview(group.representative, 'rejected')">驳回</button>
+                      <button class="px-2 py-1 border border-error/40 text-error rounded text-[12px] hover:bg-error/5 transition-colors" @click="openRejectDialog(group.representative)">驳回</button>
                     </div>
                     <span v-else class="text-on-surface-variant text-[12px]">{{ group.representative.reviewRemark || '已处理' }}</span>
                   </td>
@@ -296,6 +296,42 @@
         </button>
       </div>
     </el-dialog>
+
+    <!-- 驳回举报对话框（可选认定为恶意举报并扣分） -->
+    <el-dialog title="驳回举报" :visible.sync="rejectDialogVisible" width="480px" :close-on-click-modal="false">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-body-sm text-on-surface-variant mb-1">审核备注</label>
+          <textarea v-model="rejectForm.remark" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none" rows="2" placeholder="填写驳回原因（选填）"></textarea>
+        </div>
+        <div class="px-3 py-3 bg-red-50 border border-red-200 rounded-lg">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" v-model="rejectForm.malicious" class="accent-red-500">
+            <span class="text-body-sm text-red-700 font-medium">认定为恶意/虚假举报</span>
+          </label>
+          <div v-if="rejectForm.malicious" class="mt-3 pl-6 flex items-center gap-2">
+            <span class="text-body-sm text-on-surface-variant">扣举报人</span>
+            <input
+              v-model.number="rejectForm.deductPoints"
+              type="number"
+              min="1"
+              class="w-20 px-2 py-1 border border-outline-variant rounded text-body-sm text-center"
+            >
+            <span class="text-body-sm text-on-surface-variant">分（默认取自数据字典，可修改）</span>
+          </div>
+        </div>
+        <p class="text-[12px] text-on-surface-variant">
+          关联内容: {{ rejectDialogItem ? getTargetTypeLabel(rejectDialogItem.targetType) + '#' + rejectDialogItem.targetId : '' }}
+          <br>勾选"恶意举报"后将对举报人扣分并记录积分日志、通知举报人。
+        </p>
+      </div>
+      <div slot="footer" class="flex justify-end gap-2">
+        <button class="px-4 py-2 text-body-sm border border-outline-variant rounded-lg hover:bg-surface-container-low" @click="rejectDialogVisible = false">取消</button>
+        <button class="px-4 py-2 text-body-sm bg-error text-white rounded-lg hover:opacity-90 disabled:opacity-60" :disabled="rejectSubmitting" @click="submitReject">
+          {{ rejectSubmitting ? '提交中...' : '确认驳回' }}
+        </button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -337,7 +373,18 @@ export default {
       violationForm: {
         violationType: '',
         remark: ''
-      }
+      },
+      // 驳回对话框（含恶意举报扣分）
+      rejectDialogVisible: false,
+      rejectDialogItem: null,
+      rejectSubmitting: false,
+      rejectForm: {
+        remark: '',
+        malicious: false,
+        deductPoints: 5
+      },
+      // 恶意举报默认扣分值（取自数据字典 violation/false_report，dict_value 即扣几分）
+      maliciousDefaultPoints: 5
     }
   },
   computed: {
@@ -375,6 +422,10 @@ export default {
               value: d.dictKey,
               label: d.dictLabel + (d.dictValue ? ' (-' + d.dictValue + '分)' : '')
             }))
+          // 恶意举报默认扣分值：取字典 violation/false_report 的 dictValue（与"确认并扣分"违规类型同源可配置）
+          const falseReport = res.obj.find(d => d.dictKey === 'false_report')
+          const v = falseReport && parseInt(falseReport.dictValue, 10)
+          this.maliciousDefaultPoints = (v && v > 0) ? v : 5
         }
       } catch (e) { /* ignore */ }
     },
@@ -531,13 +582,54 @@ export default {
         ? `仅确认举报（不扣分）？${groupHint}举报人各 +2 分`
         : `确定驳回该举报？`
       this.$prompt('审核备注（可选）', title, { type: status === 'confirmed' ? 'success' : 'warning' })
-        .then(({ value }) => this.doReview(item.id, status, value))
+        .then(({ value }) => this.doReview(item.id, status, value, false, null))
         .catch(() => {})
     },
-    async doReview(reportId, status, remark) {
+    /** 打开驳回对话框：可勾选"恶意举报"并扣分（分值默认取字典配置） */
+    openRejectDialog(item) {
+      this.rejectDialogItem = item
+      this.rejectForm = {
+        remark: '',
+        malicious: false,
+        deductPoints: this.maliciousDefaultPoints
+      }
+      this.rejectDialogVisible = true
+    },
+    async submitReject() {
+      if (!this.rejectDialogItem) return
+      if (this.rejectForm.malicious) {
+        const p = parseInt(this.rejectForm.deductPoints, 10)
+        if (!p || p <= 0) {
+          this.$message.warning('恶意举报扣分分值必须为正整数')
+          return
+        }
+        this.rejectForm.deductPoints = p
+      }
+      this.rejectSubmitting = true
       try {
-        const res = await this.postRequest('/admin/report/review', { reportId, reviewerId: this.currentAdminId(), status, remark })
-        handleResponse(res, { successMsg: '审核完成', errorMsg: '审核失败', onSuccess: () => this.loadList() })
+        await this.doReview(this.rejectDialogItem.id, 'rejected', this.rejectForm.remark,
+          this.rejectForm.malicious, this.rejectForm.malicious ? this.rejectForm.deductPoints : null)
+        this.rejectDialogVisible = false
+      } finally {
+        this.rejectSubmitting = false
+      }
+    },
+    async doReview(reportId, status, remark, malicious, deductPoints) {
+      try {
+        const res = await this.postRequest('/admin/report/review', {
+          reportId,
+          reviewerId: this.currentAdminId(),
+          status,
+          remark,
+          malicious: !!malicious,
+          deductPoints
+        })
+        const suffix = malicious && deductPoints ? `（已认定恶意举报并扣 ${deductPoints} 分）` : ''
+        handleResponse(res, {
+          successMsg: '审核完成' + suffix,
+          errorMsg: '审核失败',
+          onSuccess: () => this.loadList()
+        })
       } catch (e) { console.warn('[ReportPage]', e) }
     },
     // 转违规

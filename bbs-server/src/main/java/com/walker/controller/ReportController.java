@@ -37,7 +37,11 @@ public class ReportController {
         Integer reviewerId = (Integer) params.get("reviewerId");
         String status = (String) params.get("status");
         String remark = (String) params.get("remark");
-        return reportService.reviewReport(reportId, reviewerId, status, remark);
+        // 驳回时可勾选"恶意举报"并扣分（分值正整数，前端从字典 false_report 取默认）
+        Boolean malicious = Boolean.TRUE.equals(params.get("malicious"));
+        Integer deductPoints = params.get("deductPoints") != null
+                ? Integer.valueOf(params.get("deductPoints").toString()) : null;
+        return reportService.reviewReport(reportId, reviewerId, status, remark, malicious, deductPoints);
     }
 
     @ApiOperation(value = "管理员查看举报列表")

@@ -131,6 +131,12 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                     "report", report.getId());
         }
 
+        // 给举报人提交回执（系统通知）：fromUserId 固定为超管（系统代发），
+        // 既避免 createNotification 的"不给自己发通知"跳过逻辑，也标识为系统消息；
+        // 举报人本身即超管时自动跳过（自举报无需回执）。
+        notificationService.createNotification(reporterId, ConstantUtil.SUPER_ADMIN_ID, "report_received",
+                "您的举报已提交，管理员会尽快核实处理", "report", report.getId());
+
         return ResultBean.success("举报已提交，等待审核");
     }
 
@@ -181,8 +187,19 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     @Override
     @Transactional
     public ResultBean reviewReport(Integer reportId, Integer reviewerId, String status, String remark) {
+        return reviewReport(reportId, reviewerId, status, remark, false, null);
+    }
+
+    @Override
+    @Transactional
+    public ResultBean reviewReport(Integer reportId, Integer reviewerId, String status, String remark,
+                                   Boolean malicious, Integer deductPoints) {
         if (reportId == null || reviewerId == null || status == null) {
             return ResultBean.error("参数不完整");
+        }
+        // 勾选"恶意举报"时扣分分值必填且为正整数（前端从字典 false_report 取默认值，后端兜底校验防脏数据）
+        if (Boolean.TRUE.equals(malicious) && (deductPoints == null || deductPoints <= 0)) {
+            return ResultBean.error("恶意举报扣分分值必须为正整数");
         }
 
         // 审核人以登录态身份为准：前端传入的 reviewerId 必须与当前登录用户一致。
@@ -202,7 +219,8 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         if (!"pending".equals(report.getStatus())) {
             return ResultBean.error("该举报已处理");
         }
-        // 权限校验：举报人不得审核自己的举报（P0 安全修复，防止"自报自审"刷举报奖励分）
+        // 权限校验：举报人不得审核自己的举报（P0 安全修复，防止"自报自审"刷举报奖励分）。
+        // 对驳回+恶意扣分同样生效：自审校验在所有分支之前，不破坏 #2 的防自报自审
         if (report.getReporterId() != null && report.getReporterId().equals(reviewerId)) {
             return ResultBean.error("不能审核自己提交的举报");
         }
@@ -255,11 +273,42 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 notificationService.createNotification(other.getReporterId(), reviewerId,
                         "report_confirmed", "您举报的内容已核实", "report", other.getId());
             }
+        } else if ("rejected".equals(status)) {
+            // 驳回：普通驳回仅置状态并通知举报人；
+            // 勾选"恶意举报"则对举报人扣分（与用户端"恶意虚假举报将被扣分"文案对应）、记积分日志、通知举报人扣分结果。
+            if (Boolean.TRUE.equals(malicious)) {
+                report.setReviewRemark(mergeReviewRemark(remark,
+                        "认定为恶意虚假举报，扣" + deductPoints + "分"));
+                this.updateById(report);
+
+                pointsLogService.adjustUserPoints(report.getReporterId(), -Math.abs(deductPoints),
+                        "恶意虚假举报扣分", "report", reportId, reviewerId);
+
+                notificationService.createNotification(report.getReporterId(), reviewerId,
+                        "report_rejected",
+                        "您的举报被认定为恶意虚假举报，已扣除" + deductPoints + "分",
+                        "report", reportId);
+            } else {
+                this.updateById(report);
+                // 普通驳回也通知举报人结果，闭环"我的举报"处理状态
+                notificationService.createNotification(report.getReporterId(), reviewerId,
+                        "report_rejected", "您的举报经审核未被采纳", "report", reportId);
+            }
         } else {
             this.updateById(report);
         }
 
         return ResultBean.success("审核完成");
+    }
+
+    /**
+     * 合并审核备注：管理员有填写备注时与系统结论合并展示，否则仅用系统结论。
+     */
+    private String mergeReviewRemark(String userRemark, String action) {
+        if (userRemark != null && !userRemark.trim().isEmpty()) {
+            return action + "：" + userRemark.trim();
+        }
+        return action;
     }
 
     @Override

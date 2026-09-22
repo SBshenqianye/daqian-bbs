@@ -22,6 +22,18 @@ public interface ReportService extends IService<Report> {
     ResultBean reviewReport(Integer reportId, Integer reviewerId, String status, String remark);
 
     /**
+     * 管理员审核举报（含恶意举报扣分参数）。
+     * 仅 status=rejected 时 malicious/deductPoints 生效：
+     * 勾选恶意举报后对举报人扣 deductPoints 分（正数，分）并通知、记积分日志；
+     * 普通驳回仅置 rejected 并通知举报人结果。
+     *
+     * @param malicious     是否认定为恶意/虚假举报（仅驳回时有效）
+     * @param deductPoints  恶意举报扣分分值（正整数，分）；malicious=true 时必填
+     */
+    ResultBean reviewReport(Integer reportId, Integer reviewerId, String status, String remark,
+                            Boolean malicious, Integer deductPoints);
+
+    /**
      * 分页查询举报列表（管理员端）
      */
     ResultBean listReports(String status, Integer page, Integer size);

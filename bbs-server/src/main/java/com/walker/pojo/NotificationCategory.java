@@ -39,6 +39,8 @@ public final class NotificationCategory {
         m.put("suggestion_adopted", SYSTEM);    // 建议被采纳
         m.put("report_confirmed", SYSTEM);      // 举报核实
         m.put("report_pending", SYSTEM);        // 实名举报待审核（通知超级管理员）
+        m.put("report_received", SYSTEM);       // 举报提交成功回执（通知举报人）
+        m.put("report_rejected", SYSTEM);       // 举报被驳回（通知举报人，含恶意举报扣分）
         m.put("violation", SYSTEM);             // 违规记录
         m.put("post_restricted", SYSTEM);       // 发帖权限限制
         m.put("moderator_reward", SYSTEM);      // 版主月度履职奖励
