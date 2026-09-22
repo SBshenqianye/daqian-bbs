@@ -74,11 +74,11 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
         rec.setCreateTime(fmt.format(new Date()));
         this.save(rec);
 
-        // 通知超级管理员（固定 bbs_user id=1：系统内置超管，初始化 SQL 约定勿改，勿改为动态用户）
+        // 通知超级管理员（SUPER_ADMIN_ID 见 ConstantUtil，勿改为动态用户）
         User recommender = userService.getById(recommenderId);
         String recommenderName = recommender != null ? recommender.getNickname() : "版主#" + recommenderId;
         String articleTitle = article.getArticleTitle() != null ? article.getArticleTitle() : "";
-        notificationService.createNotification(1, recommenderId, "featured_recommend",
+        notificationService.createNotification(ConstantUtil.SUPER_ADMIN_ID, recommenderId, "featured_recommend",
                 "精华帖推荐：「" + recommenderName + "」推荐《" + articleTitle + "》",
                 "article", articleId);
 

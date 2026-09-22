@@ -7,6 +7,7 @@ import com.walker.pojo.BoardModerator;
 import com.walker.pojo.Comment;
 import com.walker.pojo.Reply;
 import com.walker.service.*;
+import com.walker.utils.ConstantUtil;
 import com.walker.vo.ResultBean;
 import com.walker.vo.param.ReplyParam;
 import io.swagger.annotations.Api;
@@ -224,8 +225,8 @@ public class ReplyController {
         Integer adminId = toInt(params, "adminId");
         if (adminId == null) return ResultBean.error("参数不完整");
 
-        // 超管判定固定为 id=1（系统内置超管，初始化 SQL 约定勿改；版主仅能看到自己板块的待审采纳）
-        boolean isSuperAdmin = adminId.equals(1);
+        // 超管判定（SUPER_ADMIN_ID 见 ConstantUtil，勿改为动态；版主仅能看到自己板块的待审采纳）
+        boolean isSuperAdmin = adminId.equals(ConstantUtil.SUPER_ADMIN_ID);
         List<Map<String, Object>> allRecords = new ArrayList<>();
 
         // 1. 查询待审批的回复
@@ -375,9 +376,9 @@ public class ReplyController {
                         "adopt_pending", notifyTitle, relatedType, relatedId);
             }
         }
-        // 同时通知超级管理员（固定 bbs_user id=1：系统内置超管，初始化 SQL 约定勿改，勿改为动态用户）
-        if (notified.add(1)) {
-            notificationService.createNotification(1, fromUserId, "adopt_pending", notifyTitle, relatedType, relatedId);
+        // 同时通知超级管理员（SUPER_ADMIN_ID 见 ConstantUtil，勿改为动态用户）
+        if (notified.add(ConstantUtil.SUPER_ADMIN_ID)) {
+            notificationService.createNotification(ConstantUtil.SUPER_ADMIN_ID, fromUserId, "adopt_pending", notifyTitle, relatedType, relatedId);
         }
     }
 

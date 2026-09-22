@@ -16,6 +16,7 @@ import com.walker.service.PointsLogService;
 import com.walker.service.ReplyService;
 import com.walker.service.ReportService;
 import com.walker.service.UserService;
+import com.walker.utils.ConstantUtil;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -116,7 +117,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         report.setCreateTime(fmt.format(now));
         this.save(report);
 
-        // 通知超级管理员（固定 bbs_user id=1：系统内置超管，初始化 SQL 约定勿改，勿改为动态用户）。
+        // 通知超级管理员（SUPER_ADMIN_ID 见 ConstantUtil，勿改为动态用户）。
         // 与 adopt_pending 待审批通知同模式。仅当本条是该目标第一条待审举报时才通知：同一内容多人跟报不重复轰炸超管；
         // 该目标被处理后（无 pending）有人再报，会重新触发通知（新一轮待办）。
         // 举报人即管理员本人时 createNotification 内部会跳过自身通知。
@@ -125,7 +126,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
                 .eq(Report::getTargetId, targetId)
                 .eq(Report::getStatus, "pending"));
         if (pendingCount == 1) {
-            notificationService.createNotification(1, reporterId, "report_pending",
+            notificationService.createNotification(ConstantUtil.SUPER_ADMIN_ID, reporterId, "report_pending",
                     "有新的实名举报待审核：" + targetTypeLabel(targetType) + " #" + targetId,
                     "report", report.getId());
         }

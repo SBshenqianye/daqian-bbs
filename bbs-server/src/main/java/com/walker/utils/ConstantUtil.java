@@ -72,4 +72,10 @@ public class ConstantUtil {
      * 版主履职奖励-发放日（dict_value=日期，1-28）
      */
     public static final String MODERATOR_REWARD_DAY = "moderator_reward_day";
+
+    /**
+     * 系统内置超级管理员 id（初始化 SQL 约定：bbs_user 表 id=1 的种子账号为超管）。
+     * 业务中"通知超管 / 超管判定"一律引用此常量；此为系统固定账号，勿改为动态用户。
+     */
+    public static final int SUPER_ADMIN_ID = 1;
 }

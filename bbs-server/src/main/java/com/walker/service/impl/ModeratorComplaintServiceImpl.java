@@ -11,6 +11,7 @@ import com.walker.service.BoardModeratorService;
 import com.walker.service.ModeratorComplaintService;
 import com.walker.service.NotificationService;
 import com.walker.service.UserService;
+import com.walker.utils.ConstantUtil;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -63,11 +64,11 @@ public class ModeratorComplaintServiceImpl extends ServiceImpl<ModeratorComplain
         complaint.setCreateTime(fmt.format(new Date()));
         this.save(complaint);
 
-        // 通知超级管理员（固定 bbs_user id=1：系统内置超管，初始化 SQL 约定勿改，勿改为动态用户）
+        // 通知超级管理员（SUPER_ADMIN_ID 见 ConstantUtil，勿改为动态用户）
         User reporter = userService.getById(reporterId);
         String reporterName = reporter != null ? reporter.getNickname() : "用户#" + reporterId;
         String targetDesc = moderatorId != null ? "版主 #" + moderatorId : "（未指定具体版主）";
-        notificationService.createNotification(1, reporterId, "moderator_complaint",
+        notificationService.createNotification(ConstantUtil.SUPER_ADMIN_ID, reporterId, "moderator_complaint",
                 "收到新的版主投诉：「" + reporterName + "」投诉" + targetDesc,
                 "moderator_complaint", complaint.getId());
 
