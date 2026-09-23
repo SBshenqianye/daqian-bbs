@@ -408,10 +408,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      */
     private void enrichWithSuggestionAdopted(List<Article> articles) {
         if (CollectionUtils.isEmpty(articles)) return;
-        // 找出标签名为"建议反馈"的帖子ID
+        // 找出用途类型为 suggestion 的帖子ID（按 label_type 判断，与标签名解耦）
         List<Integer> suggestionArticleIds = articles.stream()
-                .filter(a -> a.getArticleId() != null && a.getArticleLabelName() != null
-                        && "建议反馈".equals(a.getArticleLabelName()))
+                .filter(a -> a.getArticleId() != null && "suggestion".equals(a.getArticleLabelType()))
                 .map(Article::getArticleId)
                 .collect(Collectors.toList());
         if (suggestionArticleIds.isEmpty()) return;

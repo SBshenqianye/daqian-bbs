@@ -35,7 +35,7 @@ public class ReplyController {
     @Autowired private ArticleLabelService articleLabelService;
     @Autowired private BoardModeratorService boardModeratorService;
 
-    private static final String QUESTION_LABEL_NAME = "问题求助";
+
     private static final int ADOPT_POINTS = 5;
 
     /** 从 Map 参数安全提取 Integer */
@@ -91,10 +91,10 @@ public class ReplyController {
         // 校验：操作人必须是文章作者
         if (!userId.equals(article.getUserId())) return ResultBean.error("只有文章作者才能采纳");
 
-        // 校验：帖子必须是"问题求助"标签
+        // 校验：帖子必须是"问题求助"用途标签（按 label_type 判断，与标签名解耦）
         if (article.getArticleLabelId() == null) return ResultBean.error("该帖子不是问题求助类型，无法采纳");
         ArticleLabel label = articleLabelService.getById(article.getArticleLabelId());
-        if (label == null || !QUESTION_LABEL_NAME.equals(label.getLabelName())) {
+        if (label == null || !"question".equals(label.getLabelType())) {
             return ResultBean.error("该帖子不是问题求助类型，无法采纳");
         }
 

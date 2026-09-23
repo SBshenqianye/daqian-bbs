@@ -547,12 +547,12 @@ public class ArticleController {
             return ResultBean.error("文章不存在");
         }
 
-        // 校验：帖子必须是"建议反馈"标签
+        // 校验：帖子必须是"建议反馈"用途标签（按 label_type 判断，与标签名解耦）
         if (article.getArticleLabelId() == null) {
             return ResultBean.error("该帖子不是建议反馈类型，无法采纳");
         }
         ArticleLabel label = articleLabelService.getById(article.getArticleLabelId());
-        if (label == null || !"建议反馈".equals(label.getLabelName())) {
+        if (label == null || !"suggestion".equals(label.getLabelType())) {
             return ResultBean.error("该帖子不是建议反馈类型，无法采纳");
         }
 

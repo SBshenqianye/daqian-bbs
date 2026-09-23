@@ -67,6 +67,7 @@ public class ArticleLabelController {
             articleLabel.setEnabled(0);
         }
         articleLabel.setLabelName(labelName);
+        articleLabel.setLabelType(normalizeLabelType(articleLabel.getLabelType()));
         boolean ok = articleLabelService.save(articleLabel);
         return ok ? ResultBean.success("新增成功！") : ResultBean.error("新增失败！");
     }
@@ -92,6 +93,9 @@ public class ArticleLabelController {
             }
             articleLabel.setLabelName(labelName);
         }
+        if (articleLabel.getLabelType() != null) {
+            articleLabel.setLabelType(normalizeLabelType(articleLabel.getLabelType()));
+        }
         boolean ok = articleLabelService.updateById(articleLabel);
         return ok ? ResultBean.success("修改成功！") : ResultBean.error("修改失败！");
     }
@@ -109,6 +113,16 @@ public class ArticleLabelController {
         }
         boolean ok = articleLabelService.removeById(articleLabel.getLabelId());
         return ok ? ResultBean.success("删除成功！") : ResultBean.error("删除失败！");
+    }
+
+    /**
+     * 归一标签用途类型，仅允许 suggestion/question/normal，其余回退 normal
+     */
+    private String normalizeLabelType(String labelType) {
+        if (labelType == null) return "normal";
+        String t = labelType.trim();
+        if ("suggestion".equals(t) || "question".equals(t) || "normal".equals(t)) return t;
+        return "normal";
     }
 
     /**

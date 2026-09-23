@@ -249,7 +249,7 @@
 
     <!-- 管理员查询全部文章列表（支持搜索过滤分页，含标签名） -->
     <select id="selectAdminArticleList" parameterType="map" resultType="com.walker.pojo.Article">
-        SELECT a.*, l.label_name AS articleLabelName
+        SELECT a.*, l.label_name AS articleLabelName, l.label_type AS articleLabelType
         FROM bbs_article a
         LEFT JOIN bbs_article_label l ON a.article_label_id = l.label_id
         WHERE a.is_delete = 0
@@ -297,7 +297,7 @@
 
     <!-- 查询精华帖列表（分页 + 搜索 + 过滤） -->
     <select id="selectFeaturedList" parameterType="map" resultType="com.walker.pojo.Article">
-        SELECT a.*, l.label_name AS articleLabelName
+        SELECT a.*, l.label_name AS articleLabelName, l.label_type AS articleLabelType
         FROM bbs_article a
         LEFT JOIN bbs_article_label l ON a.article_label_id = l.label_id
         WHERE a.is_delete = 0
@@ -321,7 +321,7 @@
 
     <!-- 查询全部精华帖（用户端，分页，可指定标签） -->
     <select id="selectFeaturedByPage" parameterType="map" resultType="com.walker.pojo.Article">
-        SELECT a.*, l.label_name AS articleLabelName
+        SELECT a.*, l.label_name AS articleLabelName, l.label_type AS articleLabelType
         FROM bbs_article a
         LEFT JOIN bbs_article_label l ON a.article_label_id = l.label_id
         WHERE a.is_delete = 0
@@ -336,7 +336,7 @@
 
     <!-- 查询最新 N 条精华帖（置顶用） -->
     <select id="selectFeaturedTop" parameterType="int" resultType="com.walker.pojo.Article">
-        SELECT a.*, l.label_name AS articleLabelName
+        SELECT a.*, l.label_name AS articleLabelName, l.label_type AS articleLabelType
         FROM bbs_article a
         LEFT JOIN bbs_article_label l ON a.article_label_id = l.label_id
         WHERE a.is_delete = 0

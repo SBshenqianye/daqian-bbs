@@ -46,4 +46,8 @@ public class ArticleLabel implements Serializable {
     @TableField("description")
     private String description;
 
+    @ApiModelProperty("标签用途类型(normal普通/question问题求助/suggestion建议反馈)")
+    @TableField("label_type")
+    private String labelType;
+
 }

@@ -109,6 +109,10 @@ public class Article implements Serializable {
     @TableField(exist = false)
     private String articleLabelName;
 
+    @ApiModelProperty("标签用途类型（关联查询，非数据库字段）")
+    @TableField(exist = false)
+    private String articleLabelType;
+
     @ApiModelProperty("用户头像")
     @TableField(exist = false)
     private String portrait;
