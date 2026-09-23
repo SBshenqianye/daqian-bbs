@@ -27,11 +27,11 @@
 
       <!-- List -->
       <div class="bg-container border border-border rounded-xl p-card-padding">
-        <div class="border border-outline-variant rounded-lg overflow-hidden" v-loading="loading">
+        <div class="border border-outline-variant rounded-lg overflow-x-auto overflow-y-hidden" v-loading="loading">
           <div v-if="!list || list.length === 0" class="py-12 text-center text-on-surface-variant">
             <p class="text-body-md">暂无申诉记录</p>
           </div>
-          <table v-else class="w-full text-left">
+          <table v-else class="w-full text-left min-w-[820px]">
             <thead class="bg-surface-container-low">
               <tr>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">用户</th>
@@ -46,15 +46,15 @@
             </thead>
             <tbody class="divide-y divide-outline-variant/50">
               <tr v-for="item in list" :key="item.id" :data-violation-ref="item.relatedId"
-                :class="['hover:bg-surface-container-low/50', highlightViolationId === item.relatedId ? 'appeal-row-highlight' : '']">
+                :class="['hover:bg-surface-container-low/50', (highlightViolationId != null && highlightViolationId === item.relatedId) ? 'appeal-row-highlight' : '']">
                 <!-- 用户 -->
-                <td class="px-4 py-3 text-body-sm">
+                <td class="px-4 py-3 text-body-sm whitespace-nowrap">
                   <UserCell :user-id="item.userId" :name="item.nickname" />
                 </td>
                 <!-- 申诉类型 -->
-                <td class="px-4 py-3 text-body-sm">{{ getAppealLabel(item.appealType) }}</td>
+                <td class="px-4 py-3 text-body-sm whitespace-nowrap">{{ getAppealLabel(item.appealType) }}</td>
                 <!-- 关联违规 -->
-                <td class="px-4 py-3 text-body-sm">
+                <td class="px-4 py-3 text-body-sm whitespace-nowrap">
                   <template v-if="item.violation">
                     <el-tooltip placement="top" :open-delay="300">
                       <div slot="content" class="max-w-xs">
@@ -76,7 +76,7 @@
                   </el-tooltip>
                 </td>
                 <!-- 状态 -->
-                <td class="px-4 py-3 text-body-sm">
+                <td class="px-4 py-3 text-body-sm whitespace-nowrap">
                   <span :class="{
                     'px-2 py-0.5 rounded text-[12px] font-medium': true,
                     'bg-yellow-100 text-yellow-800': item.status === 'pending',
@@ -85,19 +85,19 @@
                   }">{{ getStatusLabel(item.status) }}</span>
                 </td>
                 <!-- 审核结果 -->
-                <td class="px-4 py-3 text-body-sm">
+                <td class="px-4 py-3 text-body-sm max-w-[200px]">
                   <template v-if="item.status !== 'pending'">
                     <div class="text-[13px]">
                       <p class="text-on-surface-variant">{{ item.reviewTime || '-' }}</p>
-                      <p v-if="item.reviewRemark" class="text-on-surface mt-0.5">{{ item.reviewRemark }}</p>
+                      <p v-if="item.reviewRemark" class="text-on-surface mt-0.5 truncate" :title="item.reviewRemark">{{ item.reviewRemark }}</p>
                     </div>
                   </template>
                   <span v-else class="text-outline">-</span>
                 </td>
                 <!-- 提交时间 -->
-                <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.createTime }}</td>
+                <td class="px-4 py-3 text-body-sm text-on-surface-variant whitespace-nowrap">{{ item.createTime }}</td>
                 <!-- 操作 -->
-                <td class="px-4 py-3 text-body-sm">
+                <td class="px-4 py-3 text-body-sm whitespace-nowrap">
                   <div v-if="item.status === 'pending'" class="flex gap-1">
                     <button class="px-2 py-1 bg-green-50 text-green-700 rounded text-[12px] hover:bg-green-100" @click="handleReview(item, 'accepted')">通过</button>
                     <button class="px-2 py-1 bg-red-50 text-red-700 rounded text-[12px] hover:bg-red-100" @click="handleReview(item, 'rejected')">驳回</button>
@@ -151,10 +151,9 @@ export default {
     scrollToHighlight() {
       if (!this.highlightViolationId) return
       const el = document.querySelector(`[data-violation-ref="${this.highlightViolationId}"]`)
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        setTimeout(() => { this.highlightViolationId = null }, 3000)
-      }
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // 无论是否命中当前页，3 秒后都清除高亮，避免残留
+      setTimeout(() => { this.highlightViolationId = null }, 3000)
     },
     getStatusLabel(s) { return { pending: '待审核', accepted: '已通过', rejected: '已驳回' }[s] || s },
     getAppealLabel(t) { return { violation: '违规申诉', points: '积分申诉', other: '其他' }[t] || t },
@@ -175,6 +174,8 @@ export default {
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0
+          // 路由复用时，URL 未带定位参数则强制清高亮，避免旧值残留
+          if (!this.$route.query.appealViolationId) this.highlightViolationId = null
           this.$nextTick(() => this.scrollToHighlight())
         } else { this.list = [] }
       } catch (e) { this.list = [] }

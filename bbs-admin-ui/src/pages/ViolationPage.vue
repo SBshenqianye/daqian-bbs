@@ -61,11 +61,11 @@
             <button class="px-3 py-1.5 bg-primary-container text-on-primary-container rounded-lg hover:opacity-90 text-body-sm" @click="loadList">搜索</button>
           </div>
         </div>
-        <div class="border border-outline-variant rounded-lg overflow-hidden" v-loading="loading">
+        <div class="border border-outline-variant rounded-lg overflow-x-auto overflow-y-hidden" v-loading="loading">
           <div v-if="!list || list.length === 0" class="py-12 text-center text-on-surface-variant">
             <p class="text-body-md">暂无违规记录</p>
           </div>
-          <table v-else class="w-full text-left">
+          <table v-else class="w-full text-left min-w-[860px]">
             <thead class="bg-surface-container-low">
               <tr>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">用户</th>
@@ -74,7 +74,6 @@
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">关联内容</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">备注</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">状态</th>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">申诉状态</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">操作</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">时间</th>
               </tr>
@@ -83,18 +82,18 @@
               <tr v-for="item in list" :key="item.id" :data-violation-id="item.id"
                 :class="[
                   'hover:bg-surface-container-low/50',
-                  highlightId === item.id ? 'violation-row-highlight' : ''
+                  (highlightId != null && highlightId === item.id) ? 'violation-row-highlight' : ''
                 ]">
                 <!-- 用户 -->
-                <td class="px-4 py-3 text-body-sm">
+                <td class="px-4 py-3 text-body-sm whitespace-nowrap">
                   <UserCell :user-id="item.userId" :name="item.nickname" />
                 </td>
                 <!-- 违规类型 -->
-                <td class="px-4 py-3 text-body-sm">{{ item.violationLabel || item.violationType }}</td>
+                <td class="px-4 py-3 text-body-sm whitespace-nowrap">{{ item.violationLabel || item.violationType }}</td>
                 <!-- 扣分 -->
-                <td class="px-4 py-3 text-body-sm text-error font-medium">-{{ item.pointsDeducted }}</td>
+                <td class="px-4 py-3 text-body-sm text-error font-medium whitespace-nowrap">-{{ item.pointsDeducted }}</td>
                 <!-- 关联内容（#11 点击打开内容预览） -->
-                <td class="px-4 py-3 text-body-sm">
+                <td class="px-4 py-3 text-body-sm whitespace-nowrap">
                   <span v-if="item.relatedType" class="text-primary cursor-pointer hover:underline" @click="openContentPreview(item)">
                     {{ getRelatedTypeLabel(item.relatedType) }}#{{ item.relatedId }}
                   </span>
@@ -106,22 +105,21 @@
                     <span class="truncate block cursor-help">{{ item.remark || '-' }}</span>
                   </el-tooltip>
                 </td>
-                <!-- 违规状态（#14） -->
-                <td class="px-4 py-3 text-body-sm">
-                  <el-tooltip v-if="item.status === 'cancelled'" :content="(item.cancelReason || '') + (item.cancelTime ? '（' + item.cancelTime + '）' : '')" placement="top" :open-delay="300">
-                    <span class="px-2 py-0.5 rounded text-[12px] font-medium bg-gray-100 text-gray-600 cursor-help">已取消</span>
-                  </el-tooltip>
-                  <span v-else class="px-2 py-0.5 rounded text-[12px] font-medium bg-orange-100 text-orange-700">生效中</span>
-                </td>
-                <!-- 申诉状态（#12 有申诉可反向跳转） -->
-                <td class="px-4 py-3 text-body-sm">
-                  <div v-if="item.appealStatus === 'pending'" class="flex items-center gap-1">
-                    <span class="px-2 py-0.5 rounded text-[12px] font-medium bg-yellow-100 text-yellow-800">申诉中</span>
-                    <span class="text-primary text-[12px] cursor-pointer hover:underline" @click="goAppeal(item.id)">查看申诉</span>
+                <!-- 状态：违规状态 + 申诉状态（#14/#12 合并一列） -->
+                <td class="px-4 py-3 text-body-sm whitespace-nowrap">
+                  <div class="flex items-center gap-1.5">
+                    <el-tooltip v-if="item.status === 'cancelled'" :content="(item.cancelReason || '') + (item.cancelTime ? '（' + item.cancelTime + '）' : '')" placement="top" :open-delay="300">
+                      <span class="px-2 py-0.5 rounded text-[12px] font-medium bg-gray-100 text-gray-600 cursor-help">已取消</span>
+                    </el-tooltip>
+                    <span v-else class="px-2 py-0.5 rounded text-[12px] font-medium bg-orange-100 text-orange-700">生效中</span>
                   </div>
-                  <span v-else-if="item.appealStatus === 'accepted'" class="px-2 py-0.5 rounded text-[12px] font-medium bg-green-100 text-green-800">申诉通过</span>
-                  <span v-else-if="item.appealStatus === 'rejected'" class="px-2 py-0.5 rounded text-[12px] font-medium bg-red-100 text-red-800">申诉驳回</span>
-                  <span v-else class="text-on-surface-variant text-[12px]">-</span>
+                  <div class="flex items-center gap-1.5 mt-1">
+                    <span v-if="item.appealStatus === 'pending'" class="px-2 py-0.5 rounded text-[12px] font-medium bg-yellow-100 text-yellow-800">申诉中</span>
+                    <span v-else-if="item.appealStatus === 'accepted'" class="px-2 py-0.5 rounded text-[12px] font-medium bg-green-100 text-green-800">申诉通过</span>
+                    <span v-else-if="item.appealStatus === 'rejected'" class="px-2 py-0.5 rounded text-[12px] font-medium bg-red-100 text-red-800">申诉驳回</span>
+                    <span v-else class="text-on-surface-variant text-[12px]">-</span>
+                    <span v-if="item.appealStatus" class="text-primary text-[12px] cursor-pointer hover:underline" @click="goAppeal(item.id)">查看</span>
+                  </div>
                 </td>
                 <!-- 操作（#14 取消违规） -->
                 <td class="px-4 py-3 text-body-sm whitespace-nowrap">
@@ -129,7 +127,7 @@
                   <span v-else class="text-on-surface-variant text-[12px]">已取消</span>
                 </td>
                 <!-- 时间 -->
-                <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.createTime }}</td>
+                <td class="px-4 py-3 text-body-sm text-on-surface-variant whitespace-nowrap">{{ item.createTime }}</td>
               </tr>
             </tbody>
           </table>
@@ -236,6 +234,8 @@ export default {
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0
+          // 路由复用时，URL 未带定位参数则强制清高亮，避免旧值残留
+          if (!this.$route.query.violationId) this.highlightId = null
           this.$nextTick(() => this.scrollToHighlight())
         } else { this.list = [] }
       } catch (e) { this.list = [] }
@@ -290,10 +290,9 @@ export default {
     scrollToHighlight() {
       if (!this.highlightId) return
       const el = document.querySelector(`[data-violation-id="${this.highlightId}"]`)
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        setTimeout(() => { this.highlightId = null }, 3000)
-      }
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // 无论是否命中当前页，3 秒后都清除高亮，避免残留
+      setTimeout(() => { this.highlightId = null }, 3000)
     },
     // ========== #14 取消违规 ==========
     openCancelDialog(item) {

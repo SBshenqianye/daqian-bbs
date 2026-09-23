@@ -27,11 +27,11 @@
 
       <!-- List：按举报目标分组，折叠重复举报 -->
       <div class="bg-container border border-border rounded-xl p-card-padding">
-        <div class="border border-outline-variant rounded-lg overflow-hidden" v-loading="loading">
+        <div class="border border-outline-variant rounded-lg overflow-x-auto overflow-y-hidden" v-loading="loading">
           <div v-if="!list || list.length === 0" class="py-12 text-center text-on-surface-variant">
             <p class="text-body-md">暂无举报记录</p>
           </div>
-          <table v-else class="w-full text-left">
+          <table v-else class="w-full text-left min-w-[720px]">
             <thead class="bg-surface-container-low">
               <tr>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">举报人</th>
@@ -44,10 +44,10 @@
             </thead>
             <tbody class="divide-y divide-outline-variant/50">
               <tr v-for="group in list" :key="group.representative.id" class="hover:bg-surface-container-low/50">
-                  <td class="px-4 py-3 text-body-sm">
+                  <td class="px-4 py-3 text-body-sm whitespace-nowrap">
                     <UserCell :user-id="group.representative.reporterId" :name="group.representative.reporterName" />
                   </td>
-                  <td class="px-4 py-3 text-body-sm">
+                  <td class="px-4 py-3 text-body-sm whitespace-nowrap">
                     <div class="flex items-center gap-2">
                       <span class="text-primary cursor-pointer hover:underline" @click="openPreview(group.representative)">
                         {{ getTargetTypeLabel(group.representative.targetType) }}#{{ group.representative.targetId }}
@@ -80,7 +80,7 @@
                     </div>
                   </td>
                   <td class="px-4 py-3 text-body-sm max-w-[200px] truncate" :title="group.representative.reason">{{ group.representative.reason || '-' }}</td>
-                  <td class="px-4 py-3 text-body-sm">
+                  <td class="px-4 py-3 text-body-sm whitespace-nowrap">
                     <span :class="{
                       'px-2 py-0.5 rounded text-[12px] font-medium whitespace-nowrap': true,
                       'bg-yellow-100 text-yellow-800': group.representative.status === 'pending',
@@ -88,14 +88,14 @@
                       'bg-red-100 text-red-800': group.representative.status === 'rejected'
                     }">{{ getStatusLabel(group.representative.status) }}</span>
                   </td>
-                  <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ group.representative.createTime }}</td>
-                  <td class="px-4 py-3 text-body-sm">
+                  <td class="px-4 py-3 text-body-sm text-on-surface-variant whitespace-nowrap">{{ group.representative.createTime }}</td>
+                  <td class="px-4 py-3 text-body-sm whitespace-nowrap max-w-[220px]">
                     <div v-if="group.representative.status === 'pending'" class="flex items-center gap-1 whitespace-nowrap">
                       <button class="px-2 py-1 border border-outline-variant text-on-surface-variant rounded text-[12px] hover:bg-surface-container-low transition-colors" @click="handleReview(group.representative, 'confirmed')">仅确认</button>
                       <button class="px-2 py-1 bg-error text-on-error rounded text-[12px] hover:opacity-90 transition-opacity shadow-sm" @click="openViolationDialog(group.representative)">确认并扣分</button>
                       <button class="px-2 py-1 border border-error/40 text-error rounded text-[12px] hover:bg-error/5 transition-colors" @click="openRejectDialog(group.representative)">驳回</button>
                     </div>
-                    <span v-else class="text-on-surface-variant text-[12px]">{{ group.representative.reviewRemark || '已处理' }}</span>
+                    <span v-else class="text-on-surface-variant text-[12px] truncate block" :title="group.representative.reviewRemark">{{ group.representative.reviewRemark || '已处理' }}</span>
                   </td>
                 </tr>
             </tbody>
