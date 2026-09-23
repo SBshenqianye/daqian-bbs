@@ -12,8 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -110,8 +113,34 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
         wrapper.eq(PointsLog::getUserId, userId);
         wrapper.orderByDesc(PointsLog::getCreateTime);
         Page<PointsLog> result = this.page(pageParam, wrapper);
+        // #18 用户端不暴露自增 id：转 Map 输出，剔除 id/userId/operatorId 等内部字段；
+        // 撤销记录(relatedType=undo)若被撤销的原记录也在本页，给出同页锚点 undoAnchor 供前端滚动定位。
+        List<PointsLog> rows = result.getRecords();
+        Map<Integer, Integer> idToIdx = new HashMap<>();
+        for (int i = 0; i < rows.size(); i++) {
+            if (rows.get(i).getId() != null) {
+                idToIdx.put(rows.get(i).getId(), i);
+            }
+        }
+        List<Map<String, Object>> records = new ArrayList<>();
+        for (int i = 0; i < rows.size(); i++) {
+            PointsLog r = rows.get(i);
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("pointsChange", r.getPointsChange());
+            m.put("reason", r.getReason());
+            m.put("relatedType", r.getRelatedType());
+            m.put("createTime", r.getCreateTime());
+            m.put("isReversed", r.getIsReversed());
+            String undoAnchor = null;
+            Integer targetId = r.getReversingRecord();
+            if (targetId != null && idToIdx.containsKey(targetId)) {
+                undoAnchor = "log-" + idToIdx.get(targetId);
+            }
+            m.put("undoAnchor", undoAnchor);
+            records.add(m);
+        }
         Map<String, Object> data = new HashMap<>();
-        data.put("records", result.getRecords());
+        data.put("records", records);
         data.put("total", result.getTotal());
         return ResultBean.success("查询成功", data);
     }

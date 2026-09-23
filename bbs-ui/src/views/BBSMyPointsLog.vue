@@ -27,10 +27,11 @@
     <!-- 记录列表 -->
     <template v-if="!loading">
       <div v-if="list.length > 0" class="space-y-gutter">
-        <div v-for="item in list" :key="item.id" class="bg-container border border-outline-variant rounded-lg p-card-padding">
+        <div v-for="(item, idx) in list" :id="'log-'+idx" :key="idx" class="bg-container border border-outline-variant rounded-lg p-card-padding" :class="item.isReversed === 1 ? 'opacity-50' : ''">
           <div class="flex items-center justify-between">
             <div>
-              <p class="font-body-md text-body-md text-on-surface">{{ item.reason || '积分变动' }}</p>
+              <a v-if="item.undoAnchor" href="javascript:;" class="font-body-md text-body-md text-primary hover:underline" @click="scrollToAnchor(item.undoAnchor)">{{ item.reason || '积分变动' }} ↩</a>
+              <p v-else class="font-body-md text-body-md text-on-surface">{{ item.reason || '积分变动' }}</p>
               <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">{{ item.createTime }}</p>
             </div>
             <span class="font-headline-sm text-headline-sm" :class="item.pointsChange > 0 ? 'text-green-600' : 'text-red-600'">
@@ -85,6 +86,10 @@ export default {
         } else { this.list = [] }
       } catch (e) { this.list = [] }
       finally { this.loading = false }
+    },
+    scrollToAnchor(anchor) {
+      const el = document.getElementById(anchor)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     },
     changePage(p) { this.currentPage = p; this.loadList() }
   }
