@@ -101,6 +101,11 @@ public class AppealServiceImpl extends ServiceImpl<AppealMapper, Appeal> impleme
         notificationService.createNotification(appeal.getUserId(), reviewerId,
                 "appeal_review", title, "appeal", appealId);
 
+        // 口径②：违规申诉通过时自动取消关联违规——回滚该次扣分并恢复被隐藏/删除的内容可见性。
+        if ("accepted".equals(status) && "violation".equals(appeal.getAppealType()) && appeal.getRelatedId() != null) {
+            violationService.autoCancelByAppeal(appeal.getRelatedId(), reviewerId, remark);
+        }
+
         return ResultBean.success("审核完成");
     }
 

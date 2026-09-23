@@ -51,6 +51,22 @@ public class Violation implements Serializable {
     @TableField("remark")
     private String remark;
 
+    @ApiModelProperty("状态(active=生效中/cancelled=已取消)")
+    @TableField("status")
+    private String status;
+
+    @ApiModelProperty("取消原因")
+    @TableField("cancel_reason")
+    private String cancelReason;
+
+    @ApiModelProperty("取消操作人ID")
+    @TableField("cancel_operator_id")
+    private Integer cancelOperatorId;
+
+    @ApiModelProperty("取消时间")
+    @TableField("cancel_time")
+    private String cancelTime;
+
     @ApiModelProperty("创建时间")
     @TableField("create_time")
     private String createTime;

@@ -9,11 +9,14 @@ import com.walker.pojo.User;
 import com.walker.pojo.Violation;
 import com.walker.service.impl.ViolationServiceImpl;
 import com.walker.vo.ResultBean;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.lang.reflect.Field;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -67,6 +70,21 @@ class ViolationServiceTest {
         Field baseMapperField = violationService.getClass().getSuperclass().getDeclaredField("baseMapper");
         baseMapperField.setAccessible(true);
         baseMapperField.set(violationService, violationMapper);
+        // 默认当前登录管理员 id=1，敏感用例可覆盖
+        setCurrentUser(1);
+    }
+
+    @AfterEach
+    void tearDownAuth() {
+        SecurityContextHolder.clearContext();
+    }
+
+    /** 模拟 JWT 登录态：principal 为 User 实体 */
+    private void setCurrentUser(int id) {
+        User user = new User();
+        user.setId(id);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
     }
 
     @Test
@@ -237,5 +255,92 @@ class ViolationServiceTest {
         ResultBean result = violationService.addViolation(1, "nonexistent_foo", "article", 1, 1, "未知类型");
         assertEquals(500, result.getCode());
         assertTrue(result.getMessage().contains("未知的违规类型"));
+    }
+
+    // ========== #14 取消违规 测试 ==========
+
+    /** 构造一条生效中的违规记录 */
+    private Violation activeViolation(int id, String relatedType, int relatedId) {
+        Violation v = new Violation();
+        v.setId(id);
+        v.setUserId(2);
+        v.setViolationType("spam");
+        v.setPointsDeducted(4);
+        v.setRelatedType(relatedType);
+        v.setRelatedId(relatedId);
+        v.setOperatorId(1);
+        v.setStatus("active");
+        return v;
+    }
+
+    @Test
+    @DisplayName("取消违规 → 成功：回滚扣分+恢复内容+状态置已取消")
+    void cancelViolation_success_rollbackAndRestore() {
+        Violation v = activeViolation(10, "article", 88);
+        when(violationMapper.selectById(10)).thenReturn(v);
+        when(appealService.count(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        PointsLog mainLog = new PointsLog();
+        mainLog.setId(500);
+        mainLog.setPointsChange(-4);
+        // 第一次 list 查主扣分日志，第二次 list 查内容删除扣回日志（空）
+        when(pointsLogService.list(any(LambdaQueryWrapper.class)))
+                .thenReturn(new ArrayList<>(Arrays.asList(mainLog)))
+                .thenReturn(new ArrayList<>());
+        when(violationMapper.restoreArticleById(88)).thenReturn(1);
+
+        ResultBean result = violationService.cancelViolation(10, "误判");
+        assertEquals(200, result.getCode());
+        // 主扣分日志被撤销（加回 4 分）
+        verify(pointsLogService).undoPointsLog(eq(500), eq(1));
+        // 内容恢复可见
+        verify(violationMapper).restoreArticleById(88);
+        // 状态已置已取消
+        verify(violationMapper).updateById(argThat((Violation saved) ->
+                "cancelled".equals(saved.getStatus()) && "误判".equals(saved.getCancelReason())));
+        // 通知用户
+        verify(notificationService).createNotification(eq(2), eq(1), eq("violation"), anyString(), eq("violation"), eq(10));
+    }
+
+    @Test
+    @DisplayName("取消违规 → 已取消 → 拒绝重复操作")
+    void cancelViolation_alreadyCancelled_returnsError() {
+        Violation v = activeViolation(10, "article", 88);
+        v.setStatus("cancelled");
+        when(violationMapper.selectById(10)).thenReturn(v);
+        ResultBean result = violationService.cancelViolation(10, "误判");
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("已取消"));
+        verify(pointsLogService, never()).undoPointsLog(anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("取消违规 → 存在审核中申诉 → 拒绝")
+    void cancelViolation_pendingAppeal_returnsError() {
+        Violation v = activeViolation(10, "article", 88);
+        when(violationMapper.selectById(10)).thenReturn(v);
+        when(appealService.count(any(LambdaQueryWrapper.class))).thenReturn(1L);
+        ResultBean result = violationService.cancelViolation(10, "误判");
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("申诉"));
+        verify(pointsLogService, never()).undoPointsLog(anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("取消违规 → 无登录态 → 拒绝")
+    void cancelViolation_noAuth_returnsError() {
+        SecurityContextHolder.clearContext();
+        ResultBean result = violationService.cancelViolation(10, "误判");
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("登录"));
+    }
+
+    @Test
+    @DisplayName("取消违规 → 未填原因 → 拒绝")
+    void cancelViolation_emptyReason_returnsError() {
+        Violation v = activeViolation(10, "article", 88);
+        when(violationMapper.selectById(10)).thenReturn(v);
+        ResultBean result = violationService.cancelViolation(10, "  ");
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("原因"));
     }
 }

@@ -48,4 +48,12 @@ public class ViolationController {
         Integer size = params.get("size") != null ? Integer.parseInt(params.get("size").toString()) : 10;
         return violationService.listMyViolations(userId, page, size);
     }
+
+    @ApiOperation(value = "管理员取消违规（回滚扣分+恢复内容，操作人以JWT为准）")
+    @PostMapping("/admin/violation/cancel")
+    public ResultBean cancelViolation(@RequestBody Map<String, Object> params) {
+        Integer violationId = params.get("violationId") != null ? Integer.parseInt(params.get("violationId").toString()) : null;
+        String reason = (String) params.get("reason");
+        return violationService.cancelViolation(violationId, reason);
+    }
 }

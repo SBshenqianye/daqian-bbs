@@ -8313,3 +8313,9 @@ INSERT INTO bbs_sensitive_word (keyword) VALUES
 ('tianchen17.com'),
 ('18show.cn')
 ON CONFLICT (keyword) DO NOTHING;
+
+-- @migration: v032-violation-cancel 违规记录支持取消（状态/原因/操作人/时间，全幂等）
+ALTER TABLE bbs_violation ADD COLUMN IF NOT EXISTS status varchar(20) NOT NULL DEFAULT 'active';
+ALTER TABLE bbs_violation ADD COLUMN IF NOT EXISTS cancel_reason varchar(500);
+ALTER TABLE bbs_violation ADD COLUMN IF NOT EXISTS cancel_operator_id integer;
+ALTER TABLE bbs_violation ADD COLUMN IF NOT EXISTS cancel_time varchar(20);

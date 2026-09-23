@@ -489,6 +489,10 @@ CREATE TABLE IF NOT EXISTS bbs_violation (
     related_id      integer,
     operator_id     integer NOT NULL,
     remark          varchar(500),
+    status          varchar(20) NOT NULL DEFAULT 'active',
+    cancel_reason   varchar(500),
+    cancel_operator_id integer,
+    cancel_time     varchar(20),
     create_time     varchar(20)
 );
 CREATE INDEX IF NOT EXISTS idx_violation_user ON bbs_violation (user_id);

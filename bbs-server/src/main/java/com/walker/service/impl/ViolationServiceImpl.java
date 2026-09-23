@@ -21,6 +21,8 @@ import com.walker.service.AppealService;
 import com.walker.utils.ConstantUtil;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -113,6 +115,7 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
         violation.setRelatedId(relatedId);
         violation.setOperatorId(operatorId);
         violation.setRemark(remark);
+        violation.setStatus("active");
         violation.setCreateTime(fmt.format(now));
         this.save(violation);
 
@@ -290,6 +293,28 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
             }
         }
 
+        // 批量反查评论/回复所属文章 id（#11 内容预览定位用；原生 SQL 可查已删除内容）
+        Set<Integer> commentIds = new HashSet<>();
+        Set<Integer> replyIds = new HashSet<>();
+        for (Violation v : result.getRecords()) {
+            if ("comment".equals(v.getRelatedType()) && v.getRelatedId() != null) commentIds.add(v.getRelatedId());
+            if ("reply".equals(v.getRelatedType()) && v.getRelatedId() != null) replyIds.add(v.getRelatedId());
+        }
+        Map<Integer, Integer> commentArticleMap = new HashMap<>(); // commentId -> articleId
+        for (Map<String, Object> row : queryCommentArticleIds(commentIds)) {
+            commentArticleMap.put(toInt(row.get("commentId")), toInt(row.get("articleId")));
+        }
+        Map<Integer, Integer> replyCommentMap = new HashMap<>(); // replyId -> commentId
+        for (Map<String, Object> row : queryReplyCommentIds(replyIds)) {
+            replyCommentMap.put(toInt(row.get("replyId")), toInt(row.get("commentId")));
+        }
+        // 回复 -> 评论 -> 文章：二次补查评论所属文章
+        Set<Integer> replyCommentIds = new HashSet<>(replyCommentMap.values());
+        replyCommentIds.removeAll(commentArticleMap.keySet());
+        for (Map<String, Object> row : queryCommentArticleIds(replyCommentIds)) {
+            commentArticleMap.put(toInt(row.get("commentId")), toInt(row.get("articleId")));
+        }
+
         // 组装结果
         List<Map<String, Object>> enriched = new ArrayList<>();
         for (Violation v : result.getRecords()) {
@@ -305,6 +330,20 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
             map.put("remark", v.getRemark());
             map.put("createTime", v.getCreateTime());
             map.put("appealStatus", appealStatusMap.get(v.getId()));
+            map.put("status", v.getStatus() == null ? "active" : v.getStatus());
+            map.put("cancelReason", v.getCancelReason());
+            map.put("cancelTime", v.getCancelTime());
+            // #11 内容预览用：评论/回复所属文章 id
+            Integer relatedArticleId = null;
+            if ("article".equals(v.getRelatedType())) {
+                relatedArticleId = v.getRelatedId();
+            } else if ("comment".equals(v.getRelatedType())) {
+                relatedArticleId = commentArticleMap.get(v.getRelatedId());
+            } else if ("reply".equals(v.getRelatedType())) {
+                Integer commentId = replyCommentMap.get(v.getRelatedId());
+                relatedArticleId = commentId == null ? null : commentArticleMap.get(commentId);
+            }
+            map.put("relatedArticleId", relatedArticleId);
             enriched.add(map);
         }
 
@@ -329,5 +368,150 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
             case "leak": return "泄露企业秘密";
             default: return type;
         }
+    }
+
+    // ==================== #14 取消违规 ====================
+
+    /**
+     * 从登录态（JWT）获取当前操作人 id。/admin/** 已由 Spring Security 强制认证。
+     */
+    private Integer getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof User) {
+            return ((User) auth.getPrincipal()).getId();
+        }
+        return null;
+    }
+
+    @Override
+    @Transactional
+    public ResultBean cancelViolation(Integer violationId, String reason) {
+        if (violationId == null) {
+            return ResultBean.error("参数不完整");
+        }
+        Integer operatorId = getCurrentUserId();
+        if (operatorId == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+
+        Violation v = this.getById(violationId);
+        if (v == null) {
+            return ResultBean.error("违规记录不存在");
+        }
+        if ("cancelled".equals(v.getStatus())) {
+            return ResultBean.error("该违规已取消，不可重复操作");
+        }
+        if (reason == null || reason.trim().isEmpty()) {
+            return ResultBean.error("请填写取消原因");
+        }
+
+        // 幂等保护：存在审核中的申诉时拒绝直接取消（避免与申诉流程竞态）
+        long pending = appealService.count(new LambdaQueryWrapper<Appeal>()
+                .eq(Appeal::getAppealType, "violation")
+                .eq(Appeal::getRelatedId, violationId)
+                .eq(Appeal::getStatus, "pending"));
+        if (pending > 0) {
+            return ResultBean.error("该违规存在审核中的申诉，请先处理该申诉后再取消");
+        }
+
+        doCancel(v, reason.trim(), operatorId);
+        return ResultBean.success("违规已取消，扣分已回滚，关联内容已恢复");
+    }
+
+    @Override
+    @Transactional
+    public void autoCancelByAppeal(Integer violationId, Integer reviewerId, String reviewRemark) {
+        if (violationId == null || reviewerId == null) return;
+        Violation v = this.getById(violationId);
+        if (v == null || "cancelled".equals(v.getStatus())) return;
+        String reason = "申诉通过自动取消" + (reviewRemark != null && !reviewRemark.trim().isEmpty() ? "：" + reviewRemark.trim() : "");
+        doCancel(v, reason, reviewerId);
+    }
+
+    /**
+     * 取消违规的公共核心：回滚扣分日志 → 恢复内容可见性 → 状态置已取消留痕 → 通知用户。
+     */
+    private void doCancel(Violation v, String reason, Integer operatorId) {
+        // 1. 回滚本次违规主扣分日志（负分、未撤销）
+        List<PointsLog> mainLogs = pointsLogService.list(new LambdaQueryWrapper<PointsLog>()
+                .eq(PointsLog::getRelatedType, "violation")
+                .eq(PointsLog::getRelatedId, v.getId())
+                .lt(PointsLog::getPointsChange, 0)
+                .eq(PointsLog::getIsReversed, 0));
+        for (PointsLog log : mainLogs) {
+            pointsLogService.undoPointsLog(log.getId(), operatorId);
+        }
+
+        // 2. 回滚内容删除引发的积分回滚日志，并恢复内容可见性
+        restoreRelatedContent(v, operatorId);
+
+        // 3. 状态置已取消并留痕
+        Date now = new Date();
+        SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        v.setStatus("cancelled");
+        v.setCancelReason(reason);
+        v.setCancelOperatorId(operatorId);
+        v.setCancelTime(fmt.format(now));
+        this.updateById(v);
+
+        // 4. 通知用户
+        notificationService.createNotification(v.getUserId(), operatorId,
+                "violation", "您的违规记录已取消：" + getViolationLabel(v.getViolationType()),
+                "violation", v.getId());
+    }
+
+    /** 恢复被违规删除的关联内容可见性，并回滚删除内容时扣回的积分 */
+    private void restoreRelatedContent(Violation v, Integer operatorId) {
+        String relatedType = v.getRelatedType();
+        Integer relatedId = v.getRelatedId();
+        if (relatedId == null || relatedType == null) return;
+        try {
+            switch (relatedType) {
+                case "article":
+                    undoDeductedContentLogs("article", relatedId, operatorId);
+                    violationMapper.restoreArticleById(relatedId);
+                    break;
+                case "comment":
+                    undoDeductedContentLogs("comment", relatedId, operatorId);
+                    violationMapper.restoreCommentById(relatedId);
+                    break;
+                case "reply":
+                    undoDeductedContentLogs("reply", relatedId, operatorId);
+                    violationMapper.restoreReplyById(relatedId);
+                    break;
+                default:
+                    break;
+            }
+        } catch (Exception e) {
+            System.err.println("[Violation] 取消违规恢复内容失败: " + relatedType + "#" + relatedId + " - " + e.getMessage());
+        }
+    }
+
+    /** 撤销因删除内容而扣回的积分日志（对应内容类型、负分、未撤销） */
+    private void undoDeductedContentLogs(String relatedType, Integer relatedId, Integer operatorId) {
+        List<PointsLog> logs = pointsLogService.list(new LambdaQueryWrapper<PointsLog>()
+                .eq(PointsLog::getRelatedType, relatedType)
+                .eq(PointsLog::getRelatedId, relatedId)
+                .lt(PointsLog::getPointsChange, 0)
+                .eq(PointsLog::getIsReversed, 0));
+        for (PointsLog log : logs) {
+            pointsLogService.undoPointsLog(log.getId(), operatorId);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> queryCommentArticleIds(Set<Integer> commentIds) {
+        if (commentIds == null || commentIds.isEmpty()) return Collections.emptyList();
+        return violationMapper.selectArticleIdByCommentIds(new ArrayList<>(commentIds));
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> queryReplyCommentIds(Set<Integer> replyIds) {
+        if (replyIds == null || replyIds.isEmpty()) return Collections.emptyList();
+        return violationMapper.selectCommentIdByReplyIds(new ArrayList<>(replyIds));
+    }
+
+    private Integer toInt(Object o) {
+        return o == null ? null : ((Number) o).intValue();
     }
 }

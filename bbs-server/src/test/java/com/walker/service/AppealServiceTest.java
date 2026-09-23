@@ -145,6 +145,40 @@ class AppealServiceTest {
         verify(notificationService).createNotification(eq(2), eq(1), eq("appeal_review"), contains("驳回"), eq("appeal"), eq(1));
     }
 
+    @Test
+    @DisplayName("审核申诉 → 违规申诉通过 → 自动取消关联违规（回滚扣分+恢复内容）")
+    void reviewAppeal_acceptViolation_autoCancelsViolation() {
+        Appeal appeal = new Appeal();
+        appeal.setId(1);
+        appeal.setUserId(2);
+        appeal.setAppealType("violation");
+        appeal.setRelatedId(100);
+        appeal.setStatus("pending");
+        when(appealMapper.selectById(1)).thenReturn(appeal);
+        when(appealMapper.updateById(any(Appeal.class))).thenReturn(1);
+
+        ResultBean result = appealService.reviewAppeal(1, 1, "accepted", "确实误判");
+        assertEquals(200, result.getCode());
+        verify(violationService).autoCancelByAppeal(eq(100), eq(1), eq("确实误判"));
+    }
+
+    @Test
+    @DisplayName("审核申诉 → 违规申诉驳回 → 不触发取消违规")
+    void reviewAppeal_rejectViolation_noCancel() {
+        Appeal appeal = new Appeal();
+        appeal.setId(1);
+        appeal.setUserId(2);
+        appeal.setAppealType("violation");
+        appeal.setRelatedId(100);
+        appeal.setStatus("pending");
+        when(appealMapper.selectById(1)).thenReturn(appeal);
+        when(appealMapper.updateById(any(Appeal.class))).thenReturn(1);
+
+        ResultBean result = appealService.reviewAppeal(1, 1, "rejected", "理由不充分");
+        assertEquals(200, result.getCode());
+        verify(violationService, never()).autoCancelByAppeal(anyInt(), anyInt(), any());
+    }
+
     // ==================== submitAppeal — 空内容 ====================
 
     @Test

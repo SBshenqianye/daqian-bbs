@@ -8468,3 +8468,33 @@ INSERT IGNORE INTO `bbs_sensitive_word` (`keyword`) VALUES
 ('自力式温度调节阀 杂音计 搅拌机'),
 ('tianchen17.com'),
 ('18show.cn');
+
+-- @migration: v032-violation-cancel 违规记录支持取消（状态/原因/操作人/时间，全幂等）
+
+-- bbs_violation.status
+SELECT COUNT(*) INTO @col_status_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_violation' AND COLUMN_NAME = 'status';
+SET @sql_status = IF(@col_status_exists = 0, 'ALTER TABLE `bbs_violation` ADD COLUMN `status` varchar(20) NOT NULL DEFAULT ''active'' COMMENT ''状态(active=生效中/cancelled=已取消)''', 'SELECT 1');
+PREPARE stmt_status FROM @sql_status;
+EXECUTE stmt_status;
+DEALLOCATE PREPARE stmt_status;
+
+-- bbs_violation.cancel_reason
+SELECT COUNT(*) INTO @col_cr_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_violation' AND COLUMN_NAME = 'cancel_reason';
+SET @sql_cr = IF(@col_cr_exists = 0, 'ALTER TABLE `bbs_violation` ADD COLUMN `cancel_reason` varchar(500) DEFAULT NULL COMMENT ''取消原因''', 'SELECT 1');
+PREPARE stmt_cr FROM @sql_cr;
+EXECUTE stmt_cr;
+DEALLOCATE PREPARE stmt_cr;
+
+-- bbs_violation.cancel_operator_id
+SELECT COUNT(*) INTO @col_co_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_violation' AND COLUMN_NAME = 'cancel_operator_id';
+SET @sql_co = IF(@col_co_exists = 0, 'ALTER TABLE `bbs_violation` ADD COLUMN `cancel_operator_id` int(11) DEFAULT NULL COMMENT ''取消操作人ID''', 'SELECT 1');
+PREPARE stmt_co FROM @sql_co;
+EXECUTE stmt_co;
+DEALLOCATE PREPARE stmt_co;
+
+-- bbs_violation.cancel_time
+SELECT COUNT(*) INTO @col_ct_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_violation' AND COLUMN_NAME = 'cancel_time';
+SET @sql_ct = IF(@col_ct_exists = 0, 'ALTER TABLE `bbs_violation` ADD COLUMN `cancel_time` varchar(20) DEFAULT NULL COMMENT ''取消时间''', 'SELECT 1');
+PREPARE stmt_ct FROM @sql_ct;
+EXECUTE stmt_ct;
+DEALLOCATE PREPARE stmt_ct;
