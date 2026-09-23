@@ -73,7 +73,8 @@ CREATE TABLE IF NOT EXISTS bbs_article_label (
     label_name  varchar(10),
     enabled     smallint,
     icon        varchar(50),
-    description varchar(200)
+    description varchar(200),
+    label_type  varchar(20) NOT NULL DEFAULT 'normal'
 );
 
 -- ----------------------------
@@ -290,11 +291,11 @@ ON CONFLICT (id) DO NOTHING;
 -- ----------------------------
 -- 文章标签
 -- ----------------------------
-INSERT INTO bbs_article_label (label_id, label_name, enabled, icon, description) VALUES
-(1, '技术交流', 0, 'thumb_up', ''),
-(2, '求助问答', 1, 'help', ''),
-(3, '资源共享', 0, 'folder_open', ''),
-(4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分')
+INSERT INTO bbs_article_label (label_id, label_name, enabled, icon, description, label_type) VALUES
+(1, '技术交流', 0, 'thumb_up', '', 'normal'),
+(2, '求助问答', 1, 'help', '', 'question'),
+(3, '资源共享', 0, 'folder_open', '', 'normal'),
+(4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分', 'suggestion')
 ON CONFLICT (label_id) DO NOTHING;
 
 -- ----------------------------

@@ -8319,3 +8319,10 @@ ALTER TABLE bbs_violation ADD COLUMN IF NOT EXISTS status varchar(20) NOT NULL D
 ALTER TABLE bbs_violation ADD COLUMN IF NOT EXISTS cancel_reason varchar(500);
 ALTER TABLE bbs_violation ADD COLUMN IF NOT EXISTS cancel_operator_id integer;
 ALTER TABLE bbs_violation ADD COLUMN IF NOT EXISTS cancel_time varchar(20);
+
+-- @migration: v033-label-type 标签表增加 label_type 用途字段（与标签名解耦），按存量名称回填
+ALTER TABLE bbs_article_label ADD COLUMN IF NOT EXISTS label_type varchar(20) NOT NULL DEFAULT 'normal';
+
+-- 存量回填：按标签名识别特殊用途
+UPDATE bbs_article_label SET label_type = 'suggestion' WHERE label_name = '建议反馈' AND label_type = 'normal';
+UPDATE bbs_article_label SET label_type = 'question' WHERE label_name IN ('问题求助', '求助问答') AND label_type = 'normal';

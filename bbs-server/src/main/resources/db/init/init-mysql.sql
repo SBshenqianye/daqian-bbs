@@ -84,6 +84,7 @@ CREATE TABLE `bbs_article_label` (
   `enabled`     tinyint(4) NULL DEFAULT NULL COMMENT '标签是否禁用',
   `icon`        varchar(50) DEFAULT NULL COMMENT '标签图标',
   `description` varchar(200) DEFAULT NULL COMMENT '标签描述',
+  `label_type`  varchar(20) NOT NULL DEFAULT 'normal' COMMENT '标签用途类型(normal普通/question问题求助/suggestion建议反馈)',
   PRIMARY KEY (`label_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
@@ -325,11 +326,11 @@ VALUES (1, 'asiayak', '$2a$10$hpTQLGhUicOwSbSgLa2kyuQYMXhnWCZhi/CR/v6cyc2JcNOs2r
 -- ----------------------------
 -- 文章标签
 -- ----------------------------
-INSERT INTO `bbs_article_label` (`label_id`, `label_name`, `enabled`, `icon`, `description`) VALUES
-(1, '技术交流', 0, 'thumb_up', ''),
-(2, '求助问答', 1, 'help', ''),
-(3, '资源共享', 0, 'folder_open', ''),
-(4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分');
+INSERT INTO `bbs_article_label` (`label_id`, `label_name`, `enabled`, `icon`, `description`, `label_type`) VALUES
+(1, '技术交流', 0, 'thumb_up', '', 'normal'),
+(2, '求助问答', 1, 'help', '', 'question'),
+(3, '资源共享', 0, 'folder_open', '', 'normal'),
+(4, '建议反馈', 1, 'lightbulb', '提交建议并被采纳获得+5积分', 'suggestion');
 
 -- ----------------------------
 -- 组织机构（国网四川内江供电公司）

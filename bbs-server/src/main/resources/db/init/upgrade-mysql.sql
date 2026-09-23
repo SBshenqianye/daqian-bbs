@@ -8498,3 +8498,16 @@ SET @sql_ct = IF(@col_ct_exists = 0, 'ALTER TABLE `bbs_violation` ADD COLUMN `ca
 PREPARE stmt_ct FROM @sql_ct;
 EXECUTE stmt_ct;
 DEALLOCATE PREPARE stmt_ct;
+
+-- @migration: v033-label-type 标签表增加 label_type 用途字段（与标签名解耦），按存量名称回填
+
+-- bbs_article_label.label_type
+SELECT COUNT(*) INTO @col_lt_exists FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_article_label' AND COLUMN_NAME = 'label_type';
+SET @sql_lt = IF(@col_lt_exists = 0, 'ALTER TABLE `bbs_article_label` ADD COLUMN `label_type` varchar(20) NOT NULL DEFAULT ''normal'' COMMENT ''标签用途类型(normal普通/question问题求助/suggestion建议反馈)''', 'SELECT 1');
+PREPARE stmt_lt FROM @sql_lt;
+EXECUTE stmt_lt;
+DEALLOCATE PREPARE stmt_lt;
+
+-- 存量回填：按标签名识别特殊用途
+UPDATE `bbs_article_label` SET `label_type` = 'suggestion' WHERE `label_name` = '建议反馈' AND `label_type` = 'normal';
+UPDATE `bbs_article_label` SET `label_type` = 'question' WHERE `label_name` IN ('问题求助', '求助问答') AND `label_type` = 'normal';
