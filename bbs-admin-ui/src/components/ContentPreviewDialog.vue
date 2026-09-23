@@ -1,5 +1,6 @@
 <template>
   <!-- 内容预览弹窗（举报/违规两条管理线共用：文章详情 + 评论/回复加载 + 已删除内容可见） -->
+  <div>
   <div v-if="visible" class="fixed inset-0 bg-black/30 z-40" @click="$emit('close')"></div>
   <div v-if="visible" class="fixed inset-0 z-50 overflow-y-auto">
     <div class="bg-container w-full max-w-4xl mx-auto my-[5vh] rounded-xl shadow-2xl">
@@ -147,6 +148,7 @@
         </template>
       </div>
     </div>
+  </div>
   </div>
 </template>
 
