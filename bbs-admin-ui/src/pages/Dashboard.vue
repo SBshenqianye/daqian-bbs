@@ -13,39 +13,22 @@
         <p class="text-body-lg text-on-primary/80 max-w-2xl">在这里您可以管理用户、文章、标签、社区等所有论坛资源。</p>
       </div>
 
-      <!-- Quick Stats -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="bg-container border border-border rounded-xl p-card-padding hover:shadow-sm transition-shadow">
-          <div class="flex items-center justify-between mb-3">
-            <span class="material-symbols-outlined text-[32px] text-primary">group</span>
-            <span class="text-label-md text-on-surface-variant">用户管理</span>
+      <!-- 数据概览（#7 真实统计） -->
+      <div class="mb-8">
+        <h2 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">insights</span>
+          数据概览
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div v-for="card in overviewCards" :key="card.label"
+               class="bg-container border border-border rounded-xl p-4 hover:shadow-sm transition-shadow">
+            <div class="flex items-center justify-between mb-2">
+              <span class="material-symbols-outlined text-[24px]" :class="card.iconColor">{{ card.icon }}</span>
+            </div>
+            <p class="font-headline-sm text-on-surface text-xl leading-tight">{{ formatNum(card.value) }}</p>
+            <p class="text-label-sm text-on-surface-variant mt-1">{{ card.label }}</p>
+            <p v-if="card.hint" class="text-caption-sm text-on-surface-variant/70 mt-0.5">{{ card.hint }}</p>
           </div>
-          <p class="font-headline-sm text-on-surface">管理注册用户</p>
-          <p class="text-body-md text-secondary mt-1">查看、搜索、修改用户信息</p>
-        </div>
-        <div class="bg-container border border-border rounded-xl p-card-padding hover:shadow-sm transition-shadow">
-          <div class="flex items-center justify-between mb-3">
-            <span class="material-symbols-outlined text-[32px] text-tertiary-container">article</span>
-            <span class="text-label-md text-on-surface-variant">帖子管理</span>
-          </div>
-          <p class="font-headline-sm text-on-surface">审核与管理帖子</p>
-          <p class="text-body-md text-secondary mt-1">审核、删除、查看帖子详情</p>
-        </div>
-        <!-- <div class="bg-container border border-border rounded-xl p-card-padding hover:shadow-sm transition-shadow">
-          <div class="flex items-center justify-between mb-3">
-            <span class="material-symbols-outlined text-[32px] text-brand-blue">bar_chart</span>
-            <span class="text-label-md text-on-surface-variant">统计概览</span>
-          </div>
-          <p class="font-headline-sm text-on-surface">数据统计分析</p>
-          <p class="text-body-md text-secondary mt-1">按单位查看文章发布统计</p>
-        </div> -->
-        <div class="bg-container border border-border rounded-xl p-card-padding hover:shadow-sm transition-shadow">
-          <div class="flex items-center justify-between mb-3">
-            <span class="material-symbols-outlined text-[32px] text-rank-gold">workspace_premium</span>
-            <span class="text-label-md text-on-surface-variant">积分排名</span>
-          </div>
-          <p class="font-headline-sm text-on-surface">单位活跃度排名</p>
-          <p class="text-body-md text-secondary mt-1">当月/累计活跃度积分排名</p>
         </div>
       </div>
 
@@ -64,6 +47,11 @@
             <span class="material-symbols-outlined text-tertiary-container text-[24px]">rate_review</span>
             <span class="font-body-md text-on-surface group-hover:text-primary transition-colors">帖子管理</span>
           </router-link>
+          <router-link to="/report" class="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors border border-outline-variant/50 group">
+            <span class="material-symbols-outlined text-rank-gold text-[24px]">flag</span>
+            <span class="font-body-md text-on-surface group-hover:text-primary transition-colors">举报管理</span>
+            <span v-if="stats.reportPending > 0" class="ml-auto bg-error text-on-error text-xs px-2 py-[2px] rounded-full">{{ stats.reportPending }}</span>
+          </router-link>
           <router-link to="/points" class="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg hover:bg-surface-container transition-colors border border-outline-variant/50 group">
             <span class="material-symbols-outlined text-rank-gold text-[24px]">leaderboard</span>
             <span class="font-body-md text-on-surface group-hover:text-primary transition-colors">积分排名</span>
@@ -76,6 +64,50 @@
 
 <script>
 export default {
-  name: 'Dashboard'
+  name: 'Dashboard',
+  data() {
+    return {
+      stats: {
+        userCount: 0,
+        articleCount: 0,
+        commentCount: 0,
+        reportPending: 0,
+        appealPending: 0,
+        violationActive: 0,
+        articlePending: 0,
+        featuredCount: 0
+      }
+    }
+  },
+  computed: {
+    overviewCards() {
+      return [
+        { label: '注册用户', value: this.stats.userCount, icon: 'group', iconColor: 'text-primary' },
+        { label: '帖子总数', value: this.stats.articleCount, icon: 'article', iconColor: 'text-tertiary-container', hint: '待审 ' + this.stats.articlePending + ' · 精华 ' + this.stats.featuredCount },
+        { label: '评论总数', value: this.stats.commentCount, icon: 'chat', iconColor: 'text-tertiary-container' },
+        { label: '举报待审', value: this.stats.reportPending, icon: 'flag', iconColor: 'text-rank-gold' },
+        { label: '申诉待审', value: this.stats.appealPending, icon: 'gavel', iconColor: 'text-rank-gold' },
+        { label: '进行中违规', value: this.stats.violationActive, icon: 'gpp_bad', iconColor: 'text-error' }
+      ]
+    }
+  },
+  mounted() {
+    this.loadStats()
+  },
+  methods: {
+    formatNum(n) {
+      const v = Number(n) || 0
+      return v >= 10000 ? (v / 10000).toFixed(1).replace(/\.0$/, '') + 'w' : String(v)
+    },
+    loadStats() {
+      this.postRequest('/admin/dashboard/counts', {}).then(resp => {
+        if (resp && resp.code === 200 && resp.obj) {
+          this.stats = Object.assign({}, this.stats, resp.obj)
+        }
+      }).catch(err => {
+        console.warn('[Dashboard] load counts', err)
+      })
+    }
+  }
 }
 </script>
