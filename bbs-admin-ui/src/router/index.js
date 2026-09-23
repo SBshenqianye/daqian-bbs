@@ -39,8 +39,12 @@ export default new Router({
                 },
                 {
                     path: '/dict',
-                    component: () => import('../pages/DictPage.vue'),
+                    component: () => import('../pages/ConfigCenterPage.vue'),
                     meta: { title: '配置管理' }
+                },
+                {
+                    path: '/systemConfig',
+                    redirect: '/dict'
                 },
                 {
                     path: '/article/id',
@@ -75,11 +79,6 @@ export default new Router({
                     path: '/sensitiveWord',
                     component: () => import('../pages/BBSSensitiveWord.vue'),
                     meta: { title: '敏感词管理' }
-                },
-                {
-                    path: '/systemConfig',
-                    component: () => import('../pages/SystemConfigPage.vue'),
-                    meta: { title: '系统配置' }
                 },
                 {
                     path: '/violation',

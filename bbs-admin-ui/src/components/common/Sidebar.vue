@@ -114,7 +114,6 @@ export default {
         { icon: 'emoji_events', label: '积分排名', path: '/points' },
         { icon: 'account_tree', label: '组织管理', path: '/unitManage' },
         { icon: 'block', label: '敏感词管理', path: '/sensitiveWord' },
-        { icon: 'settings_suggest', label: '系统配置', path: '/systemConfig' },
         { icon: 'gavel', label: '违规管理', path: '/violation' },
         { icon: 'feedback', label: '举报管理', path: '/report' },
         { icon: 'assignment', label: '申诉管理', path: '/appeal' },
