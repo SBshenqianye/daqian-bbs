@@ -45,7 +45,8 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-outline-variant/50">
-              <tr v-for="item in list" :key="item.id" class="hover:bg-surface-container-low/50">
+              <tr v-for="item in list" :key="item.id" :data-violation-ref="item.relatedId"
+                :class="['hover:bg-surface-container-low/50', highlightViolationId === item.relatedId ? 'appeal-row-highlight' : '']">
                 <!-- 用户 -->
                 <td class="px-4 py-3 text-body-sm">
                   <UserCell :user-id="item.userId" :name="item.nickname" />
@@ -59,8 +60,9 @@
                       <div slot="content" class="max-w-xs">
                         <p v-if="item.violation.remark">原因: {{ item.violation.remark }}</p>
                         <p v-if="item.violation.relatedType">关联: {{ getRelatedTypeLabel(item.violation.relatedType) }}#{{ item.violation.relatedId }}</p>
+                        <p class="text-primary">点击跳转到违规管理并定位 →</p>
                       </div>
-                      <span class="cursor-help text-red-600">
+                      <span class="cursor-pointer text-red-600 hover:underline" @click="goViolation(item.violation.id)">
                         {{ item.violation.violationLabel }} (-{{ item.violation.pointsDeducted }}分)
                       </span>
                     </el-tooltip>
@@ -130,11 +132,30 @@ export default {
       total: 0,
       currentPage: 1,
       pageSize: 10,
-      filterStatus: ''
+      filterStatus: '',
+      // #12 从违规管理反向跳转过来时高亮的违规 id
+      highlightViolationId: null
     }
   },
-  mounted() { this.loadList() },
+  mounted() {
+    const qid = parseInt(this.$route.query.appealViolationId)
+    if (qid) this.highlightViolationId = qid
+    this.loadList()
+  },
   methods: {
+    /** #12 点击关联违规 → 跳违规管理并按违规 id 定位 */
+    goViolation(violationId) {
+      this.$router.push({ path: '/violation', query: { violationId } })
+    },
+    /** 列表加载后滚动到定位行并高亮 */
+    scrollToHighlight() {
+      if (!this.highlightViolationId) return
+      const el = document.querySelector(`[data-violation-ref="${this.highlightViolationId}"]`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => { this.highlightViolationId = null }, 3000)
+      }
+    },
     getStatusLabel(s) { return { pending: '待审核', accepted: '已通过', rejected: '已驳回' }[s] || s },
     getAppealLabel(t) { return { violation: '违规申诉', points: '积分申诉', other: '其他' }[t] || t },
     getRelatedTypeLabel(t) { return { article: '帖子', comment: '评论', reply: '回复' }[t] || t },
@@ -154,6 +175,7 @@ export default {
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0
+          this.$nextTick(() => this.scrollToHighlight())
         } else { this.list = [] }
       } catch (e) { this.list = [] }
       finally { this.loading = false }
@@ -178,3 +200,10 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.appeal-row-highlight {
+  background-color: rgb(254 243 199 / 0.6);
+  transition: background-color 0.6s ease;
+}
+</style>

@@ -73,12 +73,18 @@
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">扣分</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">关联内容</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">备注</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">状态</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">申诉状态</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">操作</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">时间</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-outline-variant/50">
-              <tr v-for="item in list" :key="item.id" class="hover:bg-surface-container-low/50">
+              <tr v-for="item in list" :key="item.id" :data-violation-id="item.id"
+                :class="[
+                  'hover:bg-surface-container-low/50',
+                  highlightId === item.id ? 'violation-row-highlight' : ''
+                ]">
                 <!-- 用户 -->
                 <td class="px-4 py-3 text-body-sm">
                   <UserCell :user-id="item.userId" :name="item.nickname" />
@@ -87,9 +93,11 @@
                 <td class="px-4 py-3 text-body-sm">{{ item.violationLabel || item.violationType }}</td>
                 <!-- 扣分 -->
                 <td class="px-4 py-3 text-body-sm text-error font-medium">-{{ item.pointsDeducted }}</td>
-                <!-- 关联内容 -->
+                <!-- 关联内容（#11 点击打开内容预览） -->
                 <td class="px-4 py-3 text-body-sm">
-                  <span v-if="item.relatedType" class="text-primary cursor-pointer hover:underline">{{ getRelatedTypeLabel(item.relatedType) }}#{{ item.relatedId }}</span>
+                  <span v-if="item.relatedType" class="text-primary cursor-pointer hover:underline" @click="openContentPreview(item)">
+                    {{ getRelatedTypeLabel(item.relatedType) }}#{{ item.relatedId }}
+                  </span>
                   <span v-else class="text-on-surface-variant">-</span>
                 </td>
                 <!-- 备注 -->
@@ -98,12 +106,27 @@
                     <span class="truncate block cursor-help">{{ item.remark || '-' }}</span>
                   </el-tooltip>
                 </td>
-                <!-- 申诉状态 -->
+                <!-- 违规状态（#14） -->
                 <td class="px-4 py-3 text-body-sm">
-                  <span v-if="item.appealStatus === 'pending'" class="px-2 py-0.5 rounded text-[12px] font-medium bg-yellow-100 text-yellow-800">申诉中</span>
+                  <el-tooltip v-if="item.status === 'cancelled'" :content="(item.cancelReason || '') + (item.cancelTime ? '（' + item.cancelTime + '）' : '')" placement="top" :open-delay="300">
+                    <span class="px-2 py-0.5 rounded text-[12px] font-medium bg-gray-100 text-gray-600 cursor-help">已取消</span>
+                  </el-tooltip>
+                  <span v-else class="px-2 py-0.5 rounded text-[12px] font-medium bg-orange-100 text-orange-700">生效中</span>
+                </td>
+                <!-- 申诉状态（#12 有申诉可反向跳转） -->
+                <td class="px-4 py-3 text-body-sm">
+                  <div v-if="item.appealStatus === 'pending'" class="flex items-center gap-1">
+                    <span class="px-2 py-0.5 rounded text-[12px] font-medium bg-yellow-100 text-yellow-800">申诉中</span>
+                    <span class="text-primary text-[12px] cursor-pointer hover:underline" @click="goAppeal(item.id)">查看申诉</span>
+                  </div>
                   <span v-else-if="item.appealStatus === 'accepted'" class="px-2 py-0.5 rounded text-[12px] font-medium bg-green-100 text-green-800">申诉通过</span>
                   <span v-else-if="item.appealStatus === 'rejected'" class="px-2 py-0.5 rounded text-[12px] font-medium bg-red-100 text-red-800">申诉驳回</span>
                   <span v-else class="text-on-surface-variant text-[12px]">-</span>
+                </td>
+                <!-- 操作（#14 取消违规） -->
+                <td class="px-4 py-3 text-body-sm whitespace-nowrap">
+                  <button v-if="item.status !== 'cancelled'" class="px-2 py-1 border border-warning/50 text-warning rounded text-[12px] hover:bg-warning/5" @click="openCancelDialog(item)">取消违规</button>
+                  <span v-else class="text-on-surface-variant text-[12px]">已取消</span>
                 </td>
                 <!-- 时间 -->
                 <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.createTime }}</td>
@@ -119,17 +142,40 @@
         </div>
       </div>
     </div>
+
+    <!-- #11 内容预览弹窗（公共组件） -->
+    <ContentPreviewDialog :visible="previewVisible" :item="previewItem" @close="previewVisible = false" />
+
+    <!-- #14 取消违规对话框 -->
+    <el-dialog title="取消违规" :visible.sync="cancelDialogVisible" width="480px" :close-on-click-modal="false">
+      <div class="space-y-4" v-if="cancelTarget">
+        <div class="px-3 py-2 bg-warning/5 border border-warning/30 rounded-lg text-[13px]">
+          将回滚该次扣分并恢复被隐藏/删除的关联内容。已取消的记录不可重复操作。
+        </div>
+        <div>
+          <label class="block text-body-sm text-on-surface-variant mb-1">取消原因 <span class="text-red-500">*</span></label>
+          <textarea v-model="cancelReason" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none" rows="3" placeholder="记录取消原因（留痕）"></textarea>
+        </div>
+      </div>
+      <div slot="footer" class="flex justify-end gap-2">
+        <button class="px-4 py-2 text-body-sm border border-outline-variant rounded-lg hover:bg-surface-container-low" @click="cancelDialogVisible = false">关闭</button>
+        <button class="px-4 py-2 text-body-sm bg-warning text-white rounded-lg hover:opacity-90 disabled:opacity-60" :disabled="cancelSubmitting" @click="submitCancel">
+          {{ cancelSubmitting ? '提交中...' : '确认取消违规' }}
+        </button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import UserSelect from '@/components/UserSelect.vue'
 import UserCell from '@/components/UserCell.vue'
+import ContentPreviewDialog from '@/components/ContentPreviewDialog.vue'
 import { handleResponse } from '../../../shared/feedback'
 
 export default {
   name: 'ViolationPage',
-  components: { UserSelect, UserCell },
+  components: { UserSelect, UserCell, ContentPreviewDialog },
   data() {
     return {
       loading: false,
@@ -146,11 +192,24 @@ export default {
         relatedType: '',
         relatedId: '',
         remark: ''
-      }
+      },
+      // #11 内容预览
+      previewVisible: false,
+      previewItem: null,
+      // #12 路由定位高亮的违规 id
+      highlightId: null,
+      // #14 取消违规
+      cancelDialogVisible: false,
+      cancelTarget: null,
+      cancelReason: '',
+      cancelSubmitting: false
     }
   },
   mounted() {
     this.loadViolationOptions()
+    // #12 从申诉管理跳转过来时按违规 id 定位
+    const qid = parseInt(this.$route.query.violationId)
+    if (qid) this.highlightId = qid
     this.loadList()
   },
   methods: {
@@ -177,6 +236,7 @@ export default {
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0
+          this.$nextTick(() => this.scrollToHighlight())
         } else { this.list = [] }
       } catch (e) { this.list = [] }
       finally { this.loading = false }
@@ -212,6 +272,63 @@ export default {
     getRelatedTypeLabel(t) {
       return { article: '帖子', comment: '评论', reply: '回复' }[t] || t
     },
+    // ========== #11 内容预览 ==========
+    openContentPreview(item) {
+      this.previewItem = {
+        targetType: item.relatedType,
+        targetId: item.relatedId,
+        targetArticleId: item.relatedArticleId || (item.relatedType === 'article' ? item.relatedId : null),
+        reason: item.remark || ''
+      }
+      this.previewVisible = true
+    },
+    // ========== #12 互跳 ==========
+    goAppeal(violationId) {
+      this.$router.push({ path: '/appeal', query: { appealViolationId: violationId } })
+    },
+    /** 列表加载后滚动到路由定位的违规行并高亮 */
+    scrollToHighlight() {
+      if (!this.highlightId) return
+      const el = document.querySelector(`[data-violation-id="${this.highlightId}"]`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => { this.highlightId = null }, 3000)
+      }
+    },
+    // ========== #14 取消违规 ==========
+    openCancelDialog(item) {
+      this.cancelTarget = item
+      this.cancelReason = ''
+      // 有审核中申诉：先二次确认
+      const doOpen = () => { this.cancelDialogVisible = true }
+      if (item.appealStatus === 'pending') {
+        this.$confirm('该违规存在审核中的申诉，建议先处理该申诉。确认仍要取消该违规吗？', '二次确认', {
+          type: 'warning', confirmButtonText: '仍要取消', cancelButtonText: '再想想'
+        }).then(doOpen).catch(() => {})
+      } else {
+        doOpen()
+      }
+    },
+    async submitCancel() {
+      if (!this.cancelTarget) return
+      if (!this.cancelReason || !this.cancelReason.trim()) {
+        this.$message.warning('请填写取消原因')
+        return
+      }
+      this.cancelSubmitting = true
+      try {
+        const res = await this.postRequest('/admin/violation/cancel', {
+          violationId: this.cancelTarget.id,
+          reason: this.cancelReason.trim()
+        })
+        handleResponse(res, {
+          successMsg: '违规已取消，扣分已回滚，关联内容已恢复',
+          errorMsg: '取消失败',
+          onSuccess: async () => { this.cancelDialogVisible = false; await this.loadList() }
+        })
+      } catch (e) { this.$message.error('取消失败') }
+      finally { this.cancelSubmitting = false }
+    },
     changePage(page) {
       this.currentPage = page
       this.loadList()
@@ -219,3 +336,10 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.violation-row-highlight {
+  background-color: rgb(254 243 199 / 0.6);
+  transition: background-color 0.6s ease;
+}
+</style>
