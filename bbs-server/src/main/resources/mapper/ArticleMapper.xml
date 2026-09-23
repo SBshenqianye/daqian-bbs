@@ -253,14 +253,14 @@
         FROM bbs_article a
         LEFT JOIN bbs_article_label l ON a.article_label_id = l.label_id
         WHERE a.is_delete = 0
-        <if test="enable != null and enable != ''">
+        <if test="enable != null">
             AND a.enable = #{enable}
         </if>
         <if test="keywords != null and keywords != ''">
             AND (a.article_title LIKE concat('%', #{keywords}, '%')
                  OR a.article_author LIKE concat('%', #{keywords}, '%'))
         </if>
-        <if test="labelId != null and labelId != ''">
+        <if test="labelId != null">
             AND a.article_label_id = #{labelId}
         </if>
         <if test="startTime != null and startTime != ''">
@@ -277,14 +277,14 @@
         SELECT COUNT(1)
         FROM bbs_article a
         WHERE a.is_delete = 0
-        <if test="enable != null and enable != ''">
+        <if test="enable != null">
             AND a.enable = #{enable}
         </if>
         <if test="keywords != null and keywords != ''">
             AND (a.article_title LIKE concat('%', #{keywords}, '%')
                  OR a.article_author LIKE concat('%', #{keywords}, '%'))
         </if>
-        <if test="labelId != null and labelId != ''">
+        <if test="labelId != null">
             AND a.article_label_id = #{labelId}
         </if>
         <if test="startTime != null and startTime != ''">
@@ -306,7 +306,7 @@
             AND (a.article_title LIKE concat('%', #{keywords}, '%')
                  OR a.article_author LIKE concat('%', #{keywords}, '%'))
         </if>
-        <if test="labelId != null and labelId != ''">
+        <if test="labelId != null">
             AND a.article_label_id = #{labelId}
         </if>
         <if test="startTime != null and startTime != ''">
@@ -327,7 +327,7 @@
         WHERE a.is_delete = 0
           AND a.enable = 1
           AND a.is_featured = 1
-        <if test="labelId != null and labelId != ''">
+        <if test="labelId != null">
             AND a.article_label_id = #{labelId}
         </if>
         ORDER BY a.create_time DESC
@@ -356,7 +356,7 @@
             AND (a.article_title LIKE concat('%', #{keywords}, '%')
                  OR a.article_author LIKE concat('%', #{keywords}, '%'))
         </if>
-        <if test="labelId != null and labelId != ''">
+        <if test="labelId != null">
             AND a.article_label_id = #{labelId}
         </if>
         <if test="startTime != null and startTime != ''">
@@ -374,7 +374,7 @@
         WHERE a.is_delete = 0
           AND a.enable = 1
           AND a.is_featured = 1
-        <if test="labelId != null and labelId != ''">
+        <if test="labelId != null">
             AND a.article_label_id = #{labelId}
         </if>
     </select>
