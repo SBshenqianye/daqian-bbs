@@ -24,6 +24,8 @@ import com.walker.vo.param.PersonalPointsRankParam;
 import com.walker.vo.PersonalPointsRankVO;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -71,6 +73,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Autowired
     private PointsLogService pointsLogService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     /**
      * 发布文章
@@ -941,6 +946,23 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(article.getUserId(), -featuredPoints, "取消精华帖扣回积分",
                     "article", articleId, null);
+        }
+        // 通知作者：设为精华 / 取消精华
+        Integer operatorId = null;
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof User) {
+            operatorId = ((User) auth.getPrincipal()).getId();
+        }
+        if (newFeatured == 1 && oldFeatured != 1) {
+            String titleSuffix = article.getArticleTitle() != null ? "（《" + article.getArticleTitle() + "》）" : "";
+            notificationService.createNotification(article.getUserId(), operatorId,
+                    "featured_granted", "恭喜！您的帖子被设为精华帖，已获得精华积分" + titleSuffix,
+                    "article", articleId);
+        } else if (newFeatured != 1 && oldFeatured == 1) {
+            String titleSuffix = article.getArticleTitle() != null ? "（《" + article.getArticleTitle() + "》）" : "";
+            notificationService.createNotification(article.getUserId(), operatorId,
+                    "featured_revoked", "您的帖子" + titleSuffix + "被取消精华，对应积分已扣回",
+                    "article", articleId);
         }
         return ResultBean.success(isFeatured == 1 ? "已设为精华帖" : "已取消精华帖");
     }
