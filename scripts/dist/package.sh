@@ -39,6 +39,56 @@ check_artifacts() {
 }
 
 
+# --------------- 生成瘦 jar（依赖下沉版） ---------------
+# fat jar（ZIP 布局）→ 去掉 BOOT-INF/lib → 瘦 jar。
+# 依赖由基础镜像内 /app/lib 提供（启动参数 -Dloader.path=/app/lib），
+# 升级包因此只携带业务代码 + 前端，体积从 ~67MB 降到 ~5MB。
+# 旧 fat jar 升级包仍兼容：自包含，在任何镜像上都能跑（见兼容矩阵）。
+make_thin_jar() {
+    local fat="$1" thin="$2"
+    info "生成瘦 jar（剔除 BOOT-INF/lib）: $(basename "$thin")"
+
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - "$fat" "$thin" <<'PYEOF'
+import zipfile, sys
+src, dst = sys.argv[1], sys.argv[2]
+with zipfile.ZipFile(src, 'r') as zin, zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zout:
+    for item in zin.infolist():
+        if item.filename.startswith('BOOT-INF/lib/'):
+            continue
+        zout.writestr(item, zin.read(item.filename))
+PYEOF
+    elif command -v python >/dev/null 2>&1; then
+        python - "$fat" "$thin" <<'PYEOF'
+import zipfile, sys
+src, dst = sys.argv[1], sys.argv[2]
+with zipfile.ZipFile(src, 'r') as zin, zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zout:
+    for item in zin.infolist():
+        if item.filename.startswith('BOOT-INF/lib/'):
+            continue
+        zout.writestr(item, zin.read(item.filename))
+PYEOF
+    else
+        err "生成瘦 jar 需要 python3 或 python（用于 zip 重写），请先安装"
+        exit 1
+    fi
+
+    # 校验：瘦 jar 不应再包含 BOOT-INF/lib
+    local has_lib
+    if command -v python3 >/dev/null 2>&1; then
+        has_lib=$(python3 -c "import zipfile; z=zipfile.ZipFile('$thin'); print(1 if any(n.startswith('BOOT-INF/lib/') for n in z.namelist()) else 0)")
+    else
+        has_lib=$(python -c "import zipfile; z=zipfile.ZipFile('$thin'); print(1 if any(n.startswith('BOOT-INF/lib/') for n in z.namelist()) else 0)")
+    fi
+    if [ "$has_lib" = "0" ]; then
+        ok "瘦 jar 校验通过（不含 BOOT-INF/lib）"
+    else
+        err "瘦 jar 生成异常：仍包含 BOOT-INF/lib，已中止"
+        exit 1
+    fi
+}
+
+
 # --------------- 创建压缩包（输出到 dist/） ---------------
 create_tarball() {
     local dir_name="$1"        # 压缩包内目录名
@@ -79,9 +129,9 @@ package_upgrade() {
 
     info "===== 轻量升级包（时间戳: $TIMESTAMP） ====="
 
-    # 1. 复制构建产物
+    # 1. 复制构建产物（fat jar → 瘦 jar，依赖由镜像内 /app/lib 提供）
     if [ -f "bbs-server/target/bbs-server.jar" ]; then
-        cp bbs-server/target/bbs-server.jar "$OUTPUT_DIR/"
+        make_thin_jar "bbs-server/target/bbs-server.jar" "$OUTPUT_DIR/bbs-server.jar"
     else
         warn "bbs-server.jar 不存在，跳过"
     fi
@@ -185,7 +235,7 @@ if [ "\$tries" -ge 30 ]; then
         -e BBS_SERVER_PORT="\${BBS_SERVER_PORT:-60000}" \
         -v "\$BBS_HOME/current/bbs-server.jar:/app/app.jar:Z" \
         -v "\$UPLOAD_DIR:\$UPLOAD_DIR:Z" \
-        bbs-server-base -Xmx2g -jar /app/app.jar --spring.profiles.active=podman
+        bbs-server-base -Xmx2g -Dloader.path=/app/lib -jar /app/app.jar --spring.profiles.active=podman
     info "等待后端启动，再次验证挂载..."
     sleep 10
     tries=0

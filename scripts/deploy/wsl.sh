@@ -266,7 +266,7 @@ start_backend() {
         -e BBS_SERVER_PORT="$BBS_SERVER_PORT" \
         -v "$jar_abs:/app/app.jar:Z" \
         -v "$BBS_UPLOAD_DIR:$BBS_UPLOAD_DIR:Z" \
-        bbs-server-base -Xmx2g -jar /app/app.jar --spring.profiles.active=podman
+        bbs-server-base -Xmx2g -Dloader.path=/app/lib -jar /app/app.jar --spring.profiles.active=podman
 
     ok "bbs-server 容器已启动"
 
@@ -331,8 +331,9 @@ show_header "BBS WSL 部署"
 
 case "$MODE" in
     --build|build)
-        ensure_base_images
+        # 先构建产物再构建镜像：bbs-server-base 镜像需 COPY target/lib（mvn 产物）
         build_artifacts
+        ensure_base_images
         start_backend 1 2
         start_nginx 2 2
         ;;

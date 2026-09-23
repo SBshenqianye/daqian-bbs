@@ -20,6 +20,12 @@ RUN sed -i 's|mirrorlist=|#mirrorlist=|g; s|#baseurl=http://mirror.centos.org|ba
 
 WORKDIR /app
 
+# 应用依赖层（依赖下沉）：由构建流程 mvn package 拷到 bbs-server/target/lib/，
+# 镜像内固定为 /app/lib。运行时通过 -Dloader.path=/app/lib 由瘦 jar 加载。
+# 依赖变更（pom.xml）→ base.sh 的 checksum 检测 → 自动重建本镜像。
+# 注意：构建本镜像前必须先执行 mvn clean package -DskipTests（保证 target/lib 存在）。
+COPY target/lib/ /app/lib/
+
 EXPOSE 9083
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

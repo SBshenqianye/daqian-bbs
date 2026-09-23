@@ -151,7 +151,7 @@ $RUNNER run -d \
     -e BBS_SERVER_PORT="$BBS_SERVER_PORT" \
     -v "$BBS_HOME/current/bbs-server.jar:/app/app.jar:Z" \
     -v "$BASE:$BASE:Z" \
-    bbs-server-base -Xmx2g -jar /app/app.jar --spring.profiles.active=podman
+    bbs-server-base -Xmx2g -Dloader.path=/app/lib -jar /app/app.jar --spring.profiles.active=podman
 ok "bbs-server 已重建（BBS_UPLOAD_DIR=$BBS_UPLOAD_DIR）"
 
 # ============================================

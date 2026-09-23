@@ -47,8 +47,9 @@ fi
 
 # --------------- 依赖声明 ---------------
 # 每个基础镜像关联一个"依赖文件列表"（相对于项目根目录）
+# bbs-server-base 依赖 pom.xml：后端依赖变更（pom 变化）→ checksum 变化 → 自动重建镜像
 declare -A BASE_IMAGE_DEPS
-BASE_IMAGE_DEPS["bbs-server-base"]="bbs-server/Dockerfile.base"
+BASE_IMAGE_DEPS["bbs-server-base"]="bbs-server/Dockerfile.base bbs-server/pom.xml"
 BASE_IMAGE_DEPS["bbs-nginx-base"]="nginx/Dockerfile.base nginx/nginx.conf.template"
 
 # 每个基础镜像对应的 Dockerfile 路径
@@ -148,6 +149,12 @@ build_base_image() {
     current_hash=$(calc_checksum "$dep_files")
     local cached_hash
     cached_hash=$(get_cached_checksum "$image_name")
+
+    if [ "$image_name" = "bbs-server-base" ] && [ ! -d "bbs-server/target/lib" ]; then
+        err "bbs-server-base 依赖层缺失：bbs-server/target/lib 不存在"
+        err "请先构建后端产物：cd bbs-server && mvn clean package -DskipTests（会自动拷出 target/lib）"
+        return 1
+    fi
 
     if ! needs_rebuild "$image_name" "$dep_files" "$force"; then
         info "${image_name} 依赖未变更，跳过构建"

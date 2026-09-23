@@ -171,7 +171,7 @@ start_bbs_server() {
         -e BBS_SERVER_PORT="$BBS_SERVER_PORT" \
         -v "$BBS_HOME/current/bbs-server.jar:/app/app.jar:Z" \
         -v "$BBS_UPLOAD_DIR:$BBS_UPLOAD_DIR:Z" \
-        bbs-server-base -Xmx2g -jar /app/app.jar --spring.profiles.active=podman
+        bbs-server-base -Xmx2g -Dloader.path=/app/lib -jar /app/app.jar --spring.profiles.active=podman
 
     ok "bbs-server 已启动"
 

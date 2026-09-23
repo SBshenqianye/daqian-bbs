@@ -185,7 +185,35 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>com.walker.BBSApplication</mainClass>
+                    <!-- ZIP 布局：Main-Class 变为 PropertiesLauncher，
+                         配合 -Dloader.path 从外部目录加载依赖（依赖下沉基础镜像后，
+                         升级包只带瘦 jar；旧 fat jar 包仍兼容，因为启动方式保持 -jar） -->
+                    <layout>ZIP</layout>
                 </configuration>
+            </plugin>
+            <!-- 依赖外置：mvn package 时把 runtime 依赖拷到 target/lib/，
+                 供基础镜像 COPY 进 /app/lib（对应 Dockerfile.base） -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-runtime-libs</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                            <includeTypes>jar</includeTypes>
+                            <!-- 与 spring-boot-maven-plugin 的排除规则保持一致：
+                                 devtools 仅开发期使用，不随运行依赖分发 -->
+                            <excludeArtifactIds>spring-boot-devtools</excludeArtifactIds>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
