@@ -5,7 +5,7 @@
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="font-headline-lg text-headline-lg text-on-surface flex items-center gap-2">
-            <span class="material-symbols-outlined text-warning">gavel</span>
+            <span class="material-symbols-outlined text-amber-600">gavel</span>
             违规管理
           </h1>
           <p class="text-body-md text-secondary mt-1">管理用户违规记录与积分扣减</p>
@@ -125,7 +125,7 @@
                 </td>
                 <!-- 操作（#14 取消违规） -->
                 <td class="px-4 py-3 text-body-sm whitespace-nowrap">
-                  <button v-if="item.status !== 'cancelled'" class="px-2 py-1 border border-warning/50 text-warning rounded text-[12px] hover:bg-warning/5" @click="openCancelDialog(item)">取消违规</button>
+                  <button v-if="item.status !== 'cancelled'" class="px-2 py-1 border border-amber-500/50 text-amber-600 rounded text-[12px] hover:bg-amber-50" @click="openCancelDialog(item)">取消违规</button>
                   <span v-else class="text-on-surface-variant text-[12px]">已取消</span>
                 </td>
                 <!-- 时间 -->
@@ -149,7 +149,7 @@
     <!-- #14 取消违规对话框 -->
     <el-dialog title="取消违规" :visible.sync="cancelDialogVisible" width="480px" :close-on-click-modal="false">
       <div class="space-y-4" v-if="cancelTarget">
-        <div class="px-3 py-2 bg-warning/5 border border-warning/30 rounded-lg text-[13px]">
+        <div class="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-[13px]">
           将回滚该次扣分并恢复被隐藏/删除的关联内容。已取消的记录不可重复操作。
         </div>
         <div>
@@ -159,7 +159,7 @@
       </div>
       <div slot="footer" class="flex justify-end gap-2">
         <button class="px-4 py-2 text-body-sm border border-outline-variant rounded-lg hover:bg-surface-container-low" @click="cancelDialogVisible = false">关闭</button>
-        <button class="px-4 py-2 text-body-sm bg-warning text-white rounded-lg hover:opacity-90 disabled:opacity-60" :disabled="cancelSubmitting" @click="submitCancel">
+        <button class="px-4 py-2 text-body-sm bg-primary text-white rounded-lg hover:opacity-90 disabled:opacity-60" :disabled="cancelSubmitting" @click="submitCancel">
           {{ cancelSubmitting ? '提交中...' : '确认取消违规' }}
         </button>
       </div>
