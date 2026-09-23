@@ -7,10 +7,13 @@ import com.walker.pojo.FeaturedRecommendation;
 import com.walker.pojo.User;
 import com.walker.service.impl.FeaturedRecommendationServiceImpl;
 import com.walker.vo.ResultBean;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.lang.reflect.Field;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -49,6 +52,21 @@ class FeaturedRecommendationServiceTest {
         Field baseMapperField = recommendationService.getClass().getSuperclass().getDeclaredField("baseMapper");
         baseMapperField.setAccessible(true);
         baseMapperField.set(recommendationService, recommendationMapper);
+        // 默认当前登录管理员 id=1，敏感用例可覆盖
+        setCurrentUser(1);
+    }
+
+    @AfterEach
+    void tearDownAuth() {
+        SecurityContextHolder.clearContext();
+    }
+
+    /** 模拟 JWT 登录态：principal 为 User 实体 */
+    private void setCurrentUser(int id) {
+        User user = new User();
+        user.setId(id);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
     }
 
     @Test
@@ -182,5 +200,26 @@ class FeaturedRecommendationServiceTest {
         ResultBean result = recommendationService.review(1, "rejected", "不符合标准", 1);
         assertEquals(200, result.getCode());
         verify(notificationService).createNotification(eq(2), eq(1), eq("featured_review"), contains("已拒绝"), eq("article"), eq(10));
+    }
+
+    // ==================== 操作人身份校验（JWT） ====================
+
+    @Test
+    @DisplayName("审核推荐 → 无登录态 → 拒绝")
+    void review_noAuth_returnsError() {
+        SecurityContextHolder.clearContext();
+        ResultBean result = recommendationService.review(1, "approved", "好", 1);
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("登录"));
+    }
+
+    @Test
+    @DisplayName("审核推荐 → 前端伪造审核人 id ≠ 登录态 → 拒绝")
+    void review_forgedReviewer_returnsError() {
+        // 登录态为 1，却传 reviewerId=2 → 拒绝，且不更新
+        ResultBean result = recommendationService.review(1, "approved", "好", 2);
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("身份"));
+        verify(recommendationMapper, never()).updateById(any(FeaturedRecommendation.class));
     }
 }

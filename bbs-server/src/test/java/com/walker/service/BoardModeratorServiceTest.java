@@ -6,13 +6,17 @@ import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.walker.mapper.BoardModeratorMapper;
 import com.walker.mapper.ModeratorRewardCancelMapper;
 import com.walker.pojo.BoardModerator;
+import com.walker.pojo.User;
 import com.walker.service.impl.BoardModeratorServiceImpl;
 import com.walker.vo.ResultBean;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.lang.reflect.Field;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -60,6 +64,21 @@ class BoardModeratorServiceTest {
                 new MapperBuilderAssistant(new MybatisConfiguration(), ""),
                 BoardModerator.class
         );
+        // 默认当前登录管理员 id=1，敏感用例可覆盖
+        setCurrentUser(1);
+    }
+
+    @AfterEach
+    void tearDownAuth() {
+        SecurityContextHolder.clearContext();
+    }
+
+    /** 模拟 JWT 登录态：principal 为 User 实体 */
+    private void setCurrentUser(int id) {
+        User user = new User();
+        user.setId(id);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
     }
 
     @Test
@@ -288,5 +307,26 @@ class BoardModeratorServiceTest {
                     && mod.getStatus() == 1
                     && "moderator".equals(mod.getRoleType());
         }));
+    }
+
+    // ==================== 操作人身份校验（JWT） ====================
+
+    @Test
+    @DisplayName("任命版主 → 无登录态 → 拒绝")
+    void appoint_noAuth_returnsError() {
+        SecurityContextHolder.clearContext();
+        ResultBean result = boardModeratorService.appoint(1, 1, 1);
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("登录"));
+    }
+
+    @Test
+    @DisplayName("任命版主 → 前端伪造操作人 id ≠ 登录态 → 拒绝")
+    void appoint_forgedOperator_returnsError() {
+        // 登录态为 1，却传 operatorId=2 → 拒绝，且不落库
+        ResultBean result = boardModeratorService.appoint(1, 1, 2);
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("身份"));
+        verify(boardModeratorMapper, never()).insert(any(BoardModerator.class));
     }
 }

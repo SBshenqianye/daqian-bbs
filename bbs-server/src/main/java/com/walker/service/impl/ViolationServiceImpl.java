@@ -89,6 +89,16 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
         if (userId == null || violationType == null || operatorId == null) {
             return ResultBean.error("参数不完整");
         }
+        // 操作人以登录态身份为准：前端传入的 operatorId 必须与当前登录用户一致，防伪造
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (!currentUserId.equals(operatorId)) {
+            return ResultBean.error("操作人身份校验失败，请重新登录后操作");
+        }
+        // 后续落库、扣分与通知均以登录态 currentUserId 为准
+        operatorId = currentUserId;
 
         Date now = new Date();
         SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");

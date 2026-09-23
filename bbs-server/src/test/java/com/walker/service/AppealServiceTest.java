@@ -6,13 +6,17 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.walker.mapper.AppealMapper;
 import com.walker.pojo.Appeal;
+import com.walker.pojo.User;
 import com.walker.service.impl.AppealServiceImpl;
 import com.walker.vo.ResultBean;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.lang.reflect.Field;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -52,6 +56,21 @@ class AppealServiceTest {
         baseMapperField.setAccessible(true);
         baseMapperField.set(appealService, appealMapper);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), Appeal.class);
+        // 默认当前登录管理员 id=1，敏感用例可覆盖
+        setCurrentUser(1);
+    }
+
+    @AfterEach
+    void tearDownAuth() {
+        SecurityContextHolder.clearContext();
+    }
+
+    /** 模拟 JWT 登录态：principal 为 User 实体 */
+    private void setCurrentUser(int id) {
+        User user = new User();
+        user.setId(id);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
     }
 
     @Test
@@ -237,5 +256,26 @@ class AppealServiceTest {
         @SuppressWarnings("unchecked")
         java.util.Map<String, Object> data = (java.util.Map<String, Object>) result.getObj();
         assertNotNull(data.get("records"));
+    }
+
+    // ==================== 操作人身份校验（JWT） ====================
+
+    @Test
+    @DisplayName("审核申诉 → 无登录态 → 拒绝")
+    void reviewAppeal_noAuth_returnsError() {
+        SecurityContextHolder.clearContext();
+        ResultBean result = appealService.reviewAppeal(1, 1, "accepted", "同意");
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("登录"));
+    }
+
+    @Test
+    @DisplayName("审核申诉 → 前端伪造审核人 id ≠ 登录态 → 拒绝")
+    void reviewAppeal_forgedReviewer_returnsError() {
+        // 登录态为 1，却传 reviewerId=2（伪造他人）→ 拒绝
+        ResultBean result = appealService.reviewAppeal(1, 2, "accepted", "同意");
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("身份"));
+        verify(appealMapper, never()).updateById(any(Appeal.class));
     }
 }

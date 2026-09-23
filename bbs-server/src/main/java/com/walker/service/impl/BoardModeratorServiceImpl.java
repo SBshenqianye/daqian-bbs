@@ -20,6 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,11 +52,31 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
     @Autowired
     private DictService dictService;
 
+    /**
+     * 从登录态（JWT）获取当前操作人 id。/admin/** 已由 Spring Security 强制认证。
+     * 管理端敏感操作以"服务端可信身份"为准，不信任前端传入的 operatorId（#2/#14 同一模式）。
+     */
+    private Integer getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof User) {
+            return ((User) auth.getPrincipal()).getId();
+        }
+        return null;
+    }
+
     @Override
     @Transactional
     public ResultBean appoint(Integer userId, Integer labelId, Integer operatorId) {
         if (userId == null || labelId == null) {
             return ResultBean.error("参数不完整");
+        }
+        // 操作人以登录态身份为准：前端传入的 operatorId 必须与当前登录用户一致，防伪造
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (operatorId != null && !currentUserId.equals(operatorId)) {
+            return ResultBean.error("操作人身份校验失败，请重新登录后操作");
         }
 
         // 检查是否已有有效版主
@@ -124,7 +146,15 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
     @Override
     @Transactional
     public ResultBean monthlyReward(Integer operatorId) {
-        return doMonthlyReward(operatorId, false);
+        // 手动发放：操作人以登录态身份为准（自动发放走 autoMonthlyReward，固定系统超管 id=1）
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (operatorId != null && !currentUserId.equals(operatorId)) {
+            return ResultBean.error("操作人身份校验失败，请重新登录后操作");
+        }
+        return doMonthlyReward(currentUserId, false);
     }
 
     /**
@@ -276,6 +306,16 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
         if (userId == null) {
             return ResultBean.error("用户ID不能为空");
         }
+        // 操作人以登录态身份为准，不信任前端传入的 operatorId
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (operatorId != null && !currentUserId.equals(operatorId)) {
+            return ResultBean.error("操作人身份校验失败，请重新登录后操作");
+        }
+        // 后续落库与通知均以登录态 currentUserId 为准
+        operatorId = currentUserId;
 
         SimpleDateFormat monthFmt = new SimpleDateFormat("yyyy-MM");
         String currentMonth = monthFmt.format(new Date());

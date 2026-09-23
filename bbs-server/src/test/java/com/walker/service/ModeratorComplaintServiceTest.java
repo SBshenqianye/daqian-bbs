@@ -9,10 +9,13 @@ import com.walker.pojo.User;
 import com.walker.service.impl.ModeratorComplaintServiceImpl;
 import com.walker.vo.ResultBean;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.lang.reflect.Field;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -51,6 +54,21 @@ class ModeratorComplaintServiceTest {
         baseMapperField.setAccessible(true);
         baseMapperField.set(complaintService, complaintMapper);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), ModeratorComplaint.class);
+        // 默认当前登录管理员 id=1，敏感用例可覆盖
+        setCurrentUser(1);
+    }
+
+    @AfterEach
+    void tearDownAuth() {
+        SecurityContextHolder.clearContext();
+    }
+
+    /** 模拟 JWT 登录态：principal 为 User 实体 */
+    private void setCurrentUser(int id) {
+        User user = new User();
+        user.setId(id);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
     }
 
     @Test
@@ -200,5 +218,26 @@ class ModeratorComplaintServiceTest {
         List<Map<String, Object>> records = (List<Map<String, Object>>) result.getObj();
         assertEquals(1, records.size());
         assertEquals("版主张三", records.get(0).get("moderatorName"));
+    }
+
+    // ==================== 操作人身份校验（JWT） ====================
+
+    @Test
+    @DisplayName("审核投诉 → 无登录态 → 拒绝")
+    void review_noAuth_returnsError() {
+        SecurityContextHolder.clearContext();
+        ResultBean result = complaintService.review(1, "accepted", "备注", 1);
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("登录"));
+    }
+
+    @Test
+    @DisplayName("审核投诉 → 前端伪造审核人 id ≠ 登录态 → 拒绝")
+    void review_forgedReviewer_returnsError() {
+        // 登录态为 1，却传 reviewerId=2 → 拒绝，且不更新
+        ResultBean result = complaintService.review(1, "accepted", "属实", 2);
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("身份"));
+        verify(complaintMapper, never()).updateById(any(ModeratorComplaint.class));
     }
 }

@@ -13,6 +13,8 @@ import com.walker.service.UserService;
 import com.walker.service.ViolationService;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,18 @@ public class AppealServiceImpl extends ServiceImpl<AppealMapper, Appeal> impleme
 
     @Autowired
     private ViolationService violationService;
+
+    /**
+     * 从登录态（JWT）获取当前操作人 id。/admin/** 已由 Spring Security 强制认证。
+     * 审核人以"服务端可信身份"为准，不信任前端传入的 reviewerId（#2/#14 同一模式）。
+     */
+    private Integer getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof User) {
+            return ((User) auth.getPrincipal()).getId();
+        }
+        return null;
+    }
 
     @Override
     @Transactional
@@ -75,9 +89,19 @@ public class AppealServiceImpl extends ServiceImpl<AppealMapper, Appeal> impleme
     @Override
     @Transactional
     public ResultBean reviewAppeal(Integer appealId, Integer reviewerId, String status, String remark) {
-        if (appealId == null || reviewerId == null || status == null) {
+        if (appealId == null || status == null) {
             return ResultBean.error("参数不完整");
         }
+        // 审核人以登录态身份为准：前端传入的 reviewerId 必须与当前登录用户一致，防伪造
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (reviewerId != null && !currentUserId.equals(reviewerId)) {
+            return ResultBean.error("审核人身份校验失败，请重新登录后操作");
+        }
+        // 后续落库与通知均以登录态 currentUserId 为准
+        reviewerId = currentUserId;
 
         Appeal appeal = this.getById(appealId);
         if (appeal == null) {

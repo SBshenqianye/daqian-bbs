@@ -257,6 +257,25 @@ class ViolationServiceTest {
         assertTrue(result.getMessage().contains("未知的违规类型"));
     }
 
+    @Test
+    @DisplayName("添加违规 → 无登录态 → 拒绝")
+    void addViolation_noAuth_returnsError() {
+        SecurityContextHolder.clearContext();
+        ResultBean result = violationService.addViolation(1, "spam", "article", 1, 1, "灌水");
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("登录"));
+    }
+
+    @Test
+    @DisplayName("添加违规 → 前端伪造操作人 id ≠ 登录态 → 拒绝")
+    void addViolation_forgedOperator_returnsError() {
+        // 登录态为 1，却传 operatorId=2 → 拒绝，且不落库
+        ResultBean result = violationService.addViolation(1, "spam", "article", 1, 2, "灌水");
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("身份"));
+        verify(violationMapper, never()).insert(any(Violation.class));
+    }
+
     // ========== #14 取消违规 测试 ==========
 
     /** 构造一条生效中的违规记录 */

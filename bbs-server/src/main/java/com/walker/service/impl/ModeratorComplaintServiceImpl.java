@@ -14,6 +14,8 @@ import com.walker.service.UserService;
 import com.walker.utils.ConstantUtil;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,18 @@ public class ModeratorComplaintServiceImpl extends ServiceImpl<ModeratorComplain
 
     @Autowired
     private NotificationService notificationService;
+
+    /**
+     * 从登录态（JWT）获取当前操作人 id。/admin/** 已由 Spring Security 强制认证。
+     * 审核人以"服务端可信身份"为准，不信任前端传入的 reviewerId（#2/#14 同一模式）。
+     */
+    private Integer getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof User) {
+            return ((User) auth.getPrincipal()).getId();
+        }
+        return null;
+    }
 
     @Override
     @Transactional
@@ -84,6 +98,16 @@ public class ModeratorComplaintServiceImpl extends ServiceImpl<ModeratorComplain
         if (!"accepted".equals(status) && !"rejected".equals(status)) {
             return ResultBean.error("无效的审核状态");
         }
+        // 审核人以登录态身份为准：前端传入的 reviewerId 必须与当前登录用户一致，防伪造
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (reviewerId != null && !currentUserId.equals(reviewerId)) {
+            return ResultBean.error("审核人身份校验失败，请重新登录后操作");
+        }
+        // 后续落库与通知均以登录态 currentUserId 为准
+        reviewerId = currentUserId;
 
         ModeratorComplaint complaint = this.getById(complaintId);
         if (complaint == null) {
