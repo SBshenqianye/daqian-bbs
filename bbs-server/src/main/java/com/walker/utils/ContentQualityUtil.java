@@ -20,23 +20,20 @@ public class ContentQualityUtil {
     private static final int LOW_QUALITY_THRESHOLD = 60;
 
     // ── 常见垃圾/灌水短语（从 bbs_sensitive_word 补充，此处为硬编码兜底） ──
+    // 注意：只保留"强灌水特征"词（叠词灌水/灌水黑话/纯数字），
+    // 不含"好、看看、可以、不错、顶、打卡"等正常高频词（contains 匹配会误伤正常文章，2026-09 生产故障）
 
     private static final List<String> SPAM_PHRASES = Arrays.asList(
         // 无意义叠词
         "哈哈哈", "嘻嘻嘻", "嘿嘿嘿", "啊啊啊", "嗯嗯嗯", "哦哦哦", "呵呵呵",
         "啦啦啦", "呜呜呜", "哈哈哈啊", "嘿嘿",
-        // 灌水常用
-        "沙发", "占位", "占楼", "路过", "马克", "mark", "mark一下",
-        "顶", "顶贴", "灌水", "水水水", "水帖", "路过看看",
-        "来了", "看看", "路过", "打卡", "签到",
+        // 论坛灌水黑话
+        "沙发", "占位", "占楼", "灌水", "水水水", "水帖", "顶贴", "路过看看",
         // 纯数字灌水
         "666", "6666", "66666", "666666", "888", "8888", "111", "11111",
         "123", "1234", "12345", "123456",
-        // 无意义单字/双字
-        "好", "嗯", "哦", "啊", "额", "呃", "好吧", "可以",
-        "是的", "对的", "不错", "挺好", "挺好的", "还好",
-        // 测试类
-        "test", "测试", "测试测试", "测试一下", "testtest"
+        // 测试类（英文，避免与"测试""Markdown"等正常词误伤）
+        "test", "testtest"
     );
 
     // ── 正则模式预编译 ──
@@ -78,12 +75,18 @@ public class ContentQualityUtil {
         List<String> reasons = new ArrayList<>();
 
         // ── 1. 长度检查 ──
-        if (plainContent != null && plainContent.length() < 3) {
-            score -= 50;
-            reasons.add("内容过短（不足3字）");
-        } else if (plainContent != null && plainContent.length() < 8) {
-            score -= 20;
-            reasons.add("内容较短");
+        // 纯图片/图文内容（Markdown 图片语法 ![..](..) 或 <img>）去掉图片标记后正文可能为空，
+        // 属正常带图文章，不按"内容过短"扣分，避免带图发布被误判为垃圾（2026-09 生产故障）
+        boolean hasImageSyntax = content != null
+                && (content.contains("![") || content.toLowerCase().contains("<img"));
+        if (!hasImageSyntax) {
+            if (plainContent != null && plainContent.length() < 3) {
+                score -= 50;
+                reasons.add("内容过短（不足3字）");
+            } else if (plainContent != null && plainContent.length() < 8) {
+                score -= 20;
+                reasons.add("内容较短");
+            }
         }
 
         if (plainTitle != null && plainTitle.length() < 2) {
@@ -129,7 +132,7 @@ public class ContentQualityUtil {
             }
         }
 
-        // ── 5. 垃圾关键词匹配 ──
+        // ── 5. 垃圾关键词匹配（词表仅含强灌水特征，不含正常高频词；多个灌水词叠加扣分，正常文章零误伤） ──
         String lowerText = fullText.toLowerCase();
         boolean matchedSpam = false;
         for (String phrase : SPAM_PHRASES) {
@@ -137,7 +140,6 @@ public class ContentQualityUtil {
                 matchedSpam = true;
                 score -= 40;
                 reasons.add("匹配垃圾关键词「" + phrase + "」");
-                break; // 只扣一次
             }
         }
 

@@ -786,7 +786,8 @@ export default {
       this.postRequest(endpoint, article).then(resp => {
         loading.close()
         this.publishing = false
-        handleResponse(resp, { silent: true, onSuccess: () => this.$router.push('/stat') })
+        // 成功静默跳转（未传 successMsg 不弹 Toast）；失败弹出后端 message（不再静默吞掉，2026-09 生产故障）
+        handleResponse(resp, { onSuccess: () => this.$router.push('/stat') })
       }).catch(err => {
         console.warn('[BBSArticleWrite] publish', err)
         loading.close()

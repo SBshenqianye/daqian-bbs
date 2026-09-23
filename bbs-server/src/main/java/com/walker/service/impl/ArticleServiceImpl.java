@@ -135,9 +135,13 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             return ResultBean.error("内容不能为空");
         }
 
-        // ── 内容质量检测：垃圾内容标记为不可见，不计入积分 ──
+        // ── 内容质量检测：垃圾内容直接拒绝发布（不入库、明确提示），低质量内容正常展示但不计积分 ──
         ContentQualityUtil.QualityResult quality = ContentQualityUtil.checkContent(
                 articleParam.getArticleTitle(), articleParam.getArticleContent());
+        if (quality.isSpam()) {
+            // 前端对发布失败会展示后端 message，不再"入库但不可见"的静默模式（2026-09 生产故障）
+            return ResultBean.error("发布失败：内容被判定为" + quality.getDetail() + "，请修改后重试");
+        }
 
         Date date = new Date();
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -155,8 +159,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setUserId(articleParam.getUserId());
         article.setArticleGoodNum(0);
         article.setArticleViewNum(0);
-        // 根据内容质量检测结果决定是否通过审核：垃圾内容标记为不可见（不计积分）
-        article.setEnable(quality.isPassed() ? 1 : 0);
+        // 走到这里已通过质量检测（spam 已在上方拒绝），文章直接可见
+        article.setEnable(1);
         article.setArticleCommunityId(articleParam.getArticleCommunityId());
         article.setCreateTime(day);
 
@@ -166,21 +170,15 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             articleFileService.updateArticleFile(articleParam.getFiles(), article.getArticleId());
         }
 
-        // 发帖积分：只有通过质量检测的帖子才计分
-        if (quality.isPassed()) {
-            int postPoints = 2; // default
-            try {
-                String val = dictService.getValueByKey(ConstantUtil.MANA_POST);
-                if (val != null) postPoints = Integer.parseInt(val);
-            } catch (Exception e) { /* use default */ }
-            pointsLogService.adjustUserPoints(articleParam.getUserId(), postPoints, "发帖积分",
-                    "article", article.getArticleId(), null);
-        }
+        // 发帖积分：通过质量检测的帖子均计分（低质量内容同样计分，仅垃圾内容被拒绝不计分）
+        int postPoints = 2; // default
+        try {
+            String val = dictService.getValueByKey(ConstantUtil.MANA_POST);
+            if (val != null) postPoints = Integer.parseInt(val);
+        } catch (Exception e) { /* use default */ }
+        pointsLogService.adjustUserPoints(articleParam.getUserId(), postPoints, "发帖积分",
+                "article", article.getArticleId(), null);
 
-        // 垃圾内容提示用户
-        if (quality.isSpam()) {
-            return ResultBean.success("发布成功，但内容被判定为低质量，暂不展示且不计入积分");
-        }
         return ResultBean.success("发布成功！");
     }
 
