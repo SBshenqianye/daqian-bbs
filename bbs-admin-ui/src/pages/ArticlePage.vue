@@ -617,7 +617,6 @@ export default {
       this.$confirm(`确定${action}吗？`, '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/featured/set', { articleId: article.articleId, isFeatured: newVal }).then(resp => {
           handleResponse(resp, {
-            successMsg: newVal === 1 ? '已设为精华帖' : '已取消精华帖',
             onSuccess: () => this.fetchList()
           })
         })
@@ -642,7 +641,6 @@ export default {
           operatorId: this.getAdminId(),
         }).then(resp => {
           handleResponse(resp, {
-            successMsg: '采纳成功，作者已获得+5积分',
             errorMsg: '采纳失败',
             onSuccess: () => this.fetchList()
           })
@@ -735,42 +733,42 @@ export default {
     handleDel(articleId) {
       this.$confirm('删除文章会连评论一并删除，确定要删除该文章吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/deleteArticleByArticleId', { articleId }).then(resp => {
-          handleResponse(resp, { successMsg: '删除成功！', onSuccess: () => this.fetchList() })
+          handleResponse(resp, { onSuccess: () => this.fetchList() })
         })
       }).catch(() => {})
     },
     handleAudit(articleId) {
       this.$confirm('确定此篇文章通过审核吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/auditArticleByArticleId', { articleId }).then(resp => {
-          handleResponse(resp, { successMsg: '审核通过！', onSuccess: () => this.fetchList() })
+          handleResponse(resp, { onSuccess: () => this.fetchList() })
         })
       }).catch(() => {})
     },
     handleBatchDeleteArticlesByAlive() {
       this.$confirm('确定要删除所有已审核文章吗？', '提示', { type: 'error' }).then(() => {
         this.postRequest('/admin/handleBatchDeleteArticlesByAlive/all', {}).then(resp => {
-          handleResponse(resp, { successMsg: '批量删除成功！', onSuccess: () => this.fetchList() })
+          handleResponse(resp, { onSuccess: () => this.fetchList() })
         })
       }).catch(() => {})
     },
     handleBatchAudit() {
       this.$confirm('确定全部通过审核吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/batchAudit/', {}).then(resp => {
-          handleResponse(resp, { successMsg: '全部审核通过！', onSuccess: () => this.fetchList() })
+          handleResponse(resp, { onSuccess: () => this.fetchList() })
         })
       }).catch(() => {})
     },
     handleDeleteComment(commentId) {
       this.$confirm('确定要删除该评论吗？删除后将无法恢复。', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/comment/deleteCommentById', { commentId }).then(resp => {
-          handleResponse(resp, { successMsg: '评论删除成功！', onSuccess: () => this.getCommentByArticleId(this.detailArticleId) })
+          handleResponse(resp, { onSuccess: () => this.getCommentByArticleId(this.detailArticleId) })
         })
       }).catch(() => {})
     },
     handleDeleteReply(replyId) {
       this.$confirm('确定要删除该回复吗？删除后将无法恢复。', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/reply/deleteReplyById', { replyId }).then(resp => {
-          handleResponse(resp, { successMsg: '回复删除成功！', onSuccess: () => this.getCommentByArticleId(this.detailArticleId) })
+          handleResponse(resp, { onSuccess: () => this.getCommentByArticleId(this.detailArticleId) })
         })
       }).catch(() => {})
     },
@@ -854,7 +852,6 @@ export default {
       this.$confirm(`确定要撤销这条积分调整吗？\n\n${log.pointsChange > 0 ? '加 ' : '扣 '}${Math.abs(log.pointsChange)} 积分`, '撤销确认', { type: 'warning' }).then(() => {
         this.postRequest(`/admin/points/undo/${log.id}`, {}).then(resp => {
           handleResponse(resp, {
-            successMsg: '撤销成功！',
             onSuccess: () => {
               this.fetchPointsLog(this.pointsLogDialogUser.id)
               if (this.pointsLogDialogUser.id === this.detailUserId) {

@@ -407,7 +407,7 @@ export default {
       if (!labelId) return
       this.$confirm('确定要删除该标签吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/delArticleLabel', { labelId }).then(resp => {
-          handleResponse(resp, { successMsg: '删除成功', onSuccess: () => this.getArticleLabelPage() })
+          handleResponse(resp, { onSuccess: () => this.getArticleLabelPage() })
         })
       }).catch(() => {})
     },
@@ -420,7 +420,6 @@ export default {
         handleBatchResponse(
           labelIds.map(id => this.postRequest('/admin/delArticleLabel', { labelId: id })),
           {
-            successMsg: `批量删除完成（${labelIds.length} 个）`,
             partialMsg: `{success} 个删除成功，{fail} 个失败`,
             onSuccess: () => {
               this.multipleSelection = []

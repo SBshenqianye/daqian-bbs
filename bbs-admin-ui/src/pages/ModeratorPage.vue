@@ -254,7 +254,7 @@ export default {
         .then(async () => {
           try {
             const res = await this.postRequest('/admin/moderator/triggerAutoReward', {})
-            handleResponse(res, { successMsg: '触发成功', errorMsg: '触发失败' })
+            handleResponse(res, { errorMsg: '触发失败' })
           } catch (e) { console.warn('[ModeratorPage]', e) }
         }).catch(() => {})
     },
@@ -345,7 +345,7 @@ export default {
       this.rewarding = true
       try {
         const res = await this.postRequest('/admin/moderator/monthlyReward', { operatorId: this.currentAdminId() })
-        handleResponse(res, { successMsg: '发放成功', errorMsg: '发放失败' })
+        handleResponse(res, { errorMsg: '发放失败' })
       } catch (e) { console.warn('[ModeratorPage]', e) }
       finally { this.rewarding = false }
     }

@@ -226,7 +226,6 @@ export default {
       try {
         const res = await this.getRequestUrl(`/sensitiveWord/delSensitiveWord?id=${item.id}`)
         handleResponse(res, {
-          successMsg: '删除成功',
           errorMsg: '删除失败',
           onSuccess: () => { this.loadPage() }
         })

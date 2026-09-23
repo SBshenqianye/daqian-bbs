@@ -271,7 +271,7 @@ export default {
       if (!row || (row.id == null)) { this.$message.warning('无法获取记录ID'); return }
       this.$confirm('确定要删除该字典项吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/deleteDict', { id: row.id }).then(resp => {
-          handleResponse(resp, { successMsg: '删除成功', onSuccess: () => this.loadDictList() })
+          handleResponse(resp, { onSuccess: () => this.loadDictList() })
         })
       }).catch(() => {})
     }

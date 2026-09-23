@@ -197,7 +197,6 @@ export default {
         }
         const res = await this.postRequest('/reply/admin/approveAdopt', params)
         handleResponse(res, {
-          successMsg: action === 'confirm' ? '已通过' : '已拒绝',
           errorMsg: '操作失败',
           onSuccess: () => this.loadList(),
         })

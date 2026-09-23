@@ -743,7 +743,7 @@ export default {
     handleDelete(index, userId) {
       this.$confirm('确定要删除吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/deleteUserByUserId', { userId }).then(resp => {
-          handleResponse(resp, { successMsg: '删除成功', onSuccess: () => this.getAllUserPage() })
+          handleResponse(resp, { onSuccess: () => this.getAllUserPage() })
         })
       }).catch(() => {})
     },
@@ -752,14 +752,14 @@ export default {
       const tip = row.userType == 1 ? '确定将该用户转为管理员吗？' : '确定将该用户转为普通用户吗？'
       this.$confirm(tip, '提示', { type: 'warning' }).then(() => {
         this.postRequest('/updateUserRole', { userId: row.id, roleType }).then(resp => {
-          handleResponse(resp, { successMsg: '修改成功', onSuccess: () => this.getAllUserPage() })
+          handleResponse(resp, { onSuccess: () => this.getAllUserPage() })
         })
       }).catch(() => {})
     },
     handleUpdateAlive(index, userId) {
       this.$confirm('确定要修改状态吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/updateUserAliveByUserId', { userId }).then(resp => {
-          handleResponse(resp, { successMsg: '修改成功', onSuccess: () => this.getAllUserPage() })
+          handleResponse(resp, { onSuccess: () => this.getAllUserPage() })
         })
       }).catch(() => {})
     },
@@ -772,7 +772,7 @@ export default {
       const userIds = users.map(u => u.id).join(',')
       this.$confirm('确定要删除选中的用户吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/batchDeleteUsersByUserIds', { userIds }).then(resp => {
-          handleResponse(resp, { successMsg: '修改成功', onSuccess: () => this.getAllUserPage() })
+          handleResponse(resp, { onSuccess: () => this.getAllUserPage() })
         })
       }).catch(() => {})
     },
@@ -913,7 +913,7 @@ export default {
           id: this.editUser.id,
           resetPassword: true,
         }).then(resp => {
-          handleResponse(resp, { successMsg: '密码已重置为 1234@abcD，用户下次登录将强制修改密码' })
+          handleResponse(resp, {})
         })
       }).catch(() => {})
     },
@@ -955,7 +955,6 @@ export default {
       this.$confirm('确定要删除该用户吗？此操作不可恢复。', '删除确认', { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' }).then(() => {
         this.postRequest('/admin/deleteUserByUserId', { userId }).then(resp => {
           handleResponse(resp, {
-            successMsg: '删除成功',
             onSuccess: () => {
               this.editDialogVisible = false
               this.getAllUserPage()

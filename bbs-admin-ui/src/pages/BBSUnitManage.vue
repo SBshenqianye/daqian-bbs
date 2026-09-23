@@ -592,7 +592,7 @@ export default {
       this.$confirm('确定删除该单位吗？', '提示', { type: 'warning' }).then(async () => {
         try {
           const res = await this.getRequestUrl(`/saOrg/deleteSaOrgByOrgNo?orgNo=${data.id}`)
-          if (handleResponse(res, { successMsg: '删除成功', errorMsg: '删除失败' })) {
+          if (handleResponse(res, { errorMsg: '删除失败' })) {
             this.loadData()
           }
         } catch (e) { this.$message.error('删除失败') }

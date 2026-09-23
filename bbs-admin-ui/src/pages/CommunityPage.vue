@@ -116,14 +116,14 @@ export default {
     updateCommunityStatus(communityId) {
       this.$confirm('确定修改该社区状态吗？', '提示', { type: 'warning' }).then(() => {
         this.putRequest(`/admin/updateCommunityStatus/${communityId}`).then(resp => {
-          handleResponse(resp, { successMsg: '修改成功！', onSuccess: () => this.getAllCommunity() })
+          handleResponse(resp, { onSuccess: () => this.getAllCommunity() })
         })
       }).catch(() => {})
     },
     deleteCommunity(communityId) {
       this.$confirm('确定删除该社区吗？', '提示', { type: 'warning' }).then(() => {
         this.deleteRequest('/admin/deleteCommunityByCommunityId', communityId).then(resp => {
-          handleResponse(resp, { successMsg: '删除成功！', onSuccess: () => this.getAllCommunity() })
+          handleResponse(resp, { onSuccess: () => this.getAllCommunity() })
         })
       }).catch(() => {})
     }
