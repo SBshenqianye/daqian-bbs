@@ -161,8 +161,8 @@
                   <span class="material-symbols-outlined text-[14px]">check</span>
                   通过审核
                 </button>
-                <!-- 采纳建议（建议反馈标签 + 已审核 + 未采纳 + 非作者本人） -->
-                <template v-if="article.articleLabelName === '建议反馈' && article.enable === 1">
+                <!-- 采纳建议（建议反馈用途 + 已审核 + 未采纳 + 非作者本人） -->
+                <template v-if="article.articleLabelType === 'suggestion' && article.enable === 1">
                   <span
                     v-if="article.isSuggestionAdopted === true"
                     class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-green-700 bg-green-50 rounded border border-green-200"

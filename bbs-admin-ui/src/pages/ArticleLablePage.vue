@@ -49,6 +49,7 @@
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[80px]">图标</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[120px]">标签名称</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[160px] w-full">标签描述</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[100px]">用途类型</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[80px]">是否禁用</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[140px]">操作</th>
               </tr>
@@ -64,6 +65,11 @@
                 </td>
                 <td class="p-4 font-body-md text-on-surface font-medium max-w-[200px] truncate" :title="label.labelName">{{ label.labelName }}</td>
                 <td class="p-4 font-body-md text-on-surface-variant truncate max-w-0" :title="label.description || ''">{{ label.description || '--' }}</td>
+                <td class="p-4">
+                  <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="labelTypeBadgeClass(label.labelType)">
+                    {{ labelTypeText(label.labelType) }}
+                  </span>
+                </td>
                 <td class="p-4">
                   <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="label.isDisable === 1 ? 'bg-error-container text-error' : 'bg-green-50 text-green-700'">
                     <span class="w-1.5 h-1.5 rounded-full" :class="label.isDisable === 1 ? 'bg-error' : 'bg-green-500'"></span>
@@ -84,7 +90,7 @@
                 </td>
               </tr>
               <tr v-if="labelsRaw.length === 0">
-                <td colspan="7" class="p-12 text-center">
+                <td colspan="8" class="p-12 text-center">
                   <div class="flex flex-col items-center gap-2 text-on-surface-variant">
                     <span class="material-symbols-outlined text-[48px] opacity-20">label_off</span>
                     <p class="text-body-md">暂无标签数据</p>
@@ -153,6 +159,15 @@
               <textarea v-model="addForm.description" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md resize-none" placeholder="请输入标签描述（选填）" maxlength="200" rows="2"></textarea>
             </div>
             <div>
+              <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">用途类型</label>
+              <select v-model="addForm.labelType" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md">
+                <option value="normal">普通标签</option>
+                <option value="suggestion">建议反馈（采纳后加积分）</option>
+                <option value="question">问题求助（可采纳最佳解答）</option>
+              </select>
+              <p class="text-[12px] text-on-surface-variant mt-1">按用途类型识别特殊功能，与标签名称解耦，改名不影响功能</p>
+            </div>
+            <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">是否禁用</label>
               <button class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors" :class="addForm.isDisable ? 'bg-error' : 'bg-surface-variant'" @click="addForm.isDisable = addForm.isDisable ? 0 : 1">
                 <span class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm" :class="addForm.isDisable ? 'translate-x-6' : 'translate-x-0.5'"></span>
@@ -201,6 +216,15 @@
               <textarea v-model="editForm.description" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md resize-none" placeholder="请输入标签描述（选填）" maxlength="200" rows="2"></textarea>
             </div>
             <div>
+              <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">用途类型</label>
+              <select v-model="editForm.labelType" class="w-full px-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md">
+                <option value="normal">普通标签</option>
+                <option value="suggestion">建议反馈（采纳后加积分）</option>
+                <option value="question">问题求助（可采纳最佳解答）</option>
+              </select>
+              <p class="text-[12px] text-on-surface-variant mt-1">按用途类型识别特殊功能，与标签名称解耦，改名不影响功能</p>
+            </div>
+            <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">是否禁用</label>
               <button class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors" :class="editForm.enabled ? 'bg-surface-variant' : 'bg-error'" @click="editForm.enabled = editForm.enabled ? 0 : 1">
                 <span class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm" :class="editForm.enabled ? 'translate-x-0.5' : 'translate-x-6'"></span>
@@ -235,8 +259,8 @@ export default {
       multipleSelection: [],
       addVisible: false,
       editVisible: false,
-      addForm: { labelName: '', icon: '', description: '', isDisable: 0 },
-      editForm: { labelId: null, labelName: '', icon: '', description: '', enabled: 0 },
+      addForm: { labelName: '', icon: '', description: '', labelType: 'normal', isDisable: 0 },
+      editForm: { labelId: null, labelName: '', icon: '', description: '', labelType: 'normal', enabled: 0 },
       pageParams: { pageIndex: 1, pageSize: 10 },
       total: 0,
       pickerIcon: '',
@@ -290,6 +314,7 @@ export default {
             return Object.assign({}, item, {
               labelId: item.labelId != null ? item.labelId : item.id,
               labelName: item.labelName || item.name || '',
+              labelType: item.labelType || 'normal',
               isDisable: Number(typeof item.enabled !== 'undefined' ? (item.enabled === 0 ? 1 : 0) : 0)
             })
           })
@@ -299,13 +324,13 @@ export default {
     handleSearch() { this.handleSizeChange() },
     handleSizeChange() { this.pageParams.pageIndex = 1; this.getArticleLabelPage() },
     openAdd() {
-      this.addForm = { labelName: '', icon: '', description: '', isDisable: 0 }
+      this.addForm = { labelName: '', icon: '', description: '', labelType: 'normal', isDisable: 0 }
       this.addVisible = true
     },
     submitAdd() {
       const labelName = (this.addForm.labelName || '').trim()
       if (!labelName) { this.$message.warning('标签名称不能为空'); return }
-      this.postRequest('/admin/addArticleLabel', { labelName, icon: this.addForm.icon, description: this.addForm.description, enabled: this.addForm.isDisable === 1 ? 0 : 1 }).then(resp => {
+      this.postRequest('/admin/addArticleLabel', { labelName, icon: this.addForm.icon, description: this.addForm.description, labelType: this.addForm.labelType || 'normal', enabled: this.addForm.isDisable === 1 ? 0 : 1 }).then(resp => {
         handleResponse(resp, {
           successMsg: '添加成功',
           onSuccess: () => {
@@ -322,6 +347,7 @@ export default {
         labelName: row.labelName || '',
         icon: row.icon || '',
         description: row.description || '',
+        labelType: row.labelType || 'normal',
         enabled: Number(typeof row.enabled !== 'undefined' ? row.enabled : 0)
       }
       this.editVisible = true
@@ -331,7 +357,7 @@ export default {
       const labelName = (this.editForm.labelName || '').trim()
       if (!labelId) { this.$message.warning('标签ID不能为空'); return }
       if (!labelName) { this.$message.warning('标签名称不能为空'); return }
-      this.postRequest('/admin/updArticleLabel', { labelId, labelName, icon: this.editForm.icon, description: this.editForm.description, enabled: this.editForm.enabled }).then(resp => {
+      this.postRequest('/admin/updArticleLabel', { labelId, labelName, icon: this.editForm.icon, description: this.editForm.description, labelType: this.editForm.labelType || 'normal', enabled: this.editForm.enabled }).then(resp => {
         handleResponse(resp, {
           successMsg: '修改成功',
           onSuccess: () => {
@@ -343,6 +369,7 @@ export default {
               updated.labelName = labelName
               updated.icon = this.editForm.icon
               updated.description = this.editForm.description
+              updated.labelType = this.editForm.labelType || 'normal'
               updated.enabled = this.editForm.enabled
               updated.isDisable = Number(this.editForm.enabled === 0 ? 1 : 0)
               const idx = this.labelsRaw.indexOf(item)
@@ -356,6 +383,16 @@ export default {
       this.pickerTarget = target
       this.pickerIcon = target === 'add' ? this.addForm.icon : this.editForm.icon
       this.iconPickerVisible = true
+    },
+    labelTypeText(t) {
+      if (t === 'suggestion') return '建议反馈'
+      if (t === 'question') return '问题求助'
+      return '普通'
+    },
+    labelTypeBadgeClass(t) {
+      if (t === 'suggestion') return 'bg-amber-50 text-amber-700'
+      if (t === 'question') return 'bg-blue-50 text-blue-700'
+      return 'bg-surface-container text-on-surface-variant'
     },
     onIconPicked(icon) {
       if (this.pickerTarget === 'add') {

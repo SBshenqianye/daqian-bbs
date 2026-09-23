@@ -299,9 +299,11 @@ export default {
     currentUserId() {
       return this.currentUser ? this.currentUser.id : null
     },
-    /** 帖子标签是否为"问题求助" */
+    /** 帖子标签是否为"问题求助"用途（按 labelType 判断，与标签名解耦） */
     isQuestionLabel() {
-      return this.articleTagName === '问题求助'
+      if (!this.article.tagId || !this.labelList.length) return false
+      const label = this.labelList.find(l => String(l.labelId) === String(this.article.tagId))
+      return !!(label && label.labelType === 'question')
     },
     /** 是否可举报文章：已登录且不是自己的文章 */
     canReportArticle() {
