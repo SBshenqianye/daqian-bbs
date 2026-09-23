@@ -978,7 +978,22 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         return ResultBean.success("查询成功", result);
     }
 
-    @Override
+        @Override
+    public ResultBean getArticleTabCounts() {
+        // Article 带 @TableLogic isDelete，selectCount 自动追加 is_delete = 0
+        long done = articleMapper.selectCount(
+                new LambdaQueryWrapper<Article>().eq(Article::getEnable, 1));
+        long pending = articleMapper.selectCount(
+                new LambdaQueryWrapper<Article>().eq(Article::getEnable, 0));
+        long featured = articleMapper.selectCount(
+                new LambdaQueryWrapper<Article>().eq(Article::getIsFeatured, 1));
+        Map<String, Object> result = new HashMap<>();
+        result.put("done", done);
+        result.put("pending", pending);
+        result.put("featured", featured);
+        return ResultBean.success("查询成功", result);
+    }
+@Override
     public ResultBean getFeaturedByPage(Integer page, Integer size, Integer labelId) {
         if (page == null || page < 1) page = 1;
         if (size == null || size < 1) size = 10;

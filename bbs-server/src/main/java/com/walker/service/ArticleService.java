@@ -231,6 +231,12 @@ public interface ArticleService extends IService<Article> {
     ResultBean getFeaturedList(String keywords, Integer labelId, String startTime, String endTime, Integer page, Integer size);
 
     /**
+     * 管理端帖子管理页各 tab 总数：已审核(done,enable=1) / 未审核(pending,enable=0) / 精华(featured,is_featured=1)
+     * 均自动排除已删除（is_delete=0）
+     */
+    ResultBean getArticleTabCounts();
+
+    /**
      * 查询精华帖列表（用户端，分页）
      */
     ResultBean getFeaturedByPage(Integer page, Integer size, Integer labelId);

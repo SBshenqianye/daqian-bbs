@@ -529,6 +529,7 @@ export default {
   },
   mounted() {
     this.loadLabels()
+    this.loadTabCounts()
     this.fetchList()
   },
   methods: {
@@ -566,6 +567,7 @@ export default {
         this.postRequest('/admin/featured/list', params).then(resp => {
           this.loading = false
           this.articleList = this.parsePaginationResponse(resp)
+          this.loadTabCounts()
         }).catch(err => {
           console.warn('[ArticlePage] fetch featured list', err)
           this.loading = false
@@ -577,12 +579,24 @@ export default {
         this.postRequest('/admin/article/list', params).then(resp => {
           this.loading = false
           this.articleList = this.parsePaginationResponse(resp)
+          this.loadTabCounts()
         }).catch(err => {
           console.warn('[ArticlePage] fetch list', err)
           this.loading = false
           this.articleList = []
         })
       }
+    },
+    loadTabCounts() {
+      this.getRequest('/admin/article/tabCounts').then(resp => {
+        if (resp && resp.obj) {
+          this.tabCounts = {
+            done: resp.obj.done || 0,
+            pending: resp.obj.pending || 0,
+            featured: resp.obj.featured || 0,
+          }
+        }
+      }).catch(err => { console.warn('[ArticlePage] loadTabCounts', err) })
     },
     loadLabels() {
       // 获取所有标签

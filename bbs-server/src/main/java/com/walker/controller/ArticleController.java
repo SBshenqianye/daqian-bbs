@@ -510,6 +510,12 @@ public class ArticleController {
         return articleService.getFeaturedList(keywords, labelId, startTime, endTime, page, size);
     }
 
+    @ApiOperation(value = "帖子管理页各 tab 总数（已审核/未审核/精华）")
+    @GetMapping("/admin/article/tabCounts")
+    public ResultBean getArticleTabCounts() {
+        return articleService.getArticleTabCounts();
+    }
+
     @ApiOperation(value = "获取最新精华帖（用户端置顶用）")
     @GetMapping("/common/article/getFeaturedTop")
     public ResultBean getFeaturedTop() {
