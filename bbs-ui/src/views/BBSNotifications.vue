@@ -160,43 +160,29 @@ export default {
      * 通知点击跳转：按通知 type 分发（type 决定"谁收到的、用来干什么"），
      * relatedType/relatedId 只作为内容锚点。不同类型互不干扰。
      */
+    // 通知类型 → 跳转目标配置（集中管理，新增类型在此加一行即可）
+    jumpMap: {
+      'adopt_pending': () => window.open('/bbs-admin/#/approve-adopt', '_blank'),
+      'report_pending': () => window.open('/bbs-admin/#/report', '_blank'),
+      'appeal_review': () => '/my-appeals',
+      'report_confirmed': () => '/my-reports',
+      'violation': () => '/my-violations',
+      'post_restricted': () => '/my-violations',
+      'moderator_complaint': () => '/moderator-complaint',
+      'complaint_review': () => '/moderator-complaint',
+      'moderator_reward': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
+      'moderator_reward_cancelled': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
+      'hot_bonus': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
+      'suggestion_adopted': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
+      'points_adjust': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
+    },
     async handleNotificationClick(item) {
-      switch (item.type) {
-        case 'adopt_pending':
-          // 版主/超管：跳管理端采纳审批页（生产同 nginx 同域，管理端为 hash 路由）
-          window.open('/bbs-admin/#/approve-adopt', '_blank')
-          return
-        case 'report_pending':
-          // 超管：跳管理端举报管理页（同 adopt_pending 跳管理端模式）
-          window.open('/bbs-admin/#/report', '_blank')
-          return
-        case 'appeal_review':
-          this.$router.push('/my-appeals')
-          return
-        case 'report_confirmed':
-          this.$router.push('/my-reports')
-          return
-        case 'violation':
-        case 'post_restricted':
-          this.$router.push('/my-violations')
-          return
-        case 'moderator_reward':
-        case 'moderator_reward_cancelled':
-        case 'hot_bonus':
-        case 'suggestion_adopted':
-        case 'points_adjust':
-          this.$router.push({ path: '/my-points-log', query: { highlightTime: item.createTime } })
-          return
-        case 'moderator_complaint':
-        case 'complaint_review':
-          this.$router.push('/moderator-complaint')
-          return
-        case 'featured_recommend':
-        case 'featured_review':
-        case 'featured_granted':
-        case 'featured_revoked':
-          // 跳转到关联文章详情
-          break
+      const action = this.jumpMap[item.type]
+      if (action) {
+        const target = action(item)
+        if (typeof target === 'string') this.$router.push(target)
+        else if (target && target.path) this.$router.push(target)
+        return
       }
 
       // 其余类型（reply/comment/adopt/adopt_rejected/hot_bonus/suggestion_adopted）
