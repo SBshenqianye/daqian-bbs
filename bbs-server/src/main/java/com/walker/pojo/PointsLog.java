@@ -62,4 +62,8 @@ public class PointsLog implements Serializable {
     @ApiModelProperty("此记录撤销了哪条原始记录（记录ID）")
     @TableField("reversing_record")
     private Integer reversingRecord;
+
+    @ApiModelProperty("配对记录id（撤销↔原记录，双向）")
+    @TableField("pair_id")
+    private Integer pairId;
 }

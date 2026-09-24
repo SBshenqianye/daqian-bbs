@@ -95,12 +95,14 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
         undoLog.setOperatorId(operatorId);
         undoLog.setCreateTime(now);
         undoLog.setReversingRecord(logId);
+        undoLog.setPairId(logId);
         this.save(undoLog);
+        original.setPairId(undoLog.getId());
+        this.updateById(original);
 
         // 2. 标记原记录为已撤销
         original.setIsReversed(1);
         original.setReversedBy(undoLog.getId());
-        this.updateById(original);
 
         return ResultBean.success("撤销成功");
     }
@@ -163,7 +165,22 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
             m.put("relatedType", r.getRelatedType());
             m.put("createTime", r.getCreateTime());
             m.put("isReversed", r.getIsReversed());
-            m.put("undoAnchor", pair.containsKey(i) ? "log-" + pair.get(i) : null);
+            String anchor = pair.containsKey(i) ? "log-" + pair.get(i) : null;
+            Integer pairPage = null;
+            String pairTime = null;
+            if (anchor == null && r.getPairId() != null) {
+                PointsLog p = this.getById(r.getPairId());
+                if (p != null && p.getCreateTime() != null) {
+                    pairTime = p.getCreateTime();
+                    Long cnt = this.count(new LambdaQueryWrapper<PointsLog>()
+                            .eq(PointsLog::getUserId, userId)
+                            .ge(PointsLog::getCreateTime, p.getCreateTime()));
+                    pairPage = (int) Math.ceil((double) cnt / size);
+                }
+            }
+            m.put("undoAnchor", anchor);
+            m.put("pairPage", pairPage);
+            m.put("pairTime", pairTime);
             records.add(m);
         }
         Map<String, Object> data = new HashMap<>();

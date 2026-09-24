@@ -8514,3 +8514,6 @@ UPDATE `bbs_article_label` SET `label_type` = 'question' WHERE `label_name` IN (
 
 -- @migration: v034-points-log-reason 撤销记录 reason 去掉自增id（用户端不暴露内部编号）
 UPDATE `bbs_points_log` SET `reason` = '撤销积分调整' WHERE `reason` LIKE '撤销记录#%';
+
+-- @migration: v035-points-pair 积分记录双向配对（撤销↔原记录），跨页跳转用
+ALTER TABLE `bbs_points_log` ADD COLUMN IF NOT EXISTS `pair_id` integer NULL COMMENT `配对记录id（撤销↔原）`;
