@@ -63,6 +63,7 @@ export default {
   },
   mounted() {
     this.loadLevel()
+    if (this.$route.query.highlightTime) this.pendingPairTime = this.$route.query.highlightTime
     this.loadList()
   },
   methods: {

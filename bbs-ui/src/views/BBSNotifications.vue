@@ -184,7 +184,8 @@ export default {
         case 'moderator_reward_cancelled':
         case 'hot_bonus':
         case 'suggestion_adopted':
-          this.$router.push('/my-points-log')
+        case 'points_adjust':
+          this.$router.push({ path: '/my-points-log', query: { highlightTime: item.createTime } })
           return
         case 'moderator_complaint':
         case 'complaint_review':
@@ -192,6 +193,8 @@ export default {
           return
         case 'featured_recommend':
         case 'featured_review':
+        case 'featured_granted':
+        case 'featured_revoked':
           // 跳转到关联文章详情
           break
       }
