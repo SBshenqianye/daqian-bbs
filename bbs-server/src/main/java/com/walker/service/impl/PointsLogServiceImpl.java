@@ -166,8 +166,7 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
         for (int i = 0; i < rows.size(); i++) {
             if (pair.containsKey(i)) continue;
             PointsLog r = rows.get(i);
-            if (r.getPointsChange() != null && r.getPointsChange() < 0
-                    && r.getReason() != null && r.getReason().contains("扣回")) {
+            if (r.getPointsChange() != null && r.getPointsChange() < 0) {
                 for (int j = i - 1; j >= 0; j--) {
                     PointsLog p = rows.get(j);
                     if (!pair.containsValue(j)
