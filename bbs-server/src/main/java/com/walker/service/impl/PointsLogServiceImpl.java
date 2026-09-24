@@ -30,6 +30,9 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
     @Autowired
     private PointsLogMapper pointsLogMapper;
 
+    @Autowired
+    private com.walker.service.NotificationService notificationService;
+
     @Override
     public ResultBean addPointsLog(PointsLog pointsLog) {
         if (pointsLog.getUserId() == null || pointsLog.getPointsChange() == null) {
@@ -77,6 +80,12 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
                 this.updateById(positive);
             }
         }
+        // 通知用户
+        try {
+            String notifTitle = (pointsChange != null && pointsChange > 0 ? "+" : "") + pointsChange + " 积分：" + (reason != null ? reason : "管理员调整");
+            notificationService.createNotification(userId, operatorId, "points_adjust", notifTitle,
+                    relatedType != null ? relatedType : "manual", relatedId);
+        } catch (Exception ignore) { /* 通知失败不阻断主流程 */ }
         return ResultBean.success("操作成功");
     }
 

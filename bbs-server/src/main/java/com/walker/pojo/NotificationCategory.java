@@ -51,6 +51,7 @@ public final class NotificationCategory {
         m.put("featured_review", SYSTEM);         // 精华推荐审核结果（通知推荐人）
         m.put("featured_granted", SYSTEM);       // 帖子被设为精华（通知作者）
         m.put("featured_revoked", SYSTEM);       // 帖子被取消精华（通知作者）
+        m.put("points_adjust", SYSTEM);         // 积分变动（通知用户）
         TYPE_CATEGORY = Collections.unmodifiableMap(m);
     }
 
