@@ -124,20 +124,29 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
                 idToIdx.put(rows.get(i).getId(), i);
             }
         }
-        // 预配对：reason 含"扣回"的扣分记录，在本页内找同 relatedType+relatedId、分值相反的最近正分记录
-        Set<Integer> pairedNegative = new HashSet<>();
+        // 双向配对：key=本页索引, value=配对记录索引（撤销记录↔原记录，双向可跳转）
+        Map<Integer, Integer> pair = new HashMap<>();
+        // 1) reversingRecord 显式指定
         for (int i = 0; i < rows.size(); i++) {
+            Integer targetId = rows.get(i).getReversingRecord();
+            if (targetId != null && idToIdx.containsKey(targetId)) {
+                pair.put(i, idToIdx.get(targetId));
+            }
+        }
+        // 2) reason 含"扣回"的扣分记录，本页内找同 relatedType+relatedId、分值相反的最近正分
+        for (int i = 0; i < rows.size(); i++) {
+            if (pair.containsKey(i)) continue;
             PointsLog r = rows.get(i);
             if (r.getPointsChange() != null && r.getPointsChange() < 0
                     && r.getReason() != null && r.getReason().contains("扣回")) {
                 for (int j = i - 1; j >= 0; j--) {
                     PointsLog p = rows.get(j);
-                    if (!pairedNegative.contains(j)
+                    if (!pair.containsValue(j)
                             && p.getPointsChange() != null && p.getPointsChange() > 0
                             && Integer.valueOf(-r.getPointsChange()).equals(p.getPointsChange())
                             && java.util.Objects.equals(r.getRelatedType(), p.getRelatedType())
                             && java.util.Objects.equals(r.getRelatedId(), p.getRelatedId())) {
-                        pairedNegative.add(i);
+                        pair.put(i, j);
                         break;
                     }
                 }
@@ -152,24 +161,7 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
             m.put("relatedType", r.getRelatedType());
             m.put("createTime", r.getCreateTime());
             m.put("isReversed", r.getIsReversed());
-            String undoAnchor = null;
-            Integer targetId = r.getReversingRecord();
-            if (targetId != null && idToIdx.containsKey(targetId)) {
-                undoAnchor = "log-" + idToIdx.get(targetId);
-            } else if (pairedNegative.contains(i)) {
-                // 按配对结果找锚点
-                for (int j = i - 1; j >= 0; j--) {
-                    PointsLog p = rows.get(j);
-                    if (p.getPointsChange() != null && p.getPointsChange() > 0
-                            && Integer.valueOf(-r.getPointsChange()).equals(p.getPointsChange())
-                            && java.util.Objects.equals(r.getRelatedType(), p.getRelatedType())
-                            && java.util.Objects.equals(r.getRelatedId(), p.getRelatedId())) {
-                        undoAnchor = "log-" + j;
-                        break;
-                    }
-                }
-            }
-            m.put("undoAnchor", undoAnchor);
+            m.put("undoAnchor", pair.containsKey(i) ? "log-" + pair.get(i) : null);
             records.add(m);
         }
         Map<String, Object> data = new HashMap<>();
