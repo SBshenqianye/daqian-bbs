@@ -215,13 +215,20 @@ export default {
       try {
         const res = await this.postRequest('/admin/listDict', {})
         if (res && res.code == 200 && Array.isArray(res.obj)) {
-          this.violationOptions = res.obj
-            .filter(d => d.dictType === 'violation')
+          // 防御：dict_key 为空的是 v020 迁移残留脏行，跳过；同 dict_key 去重
+          const map = new Map()
+          res.obj
+            .filter(d => d.dictType === 'violation' && d.dictKey)
             .sort((a, b) => (a.dictSort || 0) - (b.dictSort || 0))
-            .map(d => ({
-              value: d.dictKey,
-              label: d.dictLabel + (d.dictValue ? ' (-' + d.dictValue + '分)' : '')
-            }))
+            .forEach(d => {
+              if (!map.has(d.dictKey)) {
+                map.set(d.dictKey, {
+                  value: d.dictKey,
+                  label: d.dictLabel + (d.dictValue ? ' (-' + d.dictValue + '分)' : '')
+                })
+              }
+            })
+          this.violationOptions = Array.from(map.values())
         }
       } catch (e) { /* ignore */ }
     },

@@ -8521,3 +8521,10 @@ SET @sql_pair = IF(@col_pair_exists = 0, 'ALTER TABLE `bbs_points_log` ADD COLUM
 PREPARE stmt_pair FROM @sql_pair;
 EXECUTE stmt_pair;
 DEALLOCATE PREPARE stmt_pair;
+-- @migration: v036-violation-dict-cleanup 清理 v020 迁移残留的旧格式违规字典行
+-- 背景：v020 先 UPDATE dict_value(illegal->15) 再 DELETE dict_value IN('illegal',...)，因 UPDATE 后 dict_value 已变数字，DELETE 空操作；
+--      部分环境旧行（dict_key=NULL, dict_value='spam' 等）残留，与 v028 新插入的行并存，导致前端下拉框重复展示。
+-- 幂等：仅删除 dict_type='violation' 且 dict_key 为空的行；干净库匹配 0 行，不影响任何合法配置。
+DELETE FROM `bbs_dict`
+WHERE `dict_type` = 'violation'
+  AND (`dict_key` IS NULL OR `dict_key` = '');

@@ -230,15 +230,23 @@ export default {
       try {
         const res = await this.postRequest('/admin/listDict', {})
         if (res && res.code == 200 && Array.isArray(res.obj)) {
-          this.violationOptions = res.obj
-            .filter(d => d.dictType === 'violation')
+          // 防御：dict_key 为空的是 v020 迁移残留脏行（dict_value 仍是旧 key 字符串），跳过；
+          // 同 dict_key 去重（sort 小的在前，Map 保留首次出现），避免异常数据下下拉框重复。
+          const map = new Map()
+          res.obj
+            .filter(d => d.dictType === 'violation' && d.dictKey)
             .sort((a, b) => (a.dictSort || 0) - (b.dictSort || 0))
-            .map(d => ({
-              value: d.dictKey,
-              label: d.dictLabel + (d.dictValue ? ' (-' + d.dictValue + '分)' : '')
-            }))
+            .forEach(d => {
+              if (!map.has(d.dictKey)) {
+                map.set(d.dictKey, {
+                  value: d.dictKey,
+                  label: d.dictLabel + (d.dictValue ? ' (-' + d.dictValue + '分)' : '')
+                })
+              }
+            })
+          this.violationOptions = Array.from(map.values())
           // 恶意举报默认扣分值：取字典 violation/false_report 的 dictValue（与"确认并扣分"违规类型同源可配置）
-          const falseReport = res.obj.find(d => d.dictKey === 'false_report')
+          const falseReport = res.obj.find(d => d.dictKey === 'false_report' && d.dictValue && /^\d+$/.test(String(d.dictValue).trim()))
           const v = falseReport && parseInt(falseReport.dictValue, 10)
           this.maliciousDefaultPoints = (v && v > 0) ? v : 5
         }
