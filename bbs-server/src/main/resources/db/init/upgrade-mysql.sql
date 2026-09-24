@@ -8511,3 +8511,6 @@ DEALLOCATE PREPARE stmt_lt;
 -- 存量回填：按标签名识别特殊用途
 UPDATE `bbs_article_label` SET `label_type` = 'suggestion' WHERE `label_name` = '建议反馈' AND `label_type` = 'normal';
 UPDATE `bbs_article_label` SET `label_type` = 'question' WHERE `label_name` IN ('问题求助', '求助问答') AND `label_type` = 'normal';
+
+-- @migration: v034-points-log-reason 撤销记录 reason 去掉自增id（用户端不暴露内部编号）
+UPDATE `bbs_points_log` SET `reason` = '撤销积分调整' WHERE `reason` LIKE '撤销记录#%';
