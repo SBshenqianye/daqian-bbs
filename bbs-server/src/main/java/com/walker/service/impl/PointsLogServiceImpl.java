@@ -148,6 +148,7 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
                             && java.util.Objects.equals(r.getRelatedType(), p.getRelatedType())
                             && java.util.Objects.equals(r.getRelatedId(), p.getRelatedId())) {
                         pair.put(i, j);
+                        pair.put(j, i);
                         break;
                     }
                 }
