@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * 积分调整日志服务实现类
@@ -87,7 +89,7 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
         PointsLog undoLog = new PointsLog();
         undoLog.setUserId(original.getUserId());
         undoLog.setPointsChange(-original.getPointsChange());
-        undoLog.setReason("撤销记录#" + logId);
+        undoLog.setReason("撤销积分调整");
         undoLog.setRelatedType("undo");
         undoLog.setRelatedId(logId);
         undoLog.setOperatorId(operatorId);
@@ -122,6 +124,25 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
                 idToIdx.put(rows.get(i).getId(), i);
             }
         }
+        // 预配对：reason 含"扣回"的扣分记录，在本页内找同 relatedType+relatedId、分值相反的最近正分记录
+        Set<Integer> pairedNegative = new HashSet<>();
+        for (int i = 0; i < rows.size(); i++) {
+            PointsLog r = rows.get(i);
+            if (r.getPointsChange() != null && r.getPointsChange() < 0
+                    && r.getReason() != null && r.getReason().contains("扣回")) {
+                for (int j = i - 1; j >= 0; j--) {
+                    PointsLog p = rows.get(j);
+                    if (!pairedNegative.contains(j)
+                            && p.getPointsChange() != null && p.getPointsChange() > 0
+                            && Integer.valueOf(-r.getPointsChange()).equals(p.getPointsChange())
+                            && java.util.Objects.equals(r.getRelatedType(), p.getRelatedType())
+                            && java.util.Objects.equals(r.getRelatedId(), p.getRelatedId())) {
+                        pairedNegative.add(i);
+                        break;
+                    }
+                }
+            }
+        }
         List<Map<String, Object>> records = new ArrayList<>();
         for (int i = 0; i < rows.size(); i++) {
             PointsLog r = rows.get(i);
@@ -135,6 +156,18 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
             Integer targetId = r.getReversingRecord();
             if (targetId != null && idToIdx.containsKey(targetId)) {
                 undoAnchor = "log-" + idToIdx.get(targetId);
+            } else if (pairedNegative.contains(i)) {
+                // 按配对结果找锚点
+                for (int j = i - 1; j >= 0; j--) {
+                    PointsLog p = rows.get(j);
+                    if (p.getPointsChange() != null && p.getPointsChange() > 0
+                            && Integer.valueOf(-r.getPointsChange()).equals(p.getPointsChange())
+                            && java.util.Objects.equals(r.getRelatedType(), p.getRelatedType())
+                            && java.util.Objects.equals(r.getRelatedId(), p.getRelatedId())) {
+                        undoAnchor = "log-" + j;
+                        break;
+                    }
+                }
             }
             m.put("undoAnchor", undoAnchor);
             records.add(m);

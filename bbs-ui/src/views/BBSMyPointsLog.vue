@@ -27,7 +27,7 @@
     <!-- 记录列表 -->
     <template v-if="!loading">
       <div v-if="list.length > 0" class="space-y-gutter">
-        <div v-for="(item, idx) in list" :id="'log-'+idx" :key="idx" class="bg-container border border-outline-variant rounded-lg p-card-padding" :class="item.isReversed === 1 ? 'opacity-50' : ''">
+        <div v-for="(item, idx) in list" :id="'log-'+idx" :key="idx" class="bg-container border border-outline-variant rounded-lg p-card-padding" :class="[(item.isReversed === 1 ? 'opacity-50' : ''), highlighted === 'log-'+idx ? 'ring-2 ring-primary bg-primary/10' : '']">
           <div class="flex items-center justify-between">
             <div>
               <a v-if="item.undoAnchor" href="javascript:;" class="font-body-md text-body-md text-primary hover:underline" @click="scrollToAnchor(item.undoAnchor)">{{ item.reason || '积分变动' }} ↩</a>
@@ -58,7 +58,7 @@
 export default {
   name: 'BBSMyPointsLog',
   data() {
-    return { loading: false, list: [], total: 0, currentPage: 1, pageSize: 20, levelInfo: null }
+    return { loading: false, list: [], total: 0, currentPage: 1, pageSize: 20, levelInfo: null, highlighted: '' }
   },
   mounted() {
     this.loadLevel()
@@ -89,7 +89,10 @@ export default {
     },
     scrollToAnchor(anchor) {
       const el = document.getElementById(anchor)
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      this.highlighted = anchor
+      setTimeout(() => { this.highlighted = '' }, 2000)
     },
     changePage(p) { this.currentPage = p; this.loadList() }
   }
