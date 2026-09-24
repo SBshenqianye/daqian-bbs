@@ -85,10 +85,11 @@ export default {
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0
-          // 翻页后定位到目标记录
+          // 翻页后定位到目标记录（等 loading 关闭+DOM 渲染完）
           if (this.pendingPairTime) {
-            this.$nextTick(() => this.locateByTime(this.pendingPairTime))
+            const t = this.pendingPairTime
             this.pendingPairTime = null
+            setTimeout(() => this.locateByTime(t), 300)
           }
         } else { this.list = [] }
       } catch (e) { this.list = [] }
@@ -108,6 +109,11 @@ export default {
           setTimeout(() => { this.highlighted = '' }, 2000)
         }
       } else if (item.pairPage) {
+        // 目标就在当前页，直接定位不弹窗
+        if (item.pairPage === this.currentPage) {
+          this.locateByTime(item.pairTime)
+          return
+        }
         this.$confirm(`配对记录在第 ${item.pairPage} 页，是否跳转？`, '跨页跳转', {
           confirmButtonText: '跳转', cancelButtonText: '取消', type: 'info'
         }).then(() => {
