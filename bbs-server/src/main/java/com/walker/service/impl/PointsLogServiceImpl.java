@@ -131,6 +131,7 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
             Integer targetId = rows.get(i).getReversingRecord();
             if (targetId != null && idToIdx.containsKey(targetId)) {
                 pair.put(i, idToIdx.get(targetId));
+                pair.put(idToIdx.get(targetId), i);
             }
         }
         // 2) reason 含"扣回"的扣分记录，本页内找同 relatedType+relatedId、分值相反的最近正分
