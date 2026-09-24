@@ -159,7 +159,7 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
                 if (val != null) replyPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(reply.getReplyUserId(), -replyPoints, "删除回复扣回积分",
-                    "reply", replyId, null);
+                    "reply", replyId, null, true);
         }
         replyMapper.deleteById(replyId);
         return ResultBean.success("删除成功");

@@ -205,11 +205,11 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
                             if (article.getEnable() != null && article.getEnable() == 1) {
                                 int postPoints = getDictValueByKey(ConstantUtil.MANA_POST, 2);
                                 pointsLogService.adjustUserPoints(article.getUserId(), -postPoints,
-                                        "违规删除帖子扣回积分", "article", relatedId, null);
+                                        "违规删除帖子扣回积分", "article", relatedId, null, true);
                                 if (article.getIsFeatured() != null && article.getIsFeatured() == 1) {
                                     int featuredPoints = getDictValueByKey(ConstantUtil.MANA_FEATURED, 10);
                                     pointsLogService.adjustUserPoints(article.getUserId(), -featuredPoints,
-                                            "违规删除精华帖扣回积分", "article", relatedId, null);
+                                            "违规删除精华帖扣回积分", "article", relatedId, null, true);
                                 }
                             }
                             articleMapper.deleteById(relatedId);

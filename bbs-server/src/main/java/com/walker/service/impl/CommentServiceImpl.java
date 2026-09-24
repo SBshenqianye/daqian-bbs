@@ -151,7 +151,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
                 if (val != null) replyPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(comment.getCommentUserId(), -replyPoints, "删除评论扣回积分",
-                    "comment", commentId, null);
+                    "comment", commentId, null, true);
         }
         commentMapper.deleteById(commentId);
         return ResultBean.success("删除成功");

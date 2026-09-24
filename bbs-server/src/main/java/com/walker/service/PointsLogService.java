@@ -32,6 +32,13 @@ public interface PointsLogService extends IService<PointsLog> {
                                 String relatedType, Integer relatedId, Integer operatorId);
 
     /**
+     * 调整用户积分（可指定是否自动配对原加分记录）
+     * @param autoPair true=业务扣回时自动配对同 relatedType+relatedId 的最近正分记录（双向 pair_id）
+     */
+    ResultBean adjustUserPoints(Integer userId, Integer pointsChange, String reason,
+                                String relatedType, Integer relatedId, Integer operatorId, boolean autoPair);
+
+    /**
      * 撤销一条积分调整记录
      * @param logId 要撤销的记录ID
      * @param operatorId 操作人ID

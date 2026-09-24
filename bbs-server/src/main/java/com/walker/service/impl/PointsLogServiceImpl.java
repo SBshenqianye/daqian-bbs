@@ -53,6 +53,12 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
     @Override
     public ResultBean adjustUserPoints(Integer userId, Integer pointsChange, String reason,
                                        String relatedType, Integer relatedId, Integer operatorId) {
+        return adjustUserPoints(userId, pointsChange, reason, relatedType, relatedId, operatorId, false);
+    }
+
+    @Override
+    public ResultBean adjustUserPoints(Integer userId, Integer pointsChange, String reason,
+                                       String relatedType, Integer relatedId, Integer operatorId, boolean autoPair) {
         if (userId == null || pointsChange == null) {
             return ResultBean.error("用户ID和积分变动不能为空");
         }
@@ -64,7 +70,7 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
         log.setRelatedId(relatedId);
         log.setOperatorId(operatorId);
         addPointsLog(log);
-        if (pointsChange != null && pointsChange < 0 && relatedType != null) {
+        if (autoPair && pointsChange != null && pointsChange < 0 && relatedType != null) {
             PointsLog positive = this.getOne(new LambdaQueryWrapper<PointsLog>()
                     .eq(PointsLog::getUserId, userId)
                     .eq(PointsLog::getRelatedType, relatedType)

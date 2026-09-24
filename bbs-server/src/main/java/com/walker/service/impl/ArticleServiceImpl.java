@@ -630,7 +630,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 if (val != null) postPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(article.getUserId(), -postPoints, "删除帖子扣回积分",
-                    "article", articleId, null);
+                    "article", articleId, null, true);
 
             // 如果是精华帖，额外扣回精华加分
             if (article.getIsFeatured() != null && article.getIsFeatured() == 1) {
@@ -640,7 +640,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     if (val != null) featuredPoints = Integer.parseInt(val);
                 } catch (Exception e) { /* use default */ }
                 pointsLogService.adjustUserPoints(article.getUserId(), -featuredPoints, "删除精华帖扣回加分",
-                        "article", articleId, null);
+                        "article", articleId, null, true);
             }
         }
         articleMapper.deleteById(articleId);
@@ -936,7 +936,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 if (val != null) featuredPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(article.getUserId(), featuredPoints, "精华帖奖励积分",
-                    "article", articleId, null);
+                    "article", articleId, null, true);
         } else if (newFeatured != 1 && oldFeatured == 1) {
             // 取消精华 → 扣回
             int featuredPoints = 10;
@@ -945,7 +945,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 if (val != null) featuredPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(article.getUserId(), -featuredPoints, "取消精华帖扣回积分",
-                    "article", articleId, null);
+                    "article", articleId, null, true);
         }
         // 通知作者：设为精华 / 取消精华
         Integer operatorId = null;
