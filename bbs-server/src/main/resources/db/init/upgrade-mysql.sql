@@ -8528,3 +8528,32 @@ DEALLOCATE PREPARE stmt_pair;
 DELETE FROM `bbs_dict`
 WHERE `dict_type` = 'violation'
   AND (`dict_key` IS NULL OR `dict_key` = '');
+-- @migration: v036-points-pair-backfill 存量积分记录回填 pair_id（扣回↔原加分）
+-- 删帖子扣回 → 配对同用户同文章的发帖积分
+UPDATE `bbs_points_log` d
+JOIN `bbs_points_log` p ON p.user_id = d.user_id AND p.related_type = d.related_type AND p.related_id = d.related_id
+    AND p.points_change > 0 AND p.reason = '发帖积分' AND p.pair_id IS NULL
+SET d.pair_id = p.id, p.pair_id = d.id
+WHERE d.reason = '删除帖子扣回积分' AND d.pair_id IS NULL;
+
+-- 取消/删除精华扣回 → 配对同用户同文章的精华奖励积分
+UPDATE `bbs_points_log` d
+JOIN `bbs_points_log` p ON p.user_id = d.user_id AND p.related_type = d.related_type AND p.related_id = d.related_id
+    AND p.points_change > 0 AND p.reason = '精华帖奖励积分' AND p.pair_id IS NULL
+SET d.pair_id = p.id, p.pair_id = d.id
+WHERE (d.reason = '取消精华帖扣回积分' OR d.reason = '删除精华帖扣回加分' OR d.reason = '违规删除精华帖扣回积分')
+  AND d.pair_id IS NULL;
+
+-- 删评论扣回 → 配对同用户同评论的评论积分
+UPDATE `bbs_points_log` d
+JOIN `bbs_points_log` p ON p.user_id = d.user_id AND p.related_type = d.related_type AND p.related_id = d.related_id
+    AND p.points_change > 0 AND p.reason = '评论积分' AND p.pair_id IS NULL
+SET d.pair_id = p.id, p.pair_id = d.id
+WHERE d.reason = '删除评论扣回积分' AND d.pair_id IS NULL;
+
+-- 删回复扣回 → 配对同用户同回复的回复积分
+UPDATE `bbs_points_log` d
+JOIN `bbs_points_log` p ON p.user_id = d.user_id AND p.related_type = d.related_type AND p.related_id = d.related_id
+    AND p.points_change > 0 AND p.reason = '回复积分' AND p.pair_id IS NULL
+SET d.pair_id = p.id, p.pair_id = d.id
+WHERE d.reason = '删除回复扣回积分' AND d.pair_id IS NULL;

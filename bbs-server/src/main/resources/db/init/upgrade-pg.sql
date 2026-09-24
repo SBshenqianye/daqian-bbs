@@ -8339,3 +8339,35 @@ ALTER TABLE bbs_points_log ADD COLUMN IF NOT EXISTS pair_id integer;
 DELETE FROM bbs_dict
 WHERE dict_type = 'violation'
   AND (dict_key IS NULL OR dict_key = '');
+-- @migration: v036-points-pair-backfill 存量积分记录回填 pair_id（扣回↔原加分）
+UPDATE bbs_points_log d SET pair_id = p.id
+FROM bbs_points_log p
+WHERE d.user_id = p.user_id AND d.related_type = p.related_type AND d.related_id = p.related_id
+  AND p.points_change > 0 AND p.reason = '发帖积分' AND p.pair_id IS NULL
+  AND d.reason = '删除帖子扣回积分' AND d.pair_id IS NULL;
+UPDATE bbs_points_log p SET pair_id = d.id
+FROM bbs_points_log d
+WHERE d.user_id = p.user_id AND d.related_type = p.related_type AND d.related_id = p.related_id
+  AND p.points_change > 0 AND p.reason = '发帖积分'
+  AND d.reason = '删除帖子扣回积分';
+
+UPDATE bbs_points_log d
+SET pair_id = p.id
+FROM bbs_points_log p
+WHERE d.user_id = p.user_id AND d.related_type = p.related_type AND d.related_id = p.related_id
+  AND p.points_change > 0 AND p.reason = '精华帖奖励积分' AND p.pair_id IS NULL
+  AND d.reason IN ('取消精华帖扣回积分','删除精华帖扣回加分','违规删除精华帖扣回积分') AND d.pair_id IS NULL;
+
+UPDATE bbs_points_log d
+SET pair_id = p.id
+FROM bbs_points_log p
+WHERE d.user_id = p.user_id AND d.related_type = p.related_type AND d.related_id = p.related_id
+  AND p.points_change > 0 AND p.reason = '评论积分' AND p.pair_id IS NULL
+  AND d.reason = '删除评论扣回积分' AND d.pair_id IS NULL;
+
+UPDATE bbs_points_log d
+SET pair_id = p.id
+FROM bbs_points_log p
+WHERE d.user_id = p.user_id AND d.related_type = p.related_type AND d.related_id = p.related_id
+  AND p.points_change > 0 AND p.reason = '回复积分' AND p.pair_id IS NULL
+  AND d.reason = '删除回复扣回积分' AND d.pair_id IS NULL;
