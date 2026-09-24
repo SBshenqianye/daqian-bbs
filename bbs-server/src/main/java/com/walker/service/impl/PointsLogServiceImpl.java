@@ -60,7 +60,24 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
         log.setRelatedType(relatedType);
         log.setRelatedId(relatedId);
         log.setOperatorId(operatorId);
-        return addPointsLog(log);
+        addPointsLog(log);
+        if (pointsChange != null && pointsChange < 0 && relatedType != null) {
+            PointsLog positive = this.getOne(new LambdaQueryWrapper<PointsLog>()
+                    .eq(PointsLog::getUserId, userId)
+                    .eq(PointsLog::getRelatedType, relatedType)
+                    .eq(relatedId != null, PointsLog::getRelatedId, relatedId)
+                    .gt(PointsLog::getPointsChange, 0)
+                    .isNull(PointsLog::getPairId)
+                    .orderByDesc(PointsLog::getCreateTime)
+                    .last("LIMIT 1"));
+            if (positive != null) {
+                log.setPairId(positive.getId());
+                this.updateById(log);
+                positive.setPairId(log.getId());
+                this.updateById(positive);
+            }
+        }
+        return ResultBean.success("操作成功");
     }
 
     @Override
