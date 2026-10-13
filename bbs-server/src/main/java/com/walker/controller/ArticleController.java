@@ -27,6 +27,8 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -538,9 +540,19 @@ public class ArticleController {
         Integer articleId = (Integer) params.get("articleId");
         Integer operatorId = (Integer) params.get("operatorId");
 
-        if (articleId == null || operatorId == null) {
+        if (articleId == null) {
             return ResultBean.error("参数不完整");
         }
+        // 操作人以登录态身份为准：前端传入的 operatorId 必须与当前登录用户一致，防伪造
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (operatorId != null && !currentUserId.equals(operatorId)) {
+            return ResultBean.error("操作人身份校验失败，请重新登录后操作");
+        }
+        // 后续落库与通知均以登录态 currentUserId 为准
+        operatorId = currentUserId;
 
         Article article = articleService.queryArticleById(articleId);
         if (article == null) {
@@ -556,8 +568,8 @@ public class ArticleController {
             return ResultBean.error("该帖子不是建议反馈类型，无法采纳");
         }
 
-        // 校验：管理员不能采纳自己的建议
-        if (operatorId.equals(article.getUserId())) {
+        // 校验：除超级管理员外，不能采纳自己的建议（2026-10-12 需求调整：超管豁免）
+        if (!isSuperAdmin(operatorId) && article.getUserId() != null && article.getUserId().equals(operatorId)) {
             return ResultBean.error("不能采纳自己的建议");
         }
 
@@ -578,6 +590,23 @@ public class ArticleController {
                 "article", articleId);
 
         return ResultBean.success("采纳成功");
+    }
+
+    /**
+     * 从登录态（JWT）获取当前操作人 id。/admin/** 已由 Spring Security 强制认证。
+     * 操作人以"服务端可信身份"为准，不信任前端传入的 operatorId（与 #2/#14 同一模式）。
+     */
+    private Integer getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof User) {
+            return ((User) auth.getPrincipal()).getId();
+        }
+        return null;
+    }
+
+    /** 系统内置超级管理员（id=1，初始化 SQL 约定勿改），自审类限制对超管豁免 */
+    private boolean isSuperAdmin(Integer userId) {
+        return userId != null && ConstantUtil.SUPER_ADMIN_ID == userId.intValue();
     }
 
     // ==================== 积分排名导出 ====================

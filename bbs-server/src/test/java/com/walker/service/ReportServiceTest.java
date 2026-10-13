@@ -273,7 +273,7 @@ class ReportServiceTest {
     @Test
     @DisplayName("审核举报 → 举报人即审核人 → 拒绝（P0 自报自审漏洞，以登录态身份为准）")
     void reviewReport_selfReview_returnsError() {
-        // 当前登录用户（token 身份）就是举报人 100 —— 审核自己的举报必须被拒
+        // 当前登录用户（token 身份）就是举报人 100 —— 普通管理员审核自己的举报必须被拒
         setCurrentUser(100);
 
         Report report = new Report();
@@ -290,6 +290,28 @@ class ReportServiceTest {
         // 不得加分、不得发通知
         verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
         verify(notificationService, never()).createNotification(any(), any(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    @DisplayName("审核举报 → 超管审核自己的举报 → 放行但不计分（防自报自审刷分）")
+    void reviewReport_selfReview_superAdmin_allowedNoPoints() {
+        // 当前登录用户=超管 1，举报人也是 1 —— 超管豁免自审拦截，但"举报人即审核人"不予计分
+        Report report = new Report();
+        report.setId(1);
+        report.setReporterId(1);
+        report.setTargetType("article");
+        report.setTargetId(1);
+        report.setStatus("pending");
+        when(reportMapper.selectById(1)).thenReturn(report);
+        when(reportMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(new ArrayList<>());
+        when(reportMapper.updateById(any(Report.class))).thenReturn(1);
+
+        ResultBean result = reportService.reviewReport(1, 1, "confirmed", "属实");
+        assertEquals(200, result.getCode());
+        // 超管自审主举报不给自己加分
+        verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
+        // 状态已确认且 pointsAwarded=0 留痕
+        verify(reportMapper).updateById(argThat(r -> ((Report) r).getPointsAwarded() == 0));
     }
 
     @Test

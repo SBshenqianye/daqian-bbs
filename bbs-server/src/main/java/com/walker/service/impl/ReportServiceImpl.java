@@ -153,6 +153,11 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         return null;
     }
 
+    /** 系统内置超级管理员（id=1，初始化 SQL 约定勿改），自审类限制对超管豁免 */
+    private boolean isSuperAdmin(Integer userId) {
+        return userId != null && ConstantUtil.SUPER_ADMIN_ID == userId.intValue();
+    }
+
     /**
      * 查询举报目标内容的作者 id（用于禁止自举报）；目标不存在或类型未知返回 null
      */
@@ -219,9 +224,9 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         if (!"pending".equals(report.getStatus())) {
             return ResultBean.error("该举报已处理");
         }
-        // 权限校验：举报人不得审核自己的举报（P0 安全修复，防止"自报自审"刷举报奖励分）。
+        // 权限校验：除超级管理员外，举报人不得审核自己的举报（2026-10-12 需求调整：超管豁免）。
         // 对驳回+恶意扣分同样生效：自审校验在所有分支之前，不破坏 #2 的防自报自审
-        if (report.getReporterId() != null && report.getReporterId().equals(reviewerId)) {
+        if (!isSuperAdmin(reviewerId) && report.getReporterId() != null && report.getReporterId().equals(reviewerId)) {
             return ResultBean.error("不能审核自己提交的举报");
         }
 
@@ -235,11 +240,19 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
 
         // 确认举报属实：给该举报人加2分
         if ("confirmed".equals(status)) {
-            report.setPointsAwarded(1);
+            // 举报人即审核人（仅超管可达此分支）：不予计分，防"自报自审"经主举报路径刷分（与批量路径一致）
+            if (report.getReporterId() != null && report.getReporterId().equals(reviewerId)) {
+                report.setPointsAwarded(0);
+                report.setReviewRemark(mergeReviewRemark(remark, "举报人即审核人，不予计分"));
+            } else {
+                report.setPointsAwarded(1);
+            }
             this.updateById(report);
 
-            pointsLogService.adjustUserPoints(report.getReporterId(), 2, "举报属实奖励",
-                    "report", reportId, reviewerId);
+            if (report.getPointsAwarded() == 1) {
+                pointsLogService.adjustUserPoints(report.getReporterId(), 2, "举报属实奖励",
+                        "report", reportId, reviewerId);
+            }
 
             // 通知举报人
             notificationService.createNotification(report.getReporterId(), reviewerId,

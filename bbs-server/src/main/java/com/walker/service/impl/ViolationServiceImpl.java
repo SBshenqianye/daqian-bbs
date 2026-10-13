@@ -1,6 +1,7 @@
 package com.walker.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.ArticleMapper;
@@ -424,8 +425,10 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
             return ResultBean.error("该违规存在审核中的申诉，请先处理该申诉后再取消");
         }
 
-        doCancel(v, reason.trim(), operatorId);
-        return ResultBean.success("违规已取消，扣分已回滚，关联内容已恢复");
+        boolean lifted = doCancel(v, reason.trim(), operatorId);
+        return ResultBean.success(lifted
+                ? "违规已取消，扣分已回滚，关联内容与发帖限制已恢复"
+                : "违规已取消，扣分已回滚，关联内容已恢复；因仍存在其他有效违规，发帖限制未解除");
     }
 
     @Override
@@ -439,9 +442,11 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
     }
 
     /**
-     * 取消违规的公共核心：回滚扣分日志 → 恢复内容可见性 → 状态置已取消留痕 → 通知用户。
+     * 取消违规的公共核心：回滚扣分日志 → 恢复内容可见性 → 状态置已取消留痕 → 通知用户 → 解除账号级发帖限制。
+     *
+     * @return true=已解除该用户发帖限制；false=因仍存在其他有效违规（leak 或月度累计>20），限制保留
      */
-    private void doCancel(Violation v, String reason, Integer operatorId) {
+    private boolean doCancel(Violation v, String reason, Integer operatorId) {
         // 1. 回滚本次违规主扣分日志（负分、未撤销）
         List<PointsLog> mainLogs = pointsLogService.list(new LambdaQueryWrapper<PointsLog>()
                 .eq(PointsLog::getRelatedType, "violation")
@@ -468,6 +473,53 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
         notificationService.createNotification(v.getUserId(), operatorId,
                 "violation", "您的违规记录已取消：" + getViolationLabel(v.getViolationType()),
                 "violation", v.getId());
+
+        // 5. 解除账号级发帖限制（2026-10-12 需求：取消违规同时解除；仍存在其他有效违规且限制条件成立时保留）
+        return liftPostRestrictionIfEligible(v, operatorId, now);
+    }
+
+    /**
+     * 取消违规后解除该用户的账号级发帖限制（post_restricted=0 / until=null）。
+     * 若该用户仍存在其他有效（active）违规，且其中含 leak 类型或当月累计扣分仍超 20 分，
+     * 则保留限制（限制条件依然成立），不解除，返回 false；否则解除并通知用户，返回 true。
+     * 与 addViolation 触发限制的口径保持一致：leak 永久限制 / 月度累计超 20 分限制 7 天。
+     */
+    private boolean liftPostRestrictionIfEligible(Violation v, Integer operatorId, Date now) {
+        String monthStr = new SimpleDateFormat("yyyy-MM").format(now);
+        String monthStart = monthStr + "-01 00:00:00";
+        String monthEnd = monthStr + "-32 00:00:00";
+
+        // 仍存在的其他有效违规（排除本次已取消的这条）
+        List<Violation> activeOthers = this.list(new LambdaQueryWrapper<Violation>()
+                .eq(Violation::getUserId, v.getUserId())
+                .ne(Violation::getId, v.getId())
+                .eq(Violation::getStatus, "active"));
+        boolean hasLeak = false;
+        int monthlyTotal = 0;
+        if (activeOthers != null) {
+            for (Violation other : activeOthers) {
+                if ("leak".equals(other.getViolationType())) {
+                    hasLeak = true;
+                }
+                if (other.getPointsDeducted() != null && other.getCreateTime() != null
+                        && other.getCreateTime().compareTo(monthStart) >= 0
+                        && other.getCreateTime().compareTo(monthEnd) < 0) {
+                    monthlyTotal += other.getPointsDeducted();
+                }
+            }
+        }
+        if (hasLeak || monthlyTotal > 20) {
+            return false;
+        }
+
+        // 解除发帖限制（LambdaUpdateWrapper 强制置空 null 字段，与 addViolation 限制写法对称）
+        userService.update(new User(), new LambdaUpdateWrapper<User>()
+                .eq(User::getId, v.getUserId())
+                .set(User::getPostRestricted, 0)
+                .set(User::getPostRestrictedUntil, null));
+        notificationService.createNotification(v.getUserId(), operatorId,
+                "post_restricted", "您的发帖限制已随违规取消一并解除", "user", v.getUserId());
+        return true;
     }
 
     /** 恢复被违规删除的关联内容可见性，并回滚删除内容时扣回的积分 */

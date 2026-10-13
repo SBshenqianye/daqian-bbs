@@ -148,7 +148,7 @@
     <el-dialog title="取消违规" :visible.sync="cancelDialogVisible" width="480px" :close-on-click-modal="false">
       <div class="space-y-4" v-if="cancelTarget">
         <div class="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-[13px]">
-          将回滚该次扣分并恢复被隐藏/删除的关联内容。已取消的记录不可重复操作。
+          将回滚该次扣分并恢复被隐藏/删除的关联内容，同时解除该用户的发帖限制（若仍存在其他有效违规则保留）。已取消的记录不可重复操作。
         </div>
         <div>
           <label class="block text-body-sm text-on-surface-variant mb-1">取消原因 <span class="text-red-500">*</span></label>
@@ -328,7 +328,7 @@ export default {
           reason: this.cancelReason.trim()
         })
         handleResponse(res, {
-          successMsg: '违规已取消，扣分已回滚，关联内容已恢复',
+          successMsg: '违规已取消，扣分已回滚，关联内容与发帖限制已恢复',
           errorMsg: '取消失败',
           onSuccess: async () => { this.cancelDialogVisible = false; await this.loadList() }
         })

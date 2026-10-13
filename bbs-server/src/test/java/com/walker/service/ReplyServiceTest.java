@@ -142,7 +142,8 @@ class ReplyServiceTest {
 
         ResultBean result = replyService.deleteReplyById(1);
         assertEquals(200, result.getCode());
-        verify(pointsLogService).adjustUserPoints(eq(1), eq(-1), contains("删除回复扣回积分"), eq("reply"), eq(1), isNull());
+        // 生产调用为 7 参重载（operatorId=null, adjustOperation=true）
+        verify(pointsLogService).adjustUserPoints(eq(1), eq(-1), contains("删除回复扣回积分"), eq("reply"), eq(1), isNull(), eq(true));
     }
 
     @Test

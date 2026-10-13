@@ -222,4 +222,48 @@ class FeaturedRecommendationServiceTest {
         assertTrue(result.getMessage().contains("身份"));
         verify(recommendationMapper, never()).updateById(any(FeaturedRecommendation.class));
     }
+
+    // ==================== 2026-10-12 需求：不得审核自己的推荐（超管豁免） ====================
+
+    @Test
+    @DisplayName("审核推荐 → 普通管理员审核自己的推荐 → 拒绝")
+    void review_selfReview_normalAdmin_returnsError() {
+        setCurrentUser(5);
+        FeaturedRecommendation rec = new FeaturedRecommendation();
+        rec.setId(1);
+        rec.setArticleId(10);
+        rec.setRecommenderId(5);
+        rec.setStatus("pending");
+        when(recommendationMapper.selectById(1)).thenReturn(rec);
+
+        ResultBean result = recommendationService.review(1, "approved", "好", 5);
+        assertEquals(500, result.getCode());
+        assertEquals("不能审核自己的推荐", result.getMessage());
+        verify(recommendationMapper, never()).updateById(any(FeaturedRecommendation.class));
+    }
+
+    @Test
+    @DisplayName("审核推荐 → 超管审核自己的推荐 → 放行")
+    void review_selfReview_superAdmin_allowed() {
+        // 登录态默认 1（超管），推荐人 recommenderId=1 → 超管豁免自审拦截
+        FeaturedRecommendation rec = new FeaturedRecommendation();
+        rec.setId(1);
+        rec.setArticleId(10);
+        rec.setRecommenderId(1);
+        rec.setStatus("pending");
+        when(recommendationMapper.selectById(1)).thenReturn(rec);
+        when(recommendationMapper.updateById(any(FeaturedRecommendation.class))).thenReturn(1);
+
+        Article article = new Article();
+        article.setArticleId(10);
+        article.setUserId(3);
+        article.setArticleTitle("好帖子");
+        when(articleService.getById(10)).thenReturn(article);
+        when(dictService.getValueByKey("featured")).thenReturn("10");
+        when(articleService.updateById(any(Article.class))).thenReturn(true);
+
+        ResultBean result = recommendationService.review(1, "approved", "好", 1);
+        assertEquals(200, result.getCode());
+        verify(articleService).updateById(argThat(a -> ((Article) a).getIsFeatured() == 1));
+    }
 }

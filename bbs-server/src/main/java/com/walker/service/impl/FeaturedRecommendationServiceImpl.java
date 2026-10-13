@@ -58,6 +58,11 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
         return null;
     }
 
+    /** 系统内置超级管理员（id=1，初始化 SQL 约定勿改），自审类限制对超管豁免 */
+    private boolean isSuperAdmin(Integer userId) {
+        return userId != null && ConstantUtil.SUPER_ADMIN_ID == userId.intValue();
+    }
+
     @Override
     @Transactional
     public ResultBean recommend(Integer articleId, Integer recommenderId, Integer labelId) {
@@ -122,6 +127,10 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
         FeaturedRecommendation rec = this.getById(recommendationId);
         if (rec == null) {
             return ResultBean.error("推荐记录不存在");
+        }
+        // 权限校验：除超级管理员外，审核人不得审核自己的推荐（2026-10-12 需求）
+        if (!isSuperAdmin(reviewerId) && rec.getRecommenderId() != null && rec.getRecommenderId().equals(reviewerId)) {
+            return ResultBean.error("不能审核自己的推荐");
         }
         if (!"pending".equals(rec.getStatus())) {
             return ResultBean.error("该推荐已处理");

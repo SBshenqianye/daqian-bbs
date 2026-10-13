@@ -142,9 +142,9 @@
                 </div>
               </div>
               <div class="flex items-center gap-2 shrink-0">
-                <!-- 精华帖设置（仅已审核帖子） -->
+                <!-- 精华帖设置（仅已审核帖子；2026-10-12：当前管理员为作者且非超管时隐藏"设为精华"，取消精华不受限） -->
                 <button
-                  v-if="article.enable === 1"
+                  v-if="article.enable === 1 && canToggleFeatured(article)"
                   class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium rounded transition-colors"
                   :class="article.isFeatured === 1 ? 'bg-rank-gold/10 text-rank-gold hover:bg-rank-gold/20' : 'bg-surface-variant text-on-surface-variant hover:text-rank-gold hover:bg-rank-gold/10'"
                   @click="handleToggleFeatured(article)"
@@ -161,8 +161,8 @@
                   <span class="material-symbols-outlined text-[14px]">check</span>
                   通过审核
                 </button>
-                <!-- 采纳建议（建议反馈用途 + 已审核 + 未采纳 + 非作者本人） -->
-                <template v-if="article.articleLabelType === 'suggestion' && article.enable === 1">
+                <!-- 采纳建议（建议反馈用途 + 已审核 + 未采纳 + 非作者本人或超管） -->
+                <template v-if="article.articleLabelType === 'suggestion' && article.enable === 1 && canAdopt(article)">
                   <span
                     v-if="article.isSuggestionAdopted === true"
                     class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-green-700 bg-green-50 rounded border border-green-200"
@@ -475,6 +475,8 @@ export default {
       loading: false,
       articleList: [],
       labels: [],
+      // 当前登录管理员 id（2026-10-12 需求：自采纳/自设精华限制，超管 id=1 豁免）
+      currentAdminId: 1,
       searchForm: {
         keywords: '',
         labelId: '',
@@ -528,6 +530,7 @@ export default {
     },
   },
   mounted() {
+    this.currentAdminId = this.getAdminId()
     this.loadLabels()
     this.loadTabCounts()
     this.fetchList()
@@ -628,6 +631,19 @@ export default {
         if (admin) return JSON.parse(admin).id
       } catch (e) {}
       return 1
+    },
+    // 2026-10-12 需求：除超管（id=1）外，不得采纳自己的建议、不得将自己的帖子设为精华
+    isSuperAdmin() {
+      return Number(this.currentAdminId) === 1
+    },
+    canAdopt(article) {
+      // 非作者本人，或当前管理员为超管
+      return this.isSuperAdmin() || !article.userId || Number(article.userId) !== Number(this.currentAdminId)
+    },
+    canToggleFeatured(article) {
+      // "设为精华"受限；"取消精华"不受限（便于管理员纠错）
+      if (article.isFeatured === 1) return true
+      return this.canAdopt(article)
     },
     handleAdoptSuggestion(article) {
       if (!article || !article.articleId) return

@@ -915,19 +915,29 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (articleId == null) {
             return ResultBean.error("文章ID不能为空");
         }
+        // 操作人以登录态身份为准：用于"不能自设精华"校验与通知（2026-10-12 需求）
+        Integer operatorId = getCurrentUserId();
+        if (operatorId == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
         // 查询文章，获取当前精华状态和作者
         Article article = articleMapper.selectById(articleId);
         if (article == null) {
             return ResultBean.error("文章不存在");
         }
         Integer oldFeatured = article.getIsFeatured() != null ? article.getIsFeatured() : 0;
+        int newFeatured = isFeatured != null ? isFeatured : 0;
+        // 权限校验：除超级管理员外，不得将自己的帖子设为精华（取消精华不受限，便于管理员纠错）
+        if (newFeatured == 1 && oldFeatured != 1
+                && !isSuperAdmin(operatorId) && article.getUserId() != null && article.getUserId().equals(operatorId)) {
+            return ResultBean.error("不能将自己的帖子设为精华");
+        }
         // 更新精华状态
         Article update = new Article();
         update.setArticleId(articleId).setIsFeatured(isFeatured);
         articleMapper.updateById(update);
 
         // 积分变动：设为精华+10，取消精华-10
-        int newFeatured = isFeatured != null ? isFeatured : 0;
         if (newFeatured == 1 && oldFeatured != 1) {
             // 设为精华 → 加分
             int featuredPoints = 10; // default
@@ -936,7 +946,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 if (val != null) featuredPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(article.getUserId(), featuredPoints, "精华帖奖励积分",
-                    "article", articleId, null, true);
+                    "article", articleId, operatorId, true);
         } else if (newFeatured != 1 && oldFeatured == 1) {
             // 取消精华 → 扣回
             int featuredPoints = 10;
@@ -945,14 +955,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 if (val != null) featuredPoints = Integer.parseInt(val);
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(article.getUserId(), -featuredPoints, "取消精华帖扣回积分",
-                    "article", articleId, null, true);
+                    "article", articleId, operatorId, true);
         }
         // 通知作者：设为精华 / 取消精华
-        Integer operatorId = null;
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof User) {
-            operatorId = ((User) auth.getPrincipal()).getId();
-        }
         if (newFeatured == 1 && oldFeatured != 1) {
             String titleSuffix = article.getArticleTitle() != null ? "（《" + article.getArticleTitle() + "》）" : "";
             notificationService.createNotification(article.getUserId(), operatorId,
@@ -965,6 +970,22 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     "article", articleId);
         }
         return ResultBean.success(isFeatured == 1 ? "已设为精华帖" : "已取消精华帖");
+    }
+
+    /**
+     * 从登录态（JWT）获取当前操作人 id。/admin/** 已由 Spring Security 强制认证。
+     */
+    private Integer getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof User) {
+            return ((User) auth.getPrincipal()).getId();
+        }
+        return null;
+    }
+
+    /** 系统内置超级管理员（id=1，初始化 SQL 约定勿改），自审类限制对超管豁免 */
+    private boolean isSuperAdmin(Integer userId) {
+        return userId != null && ConstantUtil.SUPER_ADMIN_ID == userId.intValue();
     }
 
     @Override

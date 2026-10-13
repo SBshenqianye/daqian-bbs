@@ -1,6 +1,8 @@
 package com.walker.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.walker.mapper.ArticleMapper;
 import com.walker.mapper.DictMapper;
 import com.walker.mapper.ViolationMapper;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import java.lang.reflect.Field;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -70,6 +73,9 @@ class ViolationServiceTest {
         Field baseMapperField = violationService.getClass().getSuperclass().getDeclaredField("baseMapper");
         baseMapperField.setAccessible(true);
         baseMapperField.set(violationService, violationMapper);
+        // 供 LambdaQueryWrapper/LambdaUpdateWrapper 解析 lambda cache
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), Violation.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), User.class);
         // 默认当前登录管理员 id=1，敏感用例可覆盖
         setCurrentUser(1);
     }
@@ -361,5 +367,109 @@ class ViolationServiceTest {
         ResultBean result = violationService.cancelViolation(10, "  ");
         assertEquals(500, result.getCode());
         assertTrue(result.getMessage().contains("原因"));
+    }
+
+    // ========== 2026-10-12 需求：取消违规同时解除账号级发帖限制 ==========
+
+    /** 构造一条指定类型、本月创建的 active 违规记录 */
+    private Violation typedViolation(int id, String type, int relatedId) {
+        Violation v = new Violation();
+        v.setId(id);
+        v.setUserId(2);
+        v.setViolationType(type);
+        v.setPointsDeducted(20);
+        v.setRelatedType("article");
+        v.setRelatedId(relatedId);
+        v.setOperatorId(1);
+        v.setStatus("active");
+        v.setCreateTime("2026-10-12 10:00:00");
+        return v;
+    }
+
+    /** 取消违规的公共 mock 准备：回滚主日志 + 内容日志为空 + 恢复文章可见性 */
+    private void mockCancelBase(Violation v) {
+        when(violationMapper.selectById(v.getId())).thenReturn(v);
+        when(appealService.count(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(pointsLogService.list(any(LambdaQueryWrapper.class)))
+                .thenReturn(new ArrayList<>())
+                .thenReturn(new ArrayList<>());
+        when(violationMapper.restoreArticleById(v.getRelatedId())).thenReturn(1);
+    }
+
+    @Test
+    @DisplayName("取消违规 → 无其他有效违规 → 解除发帖限制并通知")
+    void cancelViolation_noOtherActive_liftsPostRestriction() {
+        Violation v = activeViolation(10, "article", 88);
+        v.setViolationType("leak");
+        mockCancelBase(v);
+        // 无其他有效违规
+        when(violationMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(new ArrayList<>());
+        when(userService.update(any(User.class), any())).thenReturn(true);
+
+        ResultBean result = violationService.cancelViolation(10, "误判");
+        assertEquals(200, result.getCode());
+        assertTrue(result.getMessage().contains("发帖限制已恢复"));
+        // 解除发帖限制（post_restricted=0）
+        verify(userService).update(any(User.class), any());
+        // 通知用户发帖限制已解除
+        verify(notificationService).createNotification(eq(2), eq(1), eq("post_restricted"), contains("解除"), eq("user"), eq(2));
+    }
+
+    @Test
+    @DisplayName("取消违规 → 仍存在其他 leak 有效违规 → 保留发帖限制并提示")
+    void cancelViolation_otherLeakActive_keepsRestriction() {
+        Violation v = activeViolation(10, "article", 88);
+        v.setViolationType("spam");
+        mockCancelBase(v);
+        // 仍存在其他 leak 有效违规 → 限制条件依然成立
+        when(violationMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Arrays.asList(typedViolation(20, "leak", 99)));
+
+        ResultBean result = violationService.cancelViolation(10, "误判");
+        assertEquals(200, result.getCode());
+        assertTrue(result.getMessage().contains("发帖限制未解除"));
+        // 不解除、不发解除通知
+        verify(userService, never()).update(any(User.class), any());
+        verify(notificationService, never())
+                .createNotification(eq(2), eq(1), eq("post_restricted"), anyString(), eq("user"), eq(2));
+    }
+
+    @Test
+    @DisplayName("取消违规 → 其他有效违规当月累计仍超20分 → 保留发帖限制")
+    void cancelViolation_monthlyStillOver20_keepsRestriction() {
+        Violation v = activeViolation(10, "article", 88);
+        v.setViolationType("spam");
+        v.setPointsDeducted(4);
+        mockCancelBase(v);
+        // 其他有效违规本月扣 21 分（非 leak）→ 月度限制条件依然成立
+        Violation other = typedViolation(20, "illegal", 99);
+        other.setPointsDeducted(21);
+        when(violationMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Arrays.asList(other));
+
+        ResultBean result = violationService.cancelViolation(10, "误判");
+        assertEquals(200, result.getCode());
+        assertTrue(result.getMessage().contains("发帖限制未解除"));
+        verify(userService, never()).update(any(User.class), any());
+    }
+
+    @Test
+    @DisplayName("取消违规 → 其他有效违规当月累计未超20 → 解除发帖限制")
+    void cancelViolation_monthlyBelow20_liftsRestriction() {
+        Violation v = activeViolation(10, "article", 88);
+        v.setViolationType("spam");
+        v.setPointsDeducted(4);
+        mockCancelBase(v);
+        // 其他有效违规本月扣 10 分 → 未超 20 → 解除
+        Violation other = typedViolation(20, "illegal", 99);
+        other.setPointsDeducted(10);
+        when(violationMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Arrays.asList(other));
+        when(userService.update(any(User.class), any())).thenReturn(true);
+
+        ResultBean result = violationService.cancelViolation(10, "误判");
+        assertEquals(200, result.getCode());
+        assertTrue(result.getMessage().contains("发帖限制已恢复"));
+        verify(userService).update(any(User.class), any());
     }
 }

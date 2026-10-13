@@ -240,4 +240,40 @@ class ModeratorComplaintServiceTest {
         assertTrue(result.getMessage().contains("身份"));
         verify(complaintMapper, never()).updateById(any(ModeratorComplaint.class));
     }
+
+    // ==================== 2026-10-12 需求：不得审核自己的投诉（超管豁免） ====================
+
+    @Test
+    @DisplayName("审核投诉 → 普通管理员审核自己的投诉 → 拒绝")
+    void review_selfReview_normalAdmin_returnsError() {
+        setCurrentUser(5);
+        ModeratorComplaint complaint = new ModeratorComplaint();
+        complaint.setId(1);
+        complaint.setReporterId(5);
+        complaint.setStatus("pending");
+        when(complaintMapper.selectById(1)).thenReturn(complaint);
+
+        ResultBean result = complaintService.review(1, "accepted", "属实", 5);
+        assertEquals(500, result.getCode());
+        assertEquals("不能审核自己的投诉", result.getMessage());
+        verify(complaintMapper, never()).updateById(any(ModeratorComplaint.class));
+    }
+
+    @Test
+    @DisplayName("审核投诉 → 超管审核自己的投诉 → 放行")
+    void review_selfReview_superAdmin_allowed() {
+        // 登录态默认 1（超管），投诉人 reporterId=1 → 超管豁免自审拦截
+        ModeratorComplaint complaint = new ModeratorComplaint();
+        complaint.setId(1);
+        complaint.setReporterId(1);
+        complaint.setModeratorId(2);
+        complaint.setLabelId(10);
+        complaint.setStatus("pending");
+        when(complaintMapper.selectById(1)).thenReturn(complaint);
+        when(complaintMapper.updateById(any(ModeratorComplaint.class))).thenReturn(1);
+
+        ResultBean result = complaintService.review(1, "accepted", "属实", 1);
+        assertEquals(200, result.getCode());
+        verify(boardModeratorService).dismiss(2, 10);
+    }
 }

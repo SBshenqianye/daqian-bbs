@@ -278,4 +278,38 @@ class AppealServiceTest {
         assertTrue(result.getMessage().contains("身份"));
         verify(appealMapper, never()).updateById(any(Appeal.class));
     }
+
+    // ==================== 2026-10-12 需求：不得审核自己的申诉（超管豁免） ====================
+
+    @Test
+    @DisplayName("审核申诉 → 普通管理员审核自己的申诉 → 拒绝")
+    void reviewAppeal_selfReview_normalAdmin_returnsError() {
+        setCurrentUser(5);
+        Appeal appeal = new Appeal();
+        appeal.setId(1);
+        appeal.setUserId(5);
+        appeal.setStatus("pending");
+        when(appealMapper.selectById(1)).thenReturn(appeal);
+
+        ResultBean result = appealService.reviewAppeal(1, 5, "accepted", "同意");
+        assertEquals(500, result.getCode());
+        assertEquals("不能审核自己的申诉", result.getMessage());
+        verify(appealMapper, never()).updateById(any(Appeal.class));
+    }
+
+    @Test
+    @DisplayName("审核申诉 → 超管审核自己的申诉 → 放行")
+    void reviewAppeal_selfReview_superAdmin_allowed() {
+        // 登录态默认 1（超管），申诉人 userId=1 → 超管豁免自审拦截
+        Appeal appeal = new Appeal();
+        appeal.setId(1);
+        appeal.setUserId(1);
+        appeal.setStatus("pending");
+        when(appealMapper.selectById(1)).thenReturn(appeal);
+        when(appealMapper.updateById(any(Appeal.class))).thenReturn(1);
+
+        ResultBean result = appealService.reviewAppeal(1, 1, "accepted", "同意");
+        assertEquals(200, result.getCode());
+        verify(appealMapper).updateById(argThat(a -> "accepted".equals(((Appeal) a).getStatus())));
+    }
 }

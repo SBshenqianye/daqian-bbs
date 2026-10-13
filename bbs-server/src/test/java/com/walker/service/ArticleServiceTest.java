@@ -13,11 +13,15 @@ import com.walker.pojo.User;
 import com.walker.service.impl.ArticleServiceImpl;
 import com.walker.vo.ResultBean;
 import com.walker.vo.param.ArticleParam;
+import com.walker.service.NotificationService;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.lang.reflect.Field;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -69,12 +73,30 @@ class ArticleServiceTest {
     @Mock
     private PointsLogService pointsLogService;
 
+    @Mock
+    private NotificationService notificationService;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = articleService.getClass().getSuperclass().getDeclaredField("baseMapper");
         baseMapperField.setAccessible(true);
         baseMapperField.set(articleService, articleMapper);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), Article.class);
+        // 默认当前登录管理员 id=1（超管），敏感用例可覆盖
+        setCurrentUser(1);
+    }
+
+    @AfterEach
+    void tearDownAuth() {
+        SecurityContextHolder.clearContext();
+    }
+
+    /** 模拟 JWT 登录态：principal 为 User 实体 */
+    private void setCurrentUser(int id) {
+        User user = new User();
+        user.setId(id);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
     }
 
     @Test
@@ -189,7 +211,8 @@ class ArticleServiceTest {
 
         ResultBean result = articleService.deleteArticleByArticleId(1);
         assertEquals(200, result.getCode());
-        verify(pointsLogService).adjustUserPoints(eq(1), eq(-3), contains("删除帖子扣回积分"), eq("article"), eq(1), isNull());
+        // 生产调用为 7 参重载（operatorId=null, adjustOperation=true）
+        verify(pointsLogService).adjustUserPoints(eq(1), eq(-3), contains("删除帖子扣回积分"), eq("article"), eq(1), isNull(), eq(true));
     }
 
     @Test
@@ -207,7 +230,8 @@ class ArticleServiceTest {
 
         ResultBean result = articleService.deleteArticleByArticleId(1);
         assertEquals(200, result.getCode());
-        verify(pointsLogService).adjustUserPoints(eq(1), eq(-10), contains("删除精华帖扣回加分"), eq("article"), eq(1), isNull());
+        // 生产调用为 7 参重载（operatorId=null, adjustOperation=true）
+        verify(pointsLogService).adjustUserPoints(eq(1), eq(-10), contains("删除精华帖扣回加分"), eq("article"), eq(1), isNull(), eq(true));
     }
 
     @Test
@@ -247,7 +271,8 @@ class ArticleServiceTest {
 
         ResultBean result = articleService.setFeatured(1, 1);
         assertEquals(200, result.getCode());
-        verify(pointsLogService).adjustUserPoints(eq(1), eq(10), eq("精华帖奖励积分"), eq("article"), eq(1), isNull());
+        // 生产调用为 7 参重载（operatorId=登录态 1, adjustOperation=true）
+        verify(pointsLogService).adjustUserPoints(eq(1), eq(10), eq("精华帖奖励积分"), eq("article"), eq(1), eq(1), eq(true));
     }
 
     @Test
@@ -263,7 +288,74 @@ class ArticleServiceTest {
 
         ResultBean result = articleService.setFeatured(1, 0);
         assertEquals(200, result.getCode());
-        verify(pointsLogService).adjustUserPoints(eq(1), eq(-10), eq("取消精华帖扣回积分"), eq("article"), eq(1), isNull());
+        verify(pointsLogService).adjustUserPoints(eq(1), eq(-10), eq("取消精华帖扣回积分"), eq("article"), eq(1), eq(1), eq(true));
+    }
+
+    // ==================== 2026-10-12 需求：不得将自己的帖子设为精华（超管豁免） ====================
+
+    @Test
+    @DisplayName("设置精华 → 普通管理员给自己的帖子设为精华 → 拒绝")
+    void setFeatured_ownArticle_normalAdmin_returnsError() {
+        setCurrentUser(5);
+        Article article = new Article();
+        article.setArticleId(1);
+        article.setUserId(5);
+        article.setIsFeatured(0);
+        when(articleMapper.selectById(1)).thenReturn(article);
+
+        ResultBean result = articleService.setFeatured(1, 1);
+        assertEquals(500, result.getCode());
+        assertEquals("不能将自己的帖子设为精华", result.getMessage());
+        // 不更新、不加分
+        verify(articleMapper, never()).updateById(any(Article.class));
+        verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("设置精华 → 超管给自己的帖子设为精华 → 放行")
+    void setFeatured_ownArticle_superAdmin_allowed() {
+        // 登录态默认 1（超管），文章作者也是 1 → 超管豁免自设拦截
+        Article article = new Article();
+        article.setArticleId(1);
+        article.setUserId(1);
+        article.setIsFeatured(0);
+        when(articleMapper.selectById(1)).thenReturn(article);
+        when(dictService.getValueByKey("featured")).thenReturn("10");
+        when(articleMapper.updateById(any(Article.class))).thenReturn(1);
+
+        ResultBean result = articleService.setFeatured(1, 1);
+        assertEquals(200, result.getCode());
+        verify(pointsLogService).adjustUserPoints(eq(1), eq(10), eq("精华帖奖励积分"), eq("article"), eq(1), eq(1), eq(true));
+    }
+
+    @Test
+    @DisplayName("取消精华 → 普通管理员取消自己帖子的精华 → 放行（取消不受限）")
+    void setFeatured_cancelOwnArticle_normalAdmin_allowed() {
+        setCurrentUser(5);
+        Article article = new Article();
+        article.setArticleId(1);
+        article.setUserId(5);
+        article.setIsFeatured(1);
+        when(articleMapper.selectById(1)).thenReturn(article);
+        when(dictService.getValueByKey("featured")).thenReturn("10");
+        when(articleMapper.updateById(any(Article.class))).thenReturn(1);
+
+        ResultBean result = articleService.setFeatured(1, 0);
+        assertEquals(200, result.getCode());
+        verify(pointsLogService).adjustUserPoints(eq(5), eq(-10), eq("取消精华帖扣回积分"), eq("article"), eq(1), eq(5), eq(true));
+    }
+
+    @Test
+    @DisplayName("设置精华 → 无登录态 → 拒绝")
+    void setFeatured_noAuth_returnsError() {
+        SecurityContextHolder.clearContext();
+
+        ResultBean result = articleService.setFeatured(1, 1);
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("登录"));
+        // 未登录时不查询文章、不更新
+        verify(articleMapper, never()).selectById(any());
+        verify(articleMapper, never()).updateById(any(Article.class));
     }
 
     @Test
