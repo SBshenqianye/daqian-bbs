@@ -662,4 +662,50 @@ class ArticleServiceTest {
         assertEquals(500, result.getCode());
         assertEquals("所选标签不存在", result.getMessage());
     }
+
+    // ==================== 2026-10-13 需求：帖子详情状态识别（已删除 / 不存在 / 正常） ====================
+
+    @Test
+    @DisplayName("获取帖子状态 → 记录不存在 → NOT_EXIST")
+    void getArticleStatus_notExists_returnsNotExist() {
+        when(articleMapper.selectByIdRaw(999)).thenReturn(null);
+
+        assertEquals("NOT_EXIST", articleService.getArticleStatus(999));
+    }
+
+    @Test
+    @DisplayName("获取帖子状态 → 逻辑删除（isDelete=1）→ DELETED")
+    void getArticleStatus_deleted_returnsDeleted() {
+        Article article = new Article();
+        article.setArticleId(1);
+        article.setEnable(1);
+        article.setIsDelete(1);
+        when(articleMapper.selectByIdRaw(1)).thenReturn(article);
+
+        assertEquals("DELETED", articleService.getArticleStatus(1));
+    }
+
+    @Test
+    @DisplayName("获取帖子状态 → 未审核/已下架（enable=0）→ DELETED")
+    void getArticleStatus_disabled_returnsDeleted() {
+        Article article = new Article();
+        article.setArticleId(1);
+        article.setEnable(0);
+        article.setIsDelete(0);
+        when(articleMapper.selectByIdRaw(1)).thenReturn(article);
+
+        assertEquals("DELETED", articleService.getArticleStatus(1));
+    }
+
+    @Test
+    @DisplayName("获取帖子状态 → 正常（enable=1 且未删）→ NORMAL")
+    void getArticleStatus_normal_returnsNormal() {
+        Article article = new Article();
+        article.setArticleId(1);
+        article.setEnable(1);
+        article.setIsDelete(0);
+        when(articleMapper.selectByIdRaw(1)).thenReturn(article);
+
+        assertEquals("NORMAL", articleService.getArticleStatus(1));
+    }
 }

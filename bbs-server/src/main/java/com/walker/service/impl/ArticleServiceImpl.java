@@ -601,6 +601,20 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
+    public String getArticleStatus(Integer articleId) {
+        // 绕过逻辑删除读取原始行，以区分"已删除/不可见"与"记录不存在"
+        Article article = articleMapper.selectByIdRaw(articleId);
+        if (article == null) {
+            return "NOT_EXIST";
+        }
+        // 逻辑删除 或 未审核/已下架（enable != 1）→ 对外不可见
+        if (Integer.valueOf(1).equals(article.getIsDelete()) || !Integer.valueOf(1).equals(article.getEnable())) {
+            return "DELETED";
+        }
+        return "NORMAL";
+    }
+
+    @Override
     public ResultBean getArticleCount() {
 
         Long count = articleMapper.selectCount(null);

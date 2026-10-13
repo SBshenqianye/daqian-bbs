@@ -168,6 +168,12 @@ public interface ArticleService extends IService<Article> {
      */
     Article getArticleByIdRaw(Integer articleId);
 
+    /**
+     * 获取文章对外展示状态（供详情页区分"已删除/不存在"）。
+     * 返回状态字符串：NORMAL（可正常展示）/ DELETED（已删除或不可见）/ NOT_EXIST（记录不存在）
+     */
+    String getArticleStatus(Integer articleId);
+
 
     /**
      * 查询文章总数

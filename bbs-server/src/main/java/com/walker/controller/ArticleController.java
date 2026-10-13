@@ -261,6 +261,12 @@ public class ArticleController {
 
     }
 
+    @ApiOperation(value = "获取文章对外展示状态（NORMAL/DELETED/NOT_EXIST，供详情页区分已删除与不存在）")
+    @PostMapping("/common/article/getArticleStatus/articleId/{articleId}")
+    public ResultBean getArticleStatus(@PathVariable("articleId") Integer articleId) {
+        return ResultBean.success("查询成功", articleService.getArticleStatus(articleId));
+    }
+
 
     @ApiOperation(value = "获取文章列表")
     @GetMapping("/common/article/getArticle")
