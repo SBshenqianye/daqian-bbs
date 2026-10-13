@@ -71,6 +71,9 @@
           >
             <span class="material-symbols-outlined text-[22px] flex-shrink-0 transition-colors" :class="isActive(item.path) ? 'text-primary' : 'text-outline group-hover:text-on-surface-variant'">{{ item.icon }}</span>
             <span v-show="showLabels" class="truncate">{{ item.label }}</span>
+            <!-- 未处理红点：展开态显示数量，折叠态显示小圆点（#6） -->
+            <span v-if="badgeOf(item) > 0 && showLabels" class="ml-auto bg-error text-on-error text-[11px] font-medium leading-none px-1.5 py-1 rounded-full">{{ badgeOf(item) > 99 ? '99+' : badgeOf(item) }}</span>
+            <span v-if="badgeOf(item) > 0 && !showLabels" class="absolute top-1 right-1 w-2 h-2 rounded-full bg-error"></span>
             <!-- Active indicator dot -->
             <span v-if="isActive(item.path) && collapse" class="absolute right-1 w-1.5 h-1.5 rounded-full bg-primary"></span>
           </router-link>
@@ -105,6 +108,26 @@ export default {
       labelTimer: null,
       dragIndex: null,
       dragOverIndex: null,
+      // 未处理待办计数（#6），与 Dashboard 共用 /admin/dashboard/counts 接口
+      badgeCounts: {
+        articlePending: 0,
+        violationActive: 0,
+        reportPending: 0,
+        appealPending: 0,
+        moderatorComplaintPending: 0,
+        adoptPending: 0,
+        featuredPending: 0,
+      },
+      // 菜单 label → 待办计数键（按 label 关联，不受拖拽排序影响）
+      badgeKeys: {
+        '帖子管理': 'articlePending',
+        '违规管理': 'violationActive',
+        '举报管理': 'reportPending',
+        '申诉管理': 'appealPending',
+        '版主投诉': 'moderatorComplaintPending',
+        '采纳审批': 'adoptPending',
+        '精华审批': 'featuredPending',
+      },
       menuItems: [
         { icon: 'dashboard', label: '系统首页', path: '/dashboard' },
         { icon: 'group', label: '用户管理', path: '/user' },
@@ -129,6 +152,8 @@ export default {
   },
   watch: {
     $route() {
+      // 路由变化：待办处理后返回侧栏时刷新红点计数
+      this.loadBadgeCounts()
       // Auto-expand parent of active child
       this.menuItems.forEach(item => {
         if (item.children) {
@@ -144,6 +169,7 @@ export default {
     })
     // Load saved order from localStorage
     this.loadMenuOrder()
+    this.loadBadgeCounts()
     // Auto-expand on mount
     this.$nextTick(() => {
       this.menuItems.forEach(item => {
@@ -154,6 +180,21 @@ export default {
     })
   },
   methods: {
+    /** 某菜单项的未处理待办数（无映射或无计数返回 0） */
+    badgeOf(item) {
+      const key = this.badgeKeys[item.label]
+      return key ? (this.badgeCounts[key] || 0) : 0
+    },
+    /** 拉取各模块待办计数（与 Dashboard 同源） */
+    loadBadgeCounts() {
+      this.postRequest('/admin/dashboard/counts', {}).then(resp => {
+        if (resp && resp.code === 200 && resp.obj) {
+          this.badgeCounts = Object.assign({}, this.badgeCounts, resp.obj)
+        }
+      }).catch(err => {
+        console.warn('[Sidebar] loadBadgeCounts', err)
+      })
+    },
     isActive(path) {
       if (!path) return false
       return this.$route.path === path || this.$route.path.startsWith(path + '/')
