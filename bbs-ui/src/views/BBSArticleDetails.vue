@@ -1,7 +1,27 @@
 <template>
   <main class="max-w-5xl mx-auto px-page-margin-mobile md:px-page-margin-desktop py-8 bg-surface min-h-screen">
+    <!-- 空态：帖子已被删除或不可见 -->
+    <div v-if="articleState === 'deleted'" class="flex flex-col items-center justify-center py-24 text-on-surface-variant">
+      <span class="material-symbols-outlined text-7xl mb-4 opacity-15">delete_outline</span>
+      <h2 class="font-headline-md text-headline-md text-on-surface mb-2">该帖子已被删除或不可见</h2>
+      <p class="font-body-md text-body-md mb-8">原帖可能已被作者删除、管理员下架或正在审核中。</p>
+      <router-link to="/forum" class="px-6 py-2.5 bg-primary-container text-white rounded-lg font-label-md text-label-md hover:bg-primary transition-primary">
+        返回论坛
+      </router-link>
+    </div>
+
+    <!-- 空态：帖子不存在 -->
+    <div v-else-if="articleState === 'not_exist'" class="flex flex-col items-center justify-center py-24 text-on-surface-variant">
+      <span class="material-symbols-outlined text-7xl mb-4 opacity-15">search_off</span>
+      <h2 class="font-headline-md text-headline-md text-on-surface mb-2">帖子不存在</h2>
+      <p class="font-body-md text-body-md mb-8">您访问的帖子不存在，或链接地址有误。</p>
+      <router-link to="/forum" class="px-6 py-2.5 bg-primary-container text-white rounded-lg font-label-md text-label-md hover:bg-primary transition-primary">
+        返回论坛
+      </router-link>
+    </div>
+
     <!-- Article Header Card -->
-    <article class="bg-container rounded-lg border border-border shadow-sm overflow-hidden mb-gutter">
+    <article v-if="articleState === 'normal'" class="bg-container rounded-lg border border-border shadow-sm overflow-hidden mb-gutter">
       <div class="p-card-padding">
         <!-- Title & Meta -->
         <header class="mb-6">
@@ -54,7 +74,7 @@
     </article>
 
     <!-- Attachments Section -->
-    <section v-if="article.attachments && article.attachments.length > 0" class="bg-container rounded-lg border border-border shadow-sm p-card-padding mb-gutter">
+    <section v-if="articleState === 'normal' && article.attachments && article.attachments.length > 0" class="bg-container rounded-lg border border-border shadow-sm p-card-padding mb-gutter">
       <div class="flex items-center gap-2 mb-4">
         <span class="material-symbols-outlined text-primary-container">attachment</span>
         <h3 class="font-headline-sm text-headline-sm text-on-surface">附件 ({{ article.attachments.length }})</h3>
@@ -78,7 +98,7 @@
     </section>
 
     <!-- Comment Section -->
-    <section class="bg-container rounded-lg border border-border shadow-sm overflow-hidden" :class="{ 'pb-16': showStickyBar }">
+    <section v-if="articleState === 'normal'" class="bg-container rounded-lg border border-border shadow-sm overflow-hidden" :class="{ 'pb-16': showStickyBar }">
       <div class="p-card-padding">
         <div class="flex items-center justify-between mb-6">
           <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
@@ -146,7 +166,7 @@
     <!-- Sticky Reply Bar -->
     <transition name="reply-bar-slide">
       <div
-        v-if="showStickyBar"
+        v-if="articleState === 'normal' && showStickyBar"
         class="bottom-bar fixed bottom-0 left-0 right-0 bg-container border-t border-border z-40"
       >
         <div class="max-w-5xl mx-auto px-page-margin-mobile md:px-page-margin-desktop py-3 flex items-center gap-4">
@@ -198,7 +218,7 @@
 <script>
 import BBSCommentItem from '@/components/BBSCommentItem.vue'
 import BBSReportDialog from '@/components/BBSReportDialog.vue'
-import { getArticleById, getUserinfoById, getArticleFileByArticleId } from '@/api/article'
+import { getArticleById, getArticleStatus, getUserinfoById, getArticleFileByArticleId } from '@/api/article'
 import { getCommentReply } from '@/api/comment'
 import { normalizeFileUrl, normalizeUrls } from '@/utils/utils'
 import { mdToHtml } from '@/utils/markdown'
@@ -228,6 +248,8 @@ export default {
       newComment: '',
       articleId: this.$route.params.articleId,
       loading: true,
+      // 帖子对外展示状态：loading | normal | deleted | not_exist（#5）
+      articleState: 'loading',
       // VUE_APP_BBS_API、VUE_APP_BBS_BASE_FILE 废弃，文件统一使用 /files/ 原始路径
       // Current user
       currentUser: null,
@@ -320,9 +342,7 @@ export default {
       this.scrollToTarget = query.replyId || query.commentId
     }
     if (this.articleId) {
-      this.loadArticle(this.articleId)
-      this.loadComments(this.articleId)
-      this.loadArticleFiles(this.articleId)
+      this.resolveArticleState(this.articleId)
     }
     this.$nextTick(() => {
       this.initStickyBar()
@@ -369,6 +389,32 @@ export default {
           this.labelList = resp
         }
       }).catch(err => { console.warn('[BBSArticleDetails] loadLabels', err) })
+    },
+    /**
+     * 先识别帖子对外展示状态（#5）：
+     * NORMAL → 走原有加载流程；DELETED → 显示"已删除或不可见"空态页；其余 → 显示"不存在"空态页。
+     * 状态接口异常时退回原有加载逻辑，不阻断详情展示。
+     */
+    resolveArticleState(id) {
+      getArticleStatus(id).then(resp => {
+        const status = resp && resp.obj
+        if (status === 'NORMAL') {
+          this.articleState = 'normal'
+          this.loadArticle(id)
+          this.loadComments(id)
+          this.loadArticleFiles(id)
+        } else if (status === 'DELETED') {
+          this.articleState = 'deleted'
+        } else {
+          this.articleState = 'not_exist'
+        }
+      }).catch(err => {
+        console.warn('[BBSArticleDetails] resolveArticleState', err)
+        this.articleState = 'normal'
+        this.loadArticle(id)
+        this.loadComments(id)
+        this.loadArticleFiles(id)
+      })
     },
     loadArticle(id) {
       this.loading = true
