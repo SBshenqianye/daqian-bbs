@@ -200,8 +200,10 @@ public class DatabaseInitializer {
                 log.info("Executing migration: {} - {}", block.version, block.description);
                 try {
                     // 执行该块内所有 SQL 语句
+                    // 注意：不能直接用 split(";") 切分——敏感词等数据词条可能含分号
+                    // （如 HTML 实体 "&#8226;"），字符串字面量内的分号必须忽略
                     boolean hasDdlError = false;
-                    String[] statements = block.sql.split(";");
+                    List<String> statements = splitSqlStatements(block.sql);
                     for (String statement : statements) {
                         String trimmed = statement.trim();
                         if (trimmed.isEmpty()) continue;
@@ -258,6 +260,57 @@ public class DatabaseInitializer {
     }
 
     // ==================== SQL 解析 ====================
+
+    /**
+     * 按分号拆分 SQL 语句，但忽略单引号字符串字面量内的分号。
+     * <p>
+     * 敏感词等数据可能包含分号字符（如 HTML 实体 {@code &#8226;}），
+     * 若用朴素 {@code split(";")} 会把字符串内的分号误当语句分隔符，
+     * 导致 INSERT 语句被拆断、字符串未闭合而执行失败。
+     * 本方法支持 {@code ''} 与 {@code \'} 两种单引号转义。
+     * </p>
+     *
+     * @param sql 一个迁移块的完整 SQL（可含多语句）
+     * @return 拆分后的非空语句列表（含原顺序）
+     */
+    static List<String> splitSqlStatements(String sql) {
+        List<String> statements = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inSingleQuote = false;
+        for (int i = 0; i < sql.length(); i++) {
+            char c = sql.charAt(i);
+            if (inSingleQuote) {
+                current.append(c);
+                if (c == '\\' && i + 1 < sql.length()) {
+                    // 反斜杠转义：跳过下一个字符
+                    current.append(sql.charAt(++i));
+                } else if (c == '\'') {
+                    if (i + 1 < sql.length() && sql.charAt(i + 1) == '\'') {
+                        // '' 转义：跳过下一个单引号
+                        current.append(sql.charAt(++i));
+                    } else {
+                        inSingleQuote = false;
+                    }
+                }
+            } else if (c == '\'') {
+                inSingleQuote = true;
+                current.append(c);
+            } else if (c == ';') {
+                String stmt = current.toString().trim();
+                if (!stmt.isEmpty()) {
+                    statements.add(stmt);
+                }
+                current.setLength(0);
+            } else {
+                current.append(c);
+            }
+        }
+        String tail = current.toString().trim();
+        if (!tail.isEmpty()) {
+            statements.add(tail);
+        }
+        return statements;
+    }
 
     /**
      * 解析 upgrade SQL 文件，按 @migration 标记切分为迁移块。
