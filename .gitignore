@@ -73,4 +73,5 @@ postman/
 .dsh/
 .dsh-trash/
 .dsh-vision-router/
-docs/需求更新-计划-2026-10-12.md
+docs/需求更新-计划-*.md
+docs/manual-images/
