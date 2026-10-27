@@ -302,6 +302,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     /**
      * 查询所有的文章列表
+     * 关键词命中范围：标题 / 正文 / 附件名 / 人员（作者昵称快照、当前昵称、账号、人员编号）
      * @return
      */
     @Override
@@ -315,31 +316,19 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         } else {
             // 先模糊查询附件名称，查询出附件名称能匹配的文章Id
             List<ArticleFile> articleFileList = articleFileService.getArticleFileByKeywords(keywords);
-            if (!CollectionUtils.isEmpty(articleFileList)) {
-                // 拿到文章Id
-                List<Integer> distinctArticleIds = articleFileList.stream()
+            List<Integer> distinctArticleIds = CollectionUtils.isEmpty(articleFileList)
+                    ? new ArrayList<>()
+                    : articleFileList.stream()
                         .map(ArticleFile::getArticleId)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
 
-                articles = articleMapper.selectList(new LambdaQueryWrapper<Article>()
-                        .eq(Article::getEnable,1)
-                        .like(Article::getArticleContent, keywords)
-                        .or()
-                        .like(Article::getArticleTitle, keywords)
-                        .or()
-                        .in(Article::getArticleId, distinctArticleIds)
-                        .orderByDesc(Article::getCreateTime)
-                );
-            } else {
-                articles = articleMapper.selectList(new LambdaQueryWrapper<Article>()
-                        .eq(Article::getEnable,1)
-                        .like(Article::getArticleContent, keywords)
-                        .or()
-                        .like(Article::getArticleTitle, keywords)
-                        .orderByDesc(Article::getCreateTime)
-                );
-            }
+            Map<String, Object> params = new HashMap<>();
+            params.put("keywords", keywords);
+            params.put("fileArticleIds", distinctArticleIds);
+            // 单条 SQL 完成标题/正文/人员/附件的 OR 匹配，避免条件优先级错乱
+            articles = articleMapper.selectArticleListByKeywords(params);
         }
         // 批量填充用户头像和组织信息
         enrichWithUserInfo(articles);
@@ -889,7 +878,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
-    public ResultBean getAdminArticleList(String keywords, Integer labelId, String startTime, String endTime, Integer enable, Integer page, Integer size) {
+    public ResultBean getAdminArticleList(String keywords, Integer labelId, String startTime, String endTime,
+                                          Integer enable, Integer deleted, Integer page, Integer size) {
         if (page == null || page < 1) page = 1;
         if (size == null || size < 1) size = 10;
 
@@ -899,6 +889,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         params.put("startTime", startTime);
         params.put("endTime", endTime);
         params.put("enable", enable);
+        // deleted=1 → 只查逻辑删除的帖子（管理端「已删除」tab）；默认只查未删除
+        params.put("deleted", deleted != null && deleted == 1 ? 1 : 0);
 
         int total = articleMapper.countAdminArticleList(params);
         int offset = (page - 1) * size;
@@ -910,7 +902,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
         enrichWithUserInfo(list);
         enrichWithCommentCounts(list);
-        enrichWithSuggestionAdopted(list);
+        if (deleted == null || deleted != 1) {
+            // 已删除帖子不再展示采纳状态
+            enrichWithSuggestionAdopted(list);
+        }
 
         // 脱敏处理
         SensitiveWordUtil.desensitizeArticles(list);
@@ -1043,10 +1038,13 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 new LambdaQueryWrapper<Article>().eq(Article::getEnable, 0));
         long featured = articleMapper.selectCount(
                 new LambdaQueryWrapper<Article>().eq(Article::getIsFeatured, 1));
+        // 已删除需绕过 @TableLogic 直接统计 is_delete = 1
+        long deleted = articleMapper.countDeletedArticles();
         Map<String, Object> result = new HashMap<>();
         result.put("done", done);
         result.put("pending", pending);
         result.put("featured", featured);
+        result.put("deleted", deleted);
         return ResultBean.success("查询成功", result);
     }
 @Override

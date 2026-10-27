@@ -247,13 +247,37 @@
         WHERE ranked.userId = #{userId}
     </select>
 
-    <!-- 管理员查询全部文章列表（支持搜索过滤分页，含标签名） -->
+    <!-- 用户前台帖子搜索：标题 / 正文 / 附件名 / 人员（作者昵称快照 + 账号、昵称、人员编号） -->
+    <select id="selectArticleListByKeywords" parameterType="map" resultType="com.walker.pojo.Article">
+        SELECT a.*
+        FROM bbs_article a
+        LEFT JOIN bbs_user u ON a.user_id = u.id
+        WHERE a.is_delete = 0
+          AND a.enable = 1
+          AND (
+              a.article_title LIKE concat('%', #{keywords}, '%')
+              OR a.article_content LIKE concat('%', #{keywords}, '%')
+              OR a.article_author LIKE concat('%', #{keywords}, '%')
+              OR u.nickname LIKE concat('%', #{keywords}, '%')
+              OR u.username LIKE concat('%', #{keywords}, '%')
+              OR u.personnel_id LIKE concat('%', #{keywords}, '%')
+              <if test="fileArticleIds != null and fileArticleIds.size() > 0">
+                  OR a.article_id IN
+                  <foreach collection="fileArticleIds" item="fileArticleId" open="(" separator="," close=")">
+                      #{fileArticleId}
+                  </foreach>
+              </if>
+          )
+        ORDER BY a.create_time DESC
+    </select>
+
+    <!-- 管理员查询全部文章列表（支持搜索过滤分页，含标签名；deleted=1 时只查已删除） -->
     <select id="selectAdminArticleList" parameterType="map" resultType="com.walker.pojo.Article">
         SELECT a.*, l.label_name AS articleLabelName, l.label_type AS articleLabelType
         FROM bbs_article a
         LEFT JOIN bbs_article_label l ON a.article_label_id = l.label_id
-        WHERE a.is_delete = 0
-        <if test="enable != null">
+        WHERE a.is_delete = #{deleted}
+        <if test="enable != null and deleted != 1">
             AND a.enable = #{enable}
         </if>
         <if test="keywords != null and keywords != ''">
@@ -276,8 +300,8 @@
     <select id="countAdminArticleList" parameterType="map" resultType="int">
         SELECT COUNT(1)
         FROM bbs_article a
-        WHERE a.is_delete = 0
-        <if test="enable != null">
+        WHERE a.is_delete = #{deleted}
+        <if test="enable != null and deleted != 1">
             AND a.enable = #{enable}
         </if>
         <if test="keywords != null and keywords != ''">

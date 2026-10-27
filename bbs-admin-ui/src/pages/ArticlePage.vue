@@ -90,6 +90,21 @@
             <span class="ml-2 px-3 py-[3px] text-xs font-medium rounded-full" :class="activeTab === 'featured' ? 'bg-rank-gold text-white' : 'bg-surface-variant text-on-surface-variant'">{{ tabCounts.featured }}</span>
             <span v-if="activeTab === 'featured'" class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></span>
           </button>
+          <button
+            class="flex-1 py-3.5 text-center font-headline-sm text-headline-sm transition-colors relative"
+            :class="activeTab === 'deleted' ? 'text-error' : 'text-on-surface-variant hover:text-on-surface'"
+            @click="switchTab('deleted')"
+          >
+            已删除
+            <span class="ml-2 px-3 py-[3px] text-xs font-medium rounded-full" :class="activeTab === 'deleted' ? 'bg-error text-on-error' : 'bg-surface-variant text-on-surface-variant'">{{ tabCounts.deleted }}</span>
+            <span v-if="activeTab === 'deleted'" class="absolute bottom-0 left-0 right-0 h-0.5 bg-error"></span>
+          </button>
+        </div>
+
+        <!-- 已删除说明 -->
+        <div v-if="activeTab === 'deleted'" class="flex items-center gap-1.5 px-card-padding py-2.5 bg-error/5 border-b border-error/10 text-[12px] text-error">
+          <span class="material-symbols-outlined text-[16px]">info</span>
+          已删除的帖子不会在用户前台展示，仅供管理员查看与追溯。
         </div>
 
         <!-- Loading -->
@@ -109,6 +124,11 @@
             <div class="flex items-start justify-between gap-4">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-2">
+                  <!-- 已删除标识 -->
+                  <span v-if="Number(article.isDelete) === 1" class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-error/10 text-error rounded-full">
+                    <span class="material-symbols-outlined text-[12px]">delete</span>
+                    已删除
+                  </span>
                   <!-- 精华帖标识 -->
                   <span v-if="article.isFeatured === 1" class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-rank-gold/10 text-rank-gold rounded-full">
                     <span class="material-symbols-outlined text-[12px]">stars</span>
@@ -142,47 +162,58 @@
                 </div>
               </div>
               <div class="flex items-center gap-2 shrink-0">
-                <!-- 精华帖设置（仅已审核帖子；2026-10-12：当前管理员为作者且非超管时隐藏"设为精华"，取消精华不受限） -->
-                <button
-                  v-if="article.enable === 1 && canToggleFeatured(article)"
-                  class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium rounded transition-colors"
-                  :class="article.isFeatured === 1 ? 'bg-rank-gold/10 text-rank-gold hover:bg-rank-gold/20' : 'bg-surface-variant text-on-surface-variant hover:text-rank-gold hover:bg-rank-gold/10'"
-                  @click="handleToggleFeatured(article)"
-                >
-                  <span class="material-symbols-outlined text-[14px]">{{ article.isFeatured === 1 ? 'stars' : 'star_border' }}</span>
-                  {{ article.isFeatured === 1 ? '取消精华' : '设为精华' }}
-                </button>
-                <!-- 通过审核（未审核帖子） -->
-                <button
-                  v-if="article.enable === 0 || article.enable === 0"
-                  class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-primary bg-primary/5 rounded hover:bg-primary/10 transition-colors"
-                  @click="handleAudit(article.articleId)"
-                >
-                  <span class="material-symbols-outlined text-[14px]">check</span>
-                  通过审核
-                </button>
-                <!-- 采纳建议（建议反馈用途 + 已审核 + 未采纳 + 非作者本人或超管） -->
-                <template v-if="article.articleLabelType === 'suggestion' && article.enable === 1 && canAdopt(article)">
-                  <span
-                    v-if="article.isSuggestionAdopted === true"
-                    class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-green-700 bg-green-50 rounded border border-green-200"
-                  >
-                    <span class="material-symbols-outlined text-[14px]">check_circle</span>
-                    已采纳
-                  </span>
+                <template v-if="activeTab !== 'deleted'">
+                  <!-- 精华帖设置（仅已审核帖子；2026-10-12：当前管理员为作者且非超管时隐藏"设为精华"，取消精华不受限） -->
                   <button
-                    v-else
-                    class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-amber-700 bg-amber-50 rounded hover:bg-amber-100 transition-colors border border-amber-200"
-                    @click="handleAdoptSuggestion(article)"
+                    v-if="article.enable === 1 && canToggleFeatured(article)"
+                    class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium rounded transition-colors"
+                    :class="article.isFeatured === 1 ? 'bg-rank-gold/10 text-rank-gold hover:bg-rank-gold/20' : 'bg-surface-variant text-on-surface-variant hover:text-rank-gold hover:bg-rank-gold/10'"
+                    @click="handleToggleFeatured(article)"
                   >
-                    <span class="material-symbols-outlined text-[14px]">lightbulb</span>
-                    采纳建议
+                    <span class="material-symbols-outlined text-[14px]">{{ article.isFeatured === 1 ? 'stars' : 'star_border' }}</span>
+                    {{ article.isFeatured === 1 ? '取消精华' : '设为精华' }}
+                  </button>
+                  <!-- 通过审核（未审核帖子） -->
+                  <button
+                    v-if="article.enable === 0"
+                    class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-primary bg-primary/5 rounded hover:bg-primary/10 transition-colors"
+                    @click="handleAudit(article.articleId)"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">check</span>
+                    通过审核
+                  </button>
+                  <!-- 采纳建议（建议反馈用途 + 已审核 + 未采纳 + 非作者本人或超管） -->
+                  <template v-if="article.articleLabelType === 'suggestion' && article.enable === 1 && canAdopt(article)">
+                    <span
+                      v-if="article.isSuggestionAdopted === true"
+                      class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-green-700 bg-green-50 rounded border border-green-200"
+                    >
+                      <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                      已采纳
+                    </span>
+                    <button
+                      v-else
+                      class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-amber-700 bg-amber-50 rounded hover:bg-amber-100 transition-colors border border-amber-200"
+                      @click="handleAdoptSuggestion(article)"
+                    >
+                      <span class="material-symbols-outlined text-[14px]">lightbulb</span>
+                      采纳建议
+                    </button>
+                  </template>
+                  <!-- 删除 -->
+                  <button class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors" @click="handleDel(article.articleId)">
+                    <span class="material-symbols-outlined text-[14px]">delete</span>
+                    删除
                   </button>
                 </template>
-                <!-- 删除 -->
-                <button class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors" @click="handleDel(article.articleId)">
-                  <span class="material-symbols-outlined text-[14px]">delete</span>
-                  删除
+                <button
+                  v-if="activeTab === 'deleted'"
+                  class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-primary bg-primary/5 rounded hover:bg-primary/10 transition-colors"
+                  title="已删除帖子仅可查看"
+                  @click="handleRead(article.articleId)"
+                >
+                  <span class="material-symbols-outlined text-[14px]">visibility</span>
+                  查看
                 </button>
               </div>
             </div>
@@ -220,7 +251,7 @@
         </div>
 
         <!-- Batch Actions -->
-        <div v-if="activeTab !== 'featured'" class="flex items-center gap-3 px-card-padding py-4 border-t border-outline-variant/30 bg-surface-container-lowest">
+        <div v-if="activeTab !== 'featured' && activeTab !== 'deleted'" class="flex items-center gap-3 px-card-padding py-4 border-t border-outline-variant/30 bg-surface-container-lowest">
           <button v-if="activeTab === 'done'" class="inline-flex items-center gap-1.5 px-4 py-2 bg-error text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md" @click="handleBatchDeleteArticlesByAlive">
             <span class="material-symbols-outlined text-[18px]">delete_sweep</span>
             删除全部已审核文章
@@ -249,6 +280,10 @@
         <div class="p-5" v-loading="detailLoading">
           <div v-if="detailTitle" class="mb-4">
             <h2 class="font-headline-md text-headline-md text-on-surface">标题：《{{ detailTitle }}》</h2>
+            <p v-if="detailDeleted" class="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded bg-error/10 text-[12px] text-error">
+              <span class="material-symbols-outlined text-[14px]">delete</span>
+              该帖子已被删除，仅在管理后台可查看
+            </p>
             <div v-if="detailAuthor" class="flex items-center gap-3 mt-2">
               <span class="text-body-md text-on-surface-variant flex items-center gap-1">
                 <span class="material-symbols-outlined text-[16px]">person</span>
@@ -487,12 +522,14 @@ export default {
         done: 0,
         pending: 0,
         featured: 0,
+        deleted: 0,
       },
       // detail dialog
       detailVisible: false,
       detailLoading: false,
       detailArticleId: null,
       detailTitle: '',
+      detailDeleted: false,
       detailContent: '',
       detailUserId: null,
       detailAuthor: '',
@@ -577,8 +614,13 @@ export default {
           this.articleList = []
         })
       } else {
-        // 已审核/未审核调统一接口
-        params.enable = this.activeTab === 'done' ? 1 : 0
+        // 已审核/未审核/已删除调统一接口
+        if (this.activeTab === 'deleted') {
+          // 已删除：只查 is_delete=1，不限审核状态
+          params.deleted = 1
+        } else {
+          params.enable = this.activeTab === 'done' ? 1 : 0
+        }
         this.postRequest('/admin/article/list', params).then(resp => {
           this.loading = false
           this.articleList = this.parsePaginationResponse(resp)
@@ -597,6 +639,7 @@ export default {
             done: resp.obj.done || 0,
             pending: resp.obj.pending || 0,
             featured: resp.obj.featured || 0,
+            deleted: resp.obj.deleted || 0,
           }
         }
       }).catch(err => { console.warn('[ArticlePage] loadTabCounts', err) })
@@ -675,6 +718,7 @@ export default {
       this.detailArticleId = null
       this.detailTitle = ''
       this.detailContent = ''
+      this.detailDeleted = false
       this.detailUserId = null
       this.detailAuthor = ''
       this.detailPoints = 0
@@ -685,11 +729,16 @@ export default {
     },
     loadArticleDetail(articleId) {
       this.detailLoading = true
-      this.getRequest('/admin/getArticleByArticleId', articleId).then(resp => {
+      // 已删除帖子需走「含已删除」详情接口，普通接口会被 @TableLogic 过滤
+      const url = this.activeTab === 'deleted'
+        ? '/admin/getArticleByIdInclDeleted'
+        : '/admin/getArticleByArticleId'
+      this.getRequest(url, articleId).then(resp => {
         this.detailLoading = false
         if (resp) {
           this.detailContent = resp.obj.articleContent
           this.detailTitle = resp.obj.articleTitle
+          this.detailDeleted = Number(resp.obj.isDelete) === 1
           this.detailUserId = resp.obj.userId
           this.detailAuthor = resp.obj.articleAuthor || ''
           this.getArticleFileByArticleId(articleId)
@@ -747,7 +796,7 @@ export default {
       return this._md.render(content)
     },
     handleDel(articleId) {
-      this.$confirm('删除文章会连评论一并删除，确定要删除该文章吗？', '提示', { type: 'warning' }).then(() => {
+      this.$confirm('删除后帖子将从用户前台隐藏，并移入「已删除」标签，管理员仍可查看。确定要删除该文章吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/deleteArticleByArticleId', { articleId }).then(resp => {
           handleResponse(resp, { onSuccess: () => this.fetchList() })
         })

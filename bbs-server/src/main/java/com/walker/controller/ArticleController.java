@@ -482,7 +482,7 @@ public class ArticleController {
         }
     }
 
-    @ApiOperation(value = "管理员获取文章列表（支持搜索过滤分页，含标签名）")
+    @ApiOperation(value = "管理员获取文章列表（支持搜索过滤分页，含标签名；deleted=1 查已删除）")
     @PostMapping("/admin/article/list")
     public ResultBean getAdminArticleList(@RequestBody Map<String, Object> params) {
         String keywords = (String) params.getOrDefault("keywords", "");
@@ -490,9 +490,10 @@ public class ArticleController {
         String startTime = (String) params.getOrDefault("startTime", "");
         String endTime = (String) params.getOrDefault("endTime", "");
         Integer enable = params.get("enable") != null ? Integer.parseInt(params.get("enable").toString()) : null;
+        Integer deleted = params.get("deleted") != null ? Integer.parseInt(params.get("deleted").toString()) : 0;
         Integer page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;
         Integer size = params.get("size") != null ? Integer.parseInt(params.get("size").toString()) : 10;
-        return articleService.getAdminArticleList(keywords, labelId, startTime, endTime, enable, page, size);
+        return articleService.getAdminArticleList(keywords, labelId, startTime, endTime, enable, deleted, page, size);
     }
 
     // ==================== 精华帖接口 ====================

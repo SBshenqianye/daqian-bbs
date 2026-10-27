@@ -50,9 +50,20 @@ public interface ArticleMapper extends BaseMapper<Article> {
     List<Article> selectAdminArticleList(Map<String, Object> params);
 
     /**
+     * 用户前台帖子搜索：标题 / 正文 / 附件名 / 人员（昵称、账号、人员编号）
+     */
+    List<Article> selectArticleListByKeywords(Map<String, Object> params);
+
+    /**
      * 管理员查询文章列表总数
      */
     int countAdminArticleList(Map<String, Object> params);
+
+    /**
+     * 已删除文章总数（绕过 @TableLogic，管理端「已删除」tab 用）
+     */
+    @Select("SELECT COUNT(1) FROM bbs_article WHERE is_delete = 1")
+    long countDeletedArticles();
 
     /**
      * 查询精华帖列表（管理端，支持搜索过滤）

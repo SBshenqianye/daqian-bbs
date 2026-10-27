@@ -96,6 +96,7 @@
 
 <script>
 import bus from './bus'
+import { BADGE_REFRESH_EVENT } from '@/utils/badgeRefresh'
 
 const STORAGE_KEY = 'bbs-admin-sidebar-order'
 
@@ -167,6 +168,10 @@ export default {
       this.collapse = msg
       this.syncLabels(msg)
     })
+    // 待办操作成功后刷新红点（#9：处理完待办数字即时更新，无需等路由跳转）
+    bus.$on(BADGE_REFRESH_EVENT, this.loadBadgeCounts)
+    // 切回本页签时补一次刷新（覆盖在其他终端/页签处理待办的情况）
+    document.addEventListener('visibilitychange', this.onVisibilityChange)
     // Load saved order from localStorage
     this.loadMenuOrder()
     this.loadBadgeCounts()
@@ -179,7 +184,15 @@ export default {
       })
     })
   },
+  beforeDestroy() {
+    bus.$off(BADGE_REFRESH_EVENT, this.loadBadgeCounts)
+    document.removeEventListener('visibilitychange', this.onVisibilityChange)
+    clearTimeout(this.labelTimer)
+  },
   methods: {
+    onVisibilityChange() {
+      if (!document.hidden) this.loadBadgeCounts()
+    },
     /** 某菜单项的未处理待办数（无映射或无计数返回 0） */
     badgeOf(item) {
       const key = this.badgeKeys[item.label]

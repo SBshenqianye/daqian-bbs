@@ -223,8 +223,10 @@ public interface ArticleService extends IService<Article> {
 
     /**
      * 管理员获取文章列表（支持搜索过滤分页，含标签名）
+     * @param deleted 1=仅查已删除帖子（管理端「已删除」tab），其余查未删除
      */
-    ResultBean getAdminArticleList(String keywords, Integer labelId, String startTime, String endTime, Integer enable, Integer page, Integer size);
+    ResultBean getAdminArticleList(String keywords, Integer labelId, String startTime, String endTime,
+                                   Integer enable, Integer deleted, Integer page, Integer size);
 
     /**
      * 设置/取消精华帖

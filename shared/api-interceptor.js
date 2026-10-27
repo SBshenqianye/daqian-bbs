@@ -29,11 +29,13 @@ function buildErrorMessage(resData) {
  * @param {Function} options.getToken 获取token的函数
  * @param {Function} options.onUnauthorized 401时的处理函数（如跳转登录）
  * @param {Function} options.onForbidden 403时的处理函数
+ * @param {Function} options.onResponseSuccess 业务成功（code 200）后的回调，参数为 (响应数据, 请求config)
  */
 export function setupInterceptors({
   getToken = () => null,
   onUnauthorized = () => {},
-  onForbidden = () => {}
+  onForbidden = () => {},
+  onResponseSuccess = null
 } = {}) {
   // 请求拦截器
   axios.interceptors.request.use(
@@ -82,6 +84,13 @@ export function setupInterceptors({
         }
         // 注意：成功提示已移至 shared/feedback.js 的 handleResponse 中统一处理
         // 拦截器不再自动弹出成功 Toast，避免与组件的 Toast 重复
+        if (success.data && success.data.code == 200 && typeof onResponseSuccess === 'function') {
+          try {
+            onResponseSuccess(success.data, success.config)
+          } catch (e) {
+            console.warn('[Response Hook Error]', e)
+          }
+        }
       }
       return success.data
     },

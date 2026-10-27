@@ -3,6 +3,7 @@
  */
 import { setupInterceptors, createApiMethods } from '../../../shared/api-interceptor'
 import router from '@/router'
+import { requestBadgeRefresh, shouldRefreshBadges } from '@/utils/badgeRefresh'
 
 // 设置拦截器
 setupInterceptors({
@@ -15,6 +16,10 @@ setupInterceptors({
     })
     const currentPath = router.currentRoute.fullPath
     router.replace(currentPath !== '/login' ? `/login?redirect=${encodeURIComponent(currentPath)}` : '/login')
+  },
+  // 待办类操作成功后刷新侧栏红点（#9：处理完待办数字不更新）
+  onResponseSuccess: (data, config) => {
+    if (shouldRefreshBadges(config)) requestBadgeRefresh()
   }
 })
 

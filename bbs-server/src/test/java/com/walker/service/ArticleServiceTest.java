@@ -464,14 +464,14 @@ class ArticleServiceTest {
     }
 
     @Test
-    @DisplayName("查询所有文章列表 → 有关键词 → 搜索内容和标题")
+    @DisplayName("查询所有文章列表 → 有关键词 → 走统一搜索（标题/正文/人员/附件）")
     void queryAllArticleList_withKeywords_searchesContent() {
         Article a1 = new Article();
         a1.setArticleId(1);
         a1.setUserId(1);
 
         when(articleFileService.getArticleFileByKeywords("test")).thenReturn(null);
-        when(articleMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(new ArrayList<>(Arrays.asList(a1)));
+        when(articleMapper.selectArticleListByKeywords(anyMap())).thenReturn(new ArrayList<>(Arrays.asList(a1)));
         when(userService.listUsersWithOrgInfo(any())).thenReturn(new ArrayList<>());
         when(saOrgService.resolveDisplayOrgNames(any())).thenReturn(new HashMap<>());
         when(commentMapper.countByArticleIds(anyList())).thenReturn(new ArrayList<>());
@@ -479,6 +479,28 @@ class ArticleServiceTest {
         List<Article> result = articleService.queryAllArticleList("test");
         assertFalse(result.isEmpty());
         verify(articleFileService).getArticleFileByKeywords("test");
+        // 关键词与附件命中的文章 id 一并交给搜索 SQL
+        org.mockito.ArgumentCaptor<Map<String, Object>> captor =
+                org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(articleMapper).selectArticleListByKeywords(captor.capture());
+        assertEquals("test", captor.getValue().get("keywords"));
+        assertTrue(((List<?>) captor.getValue().get("fileArticleIds")).isEmpty());
+    }
+
+    @Test
+    @DisplayName("查询所有文章列表 → 关键词命中附件名 → 附件文章 id 参与匹配")
+    void queryAllArticleList_fileMatched_passesArticleIds() {
+        ArticleFile file = new ArticleFile();
+        file.setArticleId(88);
+        when(articleFileService.getArticleFileByKeywords("附件")).thenReturn(Arrays.asList(file));
+        when(articleMapper.selectArticleListByKeywords(anyMap())).thenReturn(new ArrayList<>());
+
+        articleService.queryAllArticleList("附件");
+
+        org.mockito.ArgumentCaptor<Map<String, Object>> captor =
+                org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(articleMapper).selectArticleListByKeywords(captor.capture());
+        assertEquals(Arrays.asList(88), captor.getValue().get("fileArticleIds"));
     }
 
     @Test
@@ -707,5 +729,67 @@ class ArticleServiceTest {
         when(articleMapper.selectByIdRaw(1)).thenReturn(article);
 
         assertEquals("NORMAL", articleService.getArticleStatus(1));
+    }
+
+    // ==================== 2026-10-27 需求：管理端可查看已删除帖子 ====================
+
+    @Test
+    @DisplayName("管理端帖子列表 → 默认只查未删除（deleted=0）")
+    void getAdminArticleList_default_queriesNotDeleted() {
+        when(articleMapper.countAdminArticleList(anyMap())).thenReturn(0);
+        when(articleMapper.selectAdminArticleList(anyMap())).thenReturn(new ArrayList<>());
+
+        ResultBean result = articleService.getAdminArticleList("", null, "", "", 1, 0, 1, 10);
+
+        assertEquals(200, result.getCode());
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<Map<String, Object>> captor =
+                org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(articleMapper).selectAdminArticleList(captor.capture());
+        assertEquals(0, captor.getValue().get("deleted"));
+        assertEquals(1, captor.getValue().get("enable"));
+    }
+
+    @Test
+    @DisplayName("管理端帖子列表 → deleted=1 时只查已删除，且不按审核状态过滤")
+    void getAdminArticleList_deletedTab_queriesDeletedOnly() {
+        Article deleted = new Article();
+        deleted.setArticleId(9);
+        deleted.setIsDelete(1);
+        when(articleMapper.countAdminArticleList(anyMap())).thenReturn(1);
+        when(articleMapper.selectAdminArticleList(anyMap())).thenReturn(new ArrayList<>(Arrays.asList(deleted)));
+
+        ResultBean result = articleService.getAdminArticleList("", null, "", "", null, 1, 1, 10);
+
+        assertEquals(200, result.getCode());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) result.getObj();
+        assertEquals(1, data.get("total"));
+        @SuppressWarnings("unchecked")
+        List<Article> list = (List<Article>) data.get("list");
+        assertEquals(1, list.size());
+        assertEquals(Integer.valueOf(1), list.get(0).getIsDelete());
+
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<Map<String, Object>> captor =
+                org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(articleMapper).selectAdminArticleList(captor.capture());
+        assertEquals(1, captor.getValue().get("deleted"));
+        assertNull(captor.getValue().get("enable"));
+    }
+
+    @Test
+    @DisplayName("帖子管理 tab 计数 → 额外返回已删除帖子数")
+    void getArticleTabCounts_includesDeletedCount() {
+        when(articleMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(10L);
+        when(articleMapper.countDeletedArticles()).thenReturn(7L);
+
+        ResultBean result = articleService.getArticleTabCounts();
+
+        assertEquals(200, result.getCode());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> counts = (Map<String, Object>) result.getObj();
+        assertEquals(10L, counts.get("done"));
+        assertEquals(7L, counts.get("deleted"));
     }
 }

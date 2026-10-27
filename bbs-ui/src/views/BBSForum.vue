@@ -1,11 +1,28 @@
 <template>
   <main class="min-h-screen bg-surface">
-    <!-- Hero Section -->
-    <section class="hero-gradient text-white py-16 px-page-margin-desktop">
-      <div class="max-w-7xl mx-auto text-center">
-        <h1 class="font-headline-lg text-[32px] md:text-[40px] leading-tight mb-4 tracking-tight">欢迎来到大千智荟创新创意交流论坛</h1>
-        <p class="font-body-lg opacity-90 max-w-2xl mx-auto">汇聚国网智慧，激发创新灵感，共同打造卓越的企业级知识共享平台。</p>
+    <!-- Hero Section：内江地标影像带 -->
+    <section class="hero-photo relative overflow-hidden text-white">
+      <!-- 图片带：多张地标图以左缘渐变叠接，末张为供图的电力大楼 -->
+      <div class="hero-photo__media" aria-hidden="true">
+        <div class="hero-photo__shot" :style="{ backgroundImage: 'url(' + heroImages.tuojiang + ')' }"></div>
+        <div class="hero-photo__shot hero-photo__shot--fade" :style="{ backgroundImage: 'url(' + heroImages.shengshui + ')' }"></div>
+        <div class="hero-photo__shot hero-photo__shot--fade hero-photo__shot--optional" :style="{ backgroundImage: 'url(' + heroImages.paifang + ')' }"></div>
+        <div class="hero-photo__slot">
+          <img class="hero-photo__slot-img" :src="heroImages.building" alt="国网大楼">
+        </div>
       </div>
+
+      <!-- 压暗层：保证标题/正文在任何图片底色上都清晰（图片颜色不干扰文字） -->
+      <div class="hero-photo__scrim"></div>
+
+      <div class="hero-photo__content relative z-10 max-w-7xl mx-auto px-page-margin-desktop py-16 md:py-20">
+        <div class="max-w-3xl mx-auto text-center">
+          <h1 class="font-headline-lg text-[32px] md:text-[40px] leading-tight mb-4 tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">欢迎来到大千智荟创新创意交流论坛</h1>
+          <p class="font-body-lg text-white/90 max-w-2xl mx-auto drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]">汇聚国网智慧，激发创新灵感，共同打造卓越的企业级知识共享平台。</p>
+        </div>
+      </div>
+
+      <p class="hero-photo__credits">沱江风光·圣水寺·隆昌石牌坊·国网大楼</p>
     </section>
 
     <!-- Main Layout Container -->
@@ -199,12 +216,23 @@
 import { normalizeFileUrl } from '@/utils/utils'
 import { dateStr } from '@/utils/time'
 import BBSUserBadge from '@/components/BBSUserBadge'
+import heroTuojiang from '@/assets/hero/neijiang-tuojiang.jpg'
+import heroShengshui from '@/assets/hero/neijiang-shengshui.jpg'
+import heroPaifang from '@/assets/hero/neijiang-paifang.jpg'
+import heroBuilding from '@/assets/hero/neijiang-power-building.jpg'
 
 export default {
   name: 'BBSForum',
   components: { BBSUserBadge },
   data() {
     return {
+      // 首页 Hero 地标图（顺序：左 → 右）
+      heroImages: {
+        tuojiang: heroTuojiang,
+        shengshui: heroShengshui,
+        paifang: heroPaifang,
+        building: heroBuilding,
+      },
       loading: false,
       categories: [],
       articles: [],
@@ -402,3 +430,106 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+/* ===== 首页 Hero：内江地标影像带 ===== */
+.hero-photo {
+  background-color: #0a1830;
+  min-height: 260px;
+}
+
+.hero-photo__media {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.hero-photo__shot {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* 相邻图片（含末张供图）向左叠压 4%，后一张仅以左缘 14% 渐变淡入：
+   下层图片始终不透明，叠接处不会出现暗缝，也不会出现硬边 */
+.hero-photo__shot + .hero-photo__shot,
+.hero-photo__shot + .hero-photo__slot {
+  margin-left: -4%;
+}
+
+.hero-photo__shot--fade {
+  -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, #000 14%, #000 100%);
+          mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, #000 14%, #000 100%);
+}
+
+/* 末张供图（内江电力大楼）：与其他图片同样左缘渐入，无缝接入影像带 */
+.hero-photo__slot {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, #000 14%, #000 100%);
+          mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, #000 14%, #000 100%);
+}
+
+.hero-photo__slot-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* 竖构图按 35% 纵向取景，保留楼顶与"人民电业为人民"标语 */
+  object-position: center 35%;
+  /* 轻度压亮，与其余照片观感一致，避免最右侧过亮抢标题 */
+  filter: brightness(0.9) saturate(0.95);
+}
+
+/* 压暗层：中间略深，保证白色标题与正文的对比度不受图片颜色影响 */
+.hero-photo__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(7, 18, 36, 0.52) 0%, rgba(7, 18, 36, 0.46) 45%, rgba(7, 18, 36, 0.62) 100%),
+    radial-gradient(ellipse at 50% 45%, rgba(5, 13, 26, 0.55) 0%, rgba(5, 13, 26, 0.18) 62%, rgba(5, 13, 26, 0.4) 100%);
+}
+
+.hero-photo__credits {
+  position: absolute;
+  right: 16px;
+  bottom: 6px;
+  z-index: 10;
+  font-size: 10px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+}
+
+/* 移动端：影像带收成顶部横条，标题与正文落在纯色底上，彻底避免图片干扰文字 */
+@media (max-width: 767px) {
+  .hero-photo {
+    min-height: 0;
+  }
+  .hero-photo__media {
+    height: 128px;
+  }
+  /* 移动端只保留两张地标图 + 供图，避免单格过窄 */
+  .hero-photo__shot--optional {
+    display: none;
+  }
+  .hero-photo__shot + .hero-photo__shot,
+  .hero-photo__shot + .hero-photo__slot {
+    margin-left: -6%;
+  }
+  .hero-photo__scrim {
+    background: linear-gradient(180deg, rgba(7, 18, 36, 0.5) 0%, rgba(7, 18, 36, 0.58) 128px, #0a1830 128px);
+  }
+  .hero-photo__content {
+    padding-top: 160px;
+    padding-bottom: 28px;
+  }
+  .hero-photo__credits {
+    display: none;
+  }
+}
+</style>
