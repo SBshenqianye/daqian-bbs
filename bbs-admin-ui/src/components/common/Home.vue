@@ -16,7 +16,7 @@
         <Tags />
 
         <!-- Page Content -->
-        <div class="flex-1 overflow-y-auto bg-background" ref="contentWrapper">
+        <main class="flex-1 overflow-y-auto bg-background" ref="contentWrapper">
           <transition name="page-fade" mode="out-in">
             <router-view :key="pageKey" class="min-h-full" />
           </transition>
@@ -31,7 +31,7 @@
               <span class="material-symbols-outlined text-[20px]">arrow_upward</span>
             </button>
           </transition>
-        </div>
+        </main>
       </div>
     </div>
   </div>

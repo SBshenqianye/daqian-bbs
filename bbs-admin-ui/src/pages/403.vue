@@ -27,7 +27,12 @@ export default {
   name: '403',
   methods: {
     goBack() {
-      this.$router.go(-1)
+      const from = this.$route.query.from
+      if (from && from !== '/403' && !String(from).startsWith('/403')) {
+        this.$router.replace(from)
+      } else {
+        this.$router.replace('/dashboard')
+      }
     }
   }
 }

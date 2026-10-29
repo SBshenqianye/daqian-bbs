@@ -32,6 +32,19 @@ const state = Vue.observable({
 const ADMIN_KEY = 'admin'
 const TOKEN_KEY = 'tokenStr'
 
+/** 管理员默认权限点（旧后端未返回 permissions 时的兼容回退；后端仍是最终边界） */
+const ADMIN_DEFAULT_PERMISSIONS = [
+  'admin:access',
+  'user:read', 'user:create', 'user:update', 'user:delete',
+  'config:read',
+  'article:read', 'article:review', 'article:delete', 'article:feature', 'article:suggestion:adopt',
+  'report:review', 'appeal:review',
+  'moderator:manage', 'moderator:complaint:review', 'adopt:review',
+  'featured:recommend', 'featured:review',
+  'points:read', 'points:adjust',
+  'dashboard:read',
+]
+
 // ── 安全读写辅助 ──
 
 function safeGet(key) {
@@ -106,9 +119,57 @@ export function isLoggedIn() {
   return !!(state.admin && state.admin.id)
 }
 
-/** 是否是超级管理员（id=1） */
+/** 当前账号角色：USER / ADMIN / SUPER_ADMIN（旧会话回退 userType 映射） */
+export function getRole() {
+  if (!state.admin) return null
+  if (state.admin.role) return state.admin.role
+  const type = String(state.admin.userType || '1')
+  if (type === '3') return 'SUPER_ADMIN'
+  if (type === '2') return 'ADMIN'
+  return 'USER'
+}
+
+/** 是否是超级管理员（按角色判断，不再依赖 id=1；旧会话回退 userType） */
+export function isSuperAdmin() {
+  return getRole() === 'SUPER_ADMIN'
+}
+
+/** 兼容旧调用名：isAdminId1 现在语义为“是否超级管理员” */
 export function isAdminId1() {
-  return !!(state.admin && (state.admin.id === 1 || state.admin.id === '1'))
+  return isSuperAdmin()
+}
+
+/** 当前账号权限点 */
+export function getPermissions() {
+  if (state.admin && Array.isArray(state.admin.permissions)) {
+    return state.admin.permissions
+  }
+  // 兼容旧会话/旧后端：管理员按默认权限点渲染，具体操作仍由后端校验
+  return getRole() === 'ADMIN' ? ADMIN_DEFAULT_PERMISSIONS : []
+}
+
+/** 是否拥有权限点；未声明权限点的菜单/按钮默认放行 */
+export function hasPermission(permission) {
+  if (!permission) return true
+  if (isSuperAdmin()) return true
+  return getPermissions().indexOf(permission) !== -1
+}
+
+/** 是否拥有任意一个权限点 */
+export function hasAnyPermission(permissions) {
+  if (!Array.isArray(permissions) || permissions.length === 0) return true
+  return permissions.some(p => hasPermission(p))
+}
+
+/** 当前账号版主板块范围 */
+export function getBoardScopes() {
+  if (!state.admin || !Array.isArray(state.admin.boardScopes)) return []
+  return state.admin.boardScopes
+}
+
+/** 是否是指定板块的版主 */
+export function isBoardModerator(labelId) {
+  return getBoardScopes().some(s => String(s.labelId) === String(labelId))
 }
 
 /** 获取管理员ID */
@@ -133,7 +194,14 @@ export default {
   logout,
   updateAdmin,
   isLoggedIn,
+  getRole,
+  isSuperAdmin,
   isAdminId1,
+  getPermissions,
+  hasPermission,
+  hasAnyPermission,
+  getBoardScopes,
+  isBoardModerator,
   getAdminId,
   getUsername,
   getToken,

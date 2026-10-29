@@ -60,6 +60,8 @@
 </template>
 
 <script>
+import adminStore from '@/utils/adminStore'
+
 export default {
   name: 'Login',
   data() {
@@ -90,8 +92,8 @@ export default {
         this.loading = false
         if (resp && resp.obj) {
           const tokenStr = resp.obj.tokenHead + resp.obj.token
-          window.sessionStorage.setItem('tokenStr', tokenStr)
-          window.sessionStorage.setItem('admin', JSON.stringify(resp.obj.user))
+          // 统一走 adminStore，保证响应式状态与 sessionStorage 同步；403 处理可正确识别角色
+          adminStore.login(resp.obj.user, tokenStr)
           const redirect = this.$route.query.redirect || '/'
           this.$router.push(redirect)
         } else {
@@ -109,4 +111,9 @@ export default {
 </script>
 
 <style scoped>
+/* 隐藏 Edge/IE 原生密码显示按钮，避免与框架自定义的“显示密码”按钮重复 */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
 </style>

@@ -30,7 +30,12 @@
           </div>
         </div>
         <div class="flex justify-end mt-4">
-          <button class="inline-flex items-center gap-1.5 px-5 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" @click="saveContactInfo" :disabled="contactSaving">
+          <button
+            class="inline-flex items-center gap-1.5 px-5 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            @click="saveContactInfo"
+            :disabled="contactSaving || !canWriteConfig"
+            :title="canWriteConfig ? '保存联系方式' : '仅超级管理员可写配置'"
+          >
             {{ contactSaving ? '保存中...' : '保存联系方式' }}
           </button>
         </div>
@@ -38,7 +43,12 @@
 
       <!-- Actions -->
       <div class="flex items-center gap-3 mb-6">
-        <button class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md" @click="openAdd">
+        <button
+          class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md disabled:opacity-40 disabled:cursor-not-allowed"
+          :disabled="!canWriteConfig"
+          :title="canWriteConfig ? '新增配置' : '仅超级管理员可写配置'"
+          @click="openAdd"
+        >
           <span class="material-symbols-outlined text-[18px]">add</span>
           新增配置
         </button>
@@ -75,11 +85,21 @@
                 </td>
                 <td class="p-4">
                   <div class="flex items-center gap-2">
-                    <button class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-primary bg-primary/5 rounded hover:bg-primary/10 transition-colors" @click="openEdit(item)">
+                    <button
+                      class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-primary bg-primary/5 rounded hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      :disabled="!canWriteConfig"
+                      :title="canWriteConfig ? '编辑' : '仅超级管理员可写配置'"
+                      @click="openEdit(item)"
+                    >
                       <span class="material-symbols-outlined text-[14px]">edit</span>
                       编辑
                     </button>
-                    <button class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors" @click="handleDelete(item)">
+                    <button
+                      class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      :disabled="!canWriteConfig"
+                      :title="canWriteConfig ? '删除' : '仅超级管理员可写配置'"
+                      @click="handleDelete(item)"
+                    >
                       <span class="material-symbols-outlined text-[14px]">delete</span>
                       删除
                     </button>
@@ -179,9 +199,15 @@
 
 <script>
 import { handleResponse } from '../../../shared/feedback'
+import adminStore from '@/utils/adminStore'
 
 export default {
   name: 'SystemConfigPage',
+  computed: {
+    canWriteConfig() {
+      return adminStore.hasPermission('config:write')
+    }
+  },
   data() {
     return {
       configList: [],

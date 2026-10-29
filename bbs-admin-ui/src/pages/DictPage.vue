@@ -15,7 +15,12 @@
       <!-- Actions -->
       <div class="bg-container border border-border rounded-xl p-card-padding mb-6">
         <div class="flex flex-wrap items-center gap-3">
-          <button v-if="isAdminId1" class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md" @click="openAdd">
+          <button
+            class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="!isAdminId1"
+            :title="isAdminId1 ? '新增字典' : '仅超级管理员可写配置'"
+            @click="openAdd"
+          >
             <span class="material-symbols-outlined text-[18px]">add</span>
             新增字典
           </button>
@@ -43,15 +48,28 @@
               <tr v-for="(item, index) in dictList" :key="item.id || index" class="border-b border-border hover:bg-surface-container-low/50 transition-colors">
                 <td class="p-4 font-body-md text-on-surface">{{ item.dictLabel }}</td>
                 <td class="p-4 font-body-md text-on-surface-variant">{{ formatDictValue(item) }}</td>
-                <td class="p-4 font-body-md text-on-surface-variant">{{ item.dictKey || '-' }}</td>
+                <td class="p-4 font-body-md text-on-surface-variant">
+                  <span v-if="item.dictKey">{{ item.dictKey }}</span>
+                  <span v-else class="text-warning cursor-help" title="该行缺少键，程序无法按 key 读取；建议补全">-（缺少键）</span>
+                </td>
                 <td class="p-4 font-body-md text-on-surface-variant max-w-[200px] truncate" :title="item.remark">{{ item.remark || '-' }}</td>
                 <td class="p-4">
                   <div class="flex items-center gap-2">
-                    <button class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-primary bg-primary/5 rounded hover:bg-primary/10 transition-colors" @click="openEdit(item)">
+                    <button
+                      class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-primary bg-primary/5 rounded hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      :disabled="!isAdminId1"
+                      :title="isAdminId1 ? '编辑' : '仅超级管理员可写配置'"
+                      @click="openEdit(item)"
+                    >
                       <span class="material-symbols-outlined text-[14px]">edit</span>
                       编辑
                     </button>
-                    <button v-if="isAdminId1" class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors" @click="handleDelete(item)">
+                    <button
+                      class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      :disabled="!isAdminId1"
+                      :title="isAdminId1 ? '删除' : '仅超级管理员可写配置'"
+                      @click="handleDelete(item)"
+                    >
                       <span class="material-symbols-outlined text-[14px]">delete</span>
                       删除
                     </button>
@@ -165,6 +183,7 @@
 
 <script>
 import { handleResponse } from '../../../shared/feedback'
+import adminStore from '@/utils/adminStore'
 
 export default {
   name: 'DictPage',
@@ -174,7 +193,8 @@ export default {
       addVisible: false,
       editVisible: false,
       addForm: { dictType: '', dictValue: '', dictLabel: '', dictSort: 0, remark: '', dictKey: '' },
-      editForm: { id: null, dictType: '', dictValue: '', dictLabel: '', dictSort: 0, remark: '', dictKey: '' }
+      editForm: { id: null, dictType: '', dictValue: '', dictLabel: '', dictSort: 0, remark: '', dictKey: '' },
+      originalDictKey: ''
     }
   },
   computed: {
@@ -186,14 +206,8 @@ export default {
       return type === 'points-start-time' || type === 'point-end-time'
     },
     isAdminId1() {
-      try {
-        const admin = window.sessionStorage.getItem('admin')
-        if (admin) {
-          const obj = JSON.parse(admin)
-          return obj && (obj.id === 1 || obj.id === '1')
-        }
-      } catch (e) {}
-      return false
+      // 配置写权限 = 超管（config:write），按登录返回的角色判断
+      return adminStore.isSuperAdmin()
     }
   },
   mounted() { this.loadDictList() },
@@ -250,6 +264,7 @@ export default {
         dictSort: Number(row.dictSort) || 0, remark: row.remark || '',
         dictKey: row.dictKey || ''
       }
+      this.originalDictKey = row.dictKey || ''
       this.editVisible = true
     },
     submitEdit() {
@@ -259,11 +274,26 @@ export default {
       if (!dictValue) { this.$message.warning('值不能为空'); return }
       if (!dictLabel) { this.$message.warning('中文描述不能为空'); return }
       if (dictSort === '' || isNaN(dictSort) || dictSort < 0) { this.$message.warning('排序序号无效'); return }
-      this.postRequest('/admin/updateDict', {
+
+      const newKey = (dictKey || '').trim()
+      const payload = {
         id, dictType, dictValue, dictLabel, dictSort: Number(dictSort),
         updateBy: this.getCurrentUsername(), remark: (remark || '').trim(),
-        dictKey: (dictKey || '').trim() || null
-      }).then(resp => {
+        dictKey: newKey || null
+      }
+
+      if (newKey !== (this.originalDictKey || '')) {
+        this.$confirm(
+          `键用于程序按 key 读取配置。将键从「${this.originalDictKey || '无'}」改为「${newKey || '无'}」后，旧键将立即失效，可能影响对应功能。是否继续？`,
+          '修改键的风险提示',
+          { type: 'warning', confirmButtonText: '确认修改', cancelButtonText: '取消' }
+        ).then(() => this.doUpdateDict(payload)).catch(() => {})
+        return
+      }
+      this.doUpdateDict(payload)
+    },
+    doUpdateDict(payload) {
+      this.postRequest('/admin/updateDict', payload).then(resp => {
         handleResponse(resp, { successMsg: '修改成功', onSuccess: () => { this.editVisible = false; this.loadDictList() } })
       })
     },

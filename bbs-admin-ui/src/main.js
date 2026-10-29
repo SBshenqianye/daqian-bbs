@@ -28,6 +28,12 @@ Vue.use(ElementUI, {
 // 初始化管理员状态 Store
 adminStore.init();
 
+// 管理端账号角色：userType 2=管理员，3=超级管理员
+function hasAdminRole() {
+    const role = adminStore.getRole();
+    return role === 'ADMIN' || role === 'SUPER_ADMIN';
+}
+
 //使用钩子函数对路由进行权限跳转
 router.beforeEach((to, from, next) => {
     document.title = `大千智荟创新创意交流论坛`;
@@ -36,10 +42,15 @@ router.beforeEach((to, from, next) => {
     if (!isLoggedIn && !publicPaths.includes(to.path)) {
         next('/login');
     } else if (to.meta.permission) {
-        // 如果是管理员权限则可进入
-        const admin = adminStore.state.admin;
-        const role = admin ? admin.username : null;
-        role === 'admin' ? next() : next('/403');
+        // 角色不符：清理无权限登录态；角色正确但缺权限点：跳 403
+        if (!hasAdminRole()) {
+            adminStore.logout();
+            next('/login');
+        } else if (!adminStore.hasPermission(to.meta.permission)) {
+            next('/403');
+        } else {
+            next();
+        }
     } else {
         next();
     }

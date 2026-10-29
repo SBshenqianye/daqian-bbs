@@ -499,6 +499,7 @@
 import MarkdownIt from 'markdown-it/dist/markdown-it'
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
 import paginationMixin from '@/mixins/pagination'
+import adminStore from '@/utils/adminStore'
 import { handleResponse } from '../../../shared/feedback'
 
 export default {
@@ -675,9 +676,9 @@ export default {
       } catch (e) {}
       return 1
     },
-    // 2026-10-12 需求：除超管（id=1）外，不得采纳自己的建议、不得将自己的帖子设为精华
+    // 2026-10-12 需求：除超管外，不得采纳自己的建议、不得将自己的帖子设为精华
     isSuperAdmin() {
-      return Number(this.currentAdminId) === 1
+      return adminStore.isSuperAdmin()
     },
     canAdopt(article) {
       // 非作者本人，或当前管理员为超管

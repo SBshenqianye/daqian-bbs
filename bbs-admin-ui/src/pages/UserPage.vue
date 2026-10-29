@@ -201,7 +201,7 @@
                 <div class="grid grid-cols-1 grid-rows-1">
                   <select v-model="editForm.userType" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
                     <option value="1">普通用户</option>
-                    <option value="2">管理员</option>
+                    <option v-if="isSuperAdmin" value="2">管理员</option>
                   </select>
                   <span class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline pointer-events-none">
                     <span class="material-symbols-outlined text-[18px]">unfold_more</span>
@@ -399,7 +399,7 @@
                 <div class="grid grid-cols-1 grid-rows-1">
                   <select v-model="addForm.userType" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
                     <option value="1">普通用户</option>
-                    <option value="2">管理员</option>
+                    <option v-if="isSuperAdmin" value="2">管理员</option>
                   </select>
                   <span class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline pointer-events-none">
                     <span class="material-symbols-outlined text-[18px]">unfold_more</span>
@@ -549,6 +549,7 @@
 
 <script>
 import OrgTreePicker from '@/components/OrgTreePicker.vue'
+import adminStore from '@/utils/adminStore'
 import { importStore, resetImport } from '@/utils/importStore'
 import { handleResponse } from '../../../shared/feedback'
 
@@ -631,13 +632,8 @@ export default {
     }
   },
   computed: {
-    currentUserType() {
-      try {
-        const admin = window.sessionStorage.getItem('admin')
-        if (!admin) return 0
-        const parsed = JSON.parse(admin)
-        return parsed.userType != null ? Number(parsed.userType) : 0
-      } catch (e) { return 0 }
+    isSuperAdmin() {
+      return adminStore.isSuperAdmin()
     },
     totalPages() {
       return Math.max(1, Math.ceil(this.total / this.pageParams.pageSize))
@@ -687,7 +683,7 @@ export default {
   methods: {
     canCheck(row) {
       if (row.userType == 3) return false
-      if (row.userType == 2) return this.currentUserType == 3
+      if (row.userType == 2) return this.isSuperAdmin
       return true
     },
     canShowOperation(row) { return this.canCheck(row) },

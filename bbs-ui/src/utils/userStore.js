@@ -109,16 +109,13 @@ export function isLoggedIn() {
   return !!(state.user && state.user.id)
 }
 
-/** 是否是超级管理员（id=1） */
+/** 是否是管理员或超级管理员（按角色判断，不再依赖 id=1） */
 export function isAdmin() {
-  return !!(state.user && (state.user.id === 1 || state.user.id === '1'))
-}
-
-/** 是否是版主 */
-export function isModerator() {
   if (!state.user) return false
-  const type = (state.user.userType || '').toLowerCase()
-  return type === 'moderator' || type === 'admin'
+  const role = state.user.role
+  if (role) return role === 'ADMIN' || role === 'SUPER_ADMIN'
+  const type = String(state.user.userType || '1')
+  return type === '2' || type === '3'
 }
 
 /** 获取用户ID */
@@ -149,7 +146,6 @@ export default {
   refresh,
   isLoggedIn,
   isAdmin,
-  isModerator,
   getUserId,
   getNickname,
 }

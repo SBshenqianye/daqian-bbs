@@ -1,4 +1,4 @@
-import Vue from 'vue';
+﻿import Vue from 'vue';
 import Router from 'vue-router';
 
 Vue.use(Router);
@@ -20,27 +20,27 @@ export default new Router({
                 {
                     path: '/dashboard',
                     component: () => import('../pages/Dashboard.vue'),
-                    meta: { title: '系统首页' }
+                    meta: { title: '系统首页', permission: 'dashboard:read' }
                 },
                 {
                     path: '/user',
                     component: () => import('../pages/UserPage.vue'),
-                    meta: { title: '用户管理' }
+                    meta: { title: '用户管理', permission: 'user:read' }
                 },
                 {
                     path: '/article',
                     component: () => import('../pages/ArticlePage.vue'),
-                    meta: { title: '帖子管理' },
+                    meta: { title: '帖子管理', permission: 'article:read' },
                 },
                 {
                     path: '/articleLable',
                     component: () => import('../pages/ArticleLablePage.vue'),
-                    meta: { title: '标签管理' }
+                    meta: { title: '标签管理', permission: 'article:read' }
                 },
                 {
                     path: '/dict',
                     component: () => import('../pages/ConfigCenterPage.vue'),
-                    meta: { title: '配置管理' }
+                    meta: { title: '配置管理', permission: 'config:read' }
                 },
                 {
                     path: '/systemConfig',
@@ -49,22 +49,22 @@ export default new Router({
                 {
                     path: '/article/id',
                     component: () => import('../pages/ArticleDetailsPage.vue'),
-                    meta: { title: '文章详情', noCache: false },
+                    meta: { title: '文章详情', noCache: false, permission: 'article:read' },
                 },
                 {
                     path: '/community',
                     component: () => import('../pages/CommunityPage.vue'),
-                    meta: { title: '社区管理' }
+                    meta: { title: '社区管理', permission: 'article:read' }
                 },
                 {
                     path: '/points',
                     component: () => import('../pages/BBSPoints.vue'),
-                    meta: { title: '积分排名' }
+                    meta: { title: '积分排名', permission: 'points:read' }
                 },
                 {
                     path: '/points/detail',
                     component: () => import('../pages/BBSPointsDetail.vue'),
-                    meta: { title: '积分排名详情' }
+                    meta: { title: '积分排名详情', permission: 'points:read' }
                 },
                 {
                     path: '/points/config',
@@ -73,47 +73,47 @@ export default new Router({
                 {
                     path: '/unitManage',
                     component: () => import('../pages/BBSUnitManage.vue'),
-                    meta: { title: '单位管理' }
+                    meta: { title: '单位管理', permission: 'config:read' }
                 },
                 {
                     path: '/sensitiveWord',
                     component: () => import('../pages/BBSSensitiveWord.vue'),
-                    meta: { title: '敏感词管理' }
+                    meta: { title: '敏感词管理', permission: 'config:read' }
                 },
                 {
                     path: '/violation',
                     component: () => import('../pages/ViolationPage.vue'),
-                    meta: { title: '违规管理' }
+                    meta: { title: '违规管理', permission: 'article:review' }
                 },
                 {
                     path: '/report',
                     component: () => import('../pages/ReportPage.vue'),
-                    meta: { title: '举报管理' }
+                    meta: { title: '举报管理', permission: 'report:review' }
                 },
                 {
                     path: '/appeal',
                     component: () => import('../pages/AppealPage.vue'),
-                    meta: { title: '申诉管理' }
+                    meta: { title: '申诉管理', permission: 'appeal:review' }
                 },
                 {
                     path: '/moderator',
                     component: () => import('../pages/ModeratorPage.vue'),
-                    meta: { title: '版主管理' }
+                    meta: { title: '版主管理', permission: 'moderator:manage' }
                 },
                 {
                     path: '/moderator-complaint',
                     component: () => import('../pages/ModeratorComplaintPage.vue'),
-                    meta: { title: '版主投诉管理' }
+                    meta: { title: '版主投诉管理', permission: 'moderator:complaint:review' }
                 },
                 {
                     path: '/approve-adopt',
                     component: () => import('../pages/ApproveAdoptPage.vue'),
-                    meta: { title: '采纳审批' }
+                    meta: { title: '采纳审批', permission: 'adopt:review' }
                 },
                 {
                     path: '/featured-recommendation',
                     component: () => import('../pages/FeaturedRecommendationPage.vue'),
-                    meta: { title: '精华帖审批' }
+                    meta: { title: '精华帖审批', permission: 'featured:review' }
                 },
                 {
                     path: '/404',

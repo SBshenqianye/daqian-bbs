@@ -30,7 +30,7 @@
           <div>
             <label class="block text-body-sm text-on-surface-variant mb-1">关联类型</label>
             <select v-model="form.relatedType" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none">
-              <option value="">无</option>
+              <option v-if="isSuperAdmin" value="">无</option>
               <option value="article">帖子</option>
               <option value="comment">评论</option>
               <option value="reply">回复</option>
@@ -170,10 +170,16 @@ import UserSelect from '@/components/UserSelect.vue'
 import UserCell from '@/components/UserCell.vue'
 import ContentPreviewDialog from '@/components/ContentPreviewDialog.vue'
 import { handleResponse } from '../../../shared/feedback'
+import adminStore from '@/utils/adminStore'
 
 export default {
   name: 'ViolationPage',
   components: { UserSelect, UserCell, ContentPreviewDialog },
+  computed: {
+    isSuperAdmin() {
+      return adminStore.isSuperAdmin()
+    }
+  },
   data() {
     return {
       loading: false,

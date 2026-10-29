@@ -73,13 +73,19 @@ export function setupInterceptors({
           return
         }
         if (success.data.code === 403) {
-          // 业务级403：仅提示，不跳登录（可配置）
-          Message({
-            type: 'error',
-            message: buildErrorMessage(success.data) || '权限不足，请联系管理员！',
-            showClose: true,
-            offset: 54
-          })
+          // 业务级403：由调用方决定是否已接管（跳转 403/登录）。返回 true 时不再重复弹窗。
+          let handled = false
+          if (typeof onForbidden === 'function') {
+            try { handled = onForbidden(success.data) === true } catch (e) { console.warn('[Forbidden Hook Error]', e) }
+          }
+          if (!handled) {
+            Message({
+              type: 'error',
+              message: buildErrorMessage(success.data) || '权限不足，请联系管理员！',
+              showClose: true,
+              offset: 54
+            })
+          }
           return
         }
         // 注意：成功提示已移至 shared/feedback.js 的 handleResponse 中统一处理
@@ -110,12 +116,18 @@ export function setupInterceptors({
           offset: 54
         })
       } else if (status === 403) {
-        Message({
-          type: 'error',
-          message: resMsg || '权限不足，请联系管理员！',
-          showClose: true,
-          offset: 54
-        })
+        let handled = false
+        if (typeof onForbidden === 'function') {
+          try { handled = onForbidden(resData) === true } catch (e) { console.warn('[Forbidden Hook Error]', e) }
+        }
+        if (!handled) {
+          Message({
+            type: 'error',
+            message: resMsg || '权限不足，请联系管理员！',
+            showClose: true,
+            offset: 54
+          })
+        }
       } else if (status === 401) {
         onUnauthorized()
       } else {
