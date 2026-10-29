@@ -1,6 +1,8 @@
 202605-RPA小助手归档模板/
 归档/
 
+docs/.obsidian
+
 # tmp
 tmp/
 
@@ -75,3 +77,7 @@ postman/
 .dsh-vision-router/
 docs/需求更新-计划-*.md
 docs/manual-images/
+# 权限设计/重构过程文档（本地查看，不提交）
+docs/权限架构重构-*.md
+docs/权限管理-*.md
+docs/版主角色化-*.md

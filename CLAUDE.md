@@ -82,6 +82,29 @@ CREATE TABLE bbs_schema_version (
 - `bbs-ui/` — 用户前台（Vue 2）
 - `bbs-server/` — Java 后端（Spring Boot + MyBatis-Plus）
 
+## 权限模型约定（2026-10 重构）
+
+- 账号角色以 `bbs_user.user_type` 为唯一事实来源：`1=USER`、`2=ADMIN`、`3=SUPER_ADMIN`；空值/非法值按 `USER` 处理并告警。
+- 业务代码**禁止**再通过 `id == 1` 判断超级管理员，统一使用 `AuthorizationService.isSuperAdmin(...)`。
+- 超管不再依赖固定 id；初始化 SQL 仍以 `id=1` 作为引导账号，并在迁移中确保其 `user_type='3'`。
+- 权限点使用 `Permission` 枚举（如 `admin:access`、`user:grant:admin`、`config:write`、`adopt:review`）。
+- `ADMIN` 默认拥有除 `user:grant:admin`、`config:write` 外的管理权限；`SUPER_ADMIN` 拥有全部权限。
+- 版主是板块级数据范围（`bbs_board_moderator.status=1`），不是账号角色；数据范围统一通过 `AuthorizationService.canModerateBoard(userId,labelId)` 判断。
+- 版主数据范围覆盖：待审采纳、采纳审批、精华推荐、文章审核/删除、举报处理、违规新增/取消；举报/违规按内容所属板块解析，用户端“我的记录”不受影响。
+- 系统通知按权限点广播：举报、版主投诉、精华推荐、待审采纳分别通知拥有对应权限点的管理员/超管，举报通知还会按板块范围过滤接收人；不再依赖固定 `id=1`。
+- 自审批规则统一走 `SelfApprovalPolicy`；除“审批自己提问的最佳解答”全员拦截外，其余规则超管豁免。
+- 当前登录人必须从 `SecurityContextHolder` 获取（`CurrentUserService`），不信任前端传入的 `operatorId/reviewerId/adminId`；传入值仅做一致性校验。
+- 后端是最终权限边界；前端 `role/permissions/boardScopes` 仅用于菜单、路由、按钮展示。
+- 管理端接口统一要求 `ROLE_ADMIN` / `ROLE_SUPER_ADMIN`；未挂 `/admin` 前缀的历史管理接口在 `SecurityConfig` 中单独收口。
+- 权限不足统一返回既有 403 结构（`ResultBean.code=403`）；拒绝记录写入应用日志。
+
+### 前端权限
+
+- 登录响应新增 `role`、`permissions`、`boardScopes`，旧字段保持不变。
+- 管理后台路由使用 `meta.permission`，无权限跳转 `/403`；非管理员登录态会被清理。
+- `adminStore.hasPermission()` 优先使用后端下发的权限点；旧会话/旧后端按管理员默认权限点兼容回退。
+
+
 ## 前端开发规范
 
 ### v-if/v-else 与复杂 DOM 组件
