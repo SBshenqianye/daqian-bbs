@@ -64,7 +64,7 @@ if (-not $KeepServer) {
         $env:SPRING_PROFILES_ACTIVE = "e2e"
         $env:BBS_SERVER_PORT = "$port"
         Set-Location "$projectRoot\bbs-server"
-        mvn spring-boot:run "-Dmaven.repo.local=./target/test-repo" -q 2>&1
+        mvn spring-boot:run -q 2>&1
     } -ArgumentList $Port, $PROJECT_ROOT
 
     Write-Host "  等待后端启动..."
@@ -122,6 +122,8 @@ $adminJob = Start-Job -ScriptBlock {
     param($dir, $backendPort)
     $env:VUE_APP_BBS_BASE_API = "http://127.0.0.1:$backendPort"
     $env:DEV_BACKEND_URL = "http://127.0.0.1:$backendPort"
+    # 旧版 vue-cli/webpack 在 Node 17+ 需要 legacy OpenSSL
+    $env:NODE_OPTIONS = "--openssl-legacy-provider"
     Set-Location $dir
     npx vue-cli-service serve --port 9082 2>&1
 } -ArgumentList $ADMIN_DIR, $Port
@@ -162,11 +164,22 @@ try {
     Write-Host "  ⚠️ 用户前端 proxy 异常: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
+# 预热管理端登录代理：避免首个 E2E 登录用例因 admin dev server 首次转发冷启动而抖动
+Write-Host "  预热管理端登录代理 ..."
+try {
+    $loginBody = '{"username":"testadmin","password":"1234@abcD","channel":"02"}'
+    $r = Invoke-WebRequest -Uri "http://localhost:$ADMIN_PORT/admin-api/common/login" -Method Post -ContentType "application/json" -Body $loginBody -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
+    Write-Host "  ✅ 管理端登录代理预热成功 (status $($r.StatusCode))" -ForegroundColor Green
+} catch {
+    Write-Host "  ⚠️ 管理端登录代理预热失败: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
 # ========== 5. 运行 Playwright 测试 ==========
 Write-Host "`n[5/7] 运行 Playwright E2E 测试 ..." -ForegroundColor Yellow
 
 $env:E2E_USER_PORT = "$USER_PORT"
 $env:E2E_ADMIN_PORT = "$ADMIN_PORT"
+$env:E2E_BACKEND_PORT = "$Port"
 
 $testExitCode = 0
 try {
@@ -176,6 +189,7 @@ try {
 } finally {
     Remove-Item Env:\E2E_USER_PORT -ErrorAction SilentlyContinue
     Remove-Item Env:\E2E_ADMIN_PORT -ErrorAction SilentlyContinue
+    Remove-Item Env:\E2E_BACKEND_PORT -ErrorAction SilentlyContinue
     Set-Location $PROJECT_ROOT
 }
 

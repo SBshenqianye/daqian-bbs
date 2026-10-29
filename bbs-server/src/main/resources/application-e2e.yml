@@ -7,6 +7,13 @@ spring:
     url: jdbc:mysql://localhost:3306/bbs_e2e_test?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
     username: root
     password: root
+  servlet:
+    multipart:
+      # 不指定 location，使用容器默认临时目录，避免绑定本机绝对路径
+
+# E2E 文件存储目录（隔离测试环境，可用 BBS_STORAGE_PATH 覆盖）
+storage:
+  path: ${BBS_STORAGE_PATH:${java.io.tmpdir}/bbs-upload-e2e/}
 
 # 测试端口（避免与开发环境 9083 冲突）
 server:

@@ -6,7 +6,9 @@ const ADMIN_PORT = process.env.E2E_ADMIN_PORT || '9082';
 
 export default defineConfig({
   testDir: './',
-  timeout: 30000,
+  timeout: 60000,
+  // 单 worker 顺序执行：避免多个 page 同时触发 admin-ui 旧版 webpack 按需编译导致超时
+  workers: 1,
   use: {
     baseURL: `http://localhost:${USER_PORT}/bbs-user`,
     headless: false,
