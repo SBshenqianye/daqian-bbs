@@ -7,6 +7,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class SystemConfigController {
     private SystemConfigService systemConfigService;
 
     @ApiOperation(value = "新增配置")
+    @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
     @PostMapping("/admin/systemConfig/add")
     public ResultBean addConfig(@RequestBody SystemConfig config) {
         if (config == null || StringUtils.isEmpty(config.getConfigKey())) {
@@ -38,6 +40,7 @@ public class SystemConfigController {
     }
 
     @ApiOperation(value = "修改配置")
+    @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
     @PostMapping("/admin/systemConfig/update")
     public ResultBean updateConfig(@RequestBody SystemConfig config) {
         if (config == null || config.getId() == null) {
@@ -48,6 +51,7 @@ public class SystemConfigController {
     }
 
     @ApiOperation(value = "删除配置")
+    @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
     @PostMapping("/admin/systemConfig/delete")
     public ResultBean deleteConfig(@RequestBody SystemConfig config) {
         if (config.getId() == null) {

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -19,6 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * Security 配置类
  */
 @Configuration
+@EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
@@ -66,10 +68,25 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 // 改为认证要求后，未登录由 RestAuthorizationEntryPoint 统一返回 401
                 .antMatchers("/common/user/info")
                 .authenticated()
+                // 旧版管理员登录接口保留兼容（前端实际使用 /common/login），必须放在 /admin/** 之前
+                .antMatchers("/admin/login")
+                .permitAll()
+                // 管理端接口统一要求管理员/超级管理员角色；含未挂在 /admin 前缀下的历史管理接口
+                .antMatchers(
+                        "/admin/**",
+                        "/reply/admin/**",
+                        "/getAllUser",
+                        "/updateUserRole",
+                        "/saOrg/**",
+                        "/sensitiveWord/addSensitiveWord",
+                        "/sensitiveWord/delSensitiveWord",
+                        "/sensitiveWord/importExcel",
+                        "/common/saOrg/batchUpdateRanking",
+                        "/common/saOrg/batchUpdateDisplay"
+                )
+                .hasAnyRole("ADMIN", "SUPER_ADMIN")
                 .antMatchers("/common/**", "/files/**")
                 .permitAll() // common（登录/注册等）和文件放行
-                .antMatchers("/admin/**")
-                .authenticated() // admin 接口必须登录
                 .anyRequest()
                 .authenticated()
                 .and()

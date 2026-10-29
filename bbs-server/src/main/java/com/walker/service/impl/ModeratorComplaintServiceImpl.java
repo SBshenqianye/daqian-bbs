@@ -8,14 +8,16 @@ import com.walker.pojo.BoardModerator;
 import com.walker.pojo.ModeratorComplaint;
 import com.walker.pojo.User;
 import com.walker.service.BoardModeratorService;
+import com.walker.service.AuthorizationService;
+import com.walker.service.CurrentUserService;
 import com.walker.service.ModeratorComplaintService;
 import com.walker.service.NotificationService;
+import com.walker.service.SelfApprovalPolicy;
 import com.walker.service.UserService;
-import com.walker.utils.ConstantUtil;
+import com.walker.config.security.Permission;
+import com.walker.config.security.SelfApprovalException;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,22 +40,14 @@ public class ModeratorComplaintServiceImpl extends ServiceImpl<ModeratorComplain
     @Autowired
     private NotificationService notificationService;
 
-    /**
-     * 从登录态（JWT）获取当前操作人 id。/admin/** 已由 Spring Security 强制认证。
-     * 审核人以"服务端可信身份"为准，不信任前端传入的 reviewerId（#2/#14 同一模式）。
-     */
-    private Integer getCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof User) {
-            return ((User) auth.getPrincipal()).getId();
-        }
-        return null;
-    }
+    @Autowired
+    private CurrentUserService currentUserService;
 
-    /** 系统内置超级管理员（id=1，初始化 SQL 约定勿改），自审类限制对超管豁免 */
-    private boolean isSuperAdmin(Integer userId) {
-        return userId != null && ConstantUtil.SUPER_ADMIN_ID == userId.intValue();
-    }
+    @Autowired
+    private SelfApprovalPolicy selfApprovalPolicy;
+
+    @Autowired
+    private AuthorizationService authorizationService;
 
     @Override
     @Transactional
@@ -83,13 +77,15 @@ public class ModeratorComplaintServiceImpl extends ServiceImpl<ModeratorComplain
         complaint.setCreateTime(fmt.format(new Date()));
         this.save(complaint);
 
-        // 通知超级管理员（SUPER_ADMIN_ID 见 ConstantUtil，勿改为动态用户）
+        // 按权限广播：拥有 moderator:complaint:review 的管理员/超管全部接收
         User reporter = userService.getById(reporterId);
         String reporterName = reporter != null ? reporter.getNickname() : "用户#" + reporterId;
         String targetDesc = moderatorId != null ? "版主 #" + moderatorId : "（未指定具体版主）";
-        notificationService.createNotification(ConstantUtil.SUPER_ADMIN_ID, reporterId, "moderator_complaint",
-                "收到新的版主投诉：「" + reporterName + "」投诉" + targetDesc,
-                "moderator_complaint", complaint.getId());
+        for (Integer reviewerId : authorizationService.getUserIdsWithPermission(Permission.MODERATOR_COMPLAINT_REVIEW)) {
+            notificationService.createNotification(reviewerId, reporterId, "moderator_complaint",
+                    "收到新的版主投诉：「" + reporterName + "」投诉" + targetDesc,
+                    "moderator_complaint", complaint.getId());
+        }
 
         return ResultBean.success("投诉已提交，将在5个工作日内处理");
     }
@@ -104,10 +100,11 @@ public class ModeratorComplaintServiceImpl extends ServiceImpl<ModeratorComplain
             return ResultBean.error("无效的审核状态");
         }
         // 审核人以登录态身份为准：前端传入的 reviewerId 必须与当前登录用户一致，防伪造
-        Integer currentUserId = getCurrentUserId();
-        if (currentUserId == null) {
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
             return ResultBean.error("未获取到登录用户信息，请重新登录");
         }
+        Integer currentUserId = currentUser.getId();
         if (reviewerId != null && !currentUserId.equals(reviewerId)) {
             return ResultBean.error("审核人身份校验失败，请重新登录后操作");
         }
@@ -119,8 +116,10 @@ public class ModeratorComplaintServiceImpl extends ServiceImpl<ModeratorComplain
             return ResultBean.error("投诉记录不存在");
         }
         // 权限校验：除超级管理员外，审核人不得审核自己的投诉（2026-10-12 需求）
-        if (!isSuperAdmin(reviewerId) && complaint.getReporterId() != null && complaint.getReporterId().equals(reviewerId)) {
-            return ResultBean.error("不能审核自己的投诉");
+        try {
+            selfApprovalPolicy.checkReviewComplaint(currentUser, complaint);
+        } catch (SelfApprovalException e) {
+            return ResultBean.error(e.getMessage());
         }
         if (!"pending".equals(complaint.getStatus())) {
             return ResultBean.error("该投诉已处理");

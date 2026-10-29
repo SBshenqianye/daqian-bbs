@@ -5,6 +5,7 @@ import com.walker.pojo.ArticleLabel;
 import com.walker.pojo.User;
 import com.walker.service.ArticleLabelService;
 import com.walker.service.ArticleService;
+import com.walker.service.AuthorizationService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
 import com.walker.vo.ResultBean;
@@ -51,10 +52,15 @@ class ArticleControllerTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private AuthorizationService authorizationService;
+
     @BeforeEach
     void setUp() {
         // 默认当前登录管理员 id=1（超管），敏感用例可覆盖
-        setCurrentUser(1);
+        com.walker.service.SecurityTestSupport.setCurrentUser(1);
+        com.walker.service.SecurityTestSupport.injectCurrentUser(articleController);
+        com.walker.service.SecurityTestSupport.injectSelfApprovalPolicy(articleController, authorizationService);
     }
 
     @AfterEach
@@ -64,10 +70,7 @@ class ArticleControllerTest {
 
     /** 模拟 JWT 登录态：principal 为 User 实体 */
     private void setCurrentUser(int id) {
-        User user = new User();
-        user.setId(id);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
+        com.walker.service.SecurityTestSupport.setCurrentUser(id);
     }
 
     /** 构造"建议反馈"用途的帖子 */
@@ -157,6 +160,39 @@ class ArticleControllerTest {
         assertEquals(500, result.getCode());
         assertTrue(result.getMessage().contains("建议反馈"));
         verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("文章删除 → 跨板块管理员 → 403 拒绝")
+    void adminDeleteArticle_crossBoard_forbidden() {
+        setCurrentUser(5);
+        Article article = suggestionArticle(1, 2);
+        when(articleService.getArticleByIdRaw(1)).thenReturn(article);
+        when(authorizationService.canModerateBoard(5, 10)).thenReturn(false);
+
+        com.walker.vo.param.ArticleParam param = new com.walker.vo.param.ArticleParam();
+        param.setArticleId(1);
+
+        ResultBean result = articleController.adminDeleteArticleByArticleId(param);
+        assertEquals(403, result.getCode());
+        verify(articleService, never()).adminDeleteArticleByArticleId(any());
+    }
+
+    @Test
+    @DisplayName("文章审核 → 本板块管理员 → 放行到业务层")
+    void auditArticle_ownBoard_allowed() {
+        setCurrentUser(5);
+        Article article = suggestionArticle(1, 2);
+        when(articleService.getArticleByIdRaw(1)).thenReturn(article);
+        when(authorizationService.canModerateBoard(5, 10)).thenReturn(true);
+        when(articleService.auditArticleByArticleId(1)).thenReturn(ResultBean.success("审核成功"));
+
+        com.walker.vo.param.ArticleParam param = new com.walker.vo.param.ArticleParam();
+        param.setArticleId(1);
+
+        ResultBean result = articleController.auditArticleByArticleId(param);
+        assertEquals(200, result.getCode());
+        verify(articleService).auditArticleByArticleId(1);
     }
 
     private ArticleLabel label(String type) {

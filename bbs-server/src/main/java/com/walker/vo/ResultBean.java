@@ -36,4 +36,11 @@ public class ResultBean<T> {
     public static <T> ResultBean<T> error(String message, T obj) {
         return new ResultBean<>(500, message, obj);
     }
+
+    /**
+     * 权限不足：沿用管理端既有 403 返回结构（code=403）。
+     */
+    public static <T> ResultBean<T> forbidden(String message) {
+        return new ResultBean<>(403, message, null);
+    }
 }

@@ -48,12 +48,17 @@ class ModeratorComplaintServiceTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private AuthorizationService authorizationService;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = complaintService.getClass().getSuperclass().getDeclaredField("baseMapper");
         baseMapperField.setAccessible(true);
         baseMapperField.set(complaintService, complaintMapper);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), ModeratorComplaint.class);
+        SecurityTestSupport.injectCurrentUser(complaintService);
+        SecurityTestSupport.injectSelfApprovalPolicy(complaintService, authorizationService);
         // 默认当前登录管理员 id=1，敏感用例可覆盖
         setCurrentUser(1);
     }
@@ -65,10 +70,7 @@ class ModeratorComplaintServiceTest {
 
     /** 模拟 JWT 登录态：principal 为 User 实体 */
     private void setCurrentUser(int id) {
-        User user = new User();
-        user.setId(id);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
+        SecurityTestSupport.setCurrentUser(id);
     }
 
     @Test

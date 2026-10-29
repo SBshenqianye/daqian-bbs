@@ -1,6 +1,7 @@
 package com.walker.pojo;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.walker.config.security.AccountRole;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Getter;
@@ -8,10 +9,13 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * <p>
@@ -117,9 +121,25 @@ public class User implements Serializable,UserDetails {
     @TableField(exist = false)
     private String deptName;
 
+    /**
+     * 账号角色转为 Spring Security 权限。
+     *
+     * <p>USER: ROLE_USER；ADMIN: ROLE_USER + ROLE_ADMIN；
+     * SUPER_ADMIN: ROLE_USER + ROLE_ADMIN + ROLE_SUPER_ADMIN。
+     * 管理员继承前置角色，避免 hasRole('ADMIN') 在超管场景失效。</p>
+     */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return null;
+        AccountRole role = AccountRole.fromUserType(this.userType);
+        List<GrantedAuthority> authorities = new ArrayList<>(3);
+        authorities.add(new SimpleGrantedAuthority(AccountRole.USER.getAuthority()));
+        if (role.isAdmin()) {
+            authorities.add(new SimpleGrantedAuthority(AccountRole.ADMIN.getAuthority()));
+        }
+        if (role == AccountRole.SUPER_ADMIN) {
+            authorities.add(new SimpleGrantedAuthority(AccountRole.SUPER_ADMIN.getAuthority()));
+        }
+        return authorities;
     }
 
     @Override

@@ -7,6 +7,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 
@@ -26,6 +27,7 @@ public class DictController {
     private DictService dictService;
 
     @ApiOperation(value = "新增字典")
+    @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
     @PostMapping("/admin/addDict")
     public ResultBean addDict(@RequestBody @Valid Dict dict) {
         boolean ok = dictService.saveDict(dict);
@@ -33,6 +35,7 @@ public class DictController {
     }
 
     @ApiOperation(value = "删除字典")
+    @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
     @PostMapping("/admin/deleteDict")
     public ResultBean deleteDict(@RequestBody Dict dict) {
         if (dict.getId() == null) {
@@ -43,6 +46,7 @@ public class DictController {
     }
 
     @ApiOperation(value = "修改字典")
+    @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
     @PostMapping("/admin/updateDict")
     public ResultBean updateDict(@RequestBody @Valid Dict dict) {
         if (dict.getId() == null) {

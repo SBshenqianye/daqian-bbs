@@ -47,11 +47,16 @@ class FeaturedRecommendationServiceTest {
     @Mock
     private DictService dictService;
 
+    @Mock
+    private AuthorizationService authorizationService;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = recommendationService.getClass().getSuperclass().getDeclaredField("baseMapper");
         baseMapperField.setAccessible(true);
         baseMapperField.set(recommendationService, recommendationMapper);
+        SecurityTestSupport.injectCurrentUser(recommendationService);
+        SecurityTestSupport.injectSelfApprovalPolicy(recommendationService, authorizationService);
         // 默认当前登录管理员 id=1，敏感用例可覆盖
         setCurrentUser(1);
     }
@@ -63,10 +68,7 @@ class FeaturedRecommendationServiceTest {
 
     /** 模拟 JWT 登录态：principal 为 User 实体 */
     private void setCurrentUser(int id) {
-        User user = new User();
-        user.setId(id);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
+        SecurityTestSupport.setCurrentUser(id);
     }
 
     @Test

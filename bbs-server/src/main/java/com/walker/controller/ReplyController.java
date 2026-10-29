@@ -6,8 +6,10 @@ import com.walker.pojo.ArticleLabel;
 import com.walker.pojo.BoardModerator;
 import com.walker.pojo.Comment;
 import com.walker.pojo.Reply;
+import com.walker.pojo.User;
 import com.walker.service.*;
-import com.walker.utils.ConstantUtil;
+import com.walker.config.security.Permission;
+import com.walker.config.security.SelfApprovalException;
 import com.walker.vo.ResultBean;
 import com.walker.vo.param.ReplyParam;
 import io.swagger.annotations.Api;
@@ -34,6 +36,9 @@ public class ReplyController {
     @Autowired private CommentService commentService;
     @Autowired private ArticleLabelService articleLabelService;
     @Autowired private BoardModeratorService boardModeratorService;
+    @Autowired private CurrentUserService currentUserService;
+    @Autowired private AuthorizationService authorizationService;
+    @Autowired private SelfApprovalPolicy selfApprovalPolicy;
 
 
     private static final int ADOPT_POINTS = 5;
@@ -80,9 +85,19 @@ public class ReplyController {
         Integer articleId = toInt(params, "articleId");
         Integer userId = toInt(params, "userId");
 
-        if ((replyId == null && commentId == null) || articleId == null || userId == null) {
+        if ((replyId == null && commentId == null) || articleId == null) {
             return ResultBean.error("参数不完整");
         }
+
+        // 操作人以登录态身份为准：前端传入的 userId 仅做一致性校验
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (userId != null && !currentUser.getId().equals(userId)) {
+            return ResultBean.error("操作人身份校验失败，请重新登录后操作");
+        }
+        userId = currentUser.getId();
 
         // 获取文章
         com.walker.pojo.Article article = articleService.queryArticleById(articleId);
@@ -139,16 +154,35 @@ public class ReplyController {
         String action = (String) params.get("action");
         Integer adminId = toInt(params, "adminId");
 
-        if ((replyId == null && commentId == null) || articleId == null || action == null || adminId == null) {
+        if ((replyId == null && commentId == null) || articleId == null || action == null) {
             return ResultBean.error("参数不完整");
         }
         if (!"confirm".equals(action) && !"reject".equals(action)) return ResultBean.error("操作类型无效");
 
+        // 操作人以登录态身份为准：前端传入的 adminId 仅做一致性校验
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (adminId != null && !currentUser.getId().equals(adminId)) {
+            return ResultBean.error("操作人身份校验失败，请重新登录后操作");
+        }
+        adminId = currentUser.getId();
+
         com.walker.pojo.Article article = articleService.queryArticleById(articleId);
         if (article == null) return ResultBean.error("文章不存在");
 
-        // 校验：管理员不能审批自己提问的最佳解答
-        if (adminId.equals(article.getUserId())) return ResultBean.error("不能审批自己提问的最佳解答");
+        // 数据范围：超管放行，普通管理员必须是该文章所属板块的版主（D4）
+        if (!authorizationService.canModerateBoard(currentUser.getId(), article.getArticleLabelId())) {
+            return ResultBean.forbidden("无权审批该板块内容");
+        }
+
+        // 校验：任何人都不能审批自己提问的最佳解答（保留原有全员限制）
+        try {
+            selfApprovalPolicy.checkApproveAdopt(currentUser, article);
+        } catch (SelfApprovalException e) {
+            return ResultBean.error(e.getMessage());
+        }
 
         // ---- 回复审批 ----
         if (replyId != null) {
@@ -223,10 +257,15 @@ public class ReplyController {
         Integer size = toInt(params, "size");
         if (size == null) size = 20;
         Integer adminId = toInt(params, "adminId");
-        if (adminId == null) return ResultBean.error("参数不完整");
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) return ResultBean.error("未获取到登录用户信息，请重新登录");
+        if (adminId != null && !currentUser.getId().equals(adminId)) {
+            return ResultBean.error("操作人身份校验失败，请重新登录后操作");
+        }
+        adminId = currentUser.getId();
 
-        // 超管判定（SUPER_ADMIN_ID 见 ConstantUtil，勿改为动态；版主仅能看到自己板块的待审采纳）
-        boolean isSuperAdmin = adminId.equals(ConstantUtil.SUPER_ADMIN_ID);
+        // 超管可查看全部；普通管理员仅能查看自己版块（D4）
+        boolean isSuperAdmin = authorizationService.isSuperAdmin(currentUser);
         List<Map<String, Object>> allRecords = new ArrayList<>();
 
         // 1. 查询待审批的回复
@@ -238,7 +277,7 @@ public class ReplyController {
             if (comment == null) continue;
             com.walker.pojo.Article article = articleService.queryArticleById(comment.getCommentArticleId());
             if (article == null) continue;
-            if (!isSuperAdmin && !boardModeratorService.isModerator(adminId, article.getArticleLabelId())) continue;
+            if (!isSuperAdmin && !authorizationService.canModerateBoard(adminId, article.getArticleLabelId())) continue;
 
             com.walker.pojo.User replyUser = userService.queryUserinfoById(reply.getReplyUserId());
             com.walker.pojo.User articleUser = userService.queryUserinfoById(article.getUserId());
@@ -266,7 +305,7 @@ public class ReplyController {
         for (Comment comment : pendingComments) {
             com.walker.pojo.Article article = articleService.queryArticleById(comment.getCommentArticleId());
             if (article == null) continue;
-            if (!isSuperAdmin && !boardModeratorService.isModerator(adminId, article.getArticleLabelId())) continue;
+            if (!isSuperAdmin && !authorizationService.canModerateBoard(adminId, article.getArticleLabelId())) continue;
 
             com.walker.pojo.User commentUser = userService.queryUserinfoById(comment.getCommentUserId());
             com.walker.pojo.User articleUser = userService.queryUserinfoById(article.getUserId());
@@ -376,9 +415,11 @@ public class ReplyController {
                         "adopt_pending", notifyTitle, relatedType, relatedId);
             }
         }
-        // 同时通知超级管理员（SUPER_ADMIN_ID 见 ConstantUtil，勿改为动态用户）
-        if (notified.add(ConstantUtil.SUPER_ADMIN_ID)) {
-            notificationService.createNotification(ConstantUtil.SUPER_ADMIN_ID, fromUserId, "adopt_pending", notifyTitle, relatedType, relatedId);
+        // 同时通知所有拥有 adopt:review 权限的管理员/超管（按权限广播）
+        for (Integer reviewerId : authorizationService.getUserIdsWithPermission(Permission.ADOPT_REVIEW)) {
+            if (notified.add(reviewerId)) {
+                notificationService.createNotification(reviewerId, fromUserId, "adopt_pending", notifyTitle, relatedType, relatedId);
+            }
         }
     }
 

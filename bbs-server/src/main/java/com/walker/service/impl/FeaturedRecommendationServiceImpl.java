@@ -4,20 +4,23 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.FeaturedRecommendationMapper;
+import com.walker.config.security.Permission;
 import com.walker.pojo.Article;
 import com.walker.pojo.FeaturedRecommendation;
 import com.walker.pojo.User;
 import com.walker.service.ArticleService;
+import com.walker.service.AuthorizationService;
+import com.walker.service.CurrentUserService;
 import com.walker.service.DictService;
 import com.walker.service.FeaturedRecommendationService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
+import com.walker.service.SelfApprovalPolicy;
 import com.walker.service.UserService;
+import com.walker.config.security.SelfApprovalException;
 import com.walker.utils.ConstantUtil;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,33 +49,44 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
     @Autowired
     private DictService dictService;
 
-    /**
-     * 从登录态（JWT）获取当前操作人 id。/admin/** 已由 Spring Security 强制认证。
-     * 审核人以"服务端可信身份"为准，不信任前端传入的 reviewerId（#2/#14 同一模式）。
-     */
-    private Integer getCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof User) {
-            return ((User) auth.getPrincipal()).getId();
-        }
-        return null;
-    }
+    @Autowired
+    private CurrentUserService currentUserService;
 
-    /** 系统内置超级管理员（id=1，初始化 SQL 约定勿改），自审类限制对超管豁免 */
-    private boolean isSuperAdmin(Integer userId) {
-        return userId != null && ConstantUtil.SUPER_ADMIN_ID == userId.intValue();
-    }
+    @Autowired
+    private SelfApprovalPolicy selfApprovalPolicy;
+
+    @Autowired
+    private AuthorizationService authorizationService;
 
     @Override
     @Transactional
     public ResultBean recommend(Integer articleId, Integer recommenderId, Integer labelId) {
-        if (articleId == null || recommenderId == null) {
+        if (articleId == null) {
             return ResultBean.error("参数不完整");
         }
+        // 推荐人以登录态身份为准，前端传入值仅做一致性校验（防伪造）
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (recommenderId != null && !currentUser.getId().equals(recommenderId)) {
+            return ResultBean.error("推荐人身份校验失败，请重新登录后操作");
+        }
+        recommenderId = currentUser.getId();
 
         Article article = articleService.getById(articleId);
         if (article == null) {
             return ResultBean.error("文章不存在");
+        }
+        // 权限点 + 数据范围（D4）：仅管理员/超管，且仅本板块可推荐
+        if (!authorizationService.hasPermission(currentUser, Permission.FEATURED_RECOMMEND)) {
+            return ResultBean.forbidden("仅管理员可推荐精华");
+        }
+        if (!authorizationService.canModerateBoard(currentUser.getId(), article.getArticleLabelId())) {
+            return ResultBean.forbidden("无权推荐该板块内容");
+        }
+        if (labelId != null && article.getArticleLabelId() != null && !labelId.equals(article.getArticleLabelId())) {
+            return ResultBean.error("板块参数与文章所属板块不一致");
         }
         if (article.getIsFeatured() != null && article.getIsFeatured() == 1) {
             return ResultBean.error("该帖子已是精华帖");
@@ -93,13 +107,15 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
         rec.setCreateTime(fmt.format(new Date()));
         this.save(rec);
 
-        // 通知超级管理员（SUPER_ADMIN_ID 见 ConstantUtil，勿改为动态用户）
+        // 按权限广播：拥有 featured:review 的管理员/超管全部接收
         User recommender = userService.getById(recommenderId);
         String recommenderName = recommender != null ? recommender.getNickname() : "版主#" + recommenderId;
         String articleTitle = article.getArticleTitle() != null ? article.getArticleTitle() : "";
-        notificationService.createNotification(ConstantUtil.SUPER_ADMIN_ID, recommenderId, "featured_recommend",
-                "精华帖推荐：「" + recommenderName + "」推荐《" + articleTitle + "》",
-                "article", articleId);
+        for (Integer reviewerId : authorizationService.getUserIdsWithPermission(Permission.FEATURED_REVIEW)) {
+            notificationService.createNotification(reviewerId, recommenderId, "featured_recommend",
+                    "精华帖推荐：「" + recommenderName + "」推荐《" + articleTitle + "》",
+                    "article", articleId);
+        }
 
         return ResultBean.success("推荐已提交，等待总运营审核");
     }
@@ -114,10 +130,11 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
             return ResultBean.error("无效的审核状态");
         }
         // 审核人以登录态身份为准：前端传入的 reviewerId 必须与当前登录用户一致，防伪造
-        Integer currentUserId = getCurrentUserId();
-        if (currentUserId == null) {
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
             return ResultBean.error("未获取到登录用户信息，请重新登录");
         }
+        Integer currentUserId = currentUser.getId();
         if (reviewerId != null && !currentUserId.equals(reviewerId)) {
             return ResultBean.error("审核人身份校验失败，请重新登录后操作");
         }
@@ -129,8 +146,10 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
             return ResultBean.error("推荐记录不存在");
         }
         // 权限校验：除超级管理员外，审核人不得审核自己的推荐（2026-10-12 需求）
-        if (!isSuperAdmin(reviewerId) && rec.getRecommenderId() != null && rec.getRecommenderId().equals(reviewerId)) {
-            return ResultBean.error("不能审核自己的推荐");
+        try {
+            selfApprovalPolicy.checkReviewFeatured(currentUser, rec);
+        } catch (SelfApprovalException e) {
+            return ResultBean.error(e.getMessage());
         }
         if (!"pending".equals(rec.getStatus())) {
             return ResultBean.error("该推荐已处理");

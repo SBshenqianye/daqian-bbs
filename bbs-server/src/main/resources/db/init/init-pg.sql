@@ -263,7 +263,7 @@ CREATE TABLE IF NOT EXISTS bbs_user (
     create_time     varchar(20),
     phone           varchar(20),
     org_no          varchar(20),
-    user_type       varchar(20),
+    user_type       varchar(20) DEFAULT '1',
     personnel_id    varchar(50),
     id_card         varchar(18),
     is_first_login  smallint DEFAULT 1,

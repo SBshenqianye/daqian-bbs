@@ -1,9 +1,11 @@
 package com.walker.controller;
 
+import com.walker.config.security.ForbiddenException;
 import com.walker.vo.ResultBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
@@ -63,6 +66,36 @@ public class GlobalExceptionHandler {
         return ResultBean.error(message);
     }
     
+    /**
+     * 权限不足：统一返回既有 403 结构（ResultBean code=403），并记录拒绝日志。
+     */
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.OK)
+    public ResultBean<Void> handleForbiddenException(ForbiddenException e, HttpServletRequest request) {
+        String username = "anonymous";
+        Integer userId = null;
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof com.walker.pojo.User) {
+            com.walker.pojo.User user = (com.walker.pojo.User) auth.getPrincipal();
+            username = user.getUsername();
+            userId = user.getId();
+        }
+        logger.warn("[权限拒绝] userId={}, username={}, {} {}, reason={}",
+                userId, username, request.getMethod(), request.getRequestURI(), e.getMessage());
+        return ResultBean.forbidden(e.getMessage());
+    }
+
+    /**
+     * @PreAuthorize 等方法级安全拒绝：统一返回 403 结构。
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.OK)
+    public ResultBean<Void> handleAccessDeniedException(AccessDeniedException e, HttpServletRequest request) {
+        logger.warn("[权限拒绝] {} {} reason={}", request.getMethod(), request.getRequestURI(), e.getMessage());
+        return ResultBean.forbidden("权限不足，请联系管理员");
+    }
+
     /**
      * 处理业务异常
      */

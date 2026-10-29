@@ -10,17 +10,20 @@ import com.walker.pojo.Reply;
 import com.walker.pojo.Report;
 import com.walker.pojo.User;
 import com.walker.service.ArticleService;
+import com.walker.service.AuthorizationService;
 import com.walker.service.CommentService;
+import com.walker.service.ContentBoardResolver;
+import com.walker.service.CurrentUserService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
 import com.walker.service.ReplyService;
 import com.walker.service.ReportService;
+import com.walker.service.SelfApprovalPolicy;
 import com.walker.service.UserService;
-import com.walker.utils.ConstantUtil;
+import com.walker.config.security.Permission;
+import com.walker.config.security.SelfApprovalException;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,6 +63,18 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private CurrentUserService currentUserService;
+
+    @Autowired
+    private SelfApprovalPolicy selfApprovalPolicy;
+
+    @Autowired
+    private AuthorizationService authorizationService;
+
+    @Autowired
+    private ContentBoardResolver contentBoardResolver;
 
     @Override
     @Transactional
@@ -117,45 +132,67 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         report.setCreateTime(fmt.format(now));
         this.save(report);
 
-        // 通知超级管理员（SUPER_ADMIN_ID 见 ConstantUtil，勿改为动态用户）。
-        // 与 adopt_pending 待审批通知同模式。仅当本条是该目标第一条待审举报时才通知：同一内容多人跟报不重复轰炸超管；
-        // 该目标被处理后（无 pending）有人再报，会重新触发通知（新一轮待办）。
-        // 举报人即管理员本人时 createNotification 内部会跳过自身通知。
+        // 按权限 + 数据范围广播待审通知：拥有 report:review 且可处理该板块的管理员/超管接收。
+        // 仅当本条是该目标第一条待审举报时才通知，避免同一内容多人跟报重复轰炸。
         long pendingCount = this.count(new LambdaQueryWrapper<Report>()
                 .eq(Report::getTargetType, targetType)
                 .eq(Report::getTargetId, targetId)
                 .eq(Report::getStatus, "pending"));
+        Integer targetLabelId = contentBoardResolver.resolveLabelId(targetType, targetId);
+        List<Integer> reviewerIds = new ArrayList<>();
+        for (Integer reviewerId : authorizationService.getUserIdsWithPermission(Permission.REPORT_REVIEW)) {
+            if (authorizationService.canModerateBoard(reviewerId, targetLabelId)) {
+                reviewerIds.add(reviewerId);
+            }
+        }
         if (pendingCount == 1) {
-            notificationService.createNotification(ConstantUtil.SUPER_ADMIN_ID, reporterId, "report_pending",
-                    "有新的实名举报待审核：" + targetTypeLabel(targetType) + " #" + targetId,
-                    "report", report.getId());
+            for (Integer reviewerId : reviewerIds) {
+                notificationService.createNotification(reviewerId, reporterId, "report_pending",
+                        "有新的实名举报待审核：" + targetTypeLabel(targetType) + " #" + targetId,
+                        "report", report.getId());
+            }
         }
 
-        // 给举报人提交回执（系统通知）：fromUserId 固定为超管（系统代发），
-        // 既避免 createNotification 的"不给自己发通知"跳过逻辑，也标识为系统消息；
-        // 举报人本身即超管时自动跳过（自举报无需回执）。
-        notificationService.createNotification(reporterId, ConstantUtil.SUPER_ADMIN_ID, "report_received",
+        // 给举报人提交回执（系统通知）：从有审核权限的人员中选取系统代发人，避免"自己给自己发"被跳过。
+        Integer systemSender = null;
+        for (Integer reviewerId : reviewerIds) {
+            if (!reporterId.equals(reviewerId)) {
+                systemSender = reviewerId;
+                break;
+            }
+        }
+        notificationService.createNotification(reporterId, systemSender, "report_received",
                 "您的举报已提交，管理员会尽快核实处理", "report", report.getId());
 
         return ResultBean.success("举报已提交，等待审核");
     }
 
     /**
-     * 从登录态（JWT）获取当前操作人 id。
-     * /admin/** 接口已由 Spring Security 强制认证，正常情况下不为 null；
-     * 供审核等敏感操作以"服务端可信身份"为准，不信任前端传入的操作人参数。
+     * 举报数据范围过滤：超管看全部；普通管理员仅看自己板块的举报。
      */
-    private Integer getCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof User) {
-            return ((User) auth.getPrincipal()).getId();
+    private List<Report> filterVisibleReports(User currentUser, List<Report> reports) {
+        if (authorizationService.isSuperAdmin(currentUser)) {
+            return reports;
         }
-        return null;
+        List<Report> visible = new ArrayList<>();
+        for (Report report : reports) {
+            if (canReviewReport(currentUser, report)) {
+                visible.add(report);
+            }
+        }
+        return visible;
     }
 
-    /** 系统内置超级管理员（id=1，初始化 SQL 约定勿改），自审类限制对超管豁免 */
-    private boolean isSuperAdmin(Integer userId) {
-        return userId != null && ConstantUtil.SUPER_ADMIN_ID == userId.intValue();
+    /** 是否可处理该举报（超管放行，普通管理员需为内容所属板块版主） */
+    private boolean canReviewReport(User currentUser, Report report) {
+        if (currentUser == null || report == null) {
+            return false;
+        }
+        if (authorizationService.isSuperAdmin(currentUser)) {
+            return true;
+        }
+        Integer labelId = contentBoardResolver.resolveLabelId(report.getTargetType(), report.getTargetId());
+        return authorizationService.canModerateBoard(currentUser.getId(), labelId);
     }
 
     /**
@@ -209,10 +246,11 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
 
         // 审核人以登录态身份为准：前端传入的 reviewerId 必须与当前登录用户一致。
         // 防止"审核人写死/伪造为他人 id"绕过自审拦截（P0 安全修复，超管与普通管理员一视同仁）
-        Integer currentUserId = getCurrentUserId();
-        if (currentUserId == null) {
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
             return ResultBean.error("未获取到登录用户信息，请重新登录");
         }
+        Integer currentUserId = currentUser.getId();
         if (!currentUserId.equals(reviewerId)) {
             return ResultBean.error("审核人身份校验失败，请重新登录后操作");
         }
@@ -224,10 +262,16 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         if (!"pending".equals(report.getStatus())) {
             return ResultBean.error("该举报已处理");
         }
+        // 数据范围：超管放行；普通管理员仅可处理自己板块的举报
+        if (!canReviewReport(currentUser, report)) {
+            return ResultBean.forbidden("无权处理该板块的举报");
+        }
         // 权限校验：除超级管理员外，举报人不得审核自己的举报（2026-10-12 需求调整：超管豁免）。
         // 对驳回+恶意扣分同样生效：自审校验在所有分支之前，不破坏 #2 的防自报自审
-        if (!isSuperAdmin(reviewerId) && report.getReporterId() != null && report.getReporterId().equals(reviewerId)) {
-            return ResultBean.error("不能审核自己提交的举报");
+        try {
+            selfApprovalPolicy.checkReviewReport(currentUser, report);
+        } catch (SelfApprovalException e) {
+            return ResultBean.error(e.getMessage());
         }
 
         Date now = new Date();
@@ -326,28 +370,41 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
 
     @Override
     public ResultBean listReports(String status, Integer page, Integer size) {
-        Page<Report> pageParam = new Page<>(page, size);
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
         LambdaQueryWrapper<Report> wrapper = new LambdaQueryWrapper<>();
         if (status != null && !status.isEmpty()) {
             wrapper.eq(Report::getStatus, status);
         }
         wrapper.orderByDesc(Report::getCreateTime);
-        Page<Report> result = this.page(pageParam, wrapper);
+        List<Report> visible = filterVisibleReports(currentUser, this.list(wrapper));
+
+        int total = visible.size();
+        int from = Math.max(0, (page - 1) * size);
+        int to = Math.min(from + size, total);
+        List<Report> records = from < total ? visible.subList(from, to) : new ArrayList<>();
+
         Map<String, Object> data = new HashMap<>();
-        data.put("records", result.getRecords());
-        data.put("total", result.getTotal());
+        data.put("records", records);
+        data.put("total", (long) total);
         return ResultBean.success("查询成功", data);
     }
 
     @Override
     public ResultBean listReportsGrouped(String status, Integer page, Integer size) {
         // 举报表数据量有限（社区场景），一次性取过滤后记录在内存分组，换取组完整性（分页不拆组）
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
         LambdaQueryWrapper<Report> wrapper = new LambdaQueryWrapper<>();
         if (status != null && !status.isEmpty()) {
             wrapper.eq(Report::getStatus, status);
         }
         wrapper.orderByAsc(Report::getCreateTime);
-        List<Report> all = this.list(wrapper);
+        List<Report> all = filterVisibleReports(currentUser, this.list(wrapper));
 
         // 批量查询举报人昵称
         Set<Integer> reporterIds = new HashSet<>();

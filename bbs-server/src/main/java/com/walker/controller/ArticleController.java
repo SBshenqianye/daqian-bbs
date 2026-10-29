@@ -9,6 +9,7 @@ import com.walker.pojo.PointsLog;
 import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.service.*;
+import com.walker.config.security.SelfApprovalException;
 import com.walker.utils.ConstantUtil;
 import com.walker.utils.FilePathNormalizer;
 import com.walker.utils.SensitiveWordUtil;
@@ -27,8 +28,6 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -74,6 +73,15 @@ public class ArticleController {
 
     @Autowired
     private com.walker.mapper.PointsLogMapper pointsLogMapper;
+
+    @Autowired
+    private CurrentUserService currentUserService;
+
+    @Autowired
+    private SelfApprovalPolicy selfApprovalPolicy;
+
+    @Autowired
+    private AuthorizationService authorizationService;
 
     @Value("${storage.path}")
     private String basePath;
@@ -337,6 +345,10 @@ public class ArticleController {
     @PostMapping("/admin/deleteArticleByArticleId")
     public ResultBean adminDeleteArticleByArticleId(@RequestBody ArticleParam articleParam){
         if (articleParam.getArticleId() != null){
+            ResultBean scopeError = requireArticleBoardScope(articleParam.getArticleId());
+            if (scopeError != null) {
+                return scopeError;
+            }
             return articleService.adminDeleteArticleByArticleId(articleParam.getArticleId());
         }
         return ResultBean.error("文章id不能为空！");
@@ -346,6 +358,10 @@ public class ArticleController {
     @PostMapping("/admin/auditArticleByArticleId")
     public ResultBean auditArticleByArticleId(@RequestBody ArticleParam articleParam){
         if (articleParam.getArticleId() != null){
+            ResultBean scopeError = requireArticleBoardScope(articleParam.getArticleId());
+            if (scopeError != null) {
+                return scopeError;
+            }
             return articleService.auditArticleByArticleId(articleParam.getArticleId());
         }
         return ResultBean.error("文章id不能为空！");
@@ -355,6 +371,10 @@ public class ArticleController {
     @ApiOperation(value = "删除所有的已通过审核的文章")
     @PostMapping("/admin/handleBatchDeleteArticlesByAlive/all")
     public ResultBean batchDeleteArticlesByAlive(){
+        ResultBean superError = requireSuperAdmin("仅超级管理员可执行全量文章删除");
+        if (superError != null) {
+            return superError;
+        }
         articleService.handleBatchDeleteArticlesByAlive();
         return ResultBean.success("成功删除所有文章！");
     }
@@ -363,8 +383,43 @@ public class ArticleController {
     @ApiOperation(value = "批量审核文章")
     @PostMapping("/admin/batchAudit")
     public ResultBean batchAudit(){
+        ResultBean superError = requireSuperAdmin("仅超级管理员可执行全量文章审核");
+        if (superError != null) {
+            return superError;
+        }
         articleService.batchAudit();
         return ResultBean.success("审核成功！");
+    }
+
+    /**
+     * 文章审核/删除的数据范围校验：超管放行，普通管理员必须是该文章所属板块版主。
+     * 返回 null 表示校验通过。
+     */
+    private ResultBean requireArticleBoardScope(Integer articleId) {
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        Article article = articleService.getArticleByIdRaw(articleId);
+        if (article == null) {
+            return ResultBean.error("文章不存在");
+        }
+        if (!authorizationService.canModerateBoard(currentUser.getId(), article.getArticleLabelId())) {
+            return ResultBean.forbidden("无权操作该板块内容");
+        }
+        return null;
+    }
+
+    /** 全量操作仅允许超级管理员 */
+    private ResultBean requireSuperAdmin(String message) {
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (!authorizationService.isSuperAdmin(currentUser)) {
+            return ResultBean.forbidden(message);
+        }
+        return null;
     }
 
 
@@ -551,10 +606,11 @@ public class ArticleController {
             return ResultBean.error("参数不完整");
         }
         // 操作人以登录态身份为准：前端传入的 operatorId 必须与当前登录用户一致，防伪造
-        Integer currentUserId = getCurrentUserId();
-        if (currentUserId == null) {
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
             return ResultBean.error("未获取到登录用户信息，请重新登录");
         }
+        Integer currentUserId = currentUser.getId();
         if (operatorId != null && !currentUserId.equals(operatorId)) {
             return ResultBean.error("操作人身份校验失败，请重新登录后操作");
         }
@@ -576,8 +632,10 @@ public class ArticleController {
         }
 
         // 校验：除超级管理员外，不能采纳自己的建议（2026-10-12 需求调整：超管豁免）
-        if (!isSuperAdmin(operatorId) && article.getUserId() != null && article.getUserId().equals(operatorId)) {
-            return ResultBean.error("不能采纳自己的建议");
+        try {
+            selfApprovalPolicy.checkAdoptSuggestion(currentUser, article);
+        } catch (SelfApprovalException e) {
+            return ResultBean.error(e.getMessage());
         }
 
         // 校验：防止重复采纳（查询积分日志中是否已有该文章的建议采纳记录）
@@ -597,23 +655,6 @@ public class ArticleController {
                 "article", articleId);
 
         return ResultBean.success("采纳成功");
-    }
-
-    /**
-     * 从登录态（JWT）获取当前操作人 id。/admin/** 已由 Spring Security 强制认证。
-     * 操作人以"服务端可信身份"为准，不信任前端传入的 operatorId（与 #2/#14 同一模式）。
-     */
-    private Integer getCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof User) {
-            return ((User) auth.getPrincipal()).getId();
-        }
-        return null;
-    }
-
-    /** 系统内置超级管理员（id=1，初始化 SQL 约定勿改），自审类限制对超管豁免 */
-    private boolean isSuperAdmin(Integer userId) {
-        return userId != null && ConstantUtil.SUPER_ADMIN_ID == userId.intValue();
     }
 
     // ==================== 积分排名导出 ====================

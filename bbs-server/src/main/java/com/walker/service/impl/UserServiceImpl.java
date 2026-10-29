@@ -8,9 +8,13 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.pagehelper.PageInfo;
+import com.walker.config.security.AccountRole;
 import com.walker.config.security.JwtTokenUtil;
+import com.walker.config.security.Permission;
+import com.walker.mapper.BoardModeratorMapper;
 import com.walker.mapper.SaOrgMapper;
 import com.walker.mapper.UserMapper;
+import com.walker.pojo.BoardModerator;
 import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.utils.ConstantUtil;
@@ -20,6 +24,7 @@ import com.walker.utils.PinyinUtil;
 import com.walker.vo.ResultBean;
 import com.walker.service.SaOrgService;
 import com.walker.service.UserService;
+import com.walker.service.CurrentUserService;
 import com.walker.vo.UserMonthVO;
 import com.walker.vo.excel.ImportPreviewVO;
 import com.walker.vo.excel.ImportResultVO;
@@ -70,6 +75,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Autowired
     private UserMapper userMapper;
     @Autowired
+    private BoardModeratorMapper boardModeratorMapper;
+    @Autowired
     private UserDetailsService userDetailsService;
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -86,6 +93,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private OrgImportService orgImportService;
+
+    @Autowired
+    private CurrentUserService currentUserService;
+
+    /** user_type 取值：普通用户 */
+    private static final String USER_TYPE_USER = "1";
+    /** user_type 取值：管理员 */
+    private static final String USER_TYPE_ADMIN = "2";
+    /** user_type 取值：超级管理员 */
+    private static final String USER_TYPE_SUPER_ADMIN = "3";
 
     // ========== 异步导入任务跟踪 ==========
     private final Map<String, ImportTask> importTasks = new ConcurrentHashMap<>();
@@ -148,7 +165,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (userDetails != null && passwordEncoder.matches(password,userDetails.getPassword())){
             User user = (User) userDetails;
             if (ConstantUtil.MANA_ZERO_ONE.equals(channel) || ConstantUtil.MANA_ZERO_TWO.equals(channel)) {
-                if (ConstantUtil.MANA_ZERO_TWO.equals(channel) && ConstantUtil.MANA_ONE.equals(user.getUserType())) {
+                // 管理端登录仅允许管理员/超管；空值/非法 user_type 按普通用户处理（D1）
+                if (ConstantUtil.MANA_ZERO_TWO.equals(channel)
+                        && !AccountRole.fromUserType(user.getUserType()).isAdmin()) {
                     return ResultBean.error("用户名或密码不正确！");
                 }
             } else {
@@ -171,6 +190,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             JSONObject jsonObject = (JSONObject) JSON.toJSON(user);
             jsonObject.put("password", null);
             jsonObject.put("isFirstLogin", user.getIsFirstLogin());
+            // 权限同步：只新增字段，保留旧字段（role/permissions/boardScopes）
+            AccountRole role = AccountRole.fromUserType(user.getUserType());
+            jsonObject.put("role", role.name());
+            jsonObject.put("permissions", Permission.codesFor(role));
+            jsonObject.put("boardScopes", loadBoardScopes(user.getId()));
             // 显式设置瞬态组织字段（确保序列化到前端）
             jsonObject.put("orgName", user.getOrgName());
             jsonObject.put("deptName", user.getDeptName());
@@ -420,6 +444,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public ResultBean deleteUserByUserId(Integer id) {
+        ResultBean check = checkTargetManageable(this.getById(id));
+        if (check != null) {
+            return check;
+        }
         userMapper.deleteById(id);
         return ResultBean.success("删除成功！");
     }
@@ -427,6 +455,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public ResultBean updateUserAliveByUserId(Integer id) {
         User user = userMapper.selectById(id);
+        ResultBean check = checkTargetManageable(user);
+        if (check != null) {
+            return check;
+        }
 
         User updateUser = new User();
         updateUser.setId(id);
@@ -441,6 +473,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public ResultBean batchDeleteUsersByUserIds(List<Integer> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return ResultBean.error("用户ID不能为空");
+        }
+        for (User target : this.listByIds(userIds)) {
+            ResultBean check = checkTargetManageable(target);
+            if (check != null) {
+                return check;
+            }
+        }
         userMapper.deleteBatchIds(userIds);
         return ResultBean.success("批量删除用户成功！");
     }
@@ -567,6 +608,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             roleType = ConstantUtil.MANA_TWO;
         } else {
             return ResultBean.error("权限越界");
+        }
+
+        if (!USER_TYPE_USER.equals(roleType) && !USER_TYPE_ADMIN.equals(roleType)) {
+            return ResultBean.error("权限越界");
+        }
+
+        User target = userId != null ? userMapper.selectById(userId) : null;
+        if (target != null && USER_TYPE_SUPER_ADMIN.equals(target.getUserType())) {
+            return ResultBean.forbidden("超级管理员角色不可通过此接口变更");
+        }
+        boolean grantingAdmin = USER_TYPE_ADMIN.equals(roleType);
+        boolean targetPrivileged = target != null && isPrivilegedUserType(target.getUserType());
+        if ((grantingAdmin || targetPrivileged) && !isCurrentUserSuperAdmin()) {
+            return ResultBean.forbidden("仅超级管理员可授予或调整管理员角色");
         }
 
         int result = userMapper.updateUserRole(userId, roleType);
@@ -908,6 +963,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return ResultBean.error("用户不存在");
         }
 
+        // 角色变更白名单 + 仅超管可调整管理员账号（D3）
+        String newUserType = StringUtils.isNoneBlank(param.getUserType()) ? param.getUserType().trim() : null;
+        if (newUserType != null) {
+            ResultBean grantError = checkUserTypeGrant(newUserType, user);
+            if (grantError != null) {
+                return grantError;
+            }
+            if (USER_TYPE_SUPER_ADMIN.equals(user.getUserType())
+                    && !USER_TYPE_SUPER_ADMIN.equals(newUserType)) {
+                return ResultBean.forbidden("超级管理员角色不可通过此接口变更");
+            }
+        } else if (isPrivilegedUserType(user.getUserType()) && !isCurrentUserSuperAdmin()) {
+            // 与前端“管理员/超管账号仅超管可编辑”保持一致，防止直接调接口绕过
+            return ResultBean.forbidden("仅超级管理员可修改管理员账号");
+        }
+
         User updateUser = new User();
         updateUser.setId(param.getId());
 
@@ -920,8 +991,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (StringUtils.isNoneBlank(param.getOrgNo())) {
             updateUser.setOrgNo(param.getOrgNo());
         }
-        if (StringUtils.isNoneBlank(param.getUserType())) {
-            updateUser.setUserType(param.getUserType());
+        if (newUserType != null) {
+            updateUser.setUserType(newUserType);
         }
         if (param.getIsAlive() != null) {
             updateUser.setIsAlive(param.getIsAlive());
@@ -960,6 +1031,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public ResultBean adminAddUser(AdminUserAddParam param) {
+        String userType = StringUtils.isNoneBlank(param.getUserType())
+                ? param.getUserType().trim() : USER_TYPE_USER;
+
+        // 角色白名单 + 仅超管可创建管理员（D3）
+        ResultBean grantError = checkUserTypeGrant(userType, null);
+        if (grantError != null) {
+            return grantError;
+        }
+
         // 校验用户名唯一性
         if (userMapper.selectCount(
                 new LambdaQueryWrapper<User>().eq(User::getUsername, param.getUsername())) > 0) {
@@ -978,7 +1058,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .setPhone(param.getPhone() != null ? param.getPhone() : "")
                 .setOrgNo(param.getOrgNo())
                 .setGender("0")
-                .setUserType(param.getUserType() != null ? param.getUserType() : "1")
+                .setUserType(userType)
                 .setIsAlive(param.getIsAlive() != null ? param.getIsAlive() : 0)
                 .setFans(0)
                 .setAttention(0)
@@ -1022,6 +1102,73 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public void fillOrgNames(List<User> users) {
         resolveOrgInfo(users);
+    }
+
+    /**
+     * 查询用户有效版主任职，转换为登录响应的 boardScopes。
+     * 直接使用 Mapper 避免 UserService 与 BoardModeratorService 循环依赖。
+     */
+    private List<Map<String, Object>> loadBoardScopes(Integer userId) {
+        List<Map<String, Object>> scopes = new ArrayList<>();
+        if (userId == null) {
+            return scopes;
+        }
+        List<BoardModerator> moderators = boardModeratorMapper.selectList(
+                new LambdaQueryWrapper<BoardModerator>()
+                        .eq(BoardModerator::getUserId, userId)
+                        .eq(BoardModerator::getStatus, 1)
+        );
+        for (BoardModerator moderator : moderators) {
+            Map<String, Object> scope = new LinkedHashMap<>();
+            scope.put("labelId", moderator.getLabelId());
+            scope.put("roleType", moderator.getRoleType() != null ? moderator.getRoleType() : "moderator");
+            scopes.add(scope);
+        }
+        return scopes;
+    }
+
+    /** 是否为管理员/超级管理员账号类型 */
+    private boolean isPrivilegedUserType(String userType) {
+        return USER_TYPE_ADMIN.equals(userType) || USER_TYPE_SUPER_ADMIN.equals(userType);
+    }
+
+    /**
+     * 删除/禁用账号的越权保护：超管账号不可通过通用接口操作；
+     * 管理员账号仅超管可操作（与“管理员不能操作其他管理员”产品规则一致）。
+     */
+    private ResultBean checkTargetManageable(User target) {
+        if (target == null) {
+            return null;
+        }
+        if (USER_TYPE_SUPER_ADMIN.equals(target.getUserType())) {
+            return ResultBean.forbidden("超级管理员账号不可执行该操作");
+        }
+        if (USER_TYPE_ADMIN.equals(target.getUserType()) && !isCurrentUserSuperAdmin()) {
+            return ResultBean.forbidden("仅超级管理员可操作管理员账号");
+        }
+        return null;
+    }
+
+    /** 当前登录人是否超管；单元测试无登录态时按非超管处理 */
+    private boolean isCurrentUserSuperAdmin() {
+        return currentUserService != null && currentUserService.isSuperAdmin();
+    }
+
+    /**
+     * 校验 userType 写入权限。
+     * <p>白名单只允许 1/2：超级管理员不通过业务界面新增（D2）；
+     * 授予管理员或调整管理员/超管账号仅超级管理员可操作（D3）。</p>
+     */
+    private ResultBean checkUserTypeGrant(String newUserType, User target) {
+        if (!USER_TYPE_USER.equals(newUserType) && !USER_TYPE_ADMIN.equals(newUserType)) {
+            return ResultBean.error("非法用户角色");
+        }
+        boolean grantingAdmin = USER_TYPE_ADMIN.equals(newUserType);
+        boolean targetPrivileged = target != null && isPrivilegedUserType(target.getUserType());
+        if ((grantingAdmin || targetPrivileged) && !isCurrentUserSuperAdmin()) {
+            return ResultBean.forbidden("仅超级管理员可创建或调整管理员账号");
+        }
+        return null;
     }
 
 }

@@ -8557,3 +8557,15 @@ JOIN `bbs_points_log` p ON p.user_id = d.user_id AND p.related_type = d.related_
     AND p.points_change > 0 AND p.reason = '回复积分' AND p.pair_id IS NULL
 SET d.pair_id = p.id, p.pair_id = d.id
 WHERE d.reason = '删除回复扣回积分' AND d.pair_id IS NULL;
+-- @migration: v037-auth-user-type-normalize 权限架构重构：统一 user_type 基础数据
+-- 幂等：空值/非法值统一按普通用户处理；初始化超管 id=1 固定为 user_type=3。
+UPDATE `bbs_user` SET `user_type` = '1'
+WHERE `user_type` IS NULL OR TRIM(`user_type`) = '' OR `user_type` NOT IN ('1', '2', '3');
+UPDATE `bbs_user` SET `user_type` = '3' WHERE `id` = 1 AND `user_type` <> '3';
+
+-- @migration: v038-dict-post-key 补全发帖积分字典键（post_points -> post）
+-- 背景：历史数据中 post_points 行只有 value 没有 key，而程序统一按 dict_key 读取，导致该行不生效。
+-- 幂等：仅当不存在 post 键时才回填；已有 post 键的环境不做改动。
+UPDATE `bbs_dict` SET `dict_type` = 'post', `dict_key` = 'post'
+WHERE `dict_type` = 'post_points' AND (`dict_key` IS NULL OR `dict_key` = '')
+  AND NOT EXISTS (SELECT 1 FROM (SELECT `id` FROM `bbs_dict` WHERE `dict_key` = 'post') t);

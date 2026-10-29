@@ -68,6 +68,12 @@ class ViolationServiceTest {
     @Mock
     private AppealService appealService;
 
+    @Mock
+    private AuthorizationService authorizationService;
+
+    @Mock
+    private ContentBoardResolver contentBoardResolver;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = violationService.getClass().getSuperclass().getDeclaredField("baseMapper");
@@ -76,6 +82,8 @@ class ViolationServiceTest {
         // 供 LambdaQueryWrapper/LambdaUpdateWrapper 解析 lambda cache
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), Violation.class);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), User.class);
+        SecurityTestSupport.injectCurrentUser(violationService);
+        SecurityTestSupport.injectScopeServices(violationService, contentBoardResolver, authorizationService);
         // 默认当前登录管理员 id=1，敏感用例可覆盖
         setCurrentUser(1);
     }
@@ -87,10 +95,41 @@ class ViolationServiceTest {
 
     /** 模拟 JWT 登录态：principal 为 User 实体 */
     private void setCurrentUser(int id) {
-        User user = new User();
-        user.setId(id);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
+        SecurityTestSupport.setCurrentUser(id);
+    }
+
+    @Test
+    @DisplayName("添加违规 → 普通管理员跨板块 → 403 拒绝")
+    void addViolation_crossBoard_forbidden() {
+        setCurrentUser(5);
+        when(contentBoardResolver.resolveLabelId("article", 1)).thenReturn(10);
+        when(authorizationService.canModerateBoard(5, 10)).thenReturn(false);
+
+        ResultBean result = violationService.addViolation(2, "spam", "article", 1, 5, "备注");
+
+        assertEquals(403, result.getCode());
+        assertEquals("无权处理该板块的违规", result.getMessage());
+        verify(violationMapper, never()).insert(any(Violation.class));
+    }
+
+    @Test
+    @DisplayName("取消违规 → 普通管理员跨板块 → 403 拒绝")
+    void cancelViolation_crossBoard_forbidden() {
+        setCurrentUser(5);
+        Violation violation = new Violation();
+        violation.setId(1);
+        violation.setRelatedType("article");
+        violation.setRelatedId(1);
+        violation.setStatus("active");
+        when(violationMapper.selectById(1)).thenReturn(violation);
+        when(contentBoardResolver.resolveLabelId("article", 1)).thenReturn(10);
+        when(authorizationService.canModerateBoard(5, 10)).thenReturn(false);
+
+        ResultBean result = violationService.cancelViolation(1, "误判");
+
+        assertEquals(403, result.getCode());
+        assertEquals("无权处理该板块的违规", result.getMessage());
+        verify(violationMapper, never()).updateById(any(Violation.class));
     }
 
     @Test

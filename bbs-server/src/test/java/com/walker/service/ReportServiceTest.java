@@ -71,6 +71,12 @@ class ReportServiceTest {
     @Mock
     private UserService userService;
 
+    @Mock
+    private AuthorizationService authorizationService;
+
+    @Mock
+    private ContentBoardResolver contentBoardResolver;
+
     /** 公共测试参数 */
     private static final int REPORTER_ID = 100;
     private static final String TARGET_TYPE = "article";
@@ -89,7 +95,11 @@ class ReportServiceTest {
                 Report.class
         );
 
-        // 默认当前登录用户 id=1（与初始化 SQL 的超管 id 一致），敏感用例可覆盖
+        SecurityTestSupport.injectCurrentUser(reportService);
+        SecurityTestSupport.injectSelfApprovalPolicy(reportService, authorizationService);
+        SecurityTestSupport.injectContentBoardResolver(reportService, contentBoardResolver);
+
+        // 默认当前登录用户 id=1（超管），敏感用例可覆盖
         setCurrentUser(1);
     }
 
@@ -100,10 +110,7 @@ class ReportServiceTest {
 
     /** 模拟 JWT 登录态：principal 为 User 实体（与 JwtAuthenticationTokenFilter 行为一致） */
     private void setCurrentUser(int id) {
-        User user = new User();
-        user.setId(id);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
+        SecurityTestSupport.setCurrentUser(id);
     }
 
     // ========== submitReport 测试 ==========
@@ -268,6 +275,27 @@ class ReportServiceTest {
         assertEquals(200, result.getCode());
         verify(pointsLogService).adjustUserPoints(eq(100), eq(2), contains("举报属实"), eq("report"), eq(1), eq(1));
         verify(notificationService).createNotification(eq(100), eq(1), eq("report_confirmed"), contains("核实"), eq("report"), eq(1));
+    }
+
+    @Test
+    @DisplayName("审核举报 → 普通管理员跨板块 → 403 拒绝")
+    void reviewReport_crossBoard_forbidden() {
+        setCurrentUser(5);
+        Report report = new Report();
+        report.setId(1);
+        report.setReporterId(100);
+        report.setTargetType("article");
+        report.setTargetId(1);
+        report.setStatus("pending");
+        when(reportMapper.selectById(1)).thenReturn(report);
+        when(contentBoardResolver.resolveLabelId("article", 1)).thenReturn(10);
+        when(authorizationService.canModerateBoard(5, 10)).thenReturn(false);
+
+        ResultBean result = reportService.reviewReport(1, 5, "confirmed", "同意");
+
+        assertEquals(403, result.getCode());
+        assertEquals("无权处理该板块的举报", result.getMessage());
+        verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
     }
 
     @Test
@@ -457,14 +485,11 @@ class ReportServiceTest {
     @Test
     @DisplayName("按状态查询举报 → 返回分页结果")
     void listReports_withStatus_returnsPage() {
-        // 模拟 selectPage 返回带记录的分页
-        Page<Report> page = new Page<>(1, 10);
+        // 板块范围过滤后改为内存分页：模拟 selectList 返回记录
         Report r1 = new Report();
         r1.setId(1);
         r1.setStatus("pending");
-        page.setRecords(Arrays.asList(r1));
-        page.setTotal(1L);
-        when(reportMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+        when(reportMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(Arrays.asList(r1));
 
         ResultBean result = reportService.listReports("pending", 1, 10);
         assertEquals(200, result.getCode());

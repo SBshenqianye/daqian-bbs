@@ -8,14 +8,14 @@ import com.walker.pojo.Appeal;
 import com.walker.pojo.User;
 import com.walker.pojo.Violation;
 import com.walker.service.AppealService;
+import com.walker.service.CurrentUserService;
 import com.walker.service.NotificationService;
+import com.walker.service.SelfApprovalPolicy;
 import com.walker.service.UserService;
 import com.walker.service.ViolationService;
-import com.walker.utils.ConstantUtil;
+import com.walker.config.security.SelfApprovalException;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,22 +38,11 @@ public class AppealServiceImpl extends ServiceImpl<AppealMapper, Appeal> impleme
     @Autowired
     private ViolationService violationService;
 
-    /**
-     * 从登录态（JWT）获取当前操作人 id。/admin/** 已由 Spring Security 强制认证。
-     * 审核人以"服务端可信身份"为准，不信任前端传入的 reviewerId（#2/#14 同一模式）。
-     */
-    private Integer getCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof User) {
-            return ((User) auth.getPrincipal()).getId();
-        }
-        return null;
-    }
+    @Autowired
+    private CurrentUserService currentUserService;
 
-    /** 系统内置超级管理员（id=1，初始化 SQL 约定勿改），自审类限制对超管豁免 */
-    private boolean isSuperAdmin(Integer userId) {
-        return userId != null && ConstantUtil.SUPER_ADMIN_ID == userId.intValue();
-    }
+    @Autowired
+    private SelfApprovalPolicy selfApprovalPolicy;
 
     @Override
     @Transactional
@@ -99,10 +88,11 @@ public class AppealServiceImpl extends ServiceImpl<AppealMapper, Appeal> impleme
             return ResultBean.error("参数不完整");
         }
         // 审核人以登录态身份为准：前端传入的 reviewerId 必须与当前登录用户一致，防伪造
-        Integer currentUserId = getCurrentUserId();
-        if (currentUserId == null) {
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
             return ResultBean.error("未获取到登录用户信息，请重新登录");
         }
+        Integer currentUserId = currentUser.getId();
         if (reviewerId != null && !currentUserId.equals(reviewerId)) {
             return ResultBean.error("审核人身份校验失败，请重新登录后操作");
         }
@@ -114,8 +104,10 @@ public class AppealServiceImpl extends ServiceImpl<AppealMapper, Appeal> impleme
             return ResultBean.error("申诉记录不存在");
         }
         // 权限校验：除超级管理员外，审核人不得审核自己的申诉（2026-10-12 需求）
-        if (!isSuperAdmin(reviewerId) && appeal.getUserId() != null && appeal.getUserId().equals(reviewerId)) {
-            return ResultBean.error("不能审核自己的申诉");
+        try {
+            selfApprovalPolicy.checkReviewAppeal(currentUser, appeal);
+        } catch (SelfApprovalException e) {
+            return ResultBean.error(e.getMessage());
         }
         if (!"pending".equals(appeal.getStatus())) {
             return ResultBean.error("该申诉已处理");

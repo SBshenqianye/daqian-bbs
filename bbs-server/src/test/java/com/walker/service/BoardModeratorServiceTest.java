@@ -64,6 +64,7 @@ class BoardModeratorServiceTest {
                 new MapperBuilderAssistant(new MybatisConfiguration(), ""),
                 BoardModerator.class
         );
+        SecurityTestSupport.injectCurrentUser(boardModeratorService);
         // 默认当前登录管理员 id=1，敏感用例可覆盖
         setCurrentUser(1);
     }
@@ -75,10 +76,7 @@ class BoardModeratorServiceTest {
 
     /** 模拟 JWT 登录态：principal 为 User 实体 */
     private void setCurrentUser(int id) {
-        User user = new User();
-        user.setId(id);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
+        SecurityTestSupport.setCurrentUser(id);
     }
 
     @Test
@@ -328,5 +326,43 @@ class BoardModeratorServiceTest {
         assertEquals(500, result.getCode());
         assertTrue(result.getMessage().contains("身份"));
         verify(boardModeratorMapper, never()).insert(any(BoardModerator.class));
+    }
+
+    // ==================== Phase 3：版主生命周期 ====================
+
+    @Test
+    @DisplayName("任命版主 → 撤销后重新任命 → 复用旧记录并置 status=1")
+    void appoint_afterDismiss_reusesHistory() {
+        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
+        when(pointsLogService.getPointsAdjustment(1)).thenReturn(300);
+
+        BoardModerator history = new BoardModerator();
+        history.setId(10);
+        history.setUserId(1);
+        history.setLabelId(1);
+        history.setStatus(0);
+        when(boardModeratorMapper.findAnyByUserAndLabel(1, 1)).thenReturn(history);
+        when(boardModeratorMapper.updateById(any(BoardModerator.class))).thenReturn(1);
+
+        ResultBean result = boardModeratorService.appoint(1, 1, 1);
+
+        assertEquals(200, result.getCode());
+        verify(boardModeratorMapper).updateById(argThat((BoardModerator m) ->
+                m.getId() == 10 && m.getStatus() == 1 && "moderator".equals(m.getRoleType())));
+        verify(boardModeratorMapper, never()).insert(any(BoardModerator.class));
+    }
+
+    @Test
+    @DisplayName("判断有效版主 → 有效记录 → true")
+    void hasActiveRole_active_true() {
+        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(new BoardModerator());
+        assertTrue(boardModeratorService.hasActiveRole(1, 1));
+    }
+
+    @Test
+    @DisplayName("判断有效版主 → 空参数 → false")
+    void hasActiveRole_nullParams_false() {
+        assertFalse(boardModeratorService.hasActiveRole(null, 1));
+        assertFalse(boardModeratorService.hasActiveRole(1, null));
     }
 }

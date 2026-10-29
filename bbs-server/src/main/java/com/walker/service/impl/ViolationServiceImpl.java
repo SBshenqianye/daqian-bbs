@@ -13,6 +13,9 @@ import com.walker.pojo.User;
 import com.walker.pojo.Violation;
 import com.walker.pojo.Appeal;
 import com.walker.service.CommentService;
+import com.walker.service.AuthorizationService;
+import com.walker.service.ContentBoardResolver;
+import com.walker.service.CurrentUserService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
 import com.walker.service.ReplyService;
@@ -22,8 +25,6 @@ import com.walker.service.AppealService;
 import com.walker.utils.ConstantUtil;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +51,15 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
 
     @Autowired
     private ArticleMapper articleMapper;
+
+    @Autowired
+    private CurrentUserService currentUserService;
+
+    @Autowired
+    private AuthorizationService authorizationService;
+
+    @Autowired
+    private ContentBoardResolver contentBoardResolver;
 
     @Autowired
     private CommentService commentService;
@@ -91,7 +101,7 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
             return ResultBean.error("参数不完整");
         }
         // 操作人以登录态身份为准：前端传入的 operatorId 必须与当前登录用户一致，防伪造
-        Integer currentUserId = getCurrentUserId();
+        Integer currentUserId = currentUserService.getCurrentUserId();
         if (currentUserId == null) {
             return ResultBean.error("未获取到登录用户信息，请重新登录");
         }
@@ -100,6 +110,12 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
         }
         // 后续落库、扣分与通知均以登录态 currentUserId 为准
         operatorId = currentUserId;
+
+        // 数据范围：普通管理员仅可处理自己板块的违规；无关联内容的全局违规仅超管可处理
+        ResultBean scopeError = requireViolationScope(relatedType, relatedId);
+        if (scopeError != null) {
+            return scopeError;
+        }
 
         Date now = new Date();
         SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -263,17 +279,87 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
 
     @Override
     public ResultBean listViolations(Integer userId, Integer page, Integer size) {
-        Page<Violation> pageParam = new Page<>(page, size);
+        return listViolationsInternal(userId, page, size, true);
+    }
+
+    @Override
+    public ResultBean listMyViolations(Integer userId, Integer page, Integer size) {
+        // 用户端“我的违规”不做管理端板块过滤
+        return listViolationsInternal(userId, page, size, false);
+    }
+
+    /**
+     * 违规数据范围过滤：超管看全部；普通管理员仅看自己板块的违规。
+     */
+    private List<Violation> filterVisibleViolations(User currentUser, List<Violation> violations) {
+        if (authorizationService.isSuperAdmin(currentUser)) {
+            return violations;
+        }
+        List<Violation> visible = new ArrayList<>();
+        for (Violation violation : violations) {
+            if (canHandleViolation(currentUser, violation.getRelatedType(), violation.getRelatedId())) {
+                visible.add(violation);
+            }
+        }
+        return visible;
+    }
+
+    private boolean canHandleViolation(User currentUser, String relatedType, Integer relatedId) {
+        if (currentUser == null) {
+            return false;
+        }
+        if (authorizationService.isSuperAdmin(currentUser)) {
+            return true;
+        }
+        Integer labelId = contentBoardResolver.resolveLabelId(relatedType, relatedId);
+        return labelId != null && authorizationService.canModerateBoard(currentUser.getId(), labelId);
+    }
+
+    /**
+     * 违规操作数据范围校验：无关联内容的全局违规、跨板块违规均拒绝普通管理员。
+     */
+    private ResultBean requireViolationScope(String relatedType, Integer relatedId) {
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (authorizationService.isSuperAdmin(currentUser)) {
+            return null;
+        }
+        Integer labelId = contentBoardResolver.resolveLabelId(relatedType, relatedId);
+        if (labelId == null) {
+            return ResultBean.forbidden("仅超级管理员可处理无板块归属的违规");
+        }
+        if (!authorizationService.canModerateBoard(currentUser.getId(), labelId)) {
+            return ResultBean.forbidden("无权处理该板块的违规");
+        }
+        return null;
+    }
+
+    private ResultBean listViolationsInternal(Integer userId, Integer page, Integer size, boolean applyScope) {
         LambdaQueryWrapper<Violation> wrapper = new LambdaQueryWrapper<>();
         if (userId != null) {
             wrapper.eq(Violation::getUserId, userId);
         }
         wrapper.orderByDesc(Violation::getCreateTime);
-        Page<Violation> result = this.page(pageParam, wrapper);
+        List<Violation> all = this.list(wrapper);
+
+        if (applyScope) {
+            User currentUser = currentUserService.getCurrentUser();
+            if (currentUser == null) {
+                return ResultBean.error("未获取到登录用户信息，请重新登录");
+            }
+            all = filterVisibleViolations(currentUser, all);
+        }
+
+        int total = all.size();
+        int from = Math.max(0, (page - 1) * size);
+        int to = Math.min(from + size, total);
+        List<Violation> records = from < total ? all.subList(from, to) : new ArrayList<>();
 
         // 批量查询用户昵称
         Set<Integer> userIds = new HashSet<>();
-        for (Violation v : result.getRecords()) {
+        for (Violation v : records) {
             if (v.getUserId() != null) userIds.add(v.getUserId());
         }
         Map<Integer, String> nicknameMap = new HashMap<>();
@@ -286,7 +372,7 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
 
         // 批量查询申诉状态（每条违规最多一条申诉）
         Set<Integer> violationIds = new HashSet<>();
-        for (Violation v : result.getRecords()) {
+        for (Violation v : records) {
             if (v.getId() != null) violationIds.add(v.getId());
         }
         // violationId → 最新申诉状态（pending/accepted/rejected）
@@ -307,7 +393,7 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
         // 批量反查评论/回复所属文章 id（#11 内容预览定位用；原生 SQL 可查已删除内容）
         Set<Integer> commentIds = new HashSet<>();
         Set<Integer> replyIds = new HashSet<>();
-        for (Violation v : result.getRecords()) {
+        for (Violation v : records) {
             if ("comment".equals(v.getRelatedType()) && v.getRelatedId() != null) commentIds.add(v.getRelatedId());
             if ("reply".equals(v.getRelatedType()) && v.getRelatedId() != null) replyIds.add(v.getRelatedId());
         }
@@ -328,7 +414,7 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
 
         // 组装结果
         List<Map<String, Object>> enriched = new ArrayList<>();
-        for (Violation v : result.getRecords()) {
+        for (Violation v : records) {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("id", v.getId());
             map.put("userId", v.getUserId());
@@ -360,13 +446,8 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
 
         Map<String, Object> data = new HashMap<>();
         data.put("records", enriched);
-        data.put("total", result.getTotal());
+        data.put("total", total);
         return ResultBean.success("查询成功", data);
-    }
-
-    @Override
-    public ResultBean listMyViolations(Integer userId, Integer page, Integer size) {
-        return listViolations(userId, page, size);
     }
 
     private String getViolationLabel(String type) {
@@ -383,24 +464,13 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
 
     // ==================== #14 取消违规 ====================
 
-    /**
-     * 从登录态（JWT）获取当前操作人 id。/admin/** 已由 Spring Security 强制认证。
-     */
-    private Integer getCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof User) {
-            return ((User) auth.getPrincipal()).getId();
-        }
-        return null;
-    }
-
     @Override
     @Transactional
     public ResultBean cancelViolation(Integer violationId, String reason) {
         if (violationId == null) {
             return ResultBean.error("参数不完整");
         }
-        Integer operatorId = getCurrentUserId();
+        Integer operatorId = currentUserService.getCurrentUserId();
         if (operatorId == null) {
             return ResultBean.error("未获取到登录用户信息，请重新登录");
         }
@@ -408,6 +478,11 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
         Violation v = this.getById(violationId);
         if (v == null) {
             return ResultBean.error("违规记录不存在");
+        }
+        // 数据范围：普通管理员仅可取消自己板块的违规
+        ResultBean scopeError = requireViolationScope(v.getRelatedType(), v.getRelatedId());
+        if (scopeError != null) {
+            return scopeError;
         }
         if ("cancelled".equals(v.getStatus())) {
             return ResultBean.error("该违规已取消，不可重复操作");

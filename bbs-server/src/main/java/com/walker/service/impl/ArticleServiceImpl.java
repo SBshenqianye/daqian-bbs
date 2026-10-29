@@ -10,6 +10,7 @@ import com.walker.mapper.SaOrgMapper;
 import com.walker.pojo.*;
 import com.walker.service.*;
 import com.walker.service.ArticleLabelService;
+import com.walker.config.security.SelfApprovalException;
 import com.walker.utils.ConstantUtil;
 import com.walker.utils.ContentQualityUtil;
 import com.walker.utils.SensitiveWordUtil;
@@ -24,8 +25,6 @@ import com.walker.vo.param.PersonalPointsRankParam;
 import com.walker.vo.PersonalPointsRankVO;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -76,6 +75,12 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private CurrentUserService currentUserService;
+
+    @Autowired
+    private SelfApprovalPolicy selfApprovalPolicy;
 
     /**
      * 发布文章
@@ -925,10 +930,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             return ResultBean.error("文章ID不能为空");
         }
         // 操作人以登录态身份为准：用于"不能自设精华"校验与通知（2026-10-12 需求）
-        Integer operatorId = getCurrentUserId();
-        if (operatorId == null) {
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
             return ResultBean.error("未获取到登录用户信息，请重新登录");
         }
+        Integer operatorId = currentUser.getId();
         // 查询文章，获取当前精华状态和作者
         Article article = articleMapper.selectById(articleId);
         if (article == null) {
@@ -937,9 +943,12 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         Integer oldFeatured = article.getIsFeatured() != null ? article.getIsFeatured() : 0;
         int newFeatured = isFeatured != null ? isFeatured : 0;
         // 权限校验：除超级管理员外，不得将自己的帖子设为精华（取消精华不受限，便于管理员纠错）
-        if (newFeatured == 1 && oldFeatured != 1
-                && !isSuperAdmin(operatorId) && article.getUserId() != null && article.getUserId().equals(operatorId)) {
-            return ResultBean.error("不能将自己的帖子设为精华");
+        if (newFeatured == 1 && oldFeatured != 1) {
+            try {
+                selfApprovalPolicy.checkSetFeatured(currentUser, article);
+            } catch (SelfApprovalException e) {
+                return ResultBean.error(e.getMessage());
+            }
         }
         // 更新精华状态
         Article update = new Article();
@@ -979,22 +988,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     "article", articleId);
         }
         return ResultBean.success(isFeatured == 1 ? "已设为精华帖" : "已取消精华帖");
-    }
-
-    /**
-     * 从登录态（JWT）获取当前操作人 id。/admin/** 已由 Spring Security 强制认证。
-     */
-    private Integer getCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof User) {
-            return ((User) auth.getPrincipal()).getId();
-        }
-        return null;
-    }
-
-    /** 系统内置超级管理员（id=1，初始化 SQL 约定勿改），自审类限制对超管豁免 */
-    private boolean isSuperAdmin(Integer userId) {
-        return userId != null && ConstantUtil.SUPER_ADMIN_ID == userId.intValue();
     }
 
     @Override

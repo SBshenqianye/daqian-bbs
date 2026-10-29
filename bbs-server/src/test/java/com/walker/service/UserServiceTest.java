@@ -48,6 +48,9 @@ class UserServiceTest {
     private UserMapper userMapper;
 
     @Mock
+    private com.walker.mapper.BoardModeratorMapper boardModeratorMapper;
+
+    @Mock
     private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
 
     @Mock
@@ -61,6 +64,9 @@ class UserServiceTest {
 
     @Mock
     private com.walker.config.security.JwtTokenUtil jwtTokenUtil;
+
+    @Mock
+    private CurrentUserService currentUserService;
 
     @Mock
     private HttpServletRequest request;
@@ -107,6 +113,41 @@ class UserServiceTest {
         ResultBean result = userService.login("testuser", "1234@abcD", "01", request);
         assertEquals(200, result.getCode());
         assertNotNull(result.getObj());
+    }
+
+    @Test
+    @DisplayName("超管登录 → 返回 role/permissions/boardScopes")
+    void login_superAdmin_returnsPermissionFields() {
+        User user = new User();
+        user.setId(1);
+        user.setUsername("ASIAYAK");
+        user.setPassword("$2a$encoded");
+        user.setUserType("3");
+        user.setIsFirstLogin(0);
+
+        com.walker.pojo.BoardModerator moderator = new com.walker.pojo.BoardModerator();
+        moderator.setLabelId(10);
+        moderator.setRoleType("moderator");
+        moderator.setStatus(1);
+
+        when(userDetailsService.loadUserByUsername("ASIAYAK")).thenReturn(user);
+        when(passwordEncoder.matches("1234@abcD", "$2a$encoded")).thenReturn(true);
+        when(saOrgService.resolveDisplayOrgName(any(), any())).thenReturn("内江市公司");
+        when(boardModeratorMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(java.util.Collections.singletonList(moderator));
+
+        ResultBean result = userService.login("asiayak", "1234@abcD", "02", request);
+        assertEquals(200, result.getCode());
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> tokenMap = (java.util.Map<String, Object>) result.getObj();
+        com.alibaba.fastjson.JSONObject userJson =
+                (com.alibaba.fastjson.JSONObject) tokenMap.get("user");
+        assertEquals("SUPER_ADMIN", userJson.getString("role"));
+        assertTrue(userJson.getJSONArray("permissions").contains("user:grant:admin"));
+        assertEquals(1, userJson.getJSONArray("boardScopes").size());
+        assertEquals(10, userJson.getJSONArray("boardScopes")
+                .getJSONObject(0).getIntValue("labelId"));
     }
 
     @Test
@@ -540,8 +581,9 @@ class UserServiceTest {
     // ========== updateUserRole: role 02 ==========
 
     @Test
-    @DisplayName("修改角色 → 角色类型02 → 映射为2，成功")
+    @DisplayName("修改角色 → 角色类型02 → 超管操作 → 映射为2，成功")
     void updateUserRole_role02_succeeds() {
+        when(currentUserService.isSuperAdmin()).thenReturn(true);
         when(userMapper.updateUserRole(1, "2")).thenReturn(1);
 
         ResultBean result = userService.updateUserRole(1, "02");
@@ -746,5 +788,124 @@ class UserServiceTest {
         assertEquals(200, result.getCode());
         assertEquals("操作成功", result.getMessage());
         verify(userMapper).updateUserRole(1, "1");
+    }
+
+    // ========== Phase 1: 角色白名单与超管授权限制 ==========
+
+    @Test
+    @DisplayName("新增用户 → userType=3 → 非法角色被拒绝")
+    void adminAddUser_superAdminType_rejected() {
+        AdminUserAddParam param = new AdminUserAddParam();
+        param.setUsername("newsuper");
+        param.setPersonnelId("P200");
+        param.setUserType("3");
+
+        ResultBean result = userService.adminAddUser(param);
+
+        assertEquals(500, result.getCode());
+        assertEquals("非法用户角色", result.getMessage());
+        verify(userMapper, never()).insert(any(User.class));
+    }
+
+    @Test
+    @DisplayName("新增管理员 → 非超管操作 → 403 拒绝")
+    void adminAddUser_grantAdminByNonSuper_forbidden() {
+        AdminUserAddParam param = new AdminUserAddParam();
+        param.setUsername("newadmin");
+        param.setPersonnelId("P201");
+        param.setUserType("2");
+
+        when(currentUserService.isSuperAdmin()).thenReturn(false);
+
+        ResultBean result = userService.adminAddUser(param);
+
+        assertEquals(403, result.getCode());
+        verify(userMapper, never()).insert(any(User.class));
+    }
+
+    @Test
+    @DisplayName("新增管理员 → 超管操作 → 成功")
+    void adminAddUser_grantAdminBySuper_succeeds() {
+        AdminUserAddParam param = new AdminUserAddParam();
+        param.setUsername("newadmin");
+        param.setPersonnelId("P202");
+        param.setUserType("2");
+
+        when(currentUserService.isSuperAdmin()).thenReturn(true);
+        when(userMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(userMapper.insert(any(User.class))).thenReturn(1);
+
+        ResultBean result = userService.adminAddUser(param);
+
+        assertEquals(200, result.getCode());
+        verify(userMapper).insert(argThat(u -> "2".equals(((User) u).getUserType())));
+    }
+
+    @Test
+    @DisplayName("更新用户角色为管理员 → 非超管 → 403 拒绝")
+    void adminUpdateUserDetail_grantAdminByNonSuper_forbidden() {
+        AdminUserUpdateParam param = new AdminUserUpdateParam();
+        param.setId(2);
+        param.setUserType("2");
+
+        User existing = new User();
+        existing.setId(2);
+        existing.setUserType("1");
+        when(userMapper.selectById(2)).thenReturn(existing);
+        when(currentUserService.isSuperAdmin()).thenReturn(false);
+
+        ResultBean result = userService.adminUpdateUserDetail(param);
+
+        assertEquals(403, result.getCode());
+        verify(userMapper, never()).updateById(any(User.class));
+    }
+
+    @Test
+    @DisplayName("非超管编辑管理员账号 → 403 拒绝")
+    void adminUpdateUserDetail_editAdminByNonSuper_forbidden() {
+        AdminUserUpdateParam param = new AdminUserUpdateParam();
+        param.setId(2);
+        param.setNickname("改名");
+
+        User existing = new User();
+        existing.setId(2);
+        existing.setUserType("2");
+        when(userMapper.selectById(2)).thenReturn(existing);
+        when(currentUserService.isSuperAdmin()).thenReturn(false);
+
+        ResultBean result = userService.adminUpdateUserDetail(param);
+
+        assertEquals(403, result.getCode());
+        verify(userMapper, never()).updateById(any(User.class));
+    }
+
+    @Test
+    @DisplayName("修改用户角色 → 非超管授予管理员 → 403 拒绝")
+    void updateUserRole_grantAdminByNonSuper_forbidden() {
+        when(currentUserService.isSuperAdmin()).thenReturn(false);
+
+        ResultBean result = userService.updateUserRole(2, "02");
+
+        assertEquals(403, result.getCode());
+        verify(userMapper, never()).updateUserRole(anyInt(), anyString());
+    }
+
+    @Test
+    @DisplayName("更新用户角色 → 写入 userType=3 → 非法角色拒绝")
+    void adminUpdateUserDetail_superAdminType_rejected() {
+        AdminUserUpdateParam param = new AdminUserUpdateParam();
+        param.setId(2);
+        param.setUserType("3");
+
+        User existing = new User();
+        existing.setId(2);
+        existing.setUserType("1");
+        when(userMapper.selectById(2)).thenReturn(existing);
+
+        ResultBean result = userService.adminUpdateUserDetail(param);
+
+        assertEquals(500, result.getCode());
+        assertEquals("非法用户角色", result.getMessage());
+        verify(userMapper, never()).updateById(any(User.class));
     }
 }
