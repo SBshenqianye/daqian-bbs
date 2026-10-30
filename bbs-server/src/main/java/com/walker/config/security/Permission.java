@@ -4,49 +4,57 @@ package com.walker.config.security;
  * 权限点（固定角色 + 静态权限映射）。
  *
  * <p>ADMIN 默认拥有除 user:grant:admin、config:write 外的管理权限；
- * SUPER_ADMIN 拥有全部权限。USER 不具备管理端权限点。</p>
+ * SUPER_ADMIN 拥有全部权限；MODERATOR 仅拥有业务管理权限（板块范围在服务层校验）；
+ * USER 不具备管理端权限点。</p>
  */
 public enum Permission {
 
-    ADMIN_ACCESS("admin:access", true),
+    ADMIN_ACCESS("admin:access", true, true),
 
-    USER_READ("user:read", true),
-    USER_CREATE("user:create", true),
-    USER_UPDATE("user:update", true),
-    USER_DELETE("user:delete", true),
-    USER_GRANT_ADMIN("user:grant:admin", false),
+    USER_READ("user:read", true, false),
+    USER_CREATE("user:create", true, false),
+    USER_UPDATE("user:update", true, false),
+    USER_DELETE("user:delete", true, false),
+    USER_GRANT_ADMIN("user:grant:admin", false, false),
 
-    CONFIG_READ("config:read", true),
-    CONFIG_WRITE("config:write", false),
+    CONFIG_READ("config:read", true, false),
+    CONFIG_WRITE("config:write", false, false),
 
-    ARTICLE_READ("article:read", true),
-    ARTICLE_REVIEW("article:review", true),
-    ARTICLE_DELETE("article:delete", true),
-    ARTICLE_FEATURE("article:feature", true),
-    ARTICLE_SUGGESTION_ADOPT("article:suggestion:adopt", true),
+    ARTICLE_READ("article:read", true, true),
+    ARTICLE_REVIEW("article:review", true, true),
+    ARTICLE_DELETE("article:delete", true, true),
+    ARTICLE_FEATURE("article:feature", true, true),
+    ARTICLE_SUGGESTION_ADOPT("article:suggestion:adopt", true, true),
 
-    REPORT_REVIEW("report:review", true),
-    APPEAL_REVIEW("appeal:review", true),
+    REPORT_REVIEW("report:review", true, true),
+    APPEAL_REVIEW("appeal:review", true, true),
 
-    MODERATOR_MANAGE("moderator:manage", true),
-    MODERATOR_COMPLAINT_REVIEW("moderator:complaint:review", true),
-    ADOPT_REVIEW("adopt:review", true),
+    MODERATOR_MANAGE("moderator:manage", true, false),
+    MODERATOR_COMPLAINT_REVIEW("moderator:complaint:review", true, false),
+    ADOPT_REVIEW("adopt:review", true, true),
 
-    FEATURED_RECOMMEND("featured:recommend", true),
-    FEATURED_REVIEW("featured:review", true),
+    FEATURED_RECOMMEND("featured:recommend", true, true),
+    FEATURED_REVIEW("featured:review", true, false),
 
-    POINTS_READ("points:read", true),
-    POINTS_ADJUST("points:adjust", true),
+    POINTS_READ("points:read", true, true),
+    POINTS_ADJUST("points:adjust", true, false),
 
-    DASHBOARD_READ("dashboard:read", true);
+    DASHBOARD_READ("dashboard:read", true, true);
 
     private final String code;
     /** ADMIN 是否默认拥有；SUPER_ADMIN 恒为 true */
     private final boolean adminDefault;
+    /** MODERATOR 是否默认拥有；板块范围由服务层另行校验 */
+    private final boolean moderatorDefault;
 
     Permission(String code, boolean adminDefault) {
+        this(code, adminDefault, false);
+    }
+
+    Permission(String code, boolean adminDefault, boolean moderatorDefault) {
         this.code = code;
         this.adminDefault = adminDefault;
+        this.moderatorDefault = moderatorDefault;
     }
 
     public String getCode() {
@@ -60,6 +68,9 @@ public enum Permission {
         }
         if (role == AccountRole.ADMIN) {
             return adminDefault;
+        }
+        if (role == AccountRole.MODERATOR) {
+            return moderatorDefault;
         }
         return false;
     }

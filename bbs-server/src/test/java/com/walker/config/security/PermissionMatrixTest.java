@@ -40,4 +40,31 @@ class PermissionMatrixTest {
             assertTrue(permission.isGrantedTo(AccountRole.SUPER_ADMIN), permission.getCode());
         }
     }
+
+    @Test
+    @DisplayName("MODERATOR 仅拥有业务管理权限点，系统管理全部拒绝")
+    void moderator_permissions() {
+        java.util.List<String> codes = Permission.codesFor(AccountRole.MODERATOR);
+        assertTrue(codes.contains("admin:access"));
+        assertTrue(codes.contains("article:read"));
+        assertTrue(codes.contains("article:review"));
+        assertTrue(codes.contains("article:delete"));
+        assertTrue(codes.contains("article:feature"));
+        assertTrue(codes.contains("article:suggestion:adopt"));
+        assertTrue(codes.contains("report:review"));
+        assertTrue(codes.contains("appeal:review"));
+        assertTrue(codes.contains("adopt:review"));
+        assertTrue(codes.contains("featured:recommend"));
+        assertTrue(codes.contains("points:read"));
+        assertTrue(codes.contains("dashboard:read"));
+
+        assertFalse(codes.contains("user:read"));
+        assertFalse(codes.contains("user:grant:admin"));
+        assertFalse(codes.contains("config:read"));
+        assertFalse(codes.contains("config:write"));
+        assertFalse(codes.contains("moderator:manage"));
+        assertFalse(codes.contains("moderator:complaint:review"));
+        assertFalse(codes.contains("featured:review"));
+        assertFalse(codes.contains("points:adjust"));
+    }
 }

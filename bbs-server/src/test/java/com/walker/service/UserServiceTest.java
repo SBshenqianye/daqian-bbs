@@ -151,6 +151,32 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("MODERATOR 登录 → channel 02 放行且返回业务权限")
+    void login_moderator_returnsBusinessPermissions() {
+        User user = new User();
+        user.setId(6);
+        user.setUsername("MOD1");
+        user.setPassword("$2a$encoded");
+        user.setUserType("4");
+        user.setIsFirstLogin(0);
+
+        when(userDetailsService.loadUserByUsername("MOD1")).thenReturn(user);
+        when(passwordEncoder.matches("1234@abcD", "$2a$encoded")).thenReturn(true);
+        when(saOrgService.resolveDisplayOrgName(any(), any())).thenReturn("内江市公司");
+
+        ResultBean result = userService.login("mod1", "1234@abcD", "02", request);
+        assertEquals(200, result.getCode());
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> tokenMap = (java.util.Map<String, Object>) result.getObj();
+        com.alibaba.fastjson.JSONObject userJson =
+                (com.alibaba.fastjson.JSONObject) tokenMap.get("user");
+        assertEquals("MODERATOR", userJson.getString("role"));
+        assertTrue(userJson.getJSONArray("permissions").contains("article:read"));
+        assertFalse(userJson.getJSONArray("permissions").contains("user:read"));
+    }
+
+    @Test
     @DisplayName("登录密码错误 → 返回错误")
     void login_wrongPassword_returnsError() {
         User user = new User();
@@ -273,6 +299,14 @@ class UserServiceTest {
     void updateUserRole_validRole_success() {
         when(userMapper.updateUserRole(1, "1")).thenReturn(1);
         ResultBean result = userService.updateUserRole(1, "01");
+        assertEquals(200, result.getCode());
+    }
+
+    @Test
+    @DisplayName("修改角色 → 04 → 写入 user_type=4")
+    void updateUserRole_moderator_success() {
+        when(userMapper.updateUserRole(1, "4")).thenReturn(1);
+        ResultBean result = userService.updateUserRole(1, "04");
         assertEquals(200, result.getCode());
     }
 

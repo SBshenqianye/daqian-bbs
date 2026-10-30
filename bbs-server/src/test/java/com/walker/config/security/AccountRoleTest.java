@@ -50,6 +50,23 @@ class AccountRoleTest {
     }
 
     @Test
+    @DisplayName("user_type=4 → ROLE_USER + ROLE_MODERATOR（不含 ROLE_ADMIN）")
+    void userType4_mapsToModerator() {
+        assertEquals(AccountRole.MODERATOR, AccountRole.fromUserType("4"));
+        assertEquals(roles("ROLE_USER", "ROLE_MODERATOR"), authoritiesOf("4"));
+        assertFalse(authoritiesOf("4").contains("ROLE_ADMIN"));
+    }
+
+    @Test
+    @DisplayName("MODERATOR 可进管理后台，但不是全局管理员")
+    void moderator_canAccessConsole_butNotAdmin() {
+        assertTrue(AccountRole.MODERATOR.canAccessAdminConsole());
+        assertFalse(AccountRole.MODERATOR.isAdmin());
+        assertTrue(AccountRole.MODERATOR.isModerator());
+        assertFalse(AccountRole.ADMIN.isModerator());
+    }
+
+    @Test
     @DisplayName("空值与非法值 → 按普通用户处理，不放大权限")
     void blankOrUnknown_mapsToUser() {
         assertEquals(AccountRole.USER, AccountRole.fromUserType(null));

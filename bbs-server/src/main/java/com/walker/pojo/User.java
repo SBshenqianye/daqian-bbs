@@ -125,7 +125,8 @@ public class User implements Serializable,UserDetails {
      * 账号角色转为 Spring Security 权限。
      *
      * <p>USER: ROLE_USER；ADMIN: ROLE_USER + ROLE_ADMIN；
-     * SUPER_ADMIN: ROLE_USER + ROLE_ADMIN + ROLE_SUPER_ADMIN。
+     * SUPER_ADMIN: ROLE_USER + ROLE_ADMIN + ROLE_SUPER_ADMIN；
+     * MODERATOR: ROLE_USER + ROLE_MODERATOR（不继承 ROLE_ADMIN）。
      * 管理员继承前置角色，避免 hasRole('ADMIN') 在超管场景失效。</p>
      */
     @Override
@@ -138,6 +139,9 @@ public class User implements Serializable,UserDetails {
         }
         if (role == AccountRole.SUPER_ADMIN) {
             authorities.add(new SimpleGrantedAuthority(AccountRole.SUPER_ADMIN.getAuthority()));
+        }
+        if (role == AccountRole.MODERATOR) {
+            authorities.add(new SimpleGrantedAuthority(AccountRole.MODERATOR.getAuthority()));
         }
         return authorities;
     }
