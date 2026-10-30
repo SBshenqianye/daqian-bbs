@@ -28,10 +28,10 @@ Vue.use(ElementUI, {
 // 初始化管理员状态 Store
 adminStore.init();
 
-// 管理端账号角色：userType 2=管理员，3=超级管理员
+// 管理端账号角色：userType 2=管理员，3=超级管理员，4=版主
 function hasAdminRole() {
     const role = adminStore.getRole();
-    return role === 'ADMIN' || role === 'SUPER_ADMIN';
+    return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MODERATOR';
 }
 
 //使用钩子函数对路由进行权限跳转

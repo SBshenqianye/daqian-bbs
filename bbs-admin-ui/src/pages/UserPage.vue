@@ -202,6 +202,7 @@
                   <select v-model="editForm.userType" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
                     <option value="1">普通用户</option>
                     <option v-if="isSuperAdmin" value="2">管理员</option>
+                    <option value="4">版主</option>
                   </select>
                   <span class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline pointer-events-none">
                     <span class="material-symbols-outlined text-[18px]">unfold_more</span>
@@ -400,6 +401,7 @@
                   <select v-model="addForm.userType" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
                     <option value="1">普通用户</option>
                     <option v-if="isSuperAdmin" value="2">管理员</option>
+                    <option value="4">版主</option>
                   </select>
                   <span class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline pointer-events-none">
                     <span class="material-symbols-outlined text-[18px]">unfold_more</span>
@@ -707,12 +709,14 @@ export default {
       if (type == 1) return 'bg-blue-50 text-blue-700'
       if (type == 2) return 'bg-purple-50 text-purple-700'
       if (type == 3) return 'bg-amber-50 text-amber-700'
+      if (type == 4) return 'bg-emerald-50 text-emerald-700'
       return 'bg-surface-variant text-on-surface-variant'
     },
     roleLabel(type) {
       if (type == 1) return '用户'
       if (type == 2) return '管理员'
       if (type == 3) return '超级管理员'
+      if (type == 4) return '版主'
       return '-'
     },
     getAllUserPage() {
