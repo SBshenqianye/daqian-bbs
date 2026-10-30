@@ -35,7 +35,7 @@ export default new Router({
                 {
                     path: '/articleLable',
                     component: () => import('../pages/ArticleLablePage.vue'),
-                    meta: { title: '标签管理', permission: 'article:read' }
+                    meta: { title: '标签管理', permission: 'config:read' }
                 },
                 {
                     path: '/dict',

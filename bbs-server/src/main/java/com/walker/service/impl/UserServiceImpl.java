@@ -1114,6 +1114,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * 查询用户有效版主任职，转换为登录响应的 boardScopes。
      * 直接使用 Mapper 避免 UserService 与 BoardModeratorService 循环依赖。
      */
+    @Override
+    public List<Map<String, Object>> getBoardScopes(Integer userId) {
+        return loadBoardScopes(userId);
+    }
+
     private List<Map<String, Object>> loadBoardScopes(Integer userId) {
         List<Map<String, Object>> scopes = new ArrayList<>();
         if (userId == null) {

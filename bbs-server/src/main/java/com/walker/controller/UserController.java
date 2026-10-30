@@ -102,6 +102,13 @@ public class UserController {
         map.put("orgNameFull", resolveRawOrgName(user.getOrgNo(), user.getOrgName()));
         map.put("deptName", user.getDeptName());
         map.put("userType", user.getUserType());
+        // 权限同步：会话刷新接口也必须返回角色/权限点/板块范围，
+        // 否则 Header 刷新会把登录时写入的 admin 缓存覆盖掉，刷新页面后菜单与横幅失真。
+        com.walker.config.security.AccountRole role =
+                com.walker.config.security.AccountRole.fromUserType(user.getUserType());
+        map.put("role", role.name());
+        map.put("permissions", com.walker.config.security.Permission.codesFor(role));
+        map.put("boardScopes", userService.getBoardScopes(user.getId()));
         map.put("personnelId", user.getPersonnelId());
         map.put("isFirstLogin", user.getIsFirstLogin());
         return map;

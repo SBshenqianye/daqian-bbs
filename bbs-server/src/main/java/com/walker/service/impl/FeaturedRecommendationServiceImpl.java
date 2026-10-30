@@ -137,6 +137,10 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
             return ResultBean.error("未获取到登录用户信息，请重新登录");
         }
         Integer currentUserId = currentUser.getId();
+        // Q5：精华终审为系统级权限，MODERATOR 只能推荐（featured:recommend），不能终审
+        if (!authorizationService.hasPermission(currentUser, Permission.FEATURED_REVIEW)) {
+            return ResultBean.forbidden("权限不足，请联系管理员");
+        }
         if (reviewerId != null && !currentUserId.equals(reviewerId)) {
             return ResultBean.error("审核人身份校验失败，请重新登录后操作");
         }

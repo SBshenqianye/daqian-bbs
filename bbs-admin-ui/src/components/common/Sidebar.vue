@@ -153,7 +153,7 @@ export default {
         { icon: 'stars', label: '精华审批', path: '/featured-recommendation', permission: 'featured:review', category: 'business' },
         // 系统管理：账号、配置、组织、版主体系
         { icon: 'group', label: '用户管理', path: '/user', permission: 'user:read', category: 'system' },
-        { icon: 'label', label: '标签管理', path: '/articleLable', permission: 'article:read', category: 'system' },
+        { icon: 'label', label: '标签管理', path: '/articleLable', permission: 'config:read', category: 'system' },
         { icon: 'tune', label: '配置管理', path: '/dict', permission: 'config:read', category: 'system' },
         { icon: 'account_tree', label: '组织管理', path: '/unitManage', permission: 'config:read', category: 'system' },
         { icon: 'block', label: '敏感词管理', path: '/sensitiveWord', permission: 'config:read', category: 'system' },
