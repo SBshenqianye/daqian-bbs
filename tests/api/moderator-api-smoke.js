@@ -3,7 +3,7 @@
  * 版主角色化 API 权限 / 数据范围冒烟测试
  *
  * 前置：
- *   - MySQL bbs_e2e_test 已执行 tmp/moderator-seed.sql
+ *   - MySQL bbs_e2e_test 已执行 tests/fixtures/moderator-seed.sql
  *   - 后端以 e2e profile 启动（默认 http://127.0.0.1:9084/bbs-server）
  *
  * 运行：

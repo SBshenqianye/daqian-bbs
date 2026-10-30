@@ -8,7 +8,7 @@ const { execFileSync } = require('child_process');
  * 前置：
  *   - 后端 e2e profile（http://127.0.0.1:9084/bbs-server）
  *   - 管理端 dev server（http://localhost:9082/bbs-admin/，DEV_BACKEND_URL 指向 9084）
- *   - MySQL bbs_e2e_test 已执行 tmp/moderator-seed.sql
+ *   - MySQL bbs_e2e_test 已执行 tests/fixtures/moderator-seed.sql
  *
  * 运行：
  *   npx playwright test tests/e2e/moderator-role.spec.js
