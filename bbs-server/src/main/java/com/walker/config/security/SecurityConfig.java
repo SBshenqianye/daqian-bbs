@@ -78,13 +78,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                         "/getAllUser",
                         "/updateUserRole",
                         "/saOrg/**",
-                        "/sensitiveWord/addSensitiveWord",
-                        "/sensitiveWord/delSensitiveWord",
-                        "/sensitiveWord/importExcel",
+                        "/sensitiveWord/**",
                         "/common/saOrg/batchUpdateRanking",
                         "/common/saOrg/batchUpdateDisplay"
                 )
-                .hasAnyRole("ADMIN", "SUPER_ADMIN")
+                .hasAnyRole("ADMIN", "SUPER_ADMIN", "MODERATOR")
                 .antMatchers("/common/**", "/files/**")
                 .permitAll() // common（登录/注册等）和文件放行
                 .anyRequest()

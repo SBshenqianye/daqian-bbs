@@ -62,6 +62,7 @@ public class SystemConfigController {
     }
 
     @ApiOperation(value = "查询配置列表（不分页）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/systemConfig/list")
     public ResultBean listConfig() {
         List<SystemConfig> list = systemConfigService.listConfig();

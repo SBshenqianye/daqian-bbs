@@ -9,6 +9,7 @@ import com.walker.vo.excel.SensitiveWordExcelRow;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,6 +28,7 @@ import java.util.List;
  */
 @Api(tags = "SensitiveWordController")
 @RestController
+@PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
 public class SensitiveWordController {
     @Autowired
     private SensitiveWordService sensitiveWordService;

@@ -18,6 +18,7 @@ import com.walker.pojo.FeaturedRecommendation;
 import com.walker.pojo.ModeratorComplaint;
 import com.walker.pojo.Reply;
 import com.walker.pojo.Report;
+import com.walker.pojo.User;
 import com.walker.pojo.Violation;
 import com.walker.service.impl.DashboardServiceImpl;
 import com.walker.vo.ResultBean;
@@ -73,8 +74,22 @@ class DashboardServiceTest {
     @Mock
     private ReplyMapper replyMapper;
 
+    @Mock
+    private CurrentUserService currentUserService;
+
+    @Mock
+    private AuthorizationService authorizationService;
+
+    @Mock
+    private ContentBoardResolver contentBoardResolver;
+
     @BeforeEach
     void setUp() {
+        User admin = new User();
+        admin.setId(1);
+        admin.setUserType("3");
+        when(currentUserService.getCurrentUser()).thenReturn(admin);
+        when(authorizationService.getVisibleBoardIds(any())).thenReturn(null);
         // LambdaQueryWrapper 解析方法引用需要实体 TableInfo（lambda 缓存），先初始化全部相关实体
         MybatisConfiguration configuration = new MybatisConfiguration();
         MapperBuilderAssistant assistant = new MapperBuilderAssistant(configuration, "");

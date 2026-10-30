@@ -5,6 +5,7 @@ import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -30,6 +31,7 @@ public class ModeratorComplaintController {
     }
 
     @ApiOperation(value = "管理员审核版主投诉")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/moderatorComplaint/review")
     public ResultBean review(@RequestBody Map<String, Object> params) {
         Integer complaintId = params.get("complaintId") != null ? Integer.parseInt(params.get("complaintId").toString()) : null;
@@ -40,6 +42,7 @@ public class ModeratorComplaintController {
     }
 
     @ApiOperation(value = "查询投诉列表（管理员端）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/moderatorComplaint/list")
     public ResultBean listComplaints(@RequestBody Map<String, Object> params) {
         Integer page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;

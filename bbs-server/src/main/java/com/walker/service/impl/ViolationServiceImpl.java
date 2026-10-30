@@ -292,7 +292,7 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
      * 违规数据范围过滤：超管看全部；普通管理员仅看自己板块的违规。
      */
     private List<Violation> filterVisibleViolations(User currentUser, List<Violation> violations) {
-        if (authorizationService.isSuperAdmin(currentUser)) {
+        if (authorizationService.isGlobalAdmin(currentUser)) {
             return violations;
         }
         List<Violation> visible = new ArrayList<>();
@@ -308,7 +308,7 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
         if (currentUser == null) {
             return false;
         }
-        if (authorizationService.isSuperAdmin(currentUser)) {
+        if (authorizationService.isGlobalAdmin(currentUser)) {
             return true;
         }
         Integer labelId = contentBoardResolver.resolveLabelId(relatedType, relatedId);
@@ -323,15 +323,10 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
         if (currentUser == null) {
             return ResultBean.error("未获取到登录用户信息，请重新登录");
         }
-        if (authorizationService.isSuperAdmin(currentUser)) {
-            return null;
-        }
         Integer labelId = contentBoardResolver.resolveLabelId(relatedType, relatedId);
-        if (labelId == null) {
-            return ResultBean.forbidden("仅超级管理员可处理无板块归属的违规");
-        }
-        if (!authorizationService.canModerateBoard(currentUser.getId(), labelId)) {
-            return ResultBean.forbidden("无权处理该板块的违规");
+        String denial = authorizationService.getBoardScopeDenialMessage(currentUser, labelId);
+        if (denial != null) {
+            return ResultBean.forbidden(denial);
         }
         return null;
     }

@@ -280,7 +280,7 @@ class ReportServiceTest {
     @Test
     @DisplayName("审核举报 → 普通管理员跨板块 → 403 拒绝")
     void reviewReport_crossBoard_forbidden() {
-        setCurrentUser(5);
+        SecurityTestSupport.setCurrentUser(5, "4");
         Report report = new Report();
         report.setId(1);
         report.setReporterId(100);
@@ -289,12 +289,12 @@ class ReportServiceTest {
         report.setStatus("pending");
         when(reportMapper.selectById(1)).thenReturn(report);
         when(contentBoardResolver.resolveLabelId("article", 1)).thenReturn(10);
-        when(authorizationService.canModerateBoard(5, 10)).thenReturn(false);
+        when(authorizationService.getBoardScopeDenialMessage(any(), eq(10))).thenReturn("无权操作该板块内容");
 
         ResultBean result = reportService.reviewReport(1, 5, "confirmed", "同意");
 
         assertEquals(403, result.getCode());
-        assertEquals("无权处理该板块的举报", result.getMessage());
+        assertEquals("无权操作该板块内容", result.getMessage());
         verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
     }
 

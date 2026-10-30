@@ -77,12 +77,12 @@ class ReplyControllerTest {
         article.setUserId(100);
         article.setArticleLabelId(10);
         when(articleService.queryArticleById(1)).thenReturn(article);
-        when(authorizationService.canModerateBoard(5, 10)).thenReturn(false);
+        when(authorizationService.getBoardScopeDenialMessage(any(), any())).thenReturn("无权操作该板块内容");
 
         ResultBean result = replyController.approveAdopt(approveParams());
 
         assertEquals(403, result.getCode());
-        assertEquals("无权审批该板块内容", result.getMessage());
+        assertEquals("无权操作该板块内容", result.getMessage());
         verify(replyService, never()).updateById(any());
         verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), any(), any(), any());
     }
@@ -95,7 +95,6 @@ class ReplyControllerTest {
         article.setUserId(100);
         article.setArticleLabelId(10);
         when(articleService.queryArticleById(1)).thenReturn(article);
-        when(authorizationService.canModerateBoard(5, 10)).thenReturn(true);
         when(replyService.getById(1)).thenReturn(null);
 
         ResultBean result = replyController.approveAdopt(approveParams());

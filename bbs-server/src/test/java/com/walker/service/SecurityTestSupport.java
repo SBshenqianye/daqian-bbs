@@ -47,6 +47,18 @@ public final class SecurityTestSupport {
         });
         lenient().when(authorizationService.canModerateBoard(any(Integer.class), nullable(Integer.class)))
                 .thenReturn(true);
+        lenient().when(authorizationService.isGlobalAdmin(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            return user != null && ("2".equals(user.getUserType()) || "3".equals(user.getUserType()));
+        });
+        lenient().when(authorizationService.isModerator(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            return user != null && "4".equals(user.getUserType());
+        });
+        // 默认按全局管理员处理（不做板块过滤）；板块用例可在测试内覆盖
+        lenient().when(authorizationService.getVisibleBoardIds(any(User.class))).thenReturn(null);
+        lenient().when(authorizationService.getBoardScopeDenialMessage(any(User.class), nullable(Integer.class)))
+                .thenReturn(null);
     }
 
     /** 注入真实 SelfApprovalPolicyImpl，并让超管判定跟随 User.userType */
@@ -76,6 +88,17 @@ public final class SecurityTestSupport {
                     return current != null && current.getId() != null
                             && current.getId().equals(userId);
                 });
+        lenient().when(authorizationService.isGlobalAdmin(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            return user != null && ("2".equals(user.getUserType()) || "3".equals(user.getUserType()));
+        });
+        lenient().when(authorizationService.isModerator(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            return user != null && "4".equals(user.getUserType());
+        });
+        lenient().when(authorizationService.getVisibleBoardIds(any(User.class))).thenReturn(null);
+        lenient().when(authorizationService.getBoardScopeDenialMessage(any(User.class), nullable(Integer.class)))
+                .thenReturn(null);
         lenient().when(authorizationService.getUserIdsWithPermission(any(Permission.class)))
                 .thenReturn(java.util.Collections.singletonList(1));
     }
@@ -85,9 +108,14 @@ public final class SecurityTestSupport {
      * 与初始化 SQL 的种子超管语义一致，但权限判定已改为依据 user_type。
      */
     public static void setCurrentUser(int id) {
+        setCurrentUser(id, id == 1 ? "3" : "2");
+    }
+
+    /** 指定账号角色模拟登录态（如 user_type=4 为 MODERATOR） */
+    public static void setCurrentUser(int id, String userType) {
         User user = new User();
         user.setId(id);
-        user.setUserType(id == 1 ? "3" : "2");
+        user.setUserType(userType);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
     }

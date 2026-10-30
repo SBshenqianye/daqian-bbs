@@ -5,6 +5,7 @@ import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -20,6 +21,7 @@ public class FeaturedRecommendationController {
     private FeaturedRecommendationService recommendationService;
 
     @ApiOperation(value = "版主推荐帖子为精华（初审）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/article/recommendFeatured")
     public ResultBean recommend(@RequestBody Map<String, Object> params) {
         Integer articleId = params.get("articleId") != null ? Integer.parseInt(params.get("articleId").toString()) : null;
@@ -29,6 +31,7 @@ public class FeaturedRecommendationController {
     }
 
     @ApiOperation(value = "总运营审核精华推荐（终审）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/featured/review")
     public ResultBean review(@RequestBody Map<String, Object> params) {
         Integer recommendationId = params.get("recommendationId") != null ? Integer.parseInt(params.get("recommendationId").toString()) : null;
@@ -39,6 +42,7 @@ public class FeaturedRecommendationController {
     }
 
     @ApiOperation(value = "查询精华推荐列表（管理端）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/featured/recommendList")
     public ResultBean listRecommendations(@RequestBody Map<String, Object> params) {
         Integer page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;

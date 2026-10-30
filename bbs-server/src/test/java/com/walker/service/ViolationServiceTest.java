@@ -101,21 +101,21 @@ class ViolationServiceTest {
     @Test
     @DisplayName("添加违规 → 普通管理员跨板块 → 403 拒绝")
     void addViolation_crossBoard_forbidden() {
-        setCurrentUser(5);
+        SecurityTestSupport.setCurrentUser(5, "4");
         when(contentBoardResolver.resolveLabelId("article", 1)).thenReturn(10);
-        when(authorizationService.canModerateBoard(5, 10)).thenReturn(false);
+        when(authorizationService.getBoardScopeDenialMessage(any(), eq(10))).thenReturn("无权操作该板块内容");
 
         ResultBean result = violationService.addViolation(2, "spam", "article", 1, 5, "备注");
 
         assertEquals(403, result.getCode());
-        assertEquals("无权处理该板块的违规", result.getMessage());
+        assertEquals("无权操作该板块内容", result.getMessage());
         verify(violationMapper, never()).insert(any(Violation.class));
     }
 
     @Test
     @DisplayName("取消违规 → 普通管理员跨板块 → 403 拒绝")
     void cancelViolation_crossBoard_forbidden() {
-        setCurrentUser(5);
+        SecurityTestSupport.setCurrentUser(5, "4");
         Violation violation = new Violation();
         violation.setId(1);
         violation.setRelatedType("article");
@@ -123,12 +123,12 @@ class ViolationServiceTest {
         violation.setStatus("active");
         when(violationMapper.selectById(1)).thenReturn(violation);
         when(contentBoardResolver.resolveLabelId("article", 1)).thenReturn(10);
-        when(authorizationService.canModerateBoard(5, 10)).thenReturn(false);
+        when(authorizationService.getBoardScopeDenialMessage(any(), eq(10))).thenReturn("无权操作该板块内容");
 
         ResultBean result = violationService.cancelViolation(1, "误判");
 
         assertEquals(403, result.getCode());
-        assertEquals("无权处理该板块的违规", result.getMessage());
+        assertEquals("无权操作该板块内容", result.getMessage());
         verify(violationMapper, never()).updateById(any(Violation.class));
     }
 

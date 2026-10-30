@@ -15,6 +15,7 @@ import com.walker.vo.param.ReplyParam;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -146,6 +147,7 @@ public class ReplyController {
     }
 
     @ApiOperation(value = "管理员审批采纳 - 支持评论和回复")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/approveAdopt")
     public ResultBean approveAdopt(@RequestBody Map<String, Object> params) {
         Integer replyId = toInt(params, "replyId");
@@ -172,9 +174,10 @@ public class ReplyController {
         com.walker.pojo.Article article = articleService.queryArticleById(articleId);
         if (article == null) return ResultBean.error("文章不存在");
 
-        // 数据范围：超管放行，普通管理员必须是该文章所属板块的版主（D4）
-        if (!authorizationService.canModerateBoard(currentUser.getId(), article.getArticleLabelId())) {
-            return ResultBean.forbidden("无权审批该板块内容");
+        // 数据范围：全局管理员放行；MODERATOR 必须是该文章所属板块的版主
+        String boardDenial = authorizationService.getBoardScopeDenialMessage(currentUser, article.getArticleLabelId());
+        if (boardDenial != null) {
+            return ResultBean.forbidden(boardDenial);
         }
 
         // 校验：任何人都不能审批自己提问的最佳解答（保留原有全员限制）
@@ -250,6 +253,7 @@ public class ReplyController {
     }
 
     @ApiOperation(value = "获取待审批采纳列表（管理员，含评论和回复）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/pendingAdopts")
     public ResultBean pendingAdopts(@RequestBody Map<String, Object> params) {
         Integer page = toInt(params, "page");
@@ -264,8 +268,16 @@ public class ReplyController {
         }
         adminId = currentUser.getId();
 
-        // 超管可查看全部；普通管理员仅能查看自己版块（D4）
-        boolean isSuperAdmin = authorizationService.isSuperAdmin(currentUser);
+        // 全局管理员可查看全部；MODERATOR 仅能查看自己版块
+        boolean isGlobalAdmin = authorizationService.isGlobalAdmin(currentUser);
+        List<Integer> visibleBoardIds = isGlobalAdmin
+                ? null : authorizationService.getActiveBoardIds(currentUser.getId());
+        if (visibleBoardIds != null && visibleBoardIds.isEmpty()) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("records", new ArrayList<>());
+            empty.put("total", 0);
+            return ResultBean.success("查询成功", empty);
+        }
         List<Map<String, Object>> allRecords = new ArrayList<>();
 
         // 1. 查询待审批的回复
@@ -277,7 +289,7 @@ public class ReplyController {
             if (comment == null) continue;
             com.walker.pojo.Article article = articleService.queryArticleById(comment.getCommentArticleId());
             if (article == null) continue;
-            if (!isSuperAdmin && !authorizationService.canModerateBoard(adminId, article.getArticleLabelId())) continue;
+            if (!isGlobalAdmin && (visibleBoardIds == null || !visibleBoardIds.contains(article.getArticleLabelId()))) continue;
 
             com.walker.pojo.User replyUser = userService.queryUserinfoById(reply.getReplyUserId());
             com.walker.pojo.User articleUser = userService.queryUserinfoById(article.getUserId());
@@ -305,7 +317,7 @@ public class ReplyController {
         for (Comment comment : pendingComments) {
             com.walker.pojo.Article article = articleService.queryArticleById(comment.getCommentArticleId());
             if (article == null) continue;
-            if (!isSuperAdmin && !authorizationService.canModerateBoard(adminId, article.getArticleLabelId())) continue;
+            if (!isGlobalAdmin && (visibleBoardIds == null || !visibleBoardIds.contains(article.getArticleLabelId()))) continue;
 
             com.walker.pojo.User commentUser = userService.queryUserinfoById(comment.getCommentUserId());
             com.walker.pojo.User articleUser = userService.queryUserinfoById(article.getUserId());
@@ -415,8 +427,10 @@ public class ReplyController {
                         "adopt_pending", notifyTitle, relatedType, relatedId);
             }
         }
-        // 同时通知所有拥有 adopt:review 权限的管理员/超管（按权限广播）
+        // 同时通知所有拥有 adopt:review 权限的管理员/超管（按权限 + 板块范围广播）
         for (Integer reviewerId : authorizationService.getUserIdsWithPermission(Permission.ADOPT_REVIEW)) {
+            if (reviewerId == null || reviewerId.equals(fromUserId)) continue;
+            if (!authorizationService.canModerateBoard(reviewerId, article.getArticleLabelId())) continue;
             if (notified.add(reviewerId)) {
                 notificationService.createNotification(reviewerId, fromUserId, "adopt_pending", notifyTitle, relatedType, relatedId);
             }

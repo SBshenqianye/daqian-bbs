@@ -5,6 +5,7 @@ import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -31,6 +32,7 @@ public class ReportController {
     }
 
     @ApiOperation(value = "管理员审核举报")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/report/review")
     public ResultBean reviewReport(@RequestBody Map<String, Object> params) {
         Integer reportId = (Integer) params.get("reportId");
@@ -45,6 +47,7 @@ public class ReportController {
     }
 
     @ApiOperation(value = "管理员查看举报列表")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/report/list")
     public ResultBean listReports(@RequestBody Map<String, Object> params) {
         String status = (String) params.get("status");
@@ -54,6 +57,7 @@ public class ReportController {
     }
 
     @ApiOperation(value = "管理员查看举报列表（按举报目标分组折叠，避免同内容刷屏）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/report/listGrouped")
     public ResultBean listReportsGrouped(@RequestBody Map<String, Object> params) {
         String status = (String) params.get("status");

@@ -6,15 +6,18 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.github.pagehelper.PageInfo;
 import com.walker.pojo.ArticleLabel;
 import com.walker.pojo.Article;
+import com.walker.pojo.BoardModerator;
 import com.walker.pojo.Reply;
 import com.walker.service.ArticleLabelService;
 import com.walker.service.ArticleService;
+import com.walker.service.BoardModeratorService;
 import com.walker.service.ReplyService;
 import com.walker.service.CommentService;
 import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -45,6 +48,9 @@ public class ArticleLabelController {
     @Autowired
     private CommentService commentService;
 
+    @Autowired
+    private BoardModeratorService boardModeratorService;
+
     @ApiOperation(value = "获取文章的标签")
     @GetMapping("/common/getArticleLabel")
     public List<ArticleLabel> getArticleLabel(){
@@ -54,6 +60,7 @@ public class ArticleLabelController {
     }
 
     @ApiOperation(value = "新增文章标签")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/addArticleLabel")
     public ResultBean addArticleLabel(@RequestBody ArticleLabel articleLabel) {
         if (articleLabel == null || articleLabel.getLabelName() == null || articleLabel.getLabelName().trim().isEmpty()) {
@@ -73,6 +80,7 @@ public class ArticleLabelController {
     }
 
     @ApiOperation(value = "修改文章标签")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/updArticleLabel")
     public ResultBean updateArticleLabel(@RequestBody ArticleLabel articleLabel) {
         if (articleLabel == null || articleLabel.getLabelId() == null) {
@@ -101,10 +109,19 @@ public class ArticleLabelController {
     }
 
     @ApiOperation(value = "删除文章标签")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/delArticleLabel")
     public ResultBean deleteArticleLabel(@RequestBody ArticleLabel articleLabel) {
         if (articleLabel == null || articleLabel.getLabelId() == null) {
             return ResultBean.error("标签ID不能为空！");
+        }
+        // Q9：仍有有效版主的板块禁止删除，避免产生“任职指向不存在板块”的脏数据
+        long activeModerators = boardModeratorService.count(
+                new LambdaQueryWrapper<BoardModerator>()
+                        .eq(BoardModerator::getLabelId, articleLabel.getLabelId())
+                        .eq(BoardModerator::getStatus, 1));
+        if (activeModerators > 0) {
+            return ResultBean.error("该板块仍有 " + activeModerators + " 位版主，请先撤销版主或调整板块后再删除");
         }
         // 检查该标签下是否有待审批的最佳解答采纳
         int pendingCount = countPendingAdoptsByLabelId(articleLabel.getLabelId());
@@ -156,6 +173,7 @@ public class ArticleLabelController {
     }
 
     @ApiOperation(value = "分页查询文章标签（可按标签名模糊查询）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/pageArticleLabel")
     public ResultBean pageArticleLabel(@RequestBody JSONObject jsonObject) {
         int pageIndex = jsonObject.getIntValue("pageIndex");

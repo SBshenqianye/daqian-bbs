@@ -8,6 +8,8 @@ import com.walker.pojo.Appeal;
 import com.walker.pojo.User;
 import com.walker.pojo.Violation;
 import com.walker.service.AppealService;
+import com.walker.service.AuthorizationService;
+import com.walker.service.ContentBoardResolver;
 import com.walker.service.CurrentUserService;
 import com.walker.service.NotificationService;
 import com.walker.service.SelfApprovalPolicy;
@@ -40,6 +42,12 @@ public class AppealServiceImpl extends ServiceImpl<AppealMapper, Appeal> impleme
 
     @Autowired
     private CurrentUserService currentUserService;
+
+    @Autowired
+    private AuthorizationService authorizationService;
+
+    @Autowired
+    private ContentBoardResolver contentBoardResolver;
 
     @Autowired
     private SelfApprovalPolicy selfApprovalPolicy;
@@ -103,6 +111,11 @@ public class AppealServiceImpl extends ServiceImpl<AppealMapper, Appeal> impleme
         if (appeal == null) {
             return ResultBean.error("申诉记录不存在");
         }
+        // 数据范围：全局管理员放行；MODERATOR 仅能处理自己板块的申诉
+        String boardDenial = authorizationService.getBoardScopeDenialMessage(currentUser, resolveAppealLabelId(appeal));
+        if (boardDenial != null) {
+            return ResultBean.forbidden(boardDenial);
+        }
         // 权限校验：除超级管理员外，审核人不得审核自己的申诉（2026-10-12 需求）
         try {
             selfApprovalPolicy.checkReviewAppeal(currentUser, appeal);
@@ -137,16 +150,46 @@ public class AppealServiceImpl extends ServiceImpl<AppealMapper, Appeal> impleme
 
     @Override
     public ResultBean listAppeals(String status, Integer page, Integer size) {
-        Page<Appeal> pageParam = new Page<>(page, size);
+        if (page == null || page < 1) page = 1;
+        if (size == null || size < 1) size = 10;
+
         LambdaQueryWrapper<Appeal> wrapper = new LambdaQueryWrapper<>();
         if (status != null && !status.isEmpty()) {
             wrapper.eq(Appeal::getStatus, status);
         }
         wrapper.orderByDesc(Appeal::getCreateTime);
-        Page<Appeal> result = this.page(pageParam, wrapper);
+
+        User currentUser = currentUserService.getCurrentUser();
+        List<Integer> visibleBoardIds = authorizationService.getVisibleBoardIds(currentUser);
+
+        List<Appeal> records;
+        long total;
+        if (visibleBoardIds == null) {
+            // 全局管理员：沿用数据库分页
+            Page<Appeal> result = this.page(new Page<>(page, size), wrapper);
+            records = result.getRecords();
+            total = result.getTotal();
+        } else if (visibleBoardIds.isEmpty()) {
+            records = new ArrayList<>();
+            total = 0;
+        } else {
+            // MODERATOR：先按板块过滤，再内存分页
+            List<Appeal> all = this.list(wrapper);
+            List<Appeal> visible = new ArrayList<>();
+            for (Appeal appeal : all) {
+                Integer labelId = resolveAppealLabelId(appeal);
+                if (labelId != null && visibleBoardIds.contains(labelId)) {
+                    visible.add(appeal);
+                }
+            }
+            total = visible.size();
+            int from = (page - 1) * size;
+            int to = Math.min(from + size, visible.size());
+            records = from < to ? visible.subList(from, to) : new ArrayList<>();
+        }
 
         // 批量查询用户昵称
-        Set<Integer> userIds = result.getRecords().stream()
+        Set<Integer> userIds = records.stream()
                 .map(Appeal::getUserId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
@@ -159,7 +202,7 @@ public class AppealServiceImpl extends ServiceImpl<AppealMapper, Appeal> impleme
         }
 
         // 批量查询关联违规记录
-        Set<Integer> violationIds = result.getRecords().stream()
+        Set<Integer> violationIds = records.stream()
                 .filter(a -> "violation".equals(a.getAppealType()) && a.getRelatedId() != null)
                 .map(Appeal::getRelatedId)
                 .collect(Collectors.toSet());
@@ -182,7 +225,7 @@ public class AppealServiceImpl extends ServiceImpl<AppealMapper, Appeal> impleme
 
         // 组装带昵称和违规信息的结果
         List<Map<String, Object>> enriched = new ArrayList<>();
-        for (Appeal appeal : result.getRecords()) {
+        for (Appeal appeal : records) {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("id", appeal.getId());
             map.put("userId", appeal.getUserId());
@@ -216,8 +259,25 @@ public class AppealServiceImpl extends ServiceImpl<AppealMapper, Appeal> impleme
 
         Map<String, Object> data = new HashMap<>();
         data.put("records", enriched);
-        data.put("total", result.getTotal());
+        data.put("total", total);
         return ResultBean.success("查询成功", data);
+    }
+
+    /**
+     * 解析申诉关联内容所属板块：违规申诉 → 违规记录 → 内容 → 板块。
+     * 无法解析时返回 null（MODERATOR 不可处理）。
+     */
+    private Integer resolveAppealLabelId(Appeal appeal) {
+        if (appeal == null) {
+            return null;
+        }
+        if ("violation".equals(appeal.getAppealType()) && appeal.getRelatedId() != null) {
+            Violation violation = violationService.getById(appeal.getRelatedId());
+            if (violation != null) {
+                return contentBoardResolver.resolveLabelId(violation.getRelatedType(), violation.getRelatedId());
+            }
+        }
+        return null;
     }
 
     @Override

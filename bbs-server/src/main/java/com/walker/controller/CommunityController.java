@@ -13,6 +13,7 @@ import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -89,12 +90,14 @@ public class CommunityController {
 
 
     @ApiOperation(value = "获取所有的社区信息")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/admin/getAllCommunity/all")
     public ResultBean getAllCommunity(){
         return communityService.getAllCommunity();
     }
 
     @ApiOperation(value = "通过关键词搜索朝代信息")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/admin/getCommunityByKeywords/{keywords}")
     public ResultBean getCommunityByKeywords(@PathVariable String keywords){
         if (StringUtils.isNoneBlank(keywords)){
@@ -105,6 +108,7 @@ public class CommunityController {
 
 
     @ApiOperation(value = "修改社区的状态")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PutMapping("/admin/updateCommunityStatus/{communityId}")
     public ResultBean updateCommunityStatus(@PathVariable Integer communityId){
         return communityService.updateCommunityStatus(communityId);
@@ -112,6 +116,7 @@ public class CommunityController {
 
 
     @ApiOperation(value = "通过社区id删除社区")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @DeleteMapping("/admin/deleteCommunityByCommunityId/{communityId}")
     public ResultBean deleteCommunityByCommunityId(@PathVariable Integer communityId){
         return communityService.deleteCommunityByCommunityId(communityId);
@@ -119,6 +124,7 @@ public class CommunityController {
 
 
     @ApiOperation(value = "获取社区的数量")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/admin/getCommunityCount/all")
     public ResultBean getCommunityCount(){
         return communityService.getCommunityCount();

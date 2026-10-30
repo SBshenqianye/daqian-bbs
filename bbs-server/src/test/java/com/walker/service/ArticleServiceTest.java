@@ -363,7 +363,7 @@ class ArticleServiceTest {
     @Test
     @DisplayName("获取文章总数 → 返回计数")
     void getArticleCount_returnsCount() {
-        when(articleMapper.selectCount(null)).thenReturn(100L);
+        when(articleMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(100L);
         ResultBean result = articleService.getArticleCount();
         assertEquals(200, result.getCode());
         assertEquals(100L, result.getObj());
