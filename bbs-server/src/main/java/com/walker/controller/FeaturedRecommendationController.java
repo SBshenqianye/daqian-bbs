@@ -31,7 +31,7 @@ public class FeaturedRecommendationController {
     }
 
     @ApiOperation(value = "总运营审核精华推荐（终审）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/featured/review")
     public ResultBean review(@RequestBody Map<String, Object> params) {
         Integer recommendationId = params.get("recommendationId") != null ? Integer.parseInt(params.get("recommendationId").toString()) : null;
