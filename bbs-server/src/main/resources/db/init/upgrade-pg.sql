@@ -8374,7 +8374,7 @@ WHERE d.user_id = p.user_id AND d.related_type = p.related_type AND d.related_id
 -- @migration: v037-auth-user-type-normalize 权限架构重构：统一 user_type 基础数据
 -- 幂等：空值/非法值统一按普通用户处理；初始化超管 id=1 固定为 user_type=3。
 UPDATE bbs_user SET user_type = '1'
-WHERE user_type IS NULL OR TRIM(user_type) = '' OR user_type NOT IN ('1', '2', '3');
+WHERE user_type IS NULL OR TRIM(user_type) = '' OR user_type NOT IN ('1', '2', '3', '4');
 UPDATE bbs_user SET user_type = '3' WHERE id = 1 AND user_type <> '3';
 
 -- @migration: v038-dict-post-key 补全发帖积分字典键（post_points -> post）
@@ -8383,3 +8383,30 @@ UPDATE bbs_user SET user_type = '3' WHERE id = 1 AND user_type <> '3';
 UPDATE bbs_dict d SET dict_type = 'post', dict_key = 'post'
 WHERE d.dict_type = 'post_points' AND (d.dict_key IS NULL OR d.dict_key = '')
   AND NOT EXISTS (SELECT 1 FROM bbs_dict x WHERE x.dict_key = 'post');
+
+-- @migration: v039-moderator-role 版主账号角色（user_type=4）
+-- 目标：新增 MODERATOR 账号角色；把“有有效版主任职的普通用户”升级为版主。
+-- 管理员(2)/超管(3) 保持原角色（决策 D6）。
+-- 幂等：COMMENT 可重复执行；UPDATE 带前置条件，重复执行结果一致。
+
+-- 1) 列注释同步（PG 无字符集概念）
+COMMENT ON COLUMN bbs_user.user_type
+  IS '用户类型（1：普通用户，2：管理员，3：超级管理员，4：版主）';
+
+-- 2) 普通用户 + 有效版主任职 → 升级为版主
+UPDATE bbs_user u
+SET user_type = '4'
+WHERE u.user_type = '1'
+  AND u.is_delete = 0
+  AND u.id <> 1
+  AND EXISTS (
+      SELECT 1 FROM bbs_board_moderator m
+      WHERE m.user_id = u.id AND m.status = 1
+  );
+
+-- 3) 清理空值/非法值（保留 4，避免把版主洗回普通用户）
+UPDATE bbs_user
+SET user_type = '1'
+WHERE user_type IS NULL
+   OR TRIM(user_type) = ''
+   OR user_type NOT IN ('1', '2', '3', '4');
