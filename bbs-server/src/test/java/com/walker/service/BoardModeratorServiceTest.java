@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.walker.mapper.BoardModeratorMapper;
 import com.walker.mapper.ModeratorRewardCancelMapper;
+import com.walker.pojo.ArticleLabel;
 import com.walker.pojo.BoardModerator;
 import com.walker.pojo.User;
 import com.walker.service.impl.BoardModeratorServiceImpl;
@@ -52,6 +53,9 @@ class BoardModeratorServiceTest {
 
     @Mock
     private DictService dictService;
+
+    @Mock
+    private ArticleLabelService articleLabelService;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -364,5 +368,95 @@ class BoardModeratorServiceTest {
     void hasActiveRole_nullParams_false() {
         assertFalse(boardModeratorService.hasActiveRole(null, 1));
         assertFalse(boardModeratorService.hasActiveRole(1, null));
+    }
+
+    @Test
+    @DisplayName("任命普通用户 → 自动升级为 MODERATOR(4)")
+    void appoint_upgradesUserToModerator() {
+        User user = new User();
+        user.setId(1);
+        user.setUserType("1");
+        when(userService.getById(1)).thenReturn(user);
+        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
+        when(pointsLogService.getPointsAdjustment(1)).thenReturn(300);
+        when(boardModeratorMapper.insert(any(BoardModerator.class))).thenReturn(1);
+
+        ResultBean result = boardModeratorService.appoint(1, 1, 1);
+
+        assertEquals(200, result.getCode());
+        verify(userService).updateById(argThat((User u) ->
+                Integer.valueOf(1).equals(u.getId()) && "4".equals(u.getUserType())));
+    }
+
+    @Test
+    @DisplayName("任命 ADMIN → 不改变账号角色（D6）")
+    void appoint_admin_keepsAdminRole() {
+        User user = new User();
+        user.setId(1);
+        user.setUserType("2");
+        when(userService.getById(1)).thenReturn(user);
+        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
+        when(pointsLogService.getPointsAdjustment(1)).thenReturn(300);
+        when(boardModeratorMapper.insert(any(BoardModerator.class))).thenReturn(1);
+
+        ResultBean result = boardModeratorService.appoint(1, 1, 1);
+
+        assertEquals(200, result.getCode());
+        verify(userService, never()).updateById(any(User.class));
+    }
+
+    @Test
+    @DisplayName("差异更新板块 → 新增板块并升级账号，已有板块保持不变")
+    void updateBoards_addsAndKeeps() {
+        User user = new User();
+        user.setId(1);
+        user.setUserType("1");
+        when(userService.getById(1)).thenReturn(user);
+
+        ArticleLabel label1 = new ArticleLabel();
+        label1.setLabelId(1);
+        ArticleLabel label2 = new ArticleLabel();
+        label2.setLabelId(2);
+        when(articleLabelService.listByIds(anyCollection())).thenReturn(Arrays.asList(label1, label2));
+
+        BoardModerator current = new BoardModerator();
+        current.setId(10);
+        current.setUserId(1);
+        current.setLabelId(1);
+        current.setStatus(1);
+        when(boardModeratorMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(new ArrayList<>(Arrays.asList(current)));
+        when(boardModeratorMapper.findAnyByUserAndLabel(1, 2)).thenReturn(null);
+        when(boardModeratorMapper.insert(any(BoardModerator.class))).thenReturn(1);
+
+        ResultBean result = boardModeratorService.updateBoards(1, Arrays.asList(1, 2));
+
+        assertEquals(200, result.getCode());
+        verify(boardModeratorMapper).insert(argThat((BoardModerator m) -> m.getLabelId() == 2));
+        verify(userService).updateById(argThat((User u) -> "4".equals(u.getUserType())));
+    }
+
+    @Test
+    @DisplayName("差异更新板块 → 空集合撤销全部板块但不降级")
+    void updateBoards_empty_removesAllButKeepsRole() {
+        User user = new User();
+        user.setId(1);
+        user.setUserType("4");
+        when(userService.getById(1)).thenReturn(user);
+
+        BoardModerator current = new BoardModerator();
+        current.setId(10);
+        current.setUserId(1);
+        current.setLabelId(1);
+        current.setStatus(1);
+        when(boardModeratorMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(new ArrayList<>(Arrays.asList(current)));
+        when(boardModeratorMapper.updateById(any(BoardModerator.class))).thenReturn(1);
+
+        ResultBean result = boardModeratorService.updateBoards(1, new ArrayList<>());
+
+        assertEquals(200, result.getCode());
+        verify(boardModeratorMapper).updateById(argThat((BoardModerator m) -> m.getStatus() == 0));
+        verify(userService, never()).updateById(any(User.class));
     }
 }

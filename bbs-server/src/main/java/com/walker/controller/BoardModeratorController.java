@@ -9,6 +9,7 @@ import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -27,6 +28,7 @@ public class BoardModeratorController {
     private UserService userService;
 
     @ApiOperation(value = "任命版主")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/moderator/appoint")
     public ResultBean appoint(@RequestBody Map<String, Object> params) {
         Integer userId = (Integer) params.get("userId");
@@ -36,6 +38,7 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "撤销版主")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/moderator/dismiss")
     public ResultBean dismiss(@RequestBody Map<String, Object> params) {
         Integer userId = (Integer) params.get("userId");
@@ -44,11 +47,31 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "版主列表")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/moderator/list")
     public ResultBean listModerators(@RequestBody Map<String, Object> params) {
         Integer page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;
         Integer size = params.get("size") != null ? Integer.parseInt(params.get("size").toString()) : 10;
-        return boardModeratorService.listModerators(page, size);
+        Object keyword = params.get("keyword");
+        return boardModeratorService.listModerators(page, size, keyword != null ? keyword.toString() : null);
+    }
+
+    @ApiOperation(value = "编辑版主管理的板块（差异更新）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PostMapping("/admin/moderator/boards")
+    public ResultBean updateBoards(@RequestBody Map<String, Object> params) {
+        Integer userId = params.get("userId") != null
+                ? Integer.parseInt(params.get("userId").toString()) : null;
+        List<Integer> labelIds = new ArrayList<>();
+        Object raw = params.get("labelIds");
+        if (raw instanceof List) {
+            for (Object item : (List<?>) raw) {
+                if (item != null) {
+                    labelIds.add(Integer.parseInt(item.toString()));
+                }
+            }
+        }
+        return boardModeratorService.updateBoards(userId, labelIds);
     }
 
     @ApiOperation(value = "检查用户是否为版主")
@@ -114,6 +137,7 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "发放本月版主履职奖励（每月一次性15积分）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/moderator/monthlyReward")
     public ResultBean monthlyReward(@RequestBody Map<String, Object> params) {
         Integer operatorId = params.get("operatorId") != null
@@ -122,6 +146,7 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "取消版主本月履职奖励")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/moderator/cancelReward")
     public ResultBean cancelReward(@RequestBody Map<String, Object> params) {
         Integer userId = params.get("userId") != null ? Integer.parseInt(params.get("userId").toString()) : null;
@@ -131,6 +156,7 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "恢复版主本月履职奖励")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/moderator/restoreReward")
     public ResultBean restoreReward(@RequestBody Map<String, Object> params) {
         Integer userId = params.get("userId") != null ? Integer.parseInt(params.get("userId").toString()) : null;
@@ -138,12 +164,14 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "查询本月被取消奖励的版主列表")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/moderator/cancelledRewards")
     public ResultBean cancelledRewards() {
         return boardModeratorService.listCancelledRewards();
     }
 
     @ApiOperation(value = "手动触发自动发放（测试用）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/moderator/triggerAutoReward")
     public ResultBean triggerAutoReward() {
         return boardModeratorService.autoMonthlyReward();
