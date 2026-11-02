@@ -11,22 +11,28 @@ import static org.junit.jupiter.api.Assertions.*;
 class PermissionMatrixTest {
 
     @Test
-    @DisplayName("USER 不具备任何管理端权限点")
+    @DisplayName("USER 不具备管理端权限点，但拥有前台动作权限")
     void user_hasNoAdminPermission() {
         for (Permission permission : Permission.values()) {
-            assertFalse(permission.isGrantedTo(AccountRole.USER), permission.getCode());
+            if (permission.isFrontAction()) {
+                assertTrue(permission.isGrantedTo(AccountRole.USER), permission.getCode());
+            } else {
+                assertFalse(permission.isGrantedTo(AccountRole.USER), permission.getCode());
+            }
         }
-        assertTrue(Permission.codesFor(AccountRole.USER).isEmpty());
+        assertFalse(Permission.codesFor(AccountRole.USER).isEmpty());
+        assertTrue(Permission.codesFor(AccountRole.USER).contains("post:create"));
     }
 
     @Test
     @DisplayName("ADMIN 默认拥有除 user:grant:admin、config:write、permission:manage、audit:read 外的权限")
     void admin_defaultPermissions() {
         for (Permission permission : Permission.values()) {
-            boolean expected = permission != Permission.USER_GRANT_ADMIN
+            boolean expected = permission.isFrontAction()
+                    || (permission != Permission.USER_GRANT_ADMIN
                     && permission != Permission.CONFIG_WRITE
                     && permission != Permission.PERMISSION_MANAGE
-                    && permission != Permission.AUDIT_READ;
+                    && permission != Permission.AUDIT_READ);
             assertEquals(expected, permission.isGrantedTo(AccountRole.ADMIN), permission.getCode());
         }
         assertFalse(Permission.codesFor(AccountRole.ADMIN).contains("user:grant:admin"));

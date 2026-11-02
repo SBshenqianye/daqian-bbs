@@ -9,6 +9,9 @@ import com.walker.mapper.CommentMapper;
 import com.walker.mapper.DictMapper;
 import com.walker.mapper.FeaturedRecommendationMapper;
 import com.walker.mapper.ModeratorComplaintMapper;
+import com.walker.mapper.PermissionGroupItemMapper;
+import com.walker.mapper.PermissionGroupMapper;
+import com.walker.mapper.PermissionPresetMapper;
 import com.walker.mapper.ReplyMapper;
 import com.walker.mapper.ReportMapper;
 import com.walker.mapper.SaOrgMapper;
@@ -25,6 +28,9 @@ import com.walker.pojo.Comment;
 import com.walker.pojo.Dict;
 import com.walker.pojo.FeaturedRecommendation;
 import com.walker.pojo.ModeratorComplaint;
+import com.walker.pojo.PermissionGroup;
+import com.walker.pojo.PermissionGroupItem;
+import com.walker.pojo.PermissionPreset;
 import com.walker.pojo.Reply;
 import com.walker.pojo.Report;
 import com.walker.pojo.SaOrg;
@@ -102,6 +108,15 @@ public class AuditSnapshotServiceImpl implements AuditSnapshotService {
     @Autowired
     private SaOrgMapper saOrgMapper;
 
+    @Autowired
+    private PermissionGroupMapper permissionGroupMapper;
+
+    @Autowired
+    private PermissionGroupItemMapper permissionGroupItemMapper;
+
+    @Autowired
+    private PermissionPresetMapper permissionPresetMapper;
+
     @Override
     public Map<String, Object> snapshot(String targetType, String targetId) {
         if (targetType == null || targetType.trim().isEmpty()
@@ -141,6 +156,10 @@ public class AuditSnapshotServiceImpl implements AuditSnapshotService {
                     return slideshow(parseInt(targetId));
                 case "ORG":
                     return org(targetId);
+                case "PERMISSION_GROUP":
+                    return permissionGroup(parseInt(targetId));
+                case "PERMISSION_PRESET":
+                    return permissionPreset(parseInt(targetId));
                 default:
                     return null;
             }
@@ -399,6 +418,44 @@ public class AuditSnapshotServiceImpl implements AuditSnapshotService {
         map.put("isDelete", o.getIsDelete());
         map.put("isRankingSelected", o.getIsRankingSelected());
         map.put("isDisplaySelected", o.getIsDisplaySelected());
+        return map;
+    }
+
+    private Map<String, Object> permissionGroup(Integer id) {
+        if (id == null) return null;
+        PermissionGroup g = permissionGroupMapper.selectById(id);
+        if (g == null) return null;
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", g.getId());
+        map.put("groupCode", g.getGroupCode());
+        map.put("groupName", g.getGroupName());
+        map.put("description", g.getDescription());
+        map.put("scopeType", g.getScopeType());
+        map.put("dataScopeType", g.getDataScopeType());
+        map.put("enabled", g.getEnabled());
+        map.put("sortOrder", g.getSortOrder());
+        List<PermissionGroupItem> items = permissionGroupItemMapper.selectList(
+                new LambdaQueryWrapper<PermissionGroupItem>()
+                        .eq(PermissionGroupItem::getGroupId, id)
+                        .eq(PermissionGroupItem::getEffect, "grant"));
+        List<String> codes = new ArrayList<>();
+        for (PermissionGroupItem item : items) {
+            codes.add(item.getPermissionCode());
+        }
+        map.put("permissionCodes", codes);
+        return map;
+    }
+
+    private Map<String, Object> permissionPreset(Integer id) {
+        if (id == null) return null;
+        PermissionPreset p = permissionPresetMapper.selectById(id);
+        if (p == null) return null;
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", p.getId());
+        map.put("presetCode", p.getPresetCode());
+        map.put("presetName", p.getPresetName());
+        map.put("createBy", p.getCreateBy());
+        map.put("createTime", p.getCreateTime());
         return map;
     }
 

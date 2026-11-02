@@ -118,6 +118,7 @@ public class UserController {
 
 
     @ApiOperation(value = "修改当前用户头像")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).PROFILE_UPDATE)")
     @PutMapping("/user/updatePortrait")
     public ResultBean updatePortrait(@RequestParam("userId") Integer id,@RequestParam("file") MultipartFile file) throws Exception{
 
@@ -155,6 +156,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "修改当前用户信息")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).PROFILE_UPDATE)")
     @PutMapping("/user/updateUserinfo")
     public ResultBean updateUserinfo(@RequestBody UserInfoUpdateParam userInfoUpdateParam, HttpServletRequest request){
 
@@ -321,6 +323,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "修改用户密码")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).PASSWORD_UPDATE)")
     @PostMapping("/user/modPwd")
     public ResultBean modPwd(@RequestBody UserModPwdParam userModPwdParam){
         if (userModPwdParam.getId() == null

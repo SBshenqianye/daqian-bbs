@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.pagehelper.PageInfo;
+import com.walker.config.audit.AuditContext;
 import com.walker.config.security.AccountRole;
 import com.walker.config.security.JwtTokenUtil;
 import com.walker.config.security.Permission;
@@ -25,6 +26,7 @@ import com.walker.vo.ResultBean;
 import com.walker.service.SaOrgService;
 import com.walker.service.UserService;
 import com.walker.service.CurrentUserService;
+import com.walker.service.EffectivePermissionService;
 import com.walker.vo.UserMonthVO;
 import com.walker.vo.excel.ImportPreviewVO;
 import com.walker.vo.excel.ImportResultVO;
@@ -80,6 +82,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private UserDetailsService userDetailsService;
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private EffectivePermissionService effectivePermissionService;
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
     @Value("${jwt.tokenHead}")
@@ -195,7 +200,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             // 权限同步：只新增字段，保留旧字段（role/permissions/boardScopes）
             AccountRole role = AccountRole.fromUserType(user.getUserType());
             jsonObject.put("role", role.name());
-            jsonObject.put("permissions", Permission.codesFor(role));
+            jsonObject.put("permissions",
+                    new ArrayList<>(effectivePermissionService.getEffectiveCodes(user)));
             jsonObject.put("boardScopes", loadBoardScopes(user.getId()));
             // 显式设置瞬态组织字段（确保序列化到前端）
             jsonObject.put("orgName", user.getOrgName());
@@ -485,6 +491,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             }
         }
         userMapper.deleteBatchIds(userIds);
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("scope", "all");
+        after.put("requested", userIds.size());
+        after.put("affected", userIds.size());
+        AuditContext.setAfter(after);
         return ResultBean.success("批量删除用户成功！");
     }
 
@@ -1099,6 +1110,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         try {
             userMapper.insert(newUser);
+            // 审计：新增用户后回填目标 ID，便于 before/after 快照
+            if (newUser.getId() != null) {
+                AuditContext.setTargetId(String.valueOf(newUser.getId()));
+            }
         } catch (DuplicateKeyException e) {
             String msg = e.getMostSpecificCause().getMessage();
             if (msg.contains("uk_bbs_user_username")) {

@@ -43,22 +43,44 @@ public enum Permission {
     POINTS_READ("points:read", true, true),
     POINTS_ADJUST("points:adjust", true, false),
 
-    DASHBOARD_READ("dashboard:read", true, true);
+    DASHBOARD_READ("dashboard:read", true, true),
+
+    // ==================== Phase D：前台动作权限 ====================
+    POST_CREATE("post:create", false, false, true),
+    POST_UPDATE_OWN("post:update:own", false, false, true),
+    POST_DELETE_OWN("post:delete:own", false, false, true),
+    COMMENT_CREATE("comment:create", false, false, true),
+    COMMENT_DELETE_OWN("comment:delete:own", false, false, true),
+    REPLY_CREATE("reply:create", false, false, true),
+    REPLY_DELETE_OWN("reply:delete:own", false, false, true),
+    REPORT_SUBMIT("report:submit", false, false, true),
+    APPEAL_SUBMIT("appeal:submit", false, false, true),
+    MODERATOR_COMPLAIN("moderator:complain", false, false, true),
+    UPLOAD_FILE("upload:file", false, false, true),
+    PROFILE_UPDATE("profile:update", false, false, true),
+    PASSWORD_UPDATE("password:update", false, false, true);
 
     private final String code;
     /** ADMIN 是否默认拥有；SUPER_ADMIN 恒为 true */
     private final boolean adminDefault;
     /** MODERATOR 是否默认拥有；板块范围由服务层另行校验 */
     private final boolean moderatorDefault;
+    /** USER 是否默认拥有（前台动作权限） */
+    private final boolean userDefault;
 
     Permission(String code, boolean adminDefault) {
-        this(code, adminDefault, false);
+        this(code, adminDefault, false, false);
     }
 
     Permission(String code, boolean adminDefault, boolean moderatorDefault) {
+        this(code, adminDefault, moderatorDefault, false);
+    }
+
+    Permission(String code, boolean adminDefault, boolean moderatorDefault, boolean userDefault) {
         this.code = code;
         this.adminDefault = adminDefault;
         this.moderatorDefault = moderatorDefault;
+        this.userDefault = userDefault;
     }
 
     public String getCode() {
@@ -71,12 +93,30 @@ public enum Permission {
             return true;
         }
         if (role == AccountRole.ADMIN) {
-            return adminDefault;
+            return adminDefault || userDefault;
         }
         if (role == AccountRole.MODERATOR) {
-            return moderatorDefault;
+            return moderatorDefault || userDefault;
         }
-        return false;
+        return userDefault;
+    }
+
+    /** 是否为前台动作权限（Phase D） */
+    public boolean isFrontAction() {
+        return userDefault;
+    }
+
+    /** 按编码查找权限点；未知编码返回 null */
+    public static Permission fromCode(String code) {
+        if (code == null) {
+            return null;
+        }
+        for (Permission permission : values()) {
+            if (permission.code.equals(code)) {
+                return permission;
+            }
+        }
+        return null;
     }
 
     /** 指定账号角色的全部权限点编码，用于登录响应/前端渲染 */

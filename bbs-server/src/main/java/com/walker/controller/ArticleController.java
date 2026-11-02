@@ -199,6 +199,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "发布文章")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POST_CREATE)")
     @PostMapping("/article/publish")
     public ResultBean publish(@RequestBody ArticleParam articleParam) {
         // 发帖限制检查
@@ -496,12 +497,14 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "用户通过文章id删除文章")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POST_DELETE_OWN)")
     @PostMapping("/article/deleteArticleByArticleId")
     public ResultBean deleteArticleByArticleId(@RequestBody ArticleParam articleParam){
         return articleService.deleteArticleByArticleId(articleParam.getArticleId());
     }
 
     @ApiOperation(value = "编辑文章")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POST_UPDATE_OWN)")
     @PostMapping("/article/editArticle")
     public ResultBean editArticle(@RequestBody ArticleParam articleParam){
         if (articleParam.getArticleId() != null){

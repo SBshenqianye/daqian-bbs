@@ -22,6 +22,7 @@ public class AppealController {
     private AppealService appealService;
 
     @ApiOperation(value = "用户提交申诉")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).APPEAL_SUBMIT)")
     @PostMapping("/user/appeal/submit")
     public ResultBean submitAppeal(@RequestBody Map<String, Object> params) {
         Integer userId = (Integer) params.get("userId");

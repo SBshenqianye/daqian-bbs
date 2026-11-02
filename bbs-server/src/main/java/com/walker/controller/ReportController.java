@@ -22,6 +22,7 @@ public class ReportController {
     private ReportService reportService;
 
     @ApiOperation(value = "用户提交举报")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).REPORT_SUBMIT)")
     @PostMapping("/article/report")
     public ResultBean submitReport(@RequestBody Map<String, Object> params) {
         Integer reporterId = (Integer) params.get("reporterId");

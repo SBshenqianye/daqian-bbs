@@ -13,6 +13,7 @@ import com.walker.vo.param.ReplyParam;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -47,6 +48,7 @@ public class CommentController {
     private PointsLogService pointsLogService;
 
     @ApiOperation(value = "保存用户的评论(一级评论)")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).COMMENT_CREATE)")
     @PutMapping("/comment/userComment")
     public ResultBean userComment(@RequestBody CommentParam commentParam){
 
@@ -156,6 +158,7 @@ public class CommentController {
 
 
     @ApiOperation(value = "通过评论id删除评论")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).COMMENT_DELETE_OWN)")
     @PostMapping("/comment/deleteCommentById")
     public ResultBean deleteCommentById(@RequestBody ReplyParam replyParam){
         return commentService.deleteCommentById(replyParam.getCommentId());

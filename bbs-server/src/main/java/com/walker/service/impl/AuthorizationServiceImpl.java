@@ -9,6 +9,7 @@ import com.walker.pojo.User;
 import com.walker.service.AuthorizationService;
 import com.walker.service.BoardModeratorService;
 import com.walker.service.CurrentUserService;
+import com.walker.service.EffectivePermissionService;
 import com.walker.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
 /**
  * 统一授权服务实现。
  */
-@Service
+@Service("authz")
 public class AuthorizationServiceImpl implements AuthorizationService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthorizationServiceImpl.class);
@@ -37,6 +38,9 @@ public class AuthorizationServiceImpl implements AuthorizationService {
 
     @Autowired
     private BoardModeratorService boardModeratorService;
+
+    @Autowired
+    private EffectivePermissionService effectivePermissionService;
 
     @Override
     public boolean isSuperAdmin(User user) {
@@ -60,8 +64,10 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         if (user == null || permission == null) {
             return false;
         }
-        AccountRole role = AccountRole.fromUserType(user.getUserType());
-        return permission.isGrantedTo(role);
+        if (isSuperAdmin(user)) {
+            return true;
+        }
+        return effectivePermissionService.getEffectiveCodes(user).contains(permission.getCode());
     }
 
     @Override
@@ -164,25 +170,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         if (permission == null) {
             return Collections.emptyList();
         }
-        List<String> userTypes = new ArrayList<>();
-        if (permission.isGrantedTo(AccountRole.ADMIN)) {
-            userTypes.add(AccountRole.ADMIN.getCode());
-            userTypes.add(AccountRole.SUPER_ADMIN.getCode());
-        } else if (permission.isGrantedTo(AccountRole.SUPER_ADMIN)) {
-            userTypes.add(AccountRole.SUPER_ADMIN.getCode());
-        }
-        if (permission.isGrantedTo(AccountRole.MODERATOR)) {
-            userTypes.add(AccountRole.MODERATOR.getCode());
-        }
-        if (userTypes.isEmpty()) {
-            return Collections.emptyList();
-        }
-        return userService.list(new LambdaQueryWrapper<User>()
-                        .in(User::getUserType, userTypes))
-                .stream()
-                .map(User::getId)
-                .filter(id -> id != null)
-                .collect(Collectors.toList());
+        return effectivePermissionService.getUserIdsWithPermission(permission);
     }
 
     @Override

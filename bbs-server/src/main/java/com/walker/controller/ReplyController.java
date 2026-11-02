@@ -57,6 +57,7 @@ public class ReplyController {
     // ==================== 基础回复 ====================
 
     @ApiOperation(value = "保存用户的回复")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).REPLY_CREATE)")
     @PutMapping("/userReply")
     public ResultBean userReply(@RequestBody ReplyParam replyParam) {
         ResultBean result = replyService.saveUserReply(replyParam);
@@ -72,6 +73,7 @@ public class ReplyController {
     }
 
     @ApiOperation(value = "通过id删除用户评论")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).REPLY_DELETE_OWN)")
     @PostMapping("/deleteReplyById")
     public ResultBean deleteReplyById(@RequestBody ReplyParam replyParam) {
         return replyService.deleteReplyById(replyParam.getReplyId());

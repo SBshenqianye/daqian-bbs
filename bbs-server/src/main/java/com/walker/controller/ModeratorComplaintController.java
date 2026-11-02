@@ -22,6 +22,7 @@ public class ModeratorComplaintController {
     private ModeratorComplaintService complaintService;
 
     @ApiOperation(value = "用户提交版主投诉")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_COMPLAIN)")
     @PostMapping("/user/moderatorComplaint/submit")
     public ResultBean submit(@RequestBody Map<String, Object> params) {
         Integer reporterId = params.get("reporterId") != null ? Integer.parseInt(params.get("reporterId").toString()) : null;

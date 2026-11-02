@@ -1,10 +1,12 @@
 package com.walker.service;
 
+import com.walker.config.security.AccountRole;
 import com.walker.config.security.ForbiddenException;
 import com.walker.config.security.Permission;
 import com.walker.pojo.BoardModerator;
 import com.walker.pojo.User;
 import com.walker.service.impl.AuthorizationServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,7 +14,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
+
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
@@ -32,6 +38,23 @@ class AuthorizationServiceTest {
 
     @Mock
     private BoardModeratorService boardModeratorService;
+
+    @Mock
+    private EffectivePermissionService effectivePermissionService;
+
+    @BeforeEach
+    void setUpPermissionBaseline() {
+        // 默认按角色基线返回；权限组用例可覆盖
+        lenient().when(effectivePermissionService.getEffectiveCodes(any(User.class)))
+                .thenAnswer(invocation -> {
+                    User u = invocation.getArgument(0);
+                    if (u == null) {
+                        return Collections.emptySet();
+                    }
+                    return new LinkedHashSet<>(Permission.codesFor(
+                            AccountRole.fromUserType(u.getUserType())));
+                });
+    }
 
     private User user(int id, String userType) {
         User user = new User();
@@ -97,8 +120,8 @@ class AuthorizationServiceTest {
     @Test
     @DisplayName("按权限广播 → 返回拥有该权限点的用户 ID")
     void getUserIdsWithPermission_returnsIds() {
-        when(userService.list(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
-                .thenReturn(java.util.Arrays.asList(user(2, "2"), user(1, "3")));
+        when(effectivePermissionService.getUserIdsWithPermission(Permission.REPORT_REVIEW))
+                .thenReturn(java.util.Arrays.asList(2, 1));
         assertEquals(java.util.Arrays.asList(2, 1),
                 authorizationService.getUserIdsWithPermission(Permission.REPORT_REVIEW));
     }
@@ -107,7 +130,7 @@ class AuthorizationServiceTest {
     @DisplayName("按权限广播 → 空权限点 → 返回空列表")
     void getUserIdsWithPermission_null_returnsEmpty() {
         assertTrue(authorizationService.getUserIdsWithPermission(null).isEmpty());
-        verify(userService, never()).list(any());
+        verify(effectivePermissionService, never()).getUserIdsWithPermission(any());
     }
 
     @Test

@@ -3,6 +3,8 @@ package com.walker.service;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.walker.config.security.AccountRole;
+import com.walker.config.security.Permission;
 import com.walker.mapper.SaOrgMapper;
 import com.walker.mapper.UserMapper;
 import com.walker.pojo.SaOrg;
@@ -32,6 +34,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -69,6 +72,9 @@ class UserServiceTest {
     private CurrentUserService currentUserService;
 
     @Mock
+    private EffectivePermissionService effectivePermissionService;
+
+    @Mock
     private HttpServletRequest request;
 
     @BeforeAll
@@ -92,6 +98,13 @@ class UserServiceTest {
         Field orgImportField = UserServiceImpl.class.getDeclaredField("orgImportService");
         orgImportField.setAccessible(true);
         orgImportField.set(userService, mock(com.walker.service.impl.OrgImportService.class));
+
+        lenient().when(effectivePermissionService.getEffectiveCodes(any(User.class)))
+                .thenAnswer(invocation -> {
+                    User u = invocation.getArgument(0);
+                    return new LinkedHashSet<>(Permission.codesFor(
+                            AccountRole.fromUserType(u.getUserType())));
+                });
     }
 
     // ========== login ==========
