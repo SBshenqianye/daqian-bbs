@@ -33,6 +33,13 @@ setupInterceptors({
       router.replace(currentPath !== '/login' ? `/login?redirect=${encodeURIComponent(currentPath)}` : '/login')
       return true
     }
+    // 首次登录/密码被重置：后端会拒绝管理接口，统一引导去改密
+    if (adminStore.needsPasswordChange()) {
+      if (router.currentRoute.path !== '/change-password') {
+        router.replace('/change-password')
+      }
+      return true
+    }
     if (router.currentRoute.path !== '/403') {
       const from = router.currentRoute.fullPath
       router.replace({ path: '/403', query: { from } })

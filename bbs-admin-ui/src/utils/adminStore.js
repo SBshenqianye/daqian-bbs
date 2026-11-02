@@ -119,6 +119,13 @@ export function isLoggedIn() {
   return !!(state.admin && state.admin.id)
 }
 
+/** 是否需要强制修改初始密码（管理端 C3） */
+export function needsPasswordChange() {
+  if (!state.admin) return false
+  const flag = state.admin.isFirstLogin
+  return flag === 1 || flag === '1'
+}
+
 /** 当前账号角色：USER / ADMIN / SUPER_ADMIN / MODERATOR（旧会话回退 userType 映射） */
 export function getRole() {
   if (!state.admin) return null
@@ -212,6 +219,7 @@ export default {
   logout,
   updateAdmin,
   isLoggedIn,
+  needsPasswordChange,
   getRole,
   isSuperAdmin,
   isGlobalAdmin,

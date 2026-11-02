@@ -39,7 +39,10 @@ router.beforeEach((to, from, next) => {
     document.title = `大千智荟创新创意交流论坛`;
     const isLoggedIn = adminStore.isLoggedIn();
     const publicPaths = ['/login'];
-    if (!isLoggedIn && !publicPaths.includes(to.path)) {
+    if (isLoggedIn && adminStore.needsPasswordChange() && to.path !== '/change-password') {
+        // 首次登录（或密码被重置）必须先改密，禁止绕过前端进入其他页面
+        next('/change-password');
+    } else if (!isLoggedIn && !publicPaths.includes(to.path)) {
         next('/login');
     } else if (to.meta.permission) {
         // 角色不符：清理无权限登录态；角色正确但缺权限点：跳 403

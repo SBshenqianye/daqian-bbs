@@ -133,6 +133,11 @@ export default new Router({
             ]
         },
         {
+            path: '/change-password',
+            component: () => import('../pages/ChangePasswordPage.vue'),
+            meta: { title: '修改初始密码', auth: false }
+        },
+        {
             path: '/login',
             component: () => import('../pages/Login.vue'),
             meta: { title: '管理员登录', auth: false }
