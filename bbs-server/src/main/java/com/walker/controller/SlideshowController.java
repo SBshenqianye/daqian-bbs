@@ -11,6 +11,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
@@ -55,12 +56,14 @@ public class SlideshowController {
 
     @ApiOperation(value = "获取轮播图")
     @GetMapping("/admin/getSlideshow")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResultBean getAllSlideshowByAdmin(){
         return slideshowService.getAllSlideshowByAdmin();
     }
 
     @ApiOperation(value = "保存轮播图返回地址给前端")
     @PostMapping("/admin/addSlideshowReturnImageUrl")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public String addSlideshowReturnUrl(@RequestParam("image") String image) throws Exception {
         // 图片后缀
         String suffix="jpg";
@@ -97,6 +100,7 @@ public class SlideshowController {
 
     @ApiOperation(value = "添加轮播图")
     @PostMapping("/admin/addSlideshow")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResultBean addSlideshow(@RequestBody SlideshowParam slideshowParam){
         return slideshowService.saveSlideshow(slideshowParam.getSuccessive(),slideshowParam.getImageUrl());
     }
@@ -104,6 +108,7 @@ public class SlideshowController {
 
     @ApiOperation(value = "修改优先级")
     @PutMapping("/admin/editSuccessive/{slideshowId}/{successive}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResultBean updateSuccessive(@PathVariable Integer slideshowId, @PathVariable Integer successive){
         return slideshowService.updateSuccessive(slideshowId,successive);
     }

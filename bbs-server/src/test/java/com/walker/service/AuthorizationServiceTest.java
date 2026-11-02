@@ -2,6 +2,7 @@ package com.walker.service;
 
 import com.walker.config.security.ForbiddenException;
 import com.walker.config.security.Permission;
+import com.walker.pojo.BoardModerator;
 import com.walker.pojo.User;
 import com.walker.service.impl.AuthorizationServiceImpl;
 import org.junit.jupiter.api.DisplayName;
@@ -73,17 +74,24 @@ class AuthorizationServiceTest {
     }
 
     @Test
-    @DisplayName("canModerateBoard: 超管放行，本板块版主放行，跨板块拒绝")
+    @DisplayName("canModerateBoard: 全局管理员放行；MODERATOR 仅本板块")
     void canModerateBoard_scope() {
         when(currentUserService.getCurrentUser()).thenReturn(user(1, "3"));
         assertTrue(authorizationService.canModerateBoard(1, 10));
 
+        // Q1：ADMIN 为全局管理员，不再按板块限制
         when(currentUserService.getCurrentUser()).thenReturn(user(5, "2"));
-        when(boardModeratorService.hasActiveRole(5, 10)).thenReturn(true);
-        when(boardModeratorService.hasActiveRole(5, 20)).thenReturn(false);
         assertTrue(authorizationService.canModerateBoard(5, 10));
-        assertFalse(authorizationService.canModerateBoard(5, 20));
-        assertFalse(authorizationService.canModerateBoard(5, null));
+        assertTrue(authorizationService.canModerateBoard(5, 20));
+        assertTrue(authorizationService.canModerateBoard(5, null));
+
+        // MODERATOR：仅本板块
+        when(currentUserService.getCurrentUser()).thenReturn(user(6, "4"));
+        when(boardModeratorService.hasActiveRole(6, 10)).thenReturn(true);
+        when(boardModeratorService.hasActiveRole(6, 20)).thenReturn(false);
+        assertTrue(authorizationService.canModerateBoard(6, 10));
+        assertFalse(authorizationService.canModerateBoard(6, 20));
+        assertFalse(authorizationService.canModerateBoard(6, null));
     }
 
     @Test
@@ -108,9 +116,51 @@ class AuthorizationServiceTest {
         assertThrows(ForbiddenException.class,
                 () -> authorizationService.requirePermission(user(2, "1"), Permission.ADMIN_ACCESS));
 
-        when(currentUserService.getCurrentUser()).thenReturn(user(5, "2"));
-        when(boardModeratorService.hasActiveRole(5, 10)).thenReturn(false);
+        when(currentUserService.getCurrentUser()).thenReturn(user(6, "4"));
+        when(boardModeratorService.list(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+                .thenReturn(java.util.Collections.emptyList());
         assertThrows(ForbiddenException.class,
-                () -> authorizationService.requireBoardModerator(5, 10));
+                () -> authorizationService.requireBoardModerator(6, 10));
+    }
+
+    @Test
+    @DisplayName("getVisibleBoardIds：全局管理员 null，MODERATOR 返回板块，无板块返回空")
+    void getVisibleBoardIds_byRole() {
+        assertNull(authorizationService.getVisibleBoardIds(user(5, "2")));
+        assertNull(authorizationService.getVisibleBoardIds(user(1, "3")));
+
+        BoardModerator row = new BoardModerator();
+        row.setUserId(6);
+        row.setLabelId(10);
+        row.setStatus(1);
+        when(boardModeratorService.list(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+                .thenReturn(java.util.Collections.singletonList(row));
+        assertEquals(java.util.Collections.singletonList(10),
+                authorizationService.getVisibleBoardIds(user(6, "4")));
+
+        when(boardModeratorService.list(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+                .thenReturn(java.util.Collections.emptyList());
+        assertTrue(authorizationService.getVisibleBoardIds(user(7, "4")).isEmpty());
+    }
+
+    @Test
+    @DisplayName("getBoardScopeDenialMessage：无板块/跨板块/全局管理员的文案")
+    void boardScopeDenialMessage_byRole() {
+        assertNull(authorizationService.getBoardScopeDenialMessage(user(5, "2"), 10));
+
+        when(boardModeratorService.list(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+                .thenReturn(java.util.Collections.emptyList());
+        assertEquals("尚未分配板块，请联系管理员",
+                authorizationService.getBoardScopeDenialMessage(user(6, "4"), 10));
+
+        BoardModerator row = new BoardModerator();
+        row.setUserId(6);
+        row.setLabelId(10);
+        row.setStatus(1);
+        when(boardModeratorService.list(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
+                .thenReturn(java.util.Collections.singletonList(row));
+        assertNull(authorizationService.getBoardScopeDenialMessage(user(6, "4"), 10));
+        assertEquals("无权操作该板块内容",
+                authorizationService.getBoardScopeDenialMessage(user(6, "4"), 20));
     }
 }

@@ -80,7 +80,19 @@
 
       <!-- List -->
       <div class="bg-container border border-border rounded-xl p-card-padding">
-        <h3 class="font-title-lg text-title-lg mb-4">当前版主</h3>
+        <div class="flex items-center justify-between mb-4 gap-3">
+          <h3 class="font-title-lg text-title-lg">当前版主</h3>
+          <div class="flex items-center gap-2">
+            <input
+              v-model="keyword"
+              type="text"
+              placeholder="搜索用户名/昵称"
+              class="px-3 py-1.5 w-52 bg-surface border border-outline-variant rounded-lg text-body-sm outline-none focus:border-primary"
+              @keyup.enter="currentPage = 1; loadList()"
+            />
+            <button class="px-3 py-1.5 border rounded text-body-sm hover:bg-surface-variant" @click="currentPage = 1; loadList()">搜索</button>
+          </div>
+        </div>
         <div class="border border-outline-variant rounded-lg overflow-hidden" v-loading="loading">
           <div v-if="!list || list.length === 0" class="py-12 text-center text-on-surface-variant">
             <p class="text-body-md">暂无版主</p>
@@ -88,26 +100,39 @@
           <table v-else class="w-full text-left">
             <thead class="bg-surface-container-low">
               <tr>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">ID</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">用户</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">账号角色</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">管理板块</th>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">角色</th>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">任命时间</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">最近任命</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">操作</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-outline-variant/50">
-              <tr v-for="item in list" :key="item.id" class="hover:bg-surface-container-low/50">
-                <td class="px-4 py-3 text-body-sm">{{ item.id }}</td>
+              <tr v-for="item in list" :key="item.userId" class="hover:bg-surface-container-low/50">
                 <td class="px-4 py-3 text-body-sm">
                   <UserCell :user-id="item.userId" />
+                  <div class="text-[11px] text-on-surface-variant">ID: {{ item.userId }}</div>
                 </td>
-                <td class="px-4 py-3 text-body-sm">{{ labelNameById(item.labelId) }}</td>
-                <td class="px-4 py-3 text-body-sm">{{ item.roleType === 'admin' ? '管理员' : '版主' }}</td>
-                <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.appointTime }}</td>
+                <td class="px-4 py-3 text-body-sm">{{ roleLabel(item.userType) }}</td>
                 <td class="px-4 py-3 text-body-sm">
+                  <span v-if="!item.boards || item.boards.length === 0" class="text-on-surface-variant">未分配板块</span>
+                  <span
+                    v-for="board in item.boards"
+                    :key="board.labelId"
+                    class="inline-flex items-center gap-1 mr-1 mb-1 px-2 py-0.5 rounded-full bg-primary-fixed/60 text-on-surface text-[12px]"
+                  >
+                    {{ board.labelName || labelNameById(board.labelId) }}
+                    <button
+                      class="text-error hover:text-red-700 leading-none"
+                      title="撤销该板块"
+                      @click="handleDismissBoard(item, board)"
+                    >×</button>
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.appointTime || '—' }}</td>
+                <td class="px-4 py-3 text-body-sm whitespace-nowrap">
+                  <el-button size="mini" type="primary" plain @click="openBoardDialog(item)">编辑板块</el-button>
                   <el-button size="mini" type="warning" plain @click="handleCancel(item)" title="取消本月奖励">取消奖励</el-button>
-                  <el-button size="mini" type="danger" plain @click="handleDismiss(item)">撤销</el-button>
                 </td>
               </tr>
             </tbody>
@@ -117,6 +142,38 @@
           <button class="px-3 py-1 border rounded text-body-sm" :disabled="currentPage <= 1" @click="changePage(currentPage - 1)">上一页</button>
           <span class="px-3 py-1 text-body-sm text-on-surface-variant">{{ currentPage }}/{{ Math.ceil(total / pageSize) }}</span>
           <button class="px-3 py-1 border rounded text-body-sm" :disabled="currentPage >= Math.ceil(total / pageSize)" @click="changePage(currentPage + 1)">下一页</button>
+        </div>
+      </div>
+
+      <!-- 编辑板块弹窗 -->
+      <div v-show="boardDialogVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/30" @click="boardDialogVisible = false"></div>
+        <div class="relative bg-container rounded-xl shadow-xl w-full max-w-lg p-6">
+          <h3 class="font-headline-sm text-headline-sm mb-1">编辑板块</h3>
+          <p class="text-body-sm text-on-surface-variant mb-4">
+            {{ boardForm.nickname || ('用户#' + boardForm.userId) }}
+            · 勾选该版主负责的板块，保存后按差异增删
+          </p>
+          <div class="max-h-72 overflow-y-auto border border-outline-variant rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label
+              v-for="label in labelList"
+              :key="label.labelId"
+              class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-container-low cursor-pointer text-body-sm"
+            >
+              <input v-model="boardForm.labelIds" type="checkbox" :value="label.labelId" class="accent-primary" />
+              <span>{{ label.labelName }}</span>
+            </label>
+            <div v-if="labelList.length === 0" class="text-body-sm text-on-surface-variant col-span-2">暂无可选板块</div>
+          </div>
+          <p class="text-[12px] text-on-surface-variant mt-3">
+            撤销最后一个板块后账号仍保留版主角色，可继续登录管理后台（列表为空）。
+          </p>
+          <div class="flex justify-end gap-2 mt-5">
+            <button class="px-4 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant" @click="boardDialogVisible = false">取消</button>
+            <button class="px-4 py-2 bg-primary text-on-primary rounded hover:opacity-90 disabled:opacity-60" :disabled="boardSaving" @click="saveBoards">
+              {{ boardSaving ? '保存中...' : '保存' }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -169,6 +226,10 @@ export default {
       cancelDialogVisible: false,
       cancelSaving: false,
       cancelForm: { userId: null, userName: '', remark: '' },
+      boardDialogVisible: false,
+      boardSaving: false,
+      boardForm: { userId: null, nickname: '', labelIds: [] },
+      keyword: '',
       labelList: [] // labelId -> { labelId, labelName }
     }
   },
@@ -200,10 +261,47 @@ export default {
       const label = this.labelList.find(l => l.labelId === labelId)
       return label ? label.labelName : '标签#' + labelId
     },
+    roleLabel(userType) {
+      const type = String(userType || '')
+      if (type === '3') return '超级管理员'
+      if (type === '2') return '管理员'
+      if (type === '4') return '版主'
+      if (type === '1') return '普通用户'
+      return '—'
+    },
+    openBoardDialog(item) {
+      this.boardForm = {
+        userId: item.userId,
+        nickname: item.nickname || item.username || '',
+        labelIds: (item.boards || []).map(b => b.labelId)
+      }
+      this.boardDialogVisible = true
+    },
+    async saveBoards() {
+      if (!this.boardForm.userId) return
+      this.boardSaving = true
+      try {
+        const res = await this.postRequest('/admin/moderator/boards', {
+          userId: this.boardForm.userId,
+          labelIds: this.boardForm.labelIds.map(Number)
+        })
+        handleResponse(res, {
+          successMsg: '板块已更新',
+          errorMsg: '保存失败',
+          onSuccess: () => {
+            this.boardDialogVisible = false
+            this.loadList()
+          }
+        })
+      } catch (e) { console.warn('[ModeratorPage]', e) }
+      finally { this.boardSaving = false }
+    },
     async loadList() {
       this.loading = true
       try {
-        const res = await this.postRequest('/admin/moderator/list', { page: this.currentPage, size: this.pageSize })
+        const params = { page: this.currentPage, size: this.pageSize }
+        if (this.keyword && this.keyword.trim()) params.keyword = this.keyword.trim()
+        const res = await this.postRequest('/admin/moderator/list', params)
         if (res && res.code == 200 && res.obj) {
           this.list = res.obj.records || []
           this.total = res.obj.total || 0
@@ -320,16 +418,20 @@ export default {
       } catch (e) { console.warn('[ModeratorPage]', e) }
       finally { this.appointing = false }
     },
-    handleDismiss(item) {
-      this.$confirm('确定撤销该版主？', '提示', { type: 'warning' })
-        .then(() => this.doDismiss(item))
+    handleDismissBoard(item, board) {
+      this.$confirm(
+        `确定撤销 ${item.nickname || item.username || ('用户#' + item.userId)} 的「${board.labelName || this.labelNameById(board.labelId)}」版主吗？`,
+        '提示',
+        { type: 'warning' }
+      )
+        .then(() => this.doDismiss(item.userId, board.labelId, board.labelName))
         .catch(() => {})
     },
-    async doDismiss(item) {
+    async doDismiss(userId, labelId, labelName) {
       try {
-        const res = await this.postRequest('/admin/moderator/dismiss', { userId: item.userId, labelId: item.labelId })
+        const res = await this.postRequest('/admin/moderator/dismiss', { userId, labelId })
         handleResponse(res, {
-          successMsg: '已撤销',
+          successMsg: `已撤销${labelName ? '「' + labelName + '」' : ''}版主`,
           errorMsg: '撤销失败',
           onSuccess: () => this.loadList()
         })

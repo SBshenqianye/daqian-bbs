@@ -67,6 +67,7 @@ public class DictController {
     }
 
     @ApiOperation(value = "查询字典列表（不分页）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/listDict")
     public ResultBean listDict() {
         List<Dict> list = dictService.listDict();

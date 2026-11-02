@@ -20,6 +20,7 @@ import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -101,6 +102,13 @@ public class UserController {
         map.put("orgNameFull", resolveRawOrgName(user.getOrgNo(), user.getOrgName()));
         map.put("deptName", user.getDeptName());
         map.put("userType", user.getUserType());
+        // 权限同步：会话刷新接口也必须返回角色/权限点/板块范围，
+        // 否则 Header 刷新会把登录时写入的 admin 缓存覆盖掉，刷新页面后菜单与横幅失真。
+        com.walker.config.security.AccountRole role =
+                com.walker.config.security.AccountRole.fromUserType(user.getUserType());
+        map.put("role", role.name());
+        map.put("permissions", com.walker.config.security.Permission.codesFor(role));
+        map.put("boardScopes", userService.getBoardScopes(user.getId()));
         map.put("personnelId", user.getPersonnelId());
         map.put("isFirstLogin", user.getIsFirstLogin());
         return map;
@@ -200,6 +208,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "获取所有用户(搜索 + 分页)")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/getAllUser")
     public ResultBean getAllUser(@RequestBody JSONObject params){
         if (params != null && !params.isEmpty()){
@@ -214,6 +223,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "用户搜索（管理员用，按用户名/昵称模糊搜索，返回精简字段供选择器使用）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/admin/user/search")
     public ResultBean searchUsers(@RequestParam(value = "keyword", required = false, defaultValue = "") String keyword) {
         if (StringUtils.isBlank(keyword) || keyword.trim().length() < 1) {
@@ -243,6 +253,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "通过用户id删除用户")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/deleteUserByUserId")
     public ResultBean deleteUserByUserId(@RequestBody UserOperationParam userOperationParam){
         if (userOperationParam.getUserId() != null){
@@ -252,6 +263,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "通过用户id修改用户alive值")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/updateUserAliveByUserId")
     public ResultBean updateUserAliveByUserId(@RequestBody UserOperationParam userOperationParam){
         if (userOperationParam.getUserId() != null){
@@ -261,6 +273,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "通过用户id批量删除用户")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/batchDeleteUsersByUserIds")
     public ResultBean batchDeleteUsersByUserIds(@RequestBody UserOperationParam userOperationParam){
         if (StringUtils.isNoneBlank(userOperationParam.getUserIds())){
@@ -279,18 +292,21 @@ public class UserController {
 
 
     @ApiOperation(value = "获取用户总数")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/admin/getUserCount/all")
     public ResultBean getUserCount(){
         return userService.getUserCount();
     }
 
     @ApiOperation(value = "获取地图数据(城市人数和比例)")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/admin/getAllCity/all")
     public ResultBean getAllCity(){
         return userService.getAllCity();
     }
 
     @ApiOperation(value = "获取系统最近一年的用户注册数据")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/admin/getUserDataWithMonth/all")
     public  ResultBean getUserDataWithMonth(){
         return userService.getUserDataWithMonth();
@@ -315,6 +331,7 @@ public class UserController {
      * @return ResultBean 返回结果
      */
     @ApiOperation(value = "更改用户角色")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/updateUserRole")
     public ResultBean updateUserRole(@RequestBody UserOperationParam userOperationParam){
         if (userOperationParam.getUserId() != null && !StringUtils.isEmpty(userOperationParam.getRoleType())){
@@ -338,12 +355,14 @@ public class UserController {
     }
 
     @ApiOperation(value = "导入预览：解析Excel但不存库")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/previewImport")
     public ImportPreviewVO previewImport(@RequestParam("file") MultipartFile file) {
         return userService.previewImport(file);
     }
 
     @ApiOperation(value = "执行导入（异步）：解析Excel并写入数据库，返回 taskId")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/importUsers")
     public ResultBean importUsers(
             @RequestParam("file") MultipartFile file,
@@ -374,6 +393,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "查询导入任务进度")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/admin/importProgress/{taskId}")
     public ResultBean getImportProgress(@PathVariable String taskId) {
         Map<String, Object> progress = userService.getImportTaskProgress(taskId);
@@ -382,6 +402,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "获取当前导入任务（无需 taskId，供页面刷新/跨管理员恢复使用）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/admin/import/current")
     public ResultBean getCurrentImport() {
         Map<String, Object> current = userService.getCurrentImportTask();
@@ -392,12 +413,14 @@ public class UserController {
     }
 
     @ApiOperation(value = "管理员新增用户")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/addUser")
     public ResultBean adminAddUser(@RequestBody AdminUserAddParam param) {
         return userService.adminAddUser(param);
     }
 
     @ApiOperation(value = "管理员更新用户详细信息")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/updateUserDetail")
     public ResultBean adminUpdateUserDetail(@RequestBody AdminUserUpdateParam param) {
         return userService.adminUpdateUserDetail(param);
@@ -418,6 +441,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "管理员限制/解除用户发帖")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/user/restrictPost")
     public ResultBean restrictPost(@RequestBody Map<String, Object> params) {
         Integer userId = (Integer) params.get("userId");

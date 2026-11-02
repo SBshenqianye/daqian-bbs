@@ -5,6 +5,7 @@ import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -20,6 +21,7 @@ public class ViolationController {
     private ViolationService violationService;
 
     @ApiOperation(value = "管理员记录违规并扣分")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/violation/add")
     public ResultBean addViolation(@RequestBody Map<String, Object> params) {
         Integer userId = (Integer) params.get("userId");
@@ -32,6 +34,7 @@ public class ViolationController {
     }
 
     @ApiOperation(value = "管理员查看违规列表")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/violation/list")
     public ResultBean listViolations(@RequestBody Map<String, Object> params) {
         Integer userId = params.get("userId") != null ? Integer.parseInt(params.get("userId").toString()) : null;
@@ -50,6 +53,7 @@ public class ViolationController {
     }
 
     @ApiOperation(value = "管理员取消违规（回滚扣分+恢复内容，操作人以JWT为准）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/violation/cancel")
     public ResultBean cancelViolation(@RequestBody Map<String, Object> params) {
         Integer violationId = params.get("violationId") != null ? Integer.parseInt(params.get("violationId").toString()) : null;

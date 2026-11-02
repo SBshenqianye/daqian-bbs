@@ -5,10 +5,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.BoardModeratorMapper;
 import com.walker.mapper.ModeratorRewardCancelMapper;
+import com.walker.pojo.ArticleLabel;
 import com.walker.pojo.BoardModerator;
 import com.walker.pojo.ModeratorRewardCancel;
 import com.walker.pojo.PointsLog;
 import com.walker.pojo.User;
+import com.walker.service.ArticleLabelService;
 import com.walker.service.BoardModeratorService;
 import com.walker.service.CurrentUserService;
 import com.walker.service.DictService;
@@ -54,6 +56,9 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
     @Autowired
     private CurrentUserService currentUserService;
 
+    @Autowired
+    private ArticleLabelService articleLabelService;
+
     @Override
     @Transactional
     public ResultBean appoint(Integer userId, Integer labelId, Integer operatorId) {
@@ -91,6 +96,7 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
             history.setStatus(1);
             history.setAppointTime(fmt.format(now));
             this.updateById(history);
+            upgradeAccountToModerator(userId);
             return ResultBean.success("版主任命成功");
         }
 
@@ -102,6 +108,8 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
         moderator.setAppointTime(fmt.format(now));
         moderator.setCreateTime(fmt.format(now));
         this.save(moderator);
+
+        upgradeAccountToModerator(userId);
 
         return ResultBean.success("版主任命成功");
     }
@@ -126,15 +134,239 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
 
     @Override
     public ResultBean listModerators(Integer page, Integer size) {
-        Page<BoardModerator> pageParam = new Page<>(page, size);
-        LambdaQueryWrapper<BoardModerator> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(BoardModerator::getStatus, 1);
-        wrapper.orderByDesc(BoardModerator::getAppointTime);
-        Page<BoardModerator> result = this.page(pageParam, wrapper);
+        return listModerators(page, size, null);
+    }
+
+    @Override
+    public ResultBean listModerators(Integer page, Integer size, String keyword) {
+        if (page == null || page < 1) page = 1;
+        if (size == null || size < 1) size = 10;
+
+        List<BoardModerator> all = this.list(new LambdaQueryWrapper<BoardModerator>()
+                .eq(BoardModerator::getStatus, 1)
+                .orderByDesc(BoardModerator::getAppointTime));
+
+        // 按用户聚合；LinkedHashMap 的顺序即“最近任命优先”
+        Map<Integer, List<BoardModerator>> byUser = new LinkedHashMap<>();
+        for (BoardModerator m : all) {
+            byUser.computeIfAbsent(m.getUserId(), k -> new ArrayList<>()).add(m);
+        }
+
+        // 无有效板块的 MODERATOR 也要出现在列表里，便于重新分配板块（D5）
+        List<User> moderatorUsers = userService.list(new LambdaQueryWrapper<User>()
+                .eq(User::getUserType, "4")
+                .eq(User::getIsDelete, 0));
+        for (User u : moderatorUsers) {
+            byUser.computeIfAbsent(u.getId(), k -> new ArrayList<>());
+        }
+
+        List<Integer> userIds = new ArrayList<>(byUser.keySet());
+        Map<Integer, User> userMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            for (User u : userService.listByIds(userIds)) {
+                userMap.put(u.getId(), u);
+            }
+        }
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String kw = keyword.trim().toLowerCase(Locale.ROOT);
+            userIds.removeIf(id -> {
+                User u = userMap.get(id);
+                if (u == null) return true;
+                String username = u.getUsername() != null ? u.getUsername().toLowerCase(Locale.ROOT) : "";
+                String nickname = u.getNickname() != null ? u.getNickname().toLowerCase(Locale.ROOT) : "";
+                return !username.contains(kw) && !nickname.contains(kw);
+            });
+        }
+
+        // 有板块的按最近任命时间倒序，无板块的排最后
+        userIds.sort((a, b) -> {
+            String ta = latestAppointTime(byUser.get(a));
+            String tb = latestAppointTime(byUser.get(b));
+            if (ta == null && tb == null) return Integer.compare(a, b);
+            if (ta == null) return 1;
+            if (tb == null) return -1;
+            return tb.compareTo(ta);
+        });
+
+        int total = userIds.size();
+        int from = Math.max(0, (page - 1) * size);
+        int to = Math.min(from + size, total);
+        List<Integer> pageIds = from < total ? userIds.subList(from, to) : Collections.emptyList();
+
+        Set<Integer> labelIds = new HashSet<>();
+        for (Integer id : pageIds) {
+            for (BoardModerator m : byUser.get(id)) {
+                labelIds.add(m.getLabelId());
+            }
+        }
+        Map<Integer, String> labelNameMap = new HashMap<>();
+        if (!labelIds.isEmpty()) {
+            for (ArticleLabel l : articleLabelService.listByIds(labelIds)) {
+                labelNameMap.put(l.getLabelId(), l.getLabelName());
+            }
+        }
+
+        List<Map<String, Object>> records = new ArrayList<>();
+        for (Integer id : pageIds) {
+            List<BoardModerator> rows = byUser.get(id);
+            User u = userMap.get(id);
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("userId", id);
+            item.put("username", u != null ? u.getUsername() : "");
+            item.put("nickname", u != null ? u.getNickname() : "");
+            item.put("userType", u != null ? u.getUserType() : "");
+            item.put("boardCount", rows.size());
+            item.put("appointTime", latestAppointTime(rows));
+
+            List<Map<String, Object>> boards = new ArrayList<>();
+            for (BoardModerator m : rows) {
+                Map<String, Object> board = new LinkedHashMap<>();
+                board.put("labelId", m.getLabelId());
+                board.put("labelName", labelNameMap.getOrDefault(m.getLabelId(), "标签#" + m.getLabelId()));
+                board.put("appointTime", m.getAppointTime());
+                boards.add(board);
+            }
+            item.put("boards", boards);
+
+            // 兼容旧前端字段（单板块行）
+            if (!rows.isEmpty()) {
+                BoardModerator first = rows.get(0);
+                item.put("id", first.getId());
+                item.put("labelId", first.getLabelId());
+                item.put("roleType", first.getRoleType());
+            } else {
+                item.put("id", null);
+                item.put("labelId", null);
+                item.put("roleType", "moderator");
+            }
+            records.add(item);
+        }
+
         Map<String, Object> data = new HashMap<>();
-        data.put("records", result.getRecords());
-        data.put("total", result.getTotal());
+        data.put("records", records);
+        data.put("total", total);
         return ResultBean.success("查询成功", data);
+    }
+
+    private String latestAppointTime(List<BoardModerator> rows) {
+        if (rows == null || rows.isEmpty()) return null;
+        String latest = null;
+        for (BoardModerator m : rows) {
+            if (m.getAppointTime() != null && (latest == null || m.getAppointTime().compareTo(latest) > 0)) {
+                latest = m.getAppointTime();
+            }
+        }
+        return latest;
+    }
+
+    @Override
+    @Transactional
+    public ResultBean updateBoards(Integer userId, List<Integer> labelIds) {
+        if (userId == null) {
+            return ResultBean.error("用户ID不能为空");
+        }
+        User user = userService.getById(userId);
+        if (user == null) {
+            return ResultBean.error("用户不存在");
+        }
+
+        Set<Integer> desired = new LinkedHashSet<>();
+        if (labelIds != null) {
+            for (Integer labelId : labelIds) {
+                if (labelId != null) desired.add(labelId);
+            }
+        }
+
+        if (!desired.isEmpty()) {
+            List<ArticleLabel> labels = articleLabelService.listByIds(desired);
+            Set<Integer> existingIds = labels.stream()
+                    .map(ArticleLabel::getLabelId)
+                    .collect(Collectors.toSet());
+            if (existingIds.size() != desired.size()) {
+                return ResultBean.error("存在无效的板块");
+            }
+        }
+
+        List<BoardModerator> current = this.list(new LambdaQueryWrapper<BoardModerator>()
+                .eq(BoardModerator::getUserId, userId)
+                .eq(BoardModerator::getStatus, 1));
+        Map<Integer, BoardModerator> currentMap = new LinkedHashMap<>();
+        for (BoardModerator m : current) {
+            currentMap.put(m.getLabelId(), m);
+        }
+
+        String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+        List<Integer> added = new ArrayList<>();
+        List<Integer> removed = new ArrayList<>();
+        List<Integer> kept = new ArrayList<>();
+
+        for (Integer labelId : desired) {
+            if (currentMap.containsKey(labelId)) {
+                kept.add(labelId);
+                continue;
+            }
+            BoardModerator history = boardModeratorMapper.findAnyByUserAndLabel(userId, labelId);
+            if (history != null) {
+                history.setRoleType("moderator");
+                history.setStatus(1);
+                history.setAppointTime(now);
+                this.updateById(history);
+            } else {
+                BoardModerator moderator = new BoardModerator();
+                moderator.setUserId(userId);
+                moderator.setLabelId(labelId);
+                moderator.setRoleType("moderator");
+                moderator.setStatus(1);
+                moderator.setAppointTime(now);
+                moderator.setCreateTime(now);
+                this.save(moderator);
+            }
+            added.add(labelId);
+        }
+
+        for (Map.Entry<Integer, BoardModerator> entry : currentMap.entrySet()) {
+            if (!desired.contains(entry.getKey())) {
+                BoardModerator moderator = entry.getValue();
+                moderator.setStatus(0);
+                this.updateById(moderator);
+                removed.add(entry.getKey());
+            }
+        }
+
+        if (!added.isEmpty()) {
+            upgradeAccountToModerator(user);
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("added", added);
+        data.put("removed", removed);
+        data.put("kept", kept);
+        data.put("boardCount", desired.size());
+        return ResultBean.success("板块更新成功", data);
+    }
+
+    /**
+     * 任命/新增板块时，普通用户升级为 MODERATOR；ADMIN/SUPER_ADMIN 保持不变（D6）。
+     */
+    private void upgradeAccountToModerator(Integer userId) {
+        upgradeAccountToModerator(userService.getById(userId));
+    }
+
+    private void upgradeAccountToModerator(User user) {
+        if (user == null) {
+            return;
+        }
+        String userType = user.getUserType();
+        // 只升级普通用户（兼容历史空值）；ADMIN/SUPER/MODERATOR 保持不变
+        if (userType != null && !userType.trim().isEmpty() && !"1".equals(userType.trim())) {
+            return;
+        }
+        User update = new User();
+        update.setId(user.getId());
+        update.setUserType("4");
+        userService.updateById(update);
+        user.setUserType("4");
     }
 
     @Override

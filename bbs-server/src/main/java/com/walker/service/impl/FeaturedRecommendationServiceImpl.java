@@ -102,16 +102,18 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
         FeaturedRecommendation rec = new FeaturedRecommendation();
         rec.setArticleId(articleId);
         rec.setRecommenderId(recommenderId);
-        rec.setLabelId(labelId);
+        rec.setLabelId(labelId != null ? labelId : article.getArticleLabelId());
         rec.setStatus("pending");
         rec.setCreateTime(fmt.format(new Date()));
         this.save(rec);
 
-        // 按权限广播：拥有 featured:review 的管理员/超管全部接收
+        // 按权限 + 板块范围广播：拥有 featured:review 且可管理该板块的管理员/超管接收
         User recommender = userService.getById(recommenderId);
         String recommenderName = recommender != null ? recommender.getNickname() : "版主#" + recommenderId;
         String articleTitle = article.getArticleTitle() != null ? article.getArticleTitle() : "";
         for (Integer reviewerId : authorizationService.getUserIdsWithPermission(Permission.FEATURED_REVIEW)) {
+            if (reviewerId == null) continue;
+            if (!authorizationService.canModerateBoard(reviewerId, article.getArticleLabelId())) continue;
             notificationService.createNotification(reviewerId, recommenderId, "featured_recommend",
                     "精华帖推荐：「" + recommenderName + "」推荐《" + articleTitle + "》",
                     "article", articleId);
@@ -135,6 +137,10 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
             return ResultBean.error("未获取到登录用户信息，请重新登录");
         }
         Integer currentUserId = currentUser.getId();
+        // Q5：精华终审为系统级权限，MODERATOR 只能推荐（featured:recommend），不能终审
+        if (!authorizationService.hasPermission(currentUser, Permission.FEATURED_REVIEW)) {
+            return ResultBean.forbidden("权限不足，请联系管理员");
+        }
         if (reviewerId != null && !currentUserId.equals(reviewerId)) {
             return ResultBean.error("审核人身份校验失败，请重新登录后操作");
         }
@@ -144,6 +150,14 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
         FeaturedRecommendation rec = this.getById(recommendationId);
         if (rec == null) {
             return ResultBean.error("推荐记录不存在");
+        }
+        Article reviewArticle = articleService.getById(rec.getArticleId());
+        Integer reviewLabelId = (rec.getLabelId() != null && rec.getLabelId() > 0)
+                ? rec.getLabelId()
+                : (reviewArticle != null ? reviewArticle.getArticleLabelId() : null);
+        String boardDenial = authorizationService.getBoardScopeDenialMessage(currentUser, reviewLabelId);
+        if (boardDenial != null) {
+            return ResultBean.forbidden(boardDenial);
         }
         // 权限校验：除超级管理员外，审核人不得审核自己的推荐（2026-10-12 需求）
         try {
@@ -164,7 +178,7 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
 
         if ("approved".equals(status)) {
             // 设为精华帖并加分
-            Article article = articleService.getById(rec.getArticleId());
+            Article article = reviewArticle;
             if (article != null) {
                 int featuredPoints = 10;
                 try {
@@ -195,19 +209,50 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
 
     @Override
     public ResultBean listRecommendations(Integer page, Integer size, String status) {
-        Page<FeaturedRecommendation> pageParam = new Page<>(page, size);
+        if (page == null || page < 1) page = 1;
+        if (size == null || size < 1) size = 10;
+
         LambdaQueryWrapper<FeaturedRecommendation> wrapper = new LambdaQueryWrapper<>();
         if (status != null && !status.isEmpty()) {
             wrapper.eq(FeaturedRecommendation::getStatus, status);
         }
         wrapper.orderByDesc(FeaturedRecommendation::getCreateTime);
-        Page<FeaturedRecommendation> result = this.page(pageParam, wrapper);
+
+        User currentUser = currentUserService.getCurrentUser();
+        List<Integer> visibleBoardIds = authorizationService.getVisibleBoardIds(currentUser);
+
+        List<FeaturedRecommendation> records;
+        long total;
+        if (visibleBoardIds == null) {
+            Page<FeaturedRecommendation> result = this.page(new Page<>(page, size), wrapper);
+            records = result.getRecords();
+            total = result.getTotal();
+        } else if (visibleBoardIds.isEmpty()) {
+            records = new ArrayList<>();
+            total = 0;
+        } else {
+            List<FeaturedRecommendation> all = this.list(wrapper);
+            List<FeaturedRecommendation> visible = new ArrayList<>();
+            for (FeaturedRecommendation r : all) {
+                Article article = articleService.getById(r.getArticleId());
+                Integer labelId = (r.getLabelId() != null && r.getLabelId() > 0)
+                        ? r.getLabelId()
+                        : (article != null ? article.getArticleLabelId() : null);
+                if (labelId != null && visibleBoardIds.contains(labelId)) {
+                    visible.add(r);
+                }
+            }
+            total = visible.size();
+            int from = (page - 1) * size;
+            int to = Math.min(from + size, visible.size());
+            records = from < to ? visible.subList(from, to) : new ArrayList<>();
+        }
 
         // 填充用户和文章信息
-        List<Map<String, Object>> records = new ArrayList<>();
+        List<Map<String, Object>> resultRecords = new ArrayList<>();
         Set<Integer> userIds = new HashSet<>();
         Set<Integer> articleIds = new HashSet<>();
-        for (FeaturedRecommendation r : result.getRecords()) {
+        for (FeaturedRecommendation r : records) {
             userIds.add(r.getRecommenderId());
             articleIds.add(r.getArticleId());
         }
@@ -222,12 +267,14 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
             for (Article a : articles) articleMap.put(a.getArticleId(), a);
         }
 
-        for (FeaturedRecommendation r : result.getRecords()) {
+        for (FeaturedRecommendation r : records) {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("id", r.getId());
             map.put("articleId", r.getArticleId());
             Article article = articleMap.get(r.getArticleId());
             map.put("articleTitle", article != null ? article.getArticleTitle() : "");
+            map.put("labelId", (r.getLabelId() != null && r.getLabelId() > 0) ? r.getLabelId()
+                    : (article != null ? article.getArticleLabelId() : null));
             map.put("recommenderId", r.getRecommenderId());
             User recommender = userMap.get(r.getRecommenderId());
             map.put("recommenderName", recommender != null ? recommender.getNickname() : "");
@@ -235,12 +282,12 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
             map.put("reviewRemark", r.getReviewRemark());
             map.put("reviewTime", r.getReviewTime());
             map.put("createTime", r.getCreateTime());
-            records.add(map);
+            resultRecords.add(map);
         }
 
         Map<String, Object> data = new HashMap<>();
-        data.put("records", records);
-        data.put("total", result.getTotal());
+        data.put("records", resultRecords);
+        data.put("total", total);
         return ResultBean.success("查询成功", data);
     }
 }

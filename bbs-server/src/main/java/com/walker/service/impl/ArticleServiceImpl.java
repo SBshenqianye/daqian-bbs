@@ -80,6 +80,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private CurrentUserService currentUserService;
 
     @Autowired
+    private AuthorizationService authorizationService;
+
+    @Autowired
     private SelfApprovalPolicy selfApprovalPolicy;
 
     /**
@@ -528,19 +531,31 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public ResultBean getAliveArticles() {
-        List<Article> articles = articleMapper.selectList(
-                new LambdaQueryWrapper<Article>()
-                        .eq(Article::getEnable, 1)
-        );
+        List<Integer> boardIds = visibleBoardIds();
+        if (boardIds != null && boardIds.isEmpty()) {
+            return ResultBean.success("查询成功！", new ArrayList<Article>());
+        }
+        LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
+                .eq(Article::getEnable, 1);
+        if (boardIds != null) {
+            wrapper.in(Article::getArticleLabelId, boardIds);
+        }
+        List<Article> articles = articleMapper.selectList(wrapper);
         return ResultBean.success("查询成功！", SensitiveWordUtil.desensitizeArticles(articles));
     }
 
     @Override
     public ResultBean getNotAliveArticles() {
-        List<Article> articles = articleMapper.selectList(
-                new LambdaQueryWrapper<Article>()
-                        .eq(Article::getEnable, 0)
-        );
+        List<Integer> boardIds = visibleBoardIds();
+        if (boardIds != null && boardIds.isEmpty()) {
+            return ResultBean.success("查询成功！", new ArrayList<Article>());
+        }
+        LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
+                .eq(Article::getEnable, 0);
+        if (boardIds != null) {
+            wrapper.in(Article::getArticleLabelId, boardIds);
+        }
+        List<Article> articles = articleMapper.selectList(wrapper);
         return ResultBean.success("查询成功！",SensitiveWordUtil.desensitizeArticles(articles));
     }
 
@@ -586,6 +601,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     public ResultBean getArticleByArticle(Integer articleId) {
 
         Article article = articleMapper.selectById(articleId);
+        ResultBean denial = boardScopeDenial(article != null ? article.getArticleLabelId() : null);
+        if (denial != null) {
+            return denial;
+        }
         return ResultBean.success("成功查询文章！",SensitiveWordUtil.desensitizeArticle(article));
     }
 
@@ -611,7 +630,15 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Override
     public ResultBean getArticleCount() {
 
-        Long count = articleMapper.selectCount(null);
+        List<Integer> boardIds = visibleBoardIds();
+        if (boardIds != null && boardIds.isEmpty()) {
+            return ResultBean.success("获取成功！", 0L);
+        }
+        LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<>();
+        if (boardIds != null) {
+            wrapper.in(Article::getArticleLabelId, boardIds);
+        }
+        Long count = articleMapper.selectCount(wrapper);
         return ResultBean.success("获取成功！",count);
 
     }
@@ -620,10 +647,16 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Override
     public ResultBean getArticleCountWithNotPass() {
 
-        Long count = articleMapper.selectCount(
-                new LambdaQueryWrapper<Article>()
-                        .eq(Article::getEnable, 0)
-        );
+        List<Integer> boardIds = visibleBoardIds();
+        if (boardIds != null && boardIds.isEmpty()) {
+            return ResultBean.success("获取成功！", 0L);
+        }
+        LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
+                .eq(Article::getEnable, 0);
+        if (boardIds != null) {
+            wrapper.in(Article::getArticleLabelId, boardIds);
+        }
+        Long count = articleMapper.selectCount(wrapper);
         return ResultBean.success("获取成功！",count);
     }
 
@@ -888,9 +921,20 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (page == null || page < 1) page = 1;
         if (size == null || size < 1) size = 10;
 
+        List<Integer> boardIds = visibleBoardIds();
+        if (boardIds != null) {
+            if (boardIds.isEmpty()) {
+                return emptyAdminArticlePage(page, size);
+            }
+            if (labelId != null && !boardIds.contains(labelId)) {
+                return emptyAdminArticlePage(page, size);
+            }
+        }
+
         Map<String, Object> params = new HashMap<>();
         params.put("keywords", keywords);
         params.put("labelId", labelId);
+        params.put("labelIds", boardIds);
         params.put("startTime", startTime);
         params.put("endTime", endTime);
         params.put("enable", enable);
@@ -939,6 +983,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         Article article = articleMapper.selectById(articleId);
         if (article == null) {
             return ResultBean.error("文章不存在");
+        }
+        ResultBean boardDenial = boardScopeDenial(article.getArticleLabelId());
+        if (boardDenial != null) {
+            return boardDenial;
         }
         Integer oldFeatured = article.getIsFeatured() != null ? article.getIsFeatured() : 0;
         int newFeatured = isFeatured != null ? isFeatured : 0;
@@ -995,9 +1043,20 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (page == null || page < 1) page = 1;
         if (size == null || size < 1) size = 10;
 
+        List<Integer> boardIds = visibleBoardIds();
+        if (boardIds != null) {
+            if (boardIds.isEmpty()) {
+                return emptyAdminArticlePage(page, size);
+            }
+            if (labelId != null && !boardIds.contains(labelId)) {
+                return emptyAdminArticlePage(page, size);
+            }
+        }
+
         Map<String, Object> params = new HashMap<>();
         params.put("keywords", keywords);
         params.put("labelId", labelId);
+        params.put("labelIds", boardIds);
         params.put("startTime", startTime);
         params.put("endTime", endTime);
 
@@ -1024,15 +1083,35 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
         @Override
     public ResultBean getArticleTabCounts() {
+        List<Integer> boardIds = visibleBoardIds();
+        if (boardIds != null && boardIds.isEmpty()) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("done", 0L);
+            empty.put("pending", 0L);
+            empty.put("featured", 0L);
+            empty.put("deleted", 0L);
+            return ResultBean.success("查询成功", empty);
+        }
+
         // Article 带 @TableLogic isDelete，selectCount 自动追加 is_delete = 0
-        long done = articleMapper.selectCount(
-                new LambdaQueryWrapper<Article>().eq(Article::getEnable, 1));
-        long pending = articleMapper.selectCount(
-                new LambdaQueryWrapper<Article>().eq(Article::getEnable, 0));
-        long featured = articleMapper.selectCount(
-                new LambdaQueryWrapper<Article>().eq(Article::getIsFeatured, 1));
+        LambdaQueryWrapper<Article> doneWrapper = new LambdaQueryWrapper<Article>()
+                .eq(Article::getEnable, 1);
+        LambdaQueryWrapper<Article> pendingWrapper = new LambdaQueryWrapper<Article>()
+                .eq(Article::getEnable, 0);
+        LambdaQueryWrapper<Article> featuredWrapper = new LambdaQueryWrapper<Article>()
+                .eq(Article::getIsFeatured, 1);
+        if (boardIds != null) {
+            doneWrapper.in(Article::getArticleLabelId, boardIds);
+            pendingWrapper.in(Article::getArticleLabelId, boardIds);
+            featuredWrapper.in(Article::getArticleLabelId, boardIds);
+        }
+        long done = articleMapper.selectCount(doneWrapper);
+        long pending = articleMapper.selectCount(pendingWrapper);
+        long featured = articleMapper.selectCount(featuredWrapper);
         // 已删除需绕过 @TableLogic 直接统计 is_delete = 1
-        long deleted = articleMapper.countDeletedArticles();
+        long deleted = boardIds == null
+                ? articleMapper.countDeletedArticles()
+                : articleMapper.countDeletedArticlesByLabelIds(boardIds);
         Map<String, Object> result = new HashMap<>();
         result.put("done", done);
         result.put("pending", pending);
@@ -1077,6 +1156,28 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         enrichWithUserInfo(list);
         enrichWithCommentCounts(list);
         return ResultBean.success("查询成功", list);
+    }
+
+    /** 当前用户可见板块；null=全局管理员，空列表=版主但无板块 */
+    private List<Integer> visibleBoardIds() {
+        return authorizationService.getVisibleBoardIds(currentUserService.getCurrentUser());
+    }
+
+    /** 非 null 表示无权访问该板块，直接返回 403 文案 */
+    private ResultBean boardScopeDenial(Integer labelId) {
+        String message = authorizationService.getBoardScopeDenialMessage(
+                currentUserService.getCurrentUser(), labelId);
+        return message == null ? null : ResultBean.forbidden(message);
+    }
+
+    private ResultBean emptyAdminArticlePage(int page, int size) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", new ArrayList<Article>());
+        result.put("total", 0);
+        result.put("page", page);
+        result.put("size", size);
+        result.put("pages", 0);
+        return ResultBean.success("查询成功", result);
     }
 
 }

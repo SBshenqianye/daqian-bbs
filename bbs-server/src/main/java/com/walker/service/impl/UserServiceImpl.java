@@ -103,6 +103,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private static final String USER_TYPE_ADMIN = "2";
     /** user_type 取值：超级管理员 */
     private static final String USER_TYPE_SUPER_ADMIN = "3";
+    /** user_type 取值：版主 */
+    private static final String USER_TYPE_MODERATOR = "4";
 
     // ========== 异步导入任务跟踪 ==========
     private final Map<String, ImportTask> importTasks = new ConcurrentHashMap<>();
@@ -165,9 +167,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (userDetails != null && passwordEncoder.matches(password,userDetails.getPassword())){
             User user = (User) userDetails;
             if (ConstantUtil.MANA_ZERO_ONE.equals(channel) || ConstantUtil.MANA_ZERO_TWO.equals(channel)) {
-                // 管理端登录仅允许管理员/超管；空值/非法 user_type 按普通用户处理（D1）
+                // 管理端登录允许管理员/超管/版主；空值/非法 user_type 按普通用户处理（D1/D2）
                 if (ConstantUtil.MANA_ZERO_TWO.equals(channel)
-                        && !AccountRole.fromUserType(user.getUserType()).isAdmin()) {
+                        && !AccountRole.fromUserType(user.getUserType()).canAccessAdminConsole()) {
                     return ResultBean.error("用户名或密码不正确！");
                 }
             } else {
@@ -606,11 +608,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             roleType = ConstantUtil.MANA_ONE;
         } else if (ConstantUtil.MANA_ZERO_TWO.equals(roleType)) {
             roleType = ConstantUtil.MANA_TWO;
+        } else if ("04".equals(roleType) || USER_TYPE_MODERATOR.equals(roleType)) {
+            roleType = USER_TYPE_MODERATOR;
         } else {
             return ResultBean.error("权限越界");
         }
 
-        if (!USER_TYPE_USER.equals(roleType) && !USER_TYPE_ADMIN.equals(roleType)) {
+        if (!USER_TYPE_USER.equals(roleType)
+                && !USER_TYPE_ADMIN.equals(roleType)
+                && !USER_TYPE_MODERATOR.equals(roleType)) {
             return ResultBean.error("权限越界");
         }
 
@@ -1108,6 +1114,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * 查询用户有效版主任职，转换为登录响应的 boardScopes。
      * 直接使用 Mapper 避免 UserService 与 BoardModeratorService 循环依赖。
      */
+    @Override
+    public List<Map<String, Object>> getBoardScopes(Integer userId) {
+        return loadBoardScopes(userId);
+    }
+
     private List<Map<String, Object>> loadBoardScopes(Integer userId) {
         List<Map<String, Object>> scopes = new ArrayList<>();
         if (userId == null) {
@@ -1156,11 +1167,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     /**
      * 校验 userType 写入权限。
-     * <p>白名单只允许 1/2：超级管理员不通过业务界面新增（D2）；
-     * 授予管理员或调整管理员/超管账号仅超级管理员可操作（D3）。</p>
+     * <p>白名单允许 1/2/4：超级管理员不通过业务界面新增（D2）；
+     * 授予管理员或调整管理员/超管账号仅超级管理员可操作（D3）。
+     * MODERATOR 属于普通管理角色，ADMIN 可授予/管理（Q10）。</p>
      */
     private ResultBean checkUserTypeGrant(String newUserType, User target) {
-        if (!USER_TYPE_USER.equals(newUserType) && !USER_TYPE_ADMIN.equals(newUserType)) {
+        if (!USER_TYPE_USER.equals(newUserType)
+                && !USER_TYPE_ADMIN.equals(newUserType)
+                && !USER_TYPE_MODERATOR.equals(newUserType)) {
             return ResultBean.error("非法用户角色");
         }
         boolean grantingAdmin = USER_TYPE_ADMIN.equals(newUserType);

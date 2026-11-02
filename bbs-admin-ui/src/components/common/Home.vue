@@ -15,6 +15,15 @@
         <!-- Tags Bar -->
         <Tags />
 
+        <!-- 版主未分配板块提示 -->
+        <div
+          v-if="showNoBoardBanner"
+          class="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-body-sm text-amber-800"
+        >
+          <span class="material-symbols-outlined text-[18px]">info</span>
+          <span>尚未分配板块，请联系管理员</span>
+        </div>
+
         <!-- Page Content -->
         <main class="flex-1 overflow-y-auto bg-background" ref="contentWrapper">
           <transition name="page-fade" mode="out-in">
@@ -42,6 +51,7 @@ import Header from './Header.vue'
 import Sidebar from './Sidebar.vue'
 import Tags from './Tags.vue'
 import bus from './bus'
+import adminStore from '@/utils/adminStore'
 
 export default {
   name: 'Home',
@@ -58,6 +68,10 @@ export default {
     // pageNonce 由全局错误处理（bus 'repair-page'）触发 +1，用于内容区白屏后原地重挂载
     pageKey() {
       return this.$route.fullPath + ':' + this.pageNonce
+    },
+    /** 版主账号且没有任何板块时展示全局提示 */
+    showNoBoardBanner() {
+      return adminStore.isModerator() && adminStore.getBoardScopes().length === 0
     },
   },
   created() {

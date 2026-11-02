@@ -28,6 +28,7 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -317,6 +318,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "查询所有的已审核的文章")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @GetMapping("/admin/getAliveArticles/all")
     public ResultBean getAliveArticles(){
         ResultBean result = articleService.getAliveArticles();
@@ -329,6 +331,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "查询所有的未审核的文章")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @GetMapping("/admin/getNotAliveArticles/all")
     public ResultBean getNotAliveArticles(){
         ResultBean result = articleService.getNotAliveArticles();
@@ -342,6 +345,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "管理员通过文章id删除文章")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/deleteArticleByArticleId")
     public ResultBean adminDeleteArticleByArticleId(@RequestBody ArticleParam articleParam){
         if (articleParam.getArticleId() != null){
@@ -355,6 +359,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "通过文章id修改文章状态")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/auditArticleByArticleId")
     public ResultBean auditArticleByArticleId(@RequestBody ArticleParam articleParam){
         if (articleParam.getArticleId() != null){
@@ -369,6 +374,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "删除所有的已通过审核的文章")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @PostMapping("/admin/handleBatchDeleteArticlesByAlive/all")
     public ResultBean batchDeleteArticlesByAlive(){
         ResultBean superError = requireSuperAdmin("仅超级管理员可执行全量文章删除");
@@ -381,6 +387,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "批量审核文章")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @PostMapping("/admin/batchAudit")
     public ResultBean batchAudit(){
         ResultBean superError = requireSuperAdmin("仅超级管理员可执行全量文章审核");
@@ -392,7 +399,7 @@ public class ArticleController {
     }
 
     /**
-     * 文章审核/删除的数据范围校验：超管放行，普通管理员必须是该文章所属板块版主。
+     * 文章审核/删除的数据范围校验：ADMIN/SUPER_ADMIN 全局放行，MODERATOR 必须是该文章所属板块的版主。
      * 返回 null 表示校验通过。
      */
     private ResultBean requireArticleBoardScope(Integer articleId) {
@@ -404,8 +411,9 @@ public class ArticleController {
         if (article == null) {
             return ResultBean.error("文章不存在");
         }
-        if (!authorizationService.canModerateBoard(currentUser.getId(), article.getArticleLabelId())) {
-            return ResultBean.forbidden("无权操作该板块内容");
+        String denial = authorizationService.getBoardScopeDenialMessage(currentUser, article.getArticleLabelId());
+        if (denial != null) {
+            return ResultBean.forbidden(denial);
         }
         return null;
     }
@@ -424,6 +432,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "通过文章id获取文章信息")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @GetMapping("/admin/getArticleByArticleId/{articleId}")
     public ResultBean getArticleByArticle(@PathVariable Integer articleId){
         if (articleId != null){
@@ -437,6 +446,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "通过文章id获取文章信息（含已删除，管理员用）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @GetMapping("/admin/getArticleByIdInclDeleted/{articleId}")
     public ResultBean getArticleByIdInclDeleted(@PathVariable Integer articleId){
         if (articleId != null){
@@ -447,6 +457,14 @@ public class ArticleController {
             if (article == null) {
                 return ResultBean.error("文章不存在");
             }
+            User currentUser = currentUserService.getCurrentUser();
+            if (currentUser == null) {
+                return ResultBean.error("未获取到登录用户信息，请重新登录");
+            }
+            String denial = authorizationService.getBoardScopeDenialMessage(currentUser, article.getArticleLabelId());
+            if (denial != null) {
+                return ResultBean.forbidden(denial);
+            }
             return ResultBean.success("成功查询文章！", article);
         }
         return ResultBean.error("查询文章id不能为空！");
@@ -454,6 +472,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "获取文章总数")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @GetMapping("/admin/getArticleCount/all")
     public ResultBean getArticleCount(){
         return articleService.getArticleCount();
@@ -461,6 +480,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "获取未通过审核的文章数量")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @GetMapping("/admin/getArticleCountWithNotPass/all")
     public ResultBean getArticleCountWithNotPass(){
         return articleService.getArticleCountWithNotPass();
@@ -489,6 +509,7 @@ public class ArticleController {
      * @return ResultBean 返回结果
      */
     @ApiOperation(value = "按单位统计文章数")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/admin/articleStatisticByOrg")
     public ResultBean articleStatisticByOrg(@RequestBody ArticleStatisticParam articleStatisticParam){
         if (StringUtils.isEmpty(articleStatisticParam.getOrgNo())){
@@ -538,6 +559,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "管理员获取文章列表（支持搜索过滤分页，含标签名；deleted=1 查已删除）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/article/list")
     public ResultBean getAdminArticleList(@RequestBody Map<String, Object> params) {
         String keywords = (String) params.getOrDefault("keywords", "");
@@ -554,6 +576,7 @@ public class ArticleController {
     // ==================== 精华帖接口 ====================
 
     @ApiOperation(value = "设置/取消精华帖")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/featured/set")
     public ResultBean setFeatured(@RequestBody ArticleParam articleParam) {
         if (articleParam.getArticleId() == null) {
@@ -563,6 +586,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "精华帖管理列表（支持搜索过滤分页）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/featured/list")
     public ResultBean getFeaturedList(@RequestBody Map<String, Object> params) {
         String keywords = (String) params.getOrDefault("keywords", "");
@@ -575,6 +599,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "帖子管理页各 tab 总数（已审核/未审核/精华）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @GetMapping("/admin/article/tabCounts")
     public ResultBean getArticleTabCounts() {
         return articleService.getArticleTabCounts();
@@ -597,6 +622,7 @@ public class ArticleController {
     // ==================== 运营方案V2 新增接口 ====================
 
     @ApiOperation(value = "管理员采纳建议")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @PostMapping("/admin/suggestion/adopt")
     public ResultBean adoptSuggestion(@RequestBody Map<String, Object> params) {
         Integer articleId = (Integer) params.get("articleId");
@@ -620,6 +646,10 @@ public class ArticleController {
         Article article = articleService.queryArticleById(articleId);
         if (article == null) {
             return ResultBean.error("文章不存在");
+        }
+        String boardDenial = authorizationService.getBoardScopeDenialMessage(currentUser, article.getArticleLabelId());
+        if (boardDenial != null) {
+            return ResultBean.forbidden(boardDenial);
         }
 
         // 校验：帖子必须是"建议反馈"用途标签（按 label_type 判断，与标签名解耦）
@@ -671,6 +701,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "积分排名导出 Excel（单位排名 + 个人排名 + 积分明细）")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/admin/points/export")
     public void exportPointsRank(
             @RequestParam(required = false, defaultValue = "01") String rankType,

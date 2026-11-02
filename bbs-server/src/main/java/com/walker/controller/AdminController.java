@@ -9,6 +9,7 @@ import com.walker.vo.param.AdminParam;
 import com.walker.vo.param.PointsAdjustParam;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,11 +44,13 @@ public class AdminController {
     }
 
     @GetMapping("/test")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public String test(){
         return "test";
     }
 
     @ApiOperation(value = "调整用户积分")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/points/adjust")
     public ResultBean adjustUserPoints(@RequestBody PointsAdjustParam param){
         if (param.getUserId() == null || param.getPointsChange() == null) {
@@ -64,6 +67,7 @@ public class AdminController {
     }
 
     @ApiOperation(value = "查询用户积分调整记录")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/points/log/{userId}")
     public ResultBean getPointsLogByUserId(@PathVariable Integer userId){
         if (userId == null) {
@@ -78,6 +82,7 @@ public class AdminController {
     }
 
     @ApiOperation(value = "查询用户手动积分调整总额")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
     @GetMapping("/points/total/{userId}")
     public ResultBean getPointsTotal(@PathVariable Integer userId){
         if (userId == null) {
@@ -88,6 +93,7 @@ public class AdminController {
     }
 
     @ApiOperation(value = "撤销一条积分调整记录")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/points/undo/{logId}")
     public ResultBean undoPointsLog(@PathVariable Integer logId){
         if (logId == null) {

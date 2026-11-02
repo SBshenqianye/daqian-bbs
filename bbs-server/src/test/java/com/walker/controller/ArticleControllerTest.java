@@ -168,7 +168,7 @@ class ArticleControllerTest {
         setCurrentUser(5);
         Article article = suggestionArticle(1, 2);
         when(articleService.getArticleByIdRaw(1)).thenReturn(article);
-        when(authorizationService.canModerateBoard(5, 10)).thenReturn(false);
+        when(authorizationService.getBoardScopeDenialMessage(any(), eq(10))).thenReturn("无权操作该板块内容");
 
         com.walker.vo.param.ArticleParam param = new com.walker.vo.param.ArticleParam();
         param.setArticleId(1);
@@ -184,7 +184,7 @@ class ArticleControllerTest {
         setCurrentUser(5);
         Article article = suggestionArticle(1, 2);
         when(articleService.getArticleByIdRaw(1)).thenReturn(article);
-        when(authorizationService.canModerateBoard(5, 10)).thenReturn(true);
+        when(authorizationService.getBoardScopeDenialMessage(any(), eq(10))).thenReturn(null);
         when(articleService.auditArticleByArticleId(1)).thenReturn(ResultBean.success("审核成功"));
 
         com.walker.vo.param.ArticleParam param = new com.walker.vo.param.ArticleParam();

@@ -6,10 +6,10 @@ import router from '@/router'
 import adminStore from '@/utils/adminStore'
 import { requestBadgeRefresh, shouldRefreshBadges } from '@/utils/badgeRefresh'
 
-// 判断当前会话是否具备管理端账号角色（ADMIN / SUPER_ADMIN）
+// 判断当前会话是否具备管理端账号角色（ADMIN / SUPER_ADMIN / MODERATOR）
 function hasAdminRole() {
   const role = adminStore.getRole()
-  return role === 'ADMIN' || role === 'SUPER_ADMIN'
+  return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MODERATOR'
 }
 
 // 设置拦截器

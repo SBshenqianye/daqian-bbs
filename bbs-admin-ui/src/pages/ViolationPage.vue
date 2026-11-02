@@ -219,7 +219,7 @@ export default {
   methods: {
     async loadViolationOptions() {
       try {
-        const res = await this.postRequest('/admin/listDict', {})
+        const res = await this.postRequest('/common/listDictByType', { dictType: 'violation' })
         if (res && res.code == 200 && Array.isArray(res.obj)) {
           // 防御：dict_key 为空的是 v020 迁移残留脏行，跳过；同 dict_key 去重
           const map = new Map()

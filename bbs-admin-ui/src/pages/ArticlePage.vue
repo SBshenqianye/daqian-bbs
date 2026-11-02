@@ -649,14 +649,21 @@ export default {
       // 获取所有标签
       this.getRequestUrl('/common/getArticleLabel').then(resp => {
         if (resp && Array.isArray(resp)) {
-          this.labels = resp
+          this.labels = this.filterLabels(resp)
         } else if (resp && resp.obj && Array.isArray(resp.obj)) {
-          this.labels = resp.obj
+          this.labels = this.filterLabels(resp.obj)
         }
       }).catch(err => {
         console.warn('[ArticlePage] loadLabels', err)
         this.labels = []
       })
+    },
+    /** MODERATOR 的板块下拉只展示自己负责的板块；全局管理员展示全部 */
+    filterLabels(list) {
+      if (!adminStore.isModerator()) return list
+      const ids = adminStore.getBoardScopes().map(s => String(s.labelId))
+      if (ids.length === 0) return []
+      return list.filter(l => ids.indexOf(String(l.labelId)) !== -1)
     },
     handleToggleFeatured(article) {
       const newVal = article.isFeatured === 1 ? 0 : 1

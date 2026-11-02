@@ -8,6 +8,7 @@ import com.walker.vo.SaOrgTreeVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.util.CollectionUtils;
 
@@ -49,6 +50,7 @@ public class SaOrgController {
      * @return ResultBean 返回封装结果
      */
     @ApiOperation("删除单位")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/saOrg/deleteSaOrgByOrgNo")
     public ResultBean deleteSaOrgByOrgNo(@RequestParam("orgNo") String orgNo) {
         return saOrgService.deleteSaOrgByOrgNo(orgNo);
@@ -63,6 +65,7 @@ public class SaOrgController {
      * @return ResultBean 返回封装结果
      */
     @ApiOperation("添加单位")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @GetMapping("/saOrg/addSaOrg")
     public ResultBean addSaOrg(@RequestParam("pOrgNo") String pOrgNo, @RequestParam("orgName") String orgName) {
         return saOrgService.addSaOrg(pOrgNo, orgName);
@@ -78,6 +81,7 @@ public class SaOrgController {
     }
 
     @ApiOperation("批量更新排名选中状态")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/common/saOrg/batchUpdateRanking")
     public ResultBean batchUpdateRanking(@RequestBody Map<String, Boolean> rankingMap) {
         if (rankingMap == null || rankingMap.isEmpty()) {
@@ -95,6 +99,7 @@ public class SaOrgController {
     }
 
     @ApiOperation("批量更新显示选中状态")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     @PostMapping("/common/saOrg/batchUpdateDisplay")
     public ResultBean batchUpdateDisplay(@RequestBody Map<String, Boolean> displayMap) {
         if (displayMap == null || displayMap.isEmpty()) {

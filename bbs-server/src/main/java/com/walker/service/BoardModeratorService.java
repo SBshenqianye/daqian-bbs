@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.walker.pojo.BoardModerator;
 import com.walker.vo.ResultBean;
 
+import java.util.List;
+
 /**
  * 版块管理员服务接口
  */
@@ -20,9 +22,22 @@ public interface BoardModeratorService extends IService<BoardModerator> {
     ResultBean dismiss(Integer userId, Integer labelId);
 
     /**
-     * 版主列表
+     * 版主列表（按用户聚合）
      */
     ResultBean listModerators(Integer page, Integer size);
+
+    /**
+     * 版主列表（按用户聚合，支持用户名/昵称搜索）
+     */
+    ResultBean listModerators(Integer page, Integer size, String keyword);
+
+    /**
+     * 差异更新用户管理的板块（增/删/保持），不改账号角色。
+     *
+     * @param userId   用户 ID
+     * @param labelIds 目标板块 ID 集合；空集合表示撤销全部板块
+     */
+    ResultBean updateBoards(Integer userId, List<Integer> labelIds);
 
     /**
      * 检查用户是否为某标签版主

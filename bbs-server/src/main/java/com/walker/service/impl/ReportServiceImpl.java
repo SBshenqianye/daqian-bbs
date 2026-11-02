@@ -171,7 +171,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
      * 举报数据范围过滤：超管看全部；普通管理员仅看自己板块的举报。
      */
     private List<Report> filterVisibleReports(User currentUser, List<Report> reports) {
-        if (authorizationService.isSuperAdmin(currentUser)) {
+        if (authorizationService.isGlobalAdmin(currentUser)) {
             return reports;
         }
         List<Report> visible = new ArrayList<>();
@@ -188,7 +188,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         if (currentUser == null || report == null) {
             return false;
         }
-        if (authorizationService.isSuperAdmin(currentUser)) {
+        if (authorizationService.isGlobalAdmin(currentUser)) {
             return true;
         }
         Integer labelId = contentBoardResolver.resolveLabelId(report.getTargetType(), report.getTargetId());
@@ -262,9 +262,11 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         if (!"pending".equals(report.getStatus())) {
             return ResultBean.error("该举报已处理");
         }
-        // 数据范围：超管放行；普通管理员仅可处理自己板块的举报
-        if (!canReviewReport(currentUser, report)) {
-            return ResultBean.forbidden("无权处理该板块的举报");
+        // 数据范围：全局管理员放行；MODERATOR 必须在该内容所属板块内
+        Integer reviewLabelId = contentBoardResolver.resolveLabelId(report.getTargetType(), report.getTargetId());
+        String boardDenial = authorizationService.getBoardScopeDenialMessage(currentUser, reviewLabelId);
+        if (boardDenial != null) {
+            return ResultBean.forbidden(boardDenial);
         }
         // 权限校验：除超级管理员外，举报人不得审核自己的举报（2026-10-12 需求调整：超管豁免）。
         // 对驳回+恶意扣分同样生效：自审校验在所有分支之前，不破坏 #2 的防自报自审

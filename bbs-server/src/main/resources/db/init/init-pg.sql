@@ -274,6 +274,9 @@ CREATE TABLE IF NOT EXISTS bbs_user (
     CONSTRAINT uk_bbs_user_id_card UNIQUE (id_card)
 );
 
+COMMENT ON COLUMN bbs_user.user_type
+    IS '用户类型（1：普通用户，2：管理员，3：超级管理员，4：版主）';
+
 -- 重新启用外键检查
 SET session_replication_role = 'origin';
 

@@ -119,19 +119,31 @@ export function isLoggedIn() {
   return !!(state.admin && state.admin.id)
 }
 
-/** 当前账号角色：USER / ADMIN / SUPER_ADMIN（旧会话回退 userType 映射） */
+/** 当前账号角色：USER / ADMIN / SUPER_ADMIN / MODERATOR（旧会话回退 userType 映射） */
 export function getRole() {
   if (!state.admin) return null
   if (state.admin.role) return state.admin.role
   const type = String(state.admin.userType || '1')
   if (type === '3') return 'SUPER_ADMIN'
   if (type === '2') return 'ADMIN'
+  if (type === '4') return 'MODERATOR'
   return 'USER'
 }
 
 /** 是否是超级管理员（按角色判断，不再依赖 id=1；旧会话回退 userType） */
 export function isSuperAdmin() {
   return getRole() === 'SUPER_ADMIN'
+}
+
+/** 是否是全局管理员（ADMIN / SUPER_ADMIN） */
+export function isGlobalAdmin() {
+  const role = getRole()
+  return role === 'ADMIN' || role === 'SUPER_ADMIN'
+}
+
+/** 是否是版主账号 */
+export function isModerator() {
+  return getRole() === 'MODERATOR'
 }
 
 /** 兼容旧调用名：isAdminId1 现在语义为“是否超级管理员” */
@@ -167,6 +179,12 @@ export function getBoardScopes() {
   return state.admin.boardScopes
 }
 
+/** 是否已分配板块（非版主账号默认 true；版主看 boardScopes） */
+export function hasBoards() {
+  if (!isModerator()) return true
+  return getBoardScopes().length > 0
+}
+
 /** 是否是指定板块的版主 */
 export function isBoardModerator(labelId) {
   return getBoardScopes().some(s => String(s.labelId) === String(labelId))
@@ -196,11 +214,14 @@ export default {
   isLoggedIn,
   getRole,
   isSuperAdmin,
+  isGlobalAdmin,
+  isModerator,
   isAdminId1,
   getPermissions,
   hasPermission,
   hasAnyPermission,
   getBoardScopes,
+  hasBoards,
   isBoardModerator,
   getAdminId,
   getUsername,

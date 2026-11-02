@@ -31,6 +31,11 @@ import java.util.List;
 public interface UserService extends IService<User> {
 
     /**
+     * 当前用户的有效板块范围（供会话刷新接口返回 boardScopes）
+     */
+    List<Map<String, Object>> getBoardScopes(Integer userId);
+
+    /**
      * 登录之后返回token
      * @param username
      * @param password

@@ -68,6 +68,8 @@
 </template>
 
 <script>
+import adminStore from '@/utils/adminStore'
+
 export default {
   name: 'Dashboard',
   data() {
@@ -76,15 +78,15 @@ export default {
       quickDockCollapsed: false,
       // 快捷入口（badgeKey 为 null 表示不参与待办排序的常驻入口）
       quickItems: [
-        { label: '举报管理', path: '/report', icon: 'flag', badgeKey: 'reportPending', iconColor: 'text-rank-gold' },
-        { label: '帖子管理', path: '/article', icon: 'rate_review', badgeKey: 'articlePending', iconColor: 'text-tertiary-container' },
-        { label: '违规管理', path: '/violation', icon: 'gavel', badgeKey: 'violationActive', iconColor: 'text-error' },
-        { label: '申诉管理', path: '/appeal', icon: 'assignment', badgeKey: 'appealPending' },
-        { label: '版主投诉', path: '/moderator-complaint', icon: 'feedback', badgeKey: 'moderatorComplaintPending' },
-        { label: '采纳审批', path: '/approve-adopt', icon: 'check_circle', badgeKey: 'adoptPending' },
-        { label: '精华审批', path: '/featured-recommendation', icon: 'stars', badgeKey: 'featuredPending' },
-        { label: '用户管理', path: '/user', icon: 'manage_accounts', badgeKey: null, iconColor: 'text-primary' },
-        { label: '积分排名', path: '/points', icon: 'leaderboard', badgeKey: null, iconColor: 'text-rank-gold' },
+        { label: '举报管理', path: '/report', icon: 'flag', badgeKey: 'reportPending', iconColor: 'text-rank-gold', permission: 'report:review' },
+        { label: '帖子管理', path: '/article', icon: 'rate_review', badgeKey: 'articlePending', iconColor: 'text-tertiary-container', permission: 'article:read' },
+        { label: '违规管理', path: '/violation', icon: 'gavel', badgeKey: 'violationActive', iconColor: 'text-error', permission: 'article:review' },
+        { label: '申诉管理', path: '/appeal', icon: 'assignment', badgeKey: 'appealPending', permission: 'appeal:review' },
+        { label: '版主投诉', path: '/moderator-complaint', icon: 'feedback', badgeKey: 'moderatorComplaintPending', permission: 'moderator:complaint:review' },
+        { label: '采纳审批', path: '/approve-adopt', icon: 'check_circle', badgeKey: 'adoptPending', permission: 'adopt:review' },
+        { label: '精华审批', path: '/featured-recommendation', icon: 'stars', badgeKey: 'featuredPending', permission: 'featured:review' },
+        { label: '用户管理', path: '/user', icon: 'manage_accounts', badgeKey: null, iconColor: 'text-primary', permission: 'user:read' },
+        { label: '积分排名', path: '/points', icon: 'leaderboard', badgeKey: null, iconColor: 'text-rank-gold', permission: 'points:read' },
       ],
       stats: {
         userCount: 0,
@@ -103,7 +105,7 @@ export default {
   },
   computed: {
     overviewCards() {
-      return [
+      const cards = [
         { label: '注册用户', value: this.stats.userCount, icon: 'group', iconColor: 'text-primary' },
         { label: '帖子总数', value: this.stats.articleCount, icon: 'article', iconColor: 'text-tertiary-container', hint: '待审 ' + this.stats.articlePending + ' · 精华 ' + this.stats.featuredCount },
         { label: '评论总数', value: this.stats.commentCount, icon: 'chat', iconColor: 'text-tertiary-container' },
@@ -111,20 +113,29 @@ export default {
         { label: '申诉待审', value: this.stats.appealPending, icon: 'gavel', iconColor: 'text-rank-gold' },
         { label: '进行中违规', value: this.stats.violationActive, icon: 'gpp_bad', iconColor: 'text-error' }
       ]
+      // MODERATOR 只展示本板块口径，隐藏全局用户/评论指标
+      if (adminStore.isModerator()) {
+        return cards.filter(c => c.label !== '注册用户' && c.label !== '评论总数')
+      }
+      return cards
+    },
+    /** 按权限点过滤快捷入口 */
+    visibleQuickItems() {
+      return this.quickItems.filter(item => adminStore.hasPermission(item.permission))
     },
     /** 快捷入口的待办数（badgeKey 为空返回 0） */
     totalPending() {
-      return this.quickItems.reduce((sum, item) => sum + this.countOf(item), 0)
+      return this.visibleQuickItems.reduce((sum, item) => sum + this.countOf(item), 0)
     },
     /** 排序：有待办的在前面（按待办数降序），无待办按默认顺序 */
     sortedQuickItems() {
-      return [...this.quickItems].sort((a, b) => {
+      return [...this.visibleQuickItems].sort((a, b) => {
         const ba = this.countOf(a)
         const bb = this.countOf(b)
         if (ba > 0 && bb > 0) return bb - ba
         if (ba > 0) return -1
         if (bb > 0) return 1
-        return this.quickItems.indexOf(a) - this.quickItems.indexOf(b)
+        return this.visibleQuickItems.indexOf(a) - this.visibleQuickItems.indexOf(b)
       })
     },
   },

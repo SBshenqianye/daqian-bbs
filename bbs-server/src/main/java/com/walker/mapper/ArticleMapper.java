@@ -66,6 +66,16 @@ public interface ArticleMapper extends BaseMapper<Article> {
     long countDeletedArticles();
 
     /**
+     * 已删除文章总数（限定板块范围，管理端版主口径）
+     */
+    @Select("<script>SELECT COUNT(1) FROM bbs_article WHERE is_delete = 1" +
+            "<if test='labelIds != null and labelIds.size() > 0'>" +
+            " AND article_label_id IN " +
+            "<foreach collection='labelIds' item='lid' open='(' separator=',' close=')'>#{lid}</foreach>" +
+            "</if></script>")
+    long countDeletedArticlesByLabelIds(@Param("labelIds") List<Integer> labelIds);
+
+    /**
      * 查询精华帖列表（管理端，支持搜索过滤）
      */
     List<Article> selectFeaturedList(Map<String, Object> params);

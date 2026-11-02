@@ -287,6 +287,10 @@
         <if test="labelId != null">
             AND a.article_label_id = #{labelId}
         </if>
+        <if test="labelIds != null and labelIds.size() > 0">
+            AND a.article_label_id IN
+            <foreach collection="labelIds" item="lid" open="(" separator="," close=")">#{lid}</foreach>
+        </if>
         <if test="startTime != null and startTime != ''">
             AND a.create_time >= #{startTime}
         </if>
@@ -311,6 +315,10 @@
         <if test="labelId != null">
             AND a.article_label_id = #{labelId}
         </if>
+        <if test="labelIds != null and labelIds.size() > 0">
+            AND a.article_label_id IN
+            <foreach collection="labelIds" item="lid" open="(" separator="," close=")">#{lid}</foreach>
+        </if>
         <if test="startTime != null and startTime != ''">
             AND a.create_time >= #{startTime}
         </if>
@@ -332,6 +340,10 @@
         </if>
         <if test="labelId != null">
             AND a.article_label_id = #{labelId}
+        </if>
+        <if test="labelIds != null and labelIds.size() > 0">
+            AND a.article_label_id IN
+            <foreach collection="labelIds" item="lid" open="(" separator="," close=")">#{lid}</foreach>
         </if>
         <if test="startTime != null and startTime != ''">
             AND a.create_time >= #{startTime}
@@ -382,6 +394,10 @@
         </if>
         <if test="labelId != null">
             AND a.article_label_id = #{labelId}
+        </if>
+        <if test="labelIds != null and labelIds.size() > 0">
+            AND a.article_label_id IN
+            <foreach collection="labelIds" item="lid" open="(" separator="," close=")">#{lid}</foreach>
         </if>
         <if test="startTime != null and startTime != ''">
             AND a.create_time >= #{startTime}

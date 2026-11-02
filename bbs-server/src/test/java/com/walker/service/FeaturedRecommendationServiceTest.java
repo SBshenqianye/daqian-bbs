@@ -2,6 +2,7 @@ package com.walker.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.walker.mapper.FeaturedRecommendationMapper;
+import com.walker.config.security.Permission;
 import com.walker.pojo.Article;
 import com.walker.pojo.FeaturedRecommendation;
 import com.walker.pojo.User;
@@ -57,6 +58,9 @@ class FeaturedRecommendationServiceTest {
         baseMapperField.set(recommendationService, recommendationMapper);
         SecurityTestSupport.injectCurrentUser(recommendationService);
         SecurityTestSupport.injectSelfApprovalPolicy(recommendationService, authorizationService);
+        // 默认授予精华终审权限；Q5 用例单独覆盖为 false
+        lenient().when(authorizationService.hasPermission(any(User.class), eq(Permission.FEATURED_REVIEW)))
+                .thenReturn(true);
         // 默认当前登录管理员 id=1，敏感用例可覆盖
         setCurrentUser(1);
     }
@@ -226,6 +230,17 @@ class FeaturedRecommendationServiceTest {
     }
 
     // ==================== 2026-10-12 需求：不得审核自己的推荐（超管豁免） ====================
+
+    @Test
+    @DisplayName("Q5：MODERATOR 不能终审精华推荐（featured:review）")
+    void review_moderator_forbidden() {
+        when(authorizationService.hasPermission(any(User.class), eq(Permission.FEATURED_REVIEW)))
+                .thenReturn(false);
+        ResultBean result = recommendationService.review(1, "approved", "好", 1);
+        assertEquals(403, result.getCode());
+        assertTrue(result.getMessage().contains("权限"));
+        verify(recommendationMapper, never()).updateById(any(FeaturedRecommendation.class));
+    }
 
     @Test
     @DisplayName("审核推荐 → 普通管理员审核自己的推荐 → 拒绝")
