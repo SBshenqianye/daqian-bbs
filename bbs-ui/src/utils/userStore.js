@@ -118,6 +118,23 @@ export function isAdmin() {
   return type === '2' || type === '3'
 }
 
+/** 当前会话权限点（旧会话没有 permissions 时返回空） */
+export function getPermissions() {
+  if (!state.user || !Array.isArray(state.user.permissions)) return []
+  return state.user.permissions
+}
+
+/**
+ * 是否拥有权限点（Phase D）。
+ * 旧会话没有 permissions 字段时默认放行，最终仍由后端校验。
+ */
+export function hasPermission(code) {
+  if (!code) return true
+  if (!state.user) return false
+  if (!Array.isArray(state.user.permissions)) return true
+  return state.user.permissions.indexOf(code) !== -1
+}
+
 /** 获取用户ID */
 export function getUserId() {
   return state.user ? state.user.id : null
@@ -146,6 +163,8 @@ export default {
   refresh,
   isLoggedIn,
   isAdmin,
+  getPermissions,
+  hasPermission,
   getUserId,
   getNickname,
 }

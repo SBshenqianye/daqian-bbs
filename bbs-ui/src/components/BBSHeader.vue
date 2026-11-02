@@ -63,6 +63,7 @@
       <!-- Right: Actions & Profile -->
       <div class="flex items-center gap-6 flex-shrink-0">
         <router-link
+          v-if="canPost"
           to="/write"
           class="flex items-center gap-2 bg-brand-blue text-on-primary px-5 py-2 rounded-lg font-label-md text-label-md hover:bg-primary-container transition-all active:scale-95 no-underline"
         >
@@ -269,6 +270,7 @@
 import { getToken, getUser, removeToken, removeUser } from '@/utils/auth'
 import { Notification } from 'element-ui'
 import notificationStore from '@/utils/notificationStore'
+import userStore from '@/utils/userStore'
 
 export default {
   name: 'BBSHeader',
@@ -291,6 +293,11 @@ export default {
     }
   },
   computed: {
+    /** 是否显示发帖入口：未登录仍显示（点击去登录），登录后按权限点判断 */
+    canPost() {
+      if (!userStore.isLoggedIn()) return true
+      return userStore.hasPermission('post:create')
+    },
     /** 未读总数（= 各分类之和，来自全局通知 store） */
     unreadTotal() {
       return notificationStore.state.total

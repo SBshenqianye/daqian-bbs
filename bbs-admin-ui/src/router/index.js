@@ -121,6 +121,11 @@ export default new Router({
                     meta: { title: '权限矩阵', permission: 'permission:manage' }
                 },
                 {
+                    path: '/permission-groups',
+                    component: () => import('../pages/PermissionGroupPage.vue'),
+                    meta: { title: '权限管理', permission: 'permission:manage' }
+                },
+                {
                     path: '/audit',
                     component: () => import('../pages/AuditLogPage.vue'),
                     meta: { title: '审计日志', permission: 'audit:read' }

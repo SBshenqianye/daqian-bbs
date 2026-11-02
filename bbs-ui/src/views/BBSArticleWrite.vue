@@ -227,8 +227,8 @@
 
     <!-- Bottom Action Bar -->
     <div class="bottom-bar fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-4 px-10 flex justify-center space-x-4 z-40">
-      <button class="px-10 py-2.5 bg-primary text-white font-medium rounded-full hover:opacity-90 transition-all shadow-md active:scale-95" @click="handlePublish" :disabled="publishing">
-        {{ publishing ? '发布中...' : '发布' }}
+      <button class="px-10 py-2.5 bg-primary text-white font-medium rounded-full hover:opacity-90 transition-all shadow-md active:scale-95 disabled:opacity-50" @click="handlePublish" :disabled="publishing || !canPublish">
+        {{ publishing ? '发布中...' : (canPublish ? '发布' : '无发帖权限') }}
       </button>
       <button class="px-10 py-2.5 font-medium rounded-full hover:bg-gray-200 transition-all active:scale-95 bg-red-500 text-white" @click="$router.back()">
         取消
@@ -242,6 +242,7 @@ import { Message, Loading } from 'element-ui'
 import { getArticleById, getArticleFileByArticleId } from '@/api/article'
 import { mdToHtml, htmlToMd } from '@/utils/markdown'
 import { handleResponse } from '../../../shared/feedback'
+import userStore from '@/utils/userStore'
 
 // 复用正文 markdown 渲染样式（与 BBSArticleDetails 一致）
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
@@ -270,6 +271,9 @@ export default {
     }
   },
   computed: {
+    canPublish() {
+      return userStore.hasPermission('post:create')
+    },
     selectedLabelName() {
       const found = this.labelList.find(l => String(l.labelId) === String(this.selectedLabelId))
       return found ? found.labelName : ''
