@@ -92,6 +92,20 @@ public class AuditLogServiceImpl extends ServiceImpl<AuditLogMapper, AuditLog>
         return data;
     }
 
+    @Override
+    public int purgeBefore(String cutoff) {
+        if (StringUtils.isBlank(cutoff)) {
+            return 0;
+        }
+        try {
+            return auditLogMapper.delete(new LambdaQueryWrapper<AuditLog>()
+                    .lt(AuditLog::getCreateTime, cutoff.trim()));
+        } catch (Exception e) {
+            log.warn("[审计日志] 清理失败，已忽略: cutoff={}, err={}", cutoff, e.getMessage());
+            return 0;
+        }
+    }
+
     private void normalize(AuditLog entity) {
         if (StringUtils.isBlank(entity.getCreateTime())) {
             entity.setCreateTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));

@@ -22,4 +22,12 @@ public interface AuditLogService {
                              Integer operatorId, String operatorName,
                              String result, String startTime, String endTime,
                              String targetType, String targetId);
+
+    /**
+     * 清理早于指定时间的审计日志（保留策略）。
+     *
+     * @param cutoff 截止时间 yyyy-MM-dd HH:mm:ss（小于该时间的记录会被删除）
+     * @return 删除条数
+     */
+    int purgeBefore(String cutoff);
 }

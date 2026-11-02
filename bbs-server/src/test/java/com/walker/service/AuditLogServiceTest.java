@@ -65,6 +65,17 @@ class AuditLogServiceTest {
     }
 
     @Test
+    @DisplayName("按截止时间清理：返回删除条数")
+    void purgeBefore_returnsDeletedCount() {
+        when(auditLogMapper.delete(any())).thenReturn(3);
+
+        int deleted = auditLogService.purgeBefore("2026-01-01 00:00:00");
+
+        assertEquals(3, deleted);
+        verify(auditLogMapper).delete(any());
+    }
+
+    @Test
     @DisplayName("分页查询：返回 records/total/page/size")
     @SuppressWarnings("unchecked")
     void list_returnsPagedMap() {

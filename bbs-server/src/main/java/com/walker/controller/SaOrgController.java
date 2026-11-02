@@ -1,6 +1,7 @@
 package com.walker.controller;
 
 import com.walker.mapper.SaOrgMapper;
+import com.walker.config.audit.AuditContext;
 import com.walker.config.audit.AuditLog;
 import com.walker.pojo.SaOrg;
 import com.walker.service.SaOrgService;
@@ -102,6 +103,10 @@ public class SaOrgController {
                             .eq(SaOrg::getOrgNo, entry.getKey())
             );
         }
+        Map<String, Object> after = new java.util.LinkedHashMap<>();
+        after.put("scope", "all");
+        after.put("affected", rankingMap.size());
+        AuditContext.setAfter(after);
         return ResultBean.success("更新成功");
     }
 
@@ -115,6 +120,10 @@ public class SaOrgController {
             return ResultBean.error("参数不能为空");
         }
         saOrgService.batchUpdateDisplay(displayMap);
+        Map<String, Object> after = new java.util.LinkedHashMap<>();
+        after.put("scope", "all");
+        after.put("affected", displayMap.size());
+        AuditContext.setAfter(after);
         return ResultBean.success("更新成功");
     }
 

@@ -10,6 +10,7 @@ import com.walker.mapper.SaOrgMapper;
 import com.walker.pojo.*;
 import com.walker.service.*;
 import com.walker.service.ArticleLabelService;
+import com.walker.config.audit.AuditContext;
 import com.walker.config.security.SelfApprovalException;
 import com.walker.utils.ConstantUtil;
 import com.walker.utils.ContentQualityUtil;
@@ -576,10 +577,16 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public void handleBatchDeleteArticlesByAlive() {
+        long affected = articleMapper.selectCount(
+                new LambdaQueryWrapper<Article>().eq(Article::getEnable, 1));
         articleMapper.delete(
                 new LambdaQueryWrapper<Article>()
                         .eq(Article::getEnable, 1)
         );
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("scope", "all");
+        after.put("affected", affected);
+        AuditContext.setAfter(after);
     }
 
     @Override
@@ -594,7 +601,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     .setEnable(1);
             articleMapper.updateById(newArticle);
         });
-
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("scope", "all");
+        after.put("affected", articles.size());
+        AuditContext.setAfter(after);
     }
 
     @Override
