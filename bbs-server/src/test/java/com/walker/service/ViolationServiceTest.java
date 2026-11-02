@@ -421,7 +421,9 @@ class ViolationServiceTest {
         v.setRelatedId(relatedId);
         v.setOperatorId(1);
         v.setStatus("active");
-        v.setCreateTime("2026-10-12 10:00:00");
+        // 必须落在“当前月”，否则月度累计扣分判断会随月份翻页失效
+        v.setCreateTime(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                .format(new java.util.Date()));
         return v;
     }
 
