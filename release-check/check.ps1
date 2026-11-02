@@ -1,35 +1,41 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 <#
-  版主角色化 / v039 发布检查脚本（离线可用，仅依赖 PowerShell 5.1 + mysql 客户端）
-  详细步骤见同目录 README.md。
+  版主角色化 / v039 发布检查脚本（离线可用）
+  默认面向 PostgreSQL；也支持 MySQL（-DbType MySql）。
 
-  用法示例：
-    # 部署前：只读检查 + 保存基线
-    .\check.ps1 -Mode Pre -MySqlExe "C:\mysql\bin\mysql.exe" -DbUser root -DbName bbs_db
+  依赖：PowerShell 5.1 + psql（PG）或 mysql（MySQL）。
+  说明：脚本只执行只读查询；回滚 SQL 需手工确认后单独执行。
 
-    # 部署后：数据库检查（自动对比基线）+ API 检查
-    .\check.ps1 -Mode Post -MySqlExe "C:\mysql\bin\mysql.exe" -DbUser root -DbName bbs_db `
+  用法（PG，最常见）：
+    # 部署前
+    .\check.ps1 -Mode Pre -DbName bbs_db -DbUser postgres
+    # 部署后（含 API 检查）
+    .\check.ps1 -Mode Post -DbName bbs_db -DbUser postgres `
       -BaseUrl "http://127.0.0.1:8080/bbs-server" -SuperUser SUPER1 -SuperPassword "***"
 
-    # 只跑 API（不连数据库）
-    .\check.ps1 -Mode Api -BaseUrl "http://127.0.0.1:8080/bbs-server" -SuperUser SUPER1 -SuperPassword "***"
-
-  说明：
-    - 脚本不会执行任何写 SQL；回滚 SQL 需要手工确认后单独执行。
-    - 密码优先取参数，其次取环境变量 MYSQL_PWD；都没给时交互输入。
+  如果本机没有 psql，可在装有 psql 的机器上运行，或用 -PgContainer 走本地容器（仅开发环境）。
 #>
 [CmdletBinding()]
 param(
     [ValidateSet('Pre', 'Post', 'Api')]
     [string]$Mode = 'Pre',
 
+    [ValidateSet('Pg', 'MySql')]
+    [string]$DbType = 'Pg',
+
     # 数据库
-    [string]$MySqlExe = 'mysql',
     [string]$DbHost = '127.0.0.1',
-    [int]$DbPort = 3306,
-    [string]$DbUser = 'root',
+    [int]$DbPort = 5432,
+    [string]$DbUser = 'postgres',
     [string]$DbPassword = '',
     [string]$DbName = 'bbs_db',
+
+    # 客户端可执行文件（PG 默认 psql；MySQL 默认 mysql）
+    [string]$PsqlExe = 'psql',
+    [string]$MySqlExe = 'mysql',
+
+    # 可选：本地开发用，通过 WSL 里的 podman 容器执行 psql（生产不要用）
+    [string]$PgContainer = '',
 
     # API（含 context-path，例如 http://127.0.0.1:8080/bbs-server）
     [string]$BaseUrl = '',
@@ -46,9 +52,27 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# 默认端口/用户随数据库类型调整（显式传参时以传参为准）
+if (-not $PSBoundParameters.ContainsKey('DbPort')) {
+    $DbPort = if ($DbType -eq 'Pg') { 5432 } else { 3306 }
+}
+if (-not $PSBoundParameters.ContainsKey('DbUser')) {
+    $DbUser = if ($DbType -eq 'Pg') { 'postgres' } else { 'root' }
+}
+
+# ---- 编码兼容：脚本以 UTF-8 BOM 保存；运行时统一 UTF-8（无 BOM），兼容 GBK 控制台 ----
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+try { [Console]::OutputEncoding = $utf8NoBom } catch { }
+try { $OutputEncoding = $utf8NoBom } catch { }
+try { [Console]::InputEncoding = $utf8NoBom } catch { }
+$env:PGCLIENTENCODING = 'UTF8'
+
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $OutDir = Join-Path $Root 'out'
 if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out-Null }
+
+$SqlDir = Join-Path $Root ("sql\{0}" -f $(if ($DbType -eq 'Pg') { 'pg' } else { 'mysql' }))
 
 $script:PassCount = 0
 $script:FailCount = 0
@@ -79,42 +103,48 @@ function Assert-Equal([string]$Name, $Expected, $Actual) {
     else { Test-Fail $Name "expected=[$Expected] actual=[$Actual]" }
 }
 
-function Assert-Contains([string]$Name, [string]$Text, [string]$Part) {
-    if ($Text -and $Text.Contains($Part)) { Test-Pass $Name }
-    else { Test-Fail $Name "text=[$Text] 不包含 [$Part]" }
-}
-
-function Get-ApiCode($Response) {
-    $json = Convert-JsonSafe $Response.Text
-    if ($null -ne $json -and $null -ne $json.code) { return [int]$json.code }
-    return [int]$Response.Status
-}
-
-# 注意：业务层 403 可能以 HTTP 200 + body.code=403 返回，必须看 body.code
-function Assert-ApiCode([string]$Name, $Expected, $Response) {
-    $code = Get-ApiCode $Response
-    if ("$Expected" -eq "$code") {
-        Test-Pass $Name "code=$code (http=$($Response.Status))"
-    } else {
-        Test-Fail $Name "expected code=$Expected actual code=$code (http=$($Response.Status)) body=$($Response.Text)"
-    }
-}
-
-# ---------------------------------------------------------------- 数据库检查
+# ---------------------------------------------------------------- 数据库
 function Invoke-DbSqlFile([string]$SqlFile) {
     if (-not (Test-Path $SqlFile)) { throw "找不到 SQL 文件：$SqlFile" }
 
-    $previous = $env:MYSQL_PWD
-    if ($DbPassword) { $env:MYSQL_PWD = $DbPassword }
+    # 显式按 UTF-8 读取，避免 GBK 系统把中文 SQL 读坏；顺手去掉可能的 BOM
+    $sql = Get-Content -Raw -Path $SqlFile -Encoding UTF8
+    $sql = $sql.TrimStart([char]0xFEFF)
+    $previousPg = $env:PGPASSWORD
+    $previousMy = $env:MYSQL_PWD
+
     try {
-        $sql = Get-Content -Raw -Path $SqlFile
-        $raw = $sql | & $MySqlExe "--host=$DbHost" "--port=$DbPort" "--user=$DbUser" "--database=$DbName" '--batch' '--skip-column-names' 2>&1
+        # 原生命令的 stderr（psql NOTICE、wsl 提示）不应该中断脚本；
+        # 统一改为 Continue，执行后用 $LASTEXITCODE 判定成败。
+        $previousEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+
+        if ($DbType -eq 'Pg') {
+            $env:PGCLIENTENCODING = 'UTF8'
+            if ($PgContainer) {
+                $raw = $sql | & wsl -e podman exec -e PGCLIENTENCODING=UTF8 -i $PgContainer `
+                    psql -U $DbUser -d $DbName -v ON_ERROR_STOP=1 -A -t -F "`t" --no-psqlrc 2>&1
+            } else {
+                if ($DbPassword) { $env:PGPASSWORD = $DbPassword }
+                $raw = $sql | & $PsqlExe -h $DbHost -p $DbPort -U $DbUser -d $DbName `
+                    -v ON_ERROR_STOP=1 -A -t -F "`t" --no-psqlrc 2>&1
+            }
+        } else {
+            if ($DbPassword) { $env:MYSQL_PWD = $DbPassword }
+            $raw = $sql | & $MySqlExe "--host=$DbHost" "--port=$DbPort" "--user=$DbUser" `
+                "--database=$DbName" '--batch' '--skip-column-names' '--default-character-set=utf8mb4' 2>&1
+        }
+
+        $ErrorActionPreference = $previousEap
+
         if ($LASTEXITCODE -ne 0) {
-            throw "mysql 执行失败（exit=$LASTEXITCODE）：`n$($raw -join "`n")"
+            throw "数据库执行失败（exit=$LASTEXITCODE）：`n$($raw -join "`n")"
         }
     } finally {
-        if ($null -eq $previous) { Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue }
-        else { $env:MYSQL_PWD = $previous }
+        if ($null -eq $previousPg) { Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue }
+        else { $env:PGPASSWORD = $previousPg }
+        if ($null -eq $previousMy) { Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue }
+        else { $env:MYSQL_PWD = $previousMy }
     }
 
     $map = @{}
@@ -130,12 +160,12 @@ function Invoke-DbSqlFile([string]$SqlFile) {
     return @{ Map = $map; Lines = $lines }
 }
 
-function Get-BaselinePath { Join-Path $OutDir 'precheck-baseline.json' }
+function Get-BaselinePath { Join-Path $OutDir ("precheck-baseline-{0}.json" -f $DbType.ToLower()) }
 
 function Read-Baseline {
     $path = Get-BaselinePath
     if (-not (Test-Path $path)) { return $null }
-    try { return Get-Content -Raw -Path $path | ConvertFrom-Json } catch { return $null }
+    try { return Get-Content -Raw -Path $path -Encoding UTF8 | ConvertFrom-Json } catch { return $null }
 }
 
 function Show-DbMap($Map) {
@@ -145,12 +175,13 @@ function Show-DbMap($Map) {
 }
 
 function Invoke-PreCheck {
-    Write-Section "部署前：数据库只读检查（$DbName@$DbHost`:$DbPort）"
-    $r = Invoke-DbSqlFile (Join-Path $Root 'sql\precheck.sql')
+    Write-Section ("部署前：数据库只读检查（{0} / {1}）" -f $DbType, $DbName)
+    $r = Invoke-DbSqlFile (Join-Path $SqlDir 'precheck.sql')
     Show-DbMap $r.Map
 
     $baseline = [ordered]@{
         savedAt       = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+        dbType        = $DbType
         database      = $DbName
         schemaVersion = $r.Map['schema_version']
         hasV039       = $r.Map['has_v039']
@@ -163,11 +194,11 @@ function Invoke-PreCheck {
         activeMods    = $r.Map['active_moderators']
         adminSuper    = $r.Map['admin_super']
         candidates    = $r.Map['candidates']
-        comment       = $r.Map['comment']
+        commentHas4   = $r.Map['comment_has_4']
         candidateRows = @($r.Lines | Where-Object { $_ -like 'candidate_user:*' })
     }
     $baseline | ConvertTo-Json -Depth 4 | Set-Content -Path (Get-BaselinePath) -Encoding UTF8
-    $stamped = Join-Path $OutDir ("precheck-{0}.json" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    $stamped = Join-Path $OutDir ("precheck-{0}-{1}.json" -f $DbType.ToLower(), (Get-Date -Format 'yyyyMMdd-HHmmss'))
     Copy-Item (Get-BaselinePath) $stamped
 
     Assert-Equal "v039 尚未执行" '0' $r.Map['has_v039']
@@ -176,18 +207,18 @@ function Invoke-PreCheck {
 }
 
 function Invoke-PostCheck {
-    Write-Section "部署后：数据库只读检查（$DbName@$DbHost`:$DbPort）"
-    $r = Invoke-DbSqlFile (Join-Path $Root 'sql\postcheck.sql')
+    Write-Section ("部署后：数据库只读检查（{0} / {1}）" -f $DbType, $DbName)
+    $r = Invoke-DbSqlFile (Join-Path $SqlDir 'postcheck.sql')
     Show-DbMap $r.Map
 
     Assert-Equal "v039 已记录" '1' $r.Map['has_v039']
     Assert-Equal "不存在非法 user_type" '0' $r.Map['invalid_type']
     Assert-Equal "没有遗漏的升级候选" '0' $r.Map['candidates_after']
-    Assert-Contains "列注释包含 4：版主" $r.Map['comment'] '4：版主'
+    Assert-Equal "列注释包含 4：版主" '1' $r.Map['comment_has_4']
 
     $base = Read-Baseline
     if ($null -eq $base) {
-        Test-Skip "与部署前基线的对比（未找到 out/precheck-baseline.json）"
+        Test-Skip "与部署前基线的对比（未找到 out/precheck-baseline-$($DbType.ToLower()).json）"
     } else {
         Assert-Equal "用户总数未变化" $base.totalUsers $r.Map['total_users']
         Assert-Equal "管理员数量未变化" $base.type2 $r.Map['type_2']
@@ -215,7 +246,7 @@ function Invoke-PostCheck {
     }
 }
 
-# ---------------------------------------------------------------- API 检查
+# ---------------------------------------------------------------- API
 function Invoke-Http {
     param(
         [string]$Method,
@@ -269,11 +300,27 @@ function Invoke-Login([string]$User, [string]$Password) {
         return @{ Ok = $false; Status = $resp.Status; Json = $json; Text = $resp.Text }
     }
     return @{
-        Ok    = $true
+        Ok     = $true
         Status = $resp.Status
-        Json  = $json
-        User  = $json.obj.user
-        Token = [string]$json.obj.tokenHead + [string]$json.obj.token
+        Json   = $json
+        User   = $json.obj.user
+        Token  = [string]$json.obj.tokenHead + [string]$json.obj.token
+    }
+}
+
+function Get-ApiCode($Response) {
+    $json = Convert-JsonSafe $Response.Text
+    if ($null -ne $json -and $null -ne $json.code) { return [int]$json.code }
+    return [int]$Response.Status
+}
+
+# 后端把权限拒绝统一包装为 HTTP 200 + body.code=403
+function Assert-ApiCode([string]$Name, $Expected, $Response) {
+    $code = Get-ApiCode $Response
+    if ("$Expected" -eq "$code") {
+        Test-Pass $Name "code=$code (http=$($Response.Status))"
+    } else {
+        Test-Fail $Name "expected code=$Expected actual code=$code (http=$($Response.Status)) body=$($Response.Text)"
     }
 }
 
@@ -284,7 +331,6 @@ function Invoke-ApiCheck {
     }
     Write-Section "部署后：API 检查（$BaseUrl）"
 
-    # 1) 登录 + 会话
     if (-not $SuperUser) {
         Test-Skip "超级管理员登录与权限矩阵（未提供 -SuperUser）"
         return
@@ -315,7 +361,6 @@ function Invoke-ApiCheck {
         Test-Fail "会话刷新返回结构" $info.Text
     }
 
-    # 2) 权限矩阵
     $matrix = Invoke-Http -Method 'GET' -Path '/admin/permission/matrix' -Token $super.Token
     $matrixJson = Convert-JsonSafe $matrix.Text
     Assert-ApiCode "权限矩阵接口 200" 200 $matrix
@@ -329,7 +374,6 @@ function Invoke-ApiCheck {
         Test-Fail "权限矩阵返回结构" $matrix.Text
     }
 
-    # 3) ADMIN（可选）
     if ($AdminUser) {
         $admin = Invoke-Login $AdminUser $AdminPassword
         if (-not $admin.Ok) {
@@ -343,7 +387,6 @@ function Invoke-ApiCheck {
         Test-Skip "ADMIN 权限矩阵 403（未提供 -AdminUser）"
     }
 
-    # 4) MODERATOR（可选）
     if ($ModeratorUser) {
         $mod = Invoke-Login $ModeratorUser $ModeratorPassword
         if (-not $mod.Ok) {
@@ -364,7 +407,6 @@ function Invoke-ApiCheck {
         Test-Skip "MODERATOR 权限边界（未提供 -ModeratorUser）"
     }
 
-    # 5) 普通用户走 channel=02 必须失败（可选）
     if ($NormalUser) {
         $normal = Invoke-Login $NormalUser $NormalPassword
         if ($normal.Ok) {
@@ -380,25 +422,27 @@ function Invoke-ApiCheck {
 # ---------------------------------------------------------------- main
 $transcript = $null
 try {
-    $logFile = Join-Path $OutDir ("check-{0}-{1}.log" -f $Mode, (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    $logFile = Join-Path $OutDir ("check-{0}-{1}-{2}.log" -f $DbType.ToLower(), $Mode, (Get-Date -Format 'yyyyMMdd-HHmmss'))
     try { Start-Transcript -Path $logFile | Out-Null; $transcript = $logFile } catch { }
 
-    Write-Host "版主角色化 / v039 发布检查  模式=$Mode  时间=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor White
+    Write-Host ("版主角色化 / v039 发布检查  模式={0}  数据库={1}  {2}" -f $Mode, $DbType, (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')) -ForegroundColor White
 
-    # 数据库模式未提供密码时交互输入（API 模式不需要）
-    if ($Mode -ne 'Api' -and -not $DbPassword -and -not $env:MYSQL_PWD) {
+    # 数据库模式未提供密码时交互输入；容器/API 模式不需要
+    if ($Mode -ne 'Api' -and -not $DbPassword -and -not $PgContainer -and $DbType -eq 'MySql' -and -not $env:MYSQL_PWD) {
         $secure = Read-Host "请输入 MySQL 密码（$DbUser@$DbHost）" -AsSecureString
+        $DbPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+            [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
+    }
+    if ($Mode -ne 'Api' -and -not $DbPassword -and -not $PgContainer -and $DbType -eq 'Pg' -and -not $env:PGPASSWORD) {
+        $secure = Read-Host "请输入 PostgreSQL 密码（$DbUser@$DbHost）" -AsSecureString
         $DbPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
             [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
     }
 
     switch ($Mode) {
-        'Pre' { Invoke-PreCheck }
-        'Post' {
-            Invoke-PostCheck
-            Invoke-ApiCheck
-        }
-        'Api' { Invoke-ApiCheck }
+        'Pre'  { Invoke-PreCheck }
+        'Post' { Invoke-PostCheck; Invoke-ApiCheck }
+        'Api'  { Invoke-ApiCheck }
     }
 
     Write-Section "结果"

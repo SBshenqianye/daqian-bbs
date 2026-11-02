@@ -1,4 +1,4 @@
--- 部署前只读检查（不会修改任何数据）
+-- 部署后只读检查（不会修改任何数据）
 -- 输出格式：key<TAB>value，供 check.ps1 解析
 SELECT 'schema_version', COALESCE(MAX(version), '(none)') FROM bbs_schema_version;
 SELECT 'has_v039', COUNT(1) FROM bbs_schema_version WHERE version = 'v039-moderator-role';
@@ -8,12 +8,17 @@ SELECT 'invalid_type', COUNT(1) FROM bbs_user
 WHERE user_type IS NULL OR TRIM(user_type) = '' OR user_type NOT IN ('1','2','3','4');
 SELECT 'active_moderators', COUNT(1) FROM bbs_board_moderator WHERE status = 1;
 SELECT 'admin_super', COUNT(1) FROM bbs_user WHERE user_type IN ('2','3');
-SELECT 'candidates', COUNT(1) FROM bbs_user u
+SELECT 'candidates_after', COUNT(1) FROM bbs_user u
 WHERE u.user_type = '1' AND u.is_delete = 0 AND u.id <> 1
   AND EXISTS (SELECT 1 FROM bbs_board_moderator m WHERE m.user_id = u.id AND m.status = 1);
-SELECT CONCAT('candidate_user:', u.id, ':', u.username) FROM bbs_user u
+SELECT CONCAT('candidate_after_user:', u.id, ':', u.username) FROM bbs_user u
 WHERE u.user_type = '1' AND u.is_delete = 0 AND u.id <> 1
   AND EXISTS (SELECT 1 FROM bbs_board_moderator m WHERE m.user_id = u.id AND m.status = 1)
 ORDER BY u.id;
-SELECT 'comment', COLUMN_COMMENT FROM information_schema.COLUMNS
+SELECT 'moderator_accounts', COUNT(1) FROM bbs_user WHERE user_type = '4';
+SELECT CONCAT('moderator_user:', u.id, ':', u.username) FROM bbs_user u
+WHERE u.user_type = '4' ORDER BY u.id;
+SELECT 'comment_has_4',
+       CASE WHEN COLUMN_COMMENT LIKE '%4：版主%' THEN 1 ELSE 0 END
+FROM information_schema.COLUMNS
 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bbs_user' AND COLUMN_NAME = 'user_type';
