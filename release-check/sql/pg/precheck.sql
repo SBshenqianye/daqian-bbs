@@ -2,6 +2,9 @@
 -- 输出 key<TAB>value，value 尽量为数字/ASCII，避免客户端编码差异
 SELECT 'schema_version', COALESCE(MAX(version), '(none)') FROM bbs_schema_version;
 SELECT 'has_v039', COUNT(1) FROM bbs_schema_version WHERE version = 'v039-moderator-role';
+SELECT 'has_v040', COUNT(1) FROM bbs_schema_version WHERE version = 'v040-audit-log';
+SELECT 'audit_table_exists', COUNT(1) FROM information_schema.tables
+WHERE table_schema = 'public' AND table_name = 'bbs_audit_log';
 SELECT 'total_users', COUNT(1) FROM bbs_user;
 SELECT 'type_' || user_type, COUNT(1) FROM bbs_user GROUP BY user_type ORDER BY user_type;
 SELECT 'invalid_type', COUNT(1) FROM bbs_user

@@ -12,7 +12,7 @@
 ## 一、先看这三句话
 
 1. **部署前**跑一次 `Pre`，它只读数据库，并把基线存到 `out/`。
-2. **部署后**跑一次 `Post`，它会对比基线、检查 v039、再调几个 API。
+2. **部署后**跑一次 `Post`，它会对比基线、检查 v039/v040、再调几个 API。
 3. 任何 `FAIL` 都先停下来排查；`SKIP` 表示没提供对应账号，不是失败。
 
 ---
@@ -28,8 +28,14 @@ release-check/
 │  │  ├─ precheck.sql
 │  │  ├─ postcheck.sql
 │  │  ├─ backup-before-v039.sql
-│  │  └─ rollback.sql
+│  │  ├─ rollback.sql
+│  │  └─ rollback-v040.sql
 │  └─ mysql/                       ← 备用（MySQL 环境）
+│     ├─ precheck.sql
+│     ├─ postcheck.sql
+│     ├─ backup-before-v039.sql
+│     ├─ rollback.sql
+│     └─ rollback-v040.sql
 └─ out/                            ← 运行后自动生成：基线、日志
 ```
 
@@ -75,7 +81,7 @@ cd release-check
 .\check.ps1 -Mode Pre -PsqlExe "C:\Program Files\PostgreSQL\16\bin\psql.exe" -DbUser postgres -DbName bbs_db
 ```
 
-看到 `PASS v039 尚未执行` 即可。
+看到 `PASS v039 尚未执行`、`PASS v040 尚未执行`、`PASS 审计日志表尚未创建` 即可。
 
 重点看：
 
@@ -98,7 +104,9 @@ psql -h 127.0.0.1 -p 5432 -U postgres -d bbs_db -f sql\pg\backup-before-v039.sql
 
 ## 五、部署
 
-按现有流程替换 jar / 重启。新版本启动时会自动执行 `v039-moderator-role`，这是预期行为。
+按现有流程替换 jar / 重启。新版本启动时会自动执行 `v039-moderator-role` 和 `v040-audit-log`，这是预期行为。
+
+> v040 只新增 `bbs_audit_log` 表，不改动现有业务表；不涉及数据回填。
 
 ---
 
@@ -128,6 +136,8 @@ psql -h 127.0.0.1 -p 5432 -U postgres -d bbs_db -f sql\pg\backup-before-v039.sql
 | 检查 | 预期 |
 |---|---|
 | `v039 已记录` | PASS |
+| `v040 已记录` | PASS |
+| `审计日志表存在` | PASS |
 | `不存在非法 user_type` | PASS |
 | `没有遗漏的升级候选` | PASS |
 | `列注释包含 4：版主` | PASS |
@@ -154,6 +164,7 @@ psql -h 127.0.0.1 -p 5432 -U postgres -d bbs_db -f sql\pg\backup-before-v039.sql
 | 4 | 版主（无板块）登录 | 顶部提示“尚未分配板块，请联系管理员”；列表为空；写操作提示同一句 |
 | 5 | 普通用户走后台登录 | 登录失败，提示用户名或密码不正确 |
 | 6 | 首次登录或被重置密码的账号登录 | 强制跳转“修改初始密码”，改密成功后才能进入后台；直接调管理接口返回 403 |
+| 7 | 超管登录 → 系统管理 → 审计日志 | 能看到操作记录；ADMIN/MODERATOR 看不到菜单，直接访问 `/audit` 跳 403 |
 
 > 生产没有版主账号时，3/4 可以先跳过；上线后第一次任命版主时补做。
 
@@ -182,6 +193,8 @@ SELECT COUNT(1) FROM bbs_schema_version WHERE version = 'v039-moderator-role';  
 
 > PG 历史库没有 `user_type` 列注释，v039 才首次设置，所以 PG 回滚是 `COMMENT ... IS NULL`，不是写回旧文案。
 > 没有备份表时，`rollback.sql` 末尾有应急语句（会把所有 `user_type=4` 降回 1，会误伤人工版主），默认注释状态。
+>
+> v040 是新增表，回滚可单独执行 `sql/*/rollback-v040.sql`。**会丢失全部审计日志**，执行前先备份。
 
 ---
 
@@ -231,6 +244,7 @@ v039 没执行成功，或连错了库。确认 `-DbName` 是目标库。
 | v039 迁移 | 普通用户 + 有效任职 → 版主；ADMIN/SUPER 不变 |
 | 权限矩阵 Phase A | 新增只读页面，仅超管可见 |
 | 首次登录强制改密（C3） | 管理员/超管/版主 `is_first_login=1` 时先改密，后端同时拦截管理接口 |
+| 关键操作审计日志（C4） | 新增 `bbs_audit_log`（v040）；关键写操作与 403 留痕；仅超管可查 |
 
 ---
 
