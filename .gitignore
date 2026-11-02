@@ -5,6 +5,8 @@ docs/.obsidian
 
 # tmp
 tmp/
+# 发布检查脚本的运行产物（基线、日志）
+release-check/out/
 
 # Dependencies
 node_modules/
