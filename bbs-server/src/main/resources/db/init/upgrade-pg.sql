@@ -8410,3 +8410,53 @@ SET user_type = '1'
 WHERE user_type IS NULL
    OR TRIM(user_type) = ''
    OR user_type NOT IN ('1', '2', '3', '4');
+
+-- @migration: v040-audit-log 关键操作审计日志
+-- 目标：新增审计日志表，记录关键写操作与权限拒绝；不改动现有业务表。
+-- 幂等：CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS + COMMENT 可重复执行。
+CREATE TABLE IF NOT EXISTS bbs_audit_log (
+  id             BIGSERIAL PRIMARY KEY,
+  operator_id    integer,
+  operator_name  varchar(64),
+  module         varchar(32) NOT NULL,
+  action         varchar(64) NOT NULL,
+  target_type    varchar(32),
+  target_id      varchar(128),
+  before_json    text,
+  after_json     text,
+  request_method varchar(10),
+  request_path   varchar(500),
+  ip             varchar(64),
+  user_agent     varchar(500),
+  result         varchar(16) NOT NULL DEFAULT 'success',
+  error_msg      varchar(1000),
+  create_time    varchar(20) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_create_time
+  ON bbs_audit_log (create_time);
+CREATE INDEX IF NOT EXISTS idx_audit_module_time
+  ON bbs_audit_log (module, create_time);
+CREATE INDEX IF NOT EXISTS idx_audit_operator_time
+  ON bbs_audit_log (operator_id, create_time);
+CREATE INDEX IF NOT EXISTS idx_audit_result_time
+  ON bbs_audit_log (result, create_time);
+CREATE INDEX IF NOT EXISTS idx_audit_target
+  ON bbs_audit_log (target_type, target_id);
+
+COMMENT ON TABLE bbs_audit_log IS '关键操作审计日志';
+COMMENT ON COLUMN bbs_audit_log.operator_id IS '操作人用户ID；系统任务可为空';
+COMMENT ON COLUMN bbs_audit_log.operator_name IS '操作人用户名（冗余快照）';
+COMMENT ON COLUMN bbs_audit_log.module IS '业务模块：ARTICLE/REPORT/...';
+COMMENT ON COLUMN bbs_audit_log.action IS '操作：ARTICLE_AUDIT/REPORT_REVIEW/...';
+COMMENT ON COLUMN bbs_audit_log.target_type IS '目标类型：ARTICLE/USER/...';
+COMMENT ON COLUMN bbs_audit_log.target_id IS '目标ID；批量操作存 ALL 或逗号分隔';
+COMMENT ON COLUMN bbs_audit_log.before_json IS '变更前快照（已脱敏）';
+COMMENT ON COLUMN bbs_audit_log.after_json IS '变更后快照（已脱敏）';
+COMMENT ON COLUMN bbs_audit_log.request_method IS 'HTTP 方法';
+COMMENT ON COLUMN bbs_audit_log.request_path IS '请求路径（含 context-path）';
+COMMENT ON COLUMN bbs_audit_log.ip IS '客户端 IP';
+COMMENT ON COLUMN bbs_audit_log.user_agent IS 'User-Agent';
+COMMENT ON COLUMN bbs_audit_log.result IS '结果：success/fail';
+COMMENT ON COLUMN bbs_audit_log.error_msg IS '失败原因';
+COMMENT ON COLUMN bbs_audit_log.create_time IS '创建时间 yyyy-MM-dd HH:mm:ss';

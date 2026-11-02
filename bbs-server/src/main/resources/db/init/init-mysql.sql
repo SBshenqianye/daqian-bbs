@@ -641,4 +641,33 @@ CREATE TABLE `bbs_moderator_reward_cancel` (
   UNIQUE KEY `uk_mrc_ym_user` (`ym`, `user_id`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '版主履职奖励取消记录';
 
+-- ----------------------------
+-- Table: bbs_audit_log（关键操作审计日志）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_audit_log`;
+CREATE TABLE `bbs_audit_log` (
+  `id`             bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `operator_id`    int(11) DEFAULT NULL COMMENT '操作人用户ID；系统任务可为空',
+  `operator_name`  varchar(64) DEFAULT NULL COMMENT '操作人用户名（冗余快照）',
+  `module`         varchar(32) NOT NULL COMMENT '业务模块：ARTICLE/REPORT/...',
+  `action`         varchar(64) NOT NULL COMMENT '操作：ARTICLE_AUDIT/REPORT_REVIEW/...',
+  `target_type`    varchar(32) DEFAULT NULL COMMENT '目标类型：ARTICLE/USER/...',
+  `target_id`      varchar(128) DEFAULT NULL COMMENT '目标ID；批量操作存 ALL 或逗号分隔',
+  `before_json`    longtext COMMENT '变更前快照（已脱敏）',
+  `after_json`     longtext COMMENT '变更后快照（已脱敏）',
+  `request_method` varchar(10) DEFAULT NULL COMMENT 'HTTP 方法',
+  `request_path`   varchar(500) DEFAULT NULL COMMENT '请求路径（含 context-path）',
+  `ip`             varchar(64) DEFAULT NULL COMMENT '客户端 IP',
+  `user_agent`     varchar(500) DEFAULT NULL COMMENT 'User-Agent',
+  `result`         varchar(16) NOT NULL DEFAULT 'success' COMMENT '结果：success/fail',
+  `error_msg`      varchar(1000) DEFAULT NULL COMMENT '失败原因',
+  `create_time`    varchar(20) NOT NULL COMMENT '创建时间 yyyy-MM-dd HH:mm:ss',
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_audit_create_time` (`create_time`),
+  KEY `idx_audit_module_time` (`module`, `create_time`),
+  KEY `idx_audit_operator_time` (`operator_id`, `create_time`),
+  KEY `idx_audit_result_time` (`result`, `create_time`),
+  KEY `idx_audit_target` (`target_type`, `target_id`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '关键操作审计日志';
+
 SET FOREIGN_KEY_CHECKS = 1;
