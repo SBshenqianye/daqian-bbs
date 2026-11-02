@@ -93,6 +93,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         //添加jwt 登录授权过滤器
         http.addFilterBefore(JwtAuthenticationTokenFilter(),
                 UsernamePasswordAuthenticationFilter.class);
+        // 管理端首次登录强制改密：JWT 认证之后、业务接口之前
+        http.addFilterAfter(firstLoginPasswordFilter(), JwtAuthenticationTokenFilter.class);
         //添加自定义未授权和未登录结果返回
         http.exceptionHandling()
                 .accessDeniedHandler(restfulAccessDeniedHandler)
@@ -115,5 +117,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Bean
     public JwtAuthenticationTokenFilter JwtAuthenticationTokenFilter(){
         return new JwtAuthenticationTokenFilter();
+    }
+
+    @Bean
+    public FirstLoginPasswordFilter firstLoginPasswordFilter() {
+        return new FirstLoginPasswordFilter();
     }
 }

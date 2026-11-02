@@ -576,6 +576,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public ResultBean modPwd(UserModPwdParam userModPwdParam) {
         Integer userId = userModPwdParam.getId();
+        // 只能修改当前登录账号的密码，防止伪造 id 修改他人密码
+        Integer currentUserId = currentUserService.getCurrentUserId();
+        if (currentUserId == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (userId == null || !currentUserId.equals(userId)) {
+            return ResultBean.forbidden("只能修改当前登录账号的密码");
+        }
         User user = this.getById(userId);
         if (user == null) {
             return ResultBean.error("用户不存在");

@@ -229,10 +229,27 @@ class UserServiceTest {
         param.setNewPassword("NewPass123");
 
         when(userMapper.selectById(999)).thenReturn(null);
+        when(currentUserService.getCurrentUserId()).thenReturn(999);
 
         ResultBean result = userService.modPwd(param);
         assertEquals(500, result.getCode());
         assertEquals("用户不存在", result.getMessage());
+    }
+
+    @Test
+    @DisplayName("修改密码 → 非当前登录账号 → 403")
+    void modPwd_otherUser_forbidden() {
+        UserModPwdParam param = new UserModPwdParam();
+        param.setId(2);
+        param.setPassword("old");
+        param.setNewPassword("NewPass123");
+
+        when(currentUserService.getCurrentUserId()).thenReturn(1);
+
+        ResultBean result = userService.modPwd(param);
+        assertEquals(403, result.getCode());
+        assertEquals("只能修改当前登录账号的密码", result.getMessage());
+        verify(userMapper, never()).selectById(any());
     }
 
     @Test
@@ -247,6 +264,7 @@ class UserServiceTest {
         user.setId(1);
         user.setPassword("$2a$old");
         when(userMapper.selectById(1)).thenReturn(user);
+        when(currentUserService.getCurrentUserId()).thenReturn(1);
         when(passwordEncoder.matches("wrong", "$2a$old")).thenReturn(false);
 
         ResultBean result = userService.modPwd(param);
@@ -266,6 +284,7 @@ class UserServiceTest {
         user.setId(1);
         user.setPassword("$2a$old");
         when(userMapper.selectById(1)).thenReturn(user);
+        when(currentUserService.getCurrentUserId()).thenReturn(1);
         when(passwordEncoder.matches("old", "$2a$old")).thenReturn(true);
 
         ResultBean result = userService.modPwd(param);
@@ -285,6 +304,7 @@ class UserServiceTest {
         user.setId(1);
         user.setPassword("$2a$old");
         when(userMapper.selectById(1)).thenReturn(user);
+        when(currentUserService.getCurrentUserId()).thenReturn(1);
         when(passwordEncoder.matches("NewPass123", "$2a$old")).thenReturn(true);
 
         ResultBean result = userService.modPwd(param);
@@ -585,6 +605,7 @@ class UserServiceTest {
         user.setId(1);
         user.setPassword("$2a$oldencoded");
         when(userMapper.selectById(1)).thenReturn(user);
+        when(currentUserService.getCurrentUserId()).thenReturn(1);
         when(passwordEncoder.matches("OldPass123", "$2a$oldencoded")).thenReturn(true);
         when(passwordEncoder.encode("NewPass456")).thenReturn("$2a$newencoded");
 
