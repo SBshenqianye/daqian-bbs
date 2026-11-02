@@ -12,7 +12,7 @@
 ## 一、先看这三句话
 
 1. **部署前**跑一次 `Pre`，它只读数据库，并把基线存到 `out/`。
-2. **部署后**跑一次 `Post`，它会对比基线、检查 v039/v040、再调几个 API。
+2. **部署后**跑一次 `Post`，它会对比基线、检查 v039/v040/v041、再调几个 API。
 3. 任何 `FAIL` 都先停下来排查；`SKIP` 表示没提供对应账号，不是失败。
 
 ---
@@ -29,13 +29,15 @@ release-check/
 │  │  ├─ postcheck.sql
 │  │  ├─ backup-before-v039.sql
 │  │  ├─ rollback.sql
-│  │  └─ rollback-v040.sql
+│  │  ├─ rollback-v040.sql
+│  │  └─ rollback-v041.sql
 │  └─ mysql/                       ← 备用（MySQL 环境）
 │     ├─ precheck.sql
 │     ├─ postcheck.sql
 │     ├─ backup-before-v039.sql
 │     ├─ rollback.sql
-│     └─ rollback-v040.sql
+│     ├─ rollback-v040.sql
+│     └─ rollback-v041.sql
 └─ out/                            ← 运行后自动生成：基线、日志
 ```
 
@@ -81,7 +83,7 @@ cd release-check
 .\check.ps1 -Mode Pre -PsqlExe "C:\Program Files\PostgreSQL\16\bin\psql.exe" -DbUser postgres -DbName bbs_db
 ```
 
-看到 `PASS v039 尚未执行`、`PASS v040 尚未执行`、`PASS 审计日志表尚未创建` 即可。
+看到 `PASS v039 尚未执行`、`PASS v040 尚未执行`、`PASS v041 尚未执行`、`PASS 审计日志表尚未创建`、`PASS 权限组表尚未创建` 即可。
 
 重点看：
 
@@ -104,9 +106,9 @@ psql -h 127.0.0.1 -p 5432 -U postgres -d bbs_db -f sql\pg\backup-before-v039.sql
 
 ## 五、部署
 
-按现有流程替换 jar / 重启。新版本启动时会自动执行 `v039-moderator-role` 和 `v040-audit-log`，这是预期行为。
+按现有流程替换 jar / 重启。新版本启动时会自动执行 `v039-moderator-role`、`v040-audit-log`、`v041-permission-group`，这是预期行为。
 
-> v040 只新增 `bbs_audit_log` 表，不改动现有业务表；不涉及数据回填。
+> v040 只新增 `bbs_audit_log` 表，v041 只新增权限组相关表，均不改动现有业务表；不涉及数据回填。
 
 ---
 
@@ -137,7 +139,9 @@ psql -h 127.0.0.1 -p 5432 -U postgres -d bbs_db -f sql\pg\backup-before-v039.sql
 |---|---|
 | `v039 已记录` | PASS |
 | `v040 已记录` | PASS |
+| `v041 已记录` | PASS |
 | `审计日志表存在` | PASS |
+| `权限组表存在` | PASS |
 | `不存在非法 user_type` | PASS |
 | `没有遗漏的升级候选` | PASS |
 | `列注释包含 4：版主` | PASS |
@@ -195,6 +199,8 @@ SELECT COUNT(1) FROM bbs_schema_version WHERE version = 'v039-moderator-role';  
 > 没有备份表时，`rollback.sql` 末尾有应急语句（会把所有 `user_type=4` 降回 1，会误伤人工版主），默认注释状态。
 >
 > v040 是新增表，回滚可单独执行 `sql/*/rollback-v040.sql`。**会丢失全部审计日志**，执行前先备份。
+>
+> v041 是新增表，回滚可单独执行 `sql/*/rollback-v041.sql`。**会丢失权限组、用户绑定和预设**，执行前先备份。
 
 ---
 
@@ -245,6 +251,8 @@ v039 没执行成功，或连错了库。确认 `-DbName` 是目标库。
 | 权限矩阵 Phase A | 新增只读页面，仅超管可见 |
 | 首次登录强制改密（C3） | 管理员/超管/版主 `is_first_login=1` 时先改密，后端同时拦截管理接口 |
 | 关键操作审计日志（C4） | 新增 `bbs_audit_log`（v040）；关键写操作与 403 留痕；仅超管可查 |
+| 权限组 Phase B/C | 新增 `bbs_permission_group*`（v041）；grant-only；管理端权限管理页；审计留痕 |
+| 前台动作权限 Phase D | 新增 `post:create` 等权限点；关键前台写接口接后端校验 |
 
 ---
 

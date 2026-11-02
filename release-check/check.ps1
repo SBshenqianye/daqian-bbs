@@ -186,6 +186,7 @@ function Invoke-PreCheck {
         schemaVersion = $r.Map['schema_version']
         hasV039       = $r.Map['has_v039']
         hasV040       = $r.Map['has_v040']
+        hasV041       = $r.Map['has_v041']
         totalUsers    = $r.Map['total_users']
         type1         = $r.Map['type_1']
         type2         = $r.Map['type_2']
@@ -204,7 +205,9 @@ function Invoke-PreCheck {
 
     Assert-Equal "v039 尚未执行" '0' $r.Map['has_v039']
     Assert-Equal "v040 尚未执行" '0' $r.Map['has_v040']
+    Assert-Equal "v041 尚未执行" '0' $r.Map['has_v041']
     Assert-Equal "审计日志表尚未创建" '0' $r.Map['audit_table_exists']
+    Assert-Equal "权限组表尚未创建" '0' $r.Map['permission_group_table_exists']
     Write-Host "      基线已保存：$stamped" -ForegroundColor Yellow
     Write-Host "      请确认 candidates（升级名单）符合业务预期：$($r.Map['candidates'])" -ForegroundColor Yellow
 }
@@ -216,7 +219,9 @@ function Invoke-PostCheck {
 
     Assert-Equal "v039 已记录" '1' $r.Map['has_v039']
     Assert-Equal "v040 已记录" '1' $r.Map['has_v040']
+    Assert-Equal "v041 已记录" '1' $r.Map['has_v041']
     Assert-Equal "审计日志表存在" '1' $r.Map['audit_table_exists']
+    Assert-Equal "权限组表存在" '1' $r.Map['permission_group_table_exists']
     Assert-Equal "不存在非法 user_type" '0' $r.Map['invalid_type']
     Assert-Equal "没有遗漏的升级候选" '0' $r.Map['candidates_after']
     Assert-Equal "列注释包含 4：版主" '1' $r.Map['comment_has_4']
