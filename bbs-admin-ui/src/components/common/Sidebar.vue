@@ -159,6 +159,7 @@ export default {
         { icon: 'block', label: '敏感词管理', path: '/sensitiveWord', permission: 'config:read', category: 'system' },
         { icon: 'shield', label: '版主管理', path: '/moderator', permission: 'moderator:manage', category: 'system' },
         { icon: 'feedback', label: '版主投诉', path: '/moderator-complaint', permission: 'moderator:complaint:review', category: 'system' },
+  { icon: 'policy', label: '权限矩阵', path: '/permission-matrix', permission: 'permission:manage', category: 'system' },
         // { icon: 'view_carousel', label: '轮播图管理', path: '/slideshow' },
         // { icon: 'bar_chart', label: '文章统计', path: '/statistic' },
         // { icon: 'edit_note', label: '写文章', path: '/write' },

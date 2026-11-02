@@ -116,6 +116,11 @@ export default new Router({
                     meta: { title: '精华帖审批', permission: 'featured:review' }
                 },
                 {
+                    path: '/permission-matrix',
+                    component: () => import('../pages/PermissionMatrixPage.vue'),
+                    meta: { title: '权限矩阵', permission: 'permission:manage' }
+                },
+                {
                     path: '/404',
                     component: () => import('../pages/404.vue'),
                     meta: { title: '404' }
