@@ -670,4 +670,73 @@ CREATE TABLE `bbs_audit_log` (
   KEY `idx_audit_target` (`target_type`, `target_id`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '关键操作审计日志';
 
+-- ----------------------------
+-- Table: bbs_permission_group（权限组）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_permission_group`;
+CREATE TABLE `bbs_permission_group` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `group_code`      varchar(64) NOT NULL COMMENT '权限组编码',
+  `group_name`      varchar(100) NOT NULL COMMENT '权限组名称',
+  `description`     varchar(500) DEFAULT NULL COMMENT '描述',
+  `scope_type`      varchar(20) NOT NULL DEFAULT 'ADMIN' COMMENT '范围：ADMIN/FRONT/ALL',
+  `data_scope_type` varchar(20) NOT NULL DEFAULT 'ROLE_DEFAULT' COMMENT '数据范围：ROLE_DEFAULT/BOARD_MODERATOR',
+  `enabled`         tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+  `sort_order`      int(11) NOT NULL DEFAULT 0 COMMENT '排序',
+  `create_by`       varchar(64) DEFAULT NULL COMMENT '创建人',
+  `create_time`     varchar(20) DEFAULT NULL COMMENT '创建时间',
+  `update_by`       varchar(64) DEFAULT NULL COMMENT '更新人',
+  `update_time`     varchar(20) DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_permission_group_code` (`group_code`),
+  KEY `idx_permission_group_enabled` (`enabled`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '权限组';
+
+-- ----------------------------
+-- Table: bbs_permission_group_item（权限组-权限点）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_permission_group_item`;
+CREATE TABLE `bbs_permission_group_item` (
+  `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `group_id`        int(11) NOT NULL COMMENT '权限组ID',
+  `permission_code` varchar(64) NOT NULL COMMENT '权限点编码',
+  `effect`          varchar(10) NOT NULL DEFAULT 'grant' COMMENT '效果：grant（MVP 仅支持 grant）',
+  `create_time`     varchar(20) DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_group_permission` (`group_id`, `permission_code`),
+  KEY `idx_pgi_code` (`permission_code`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '权限组-权限点';
+
+-- ----------------------------
+-- Table: bbs_user_permission_group（用户-权限组）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_user_permission_group`;
+CREATE TABLE `bbs_user_permission_group` (
+  `id`          int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id`     int(11) NOT NULL COMMENT '用户ID',
+  `group_id`    int(11) NOT NULL COMMENT '权限组ID',
+  `priority`    int(11) NOT NULL DEFAULT 0 COMMENT '优先级（预留给后续 revoke/冲突规则）',
+  `create_by`   varchar(64) DEFAULT NULL COMMENT '创建人',
+  `create_time` varchar(20) DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_user_permission_group` (`user_id`, `group_id`),
+  KEY `idx_upg_user` (`user_id`),
+  KEY `idx_upg_group` (`group_id`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '用户-权限组';
+
+-- ----------------------------
+-- Table: bbs_permission_preset（权限预设方案）
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_permission_preset`;
+CREATE TABLE `bbs_permission_preset` (
+  `id`            int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `preset_code`   varchar(64) NOT NULL COMMENT '预设编码',
+  `preset_name`   varchar(100) NOT NULL COMMENT '预设名称',
+  `snapshot_json` longtext COMMENT '权限组快照（名称/编码/权限点）',
+  `create_by`     varchar(64) DEFAULT NULL COMMENT '创建人',
+  `create_time`   varchar(20) DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_permission_preset_code` (`preset_code`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic COMMENT = '权限预设方案';
+
 SET FOREIGN_KEY_CHECKS = 1;

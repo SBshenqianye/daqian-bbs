@@ -8460,3 +8460,64 @@ COMMENT ON COLUMN bbs_audit_log.user_agent IS 'User-Agent';
 COMMENT ON COLUMN bbs_audit_log.result IS '结果：success/fail';
 COMMENT ON COLUMN bbs_audit_log.error_msg IS '失败原因';
 COMMENT ON COLUMN bbs_audit_log.create_time IS '创建时间 yyyy-MM-dd HH:mm:ss';
+
+-- @migration: v041-permission-group 权限组（Phase B/C，grant-only）
+-- 目标：新增权限组/组权限/用户绑定/预设表；权限组只能额外授予权限，不收回角色基线。
+-- 幂等：CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS + COMMENT 可重复执行。
+CREATE TABLE IF NOT EXISTS bbs_permission_group (
+  id              BIGSERIAL PRIMARY KEY,
+  group_code      varchar(64) NOT NULL UNIQUE,
+  group_name      varchar(100) NOT NULL,
+  description     varchar(500),
+  scope_type      varchar(20) NOT NULL DEFAULT 'ADMIN',
+  data_scope_type varchar(20) NOT NULL DEFAULT 'ROLE_DEFAULT',
+  enabled         smallint NOT NULL DEFAULT 1,
+  sort_order      integer NOT NULL DEFAULT 0,
+  create_by       varchar(64),
+  create_time     varchar(20),
+  update_by       varchar(64),
+  update_time     varchar(20)
+);
+CREATE INDEX IF NOT EXISTS idx_permission_group_enabled ON bbs_permission_group (enabled);
+
+CREATE TABLE IF NOT EXISTS bbs_permission_group_item (
+  id              BIGSERIAL PRIMARY KEY,
+  group_id        integer NOT NULL,
+  permission_code varchar(64) NOT NULL,
+  effect          varchar(10) NOT NULL DEFAULT 'grant',
+  create_time     varchar(20)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_group_permission
+  ON bbs_permission_group_item (group_id, permission_code);
+CREATE INDEX IF NOT EXISTS idx_pgi_code ON bbs_permission_group_item (permission_code);
+
+CREATE TABLE IF NOT EXISTS bbs_user_permission_group (
+  id          BIGSERIAL PRIMARY KEY,
+  user_id     integer NOT NULL,
+  group_id    integer NOT NULL,
+  priority    integer NOT NULL DEFAULT 0,
+  create_by   varchar(64),
+  create_time varchar(20)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_user_permission_group
+  ON bbs_user_permission_group (user_id, group_id);
+CREATE INDEX IF NOT EXISTS idx_upg_user ON bbs_user_permission_group (user_id);
+CREATE INDEX IF NOT EXISTS idx_upg_group ON bbs_user_permission_group (group_id);
+
+CREATE TABLE IF NOT EXISTS bbs_permission_preset (
+  id            BIGSERIAL PRIMARY KEY,
+  preset_code   varchar(64) NOT NULL UNIQUE,
+  preset_name   varchar(100) NOT NULL,
+  snapshot_json text,
+  create_by     varchar(64),
+  create_time   varchar(20)
+);
+
+COMMENT ON TABLE bbs_permission_group IS '权限组';
+COMMENT ON COLUMN bbs_permission_group.group_code IS '权限组编码';
+COMMENT ON COLUMN bbs_permission_group.group_name IS '权限组名称';
+COMMENT ON COLUMN bbs_permission_group.scope_type IS '范围：ADMIN/FRONT/ALL';
+COMMENT ON COLUMN bbs_permission_group.data_scope_type IS '数据范围：ROLE_DEFAULT/BOARD_MODERATOR';
+COMMENT ON TABLE bbs_permission_group_item IS '权限组-权限点';
+COMMENT ON TABLE bbs_user_permission_group IS '用户-权限组';
+COMMENT ON TABLE bbs_permission_preset IS '权限预设方案';
