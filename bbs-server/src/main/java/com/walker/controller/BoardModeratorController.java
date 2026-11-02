@@ -3,6 +3,7 @@ package com.walker.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.walker.pojo.BoardModerator;
 import com.walker.pojo.User;
+import com.walker.config.audit.AuditLog;
 import com.walker.service.BoardModeratorService;
 import com.walker.service.UserService;
 import com.walker.vo.ResultBean;
@@ -29,6 +30,8 @@ public class BoardModeratorController {
 
     @ApiOperation(value = "任命版主")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "MODERATOR", action = "MODERATOR_APPOINT",
+            targetType = "MODERATOR_BOARD", targetId = "#params['userId']")
     @PostMapping("/admin/moderator/appoint")
     public ResultBean appoint(@RequestBody Map<String, Object> params) {
         Integer userId = (Integer) params.get("userId");
@@ -39,6 +42,8 @@ public class BoardModeratorController {
 
     @ApiOperation(value = "撤销版主")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "MODERATOR", action = "MODERATOR_DISMISS",
+            targetType = "MODERATOR_BOARD", targetId = "#params['userId']")
     @PostMapping("/admin/moderator/dismiss")
     public ResultBean dismiss(@RequestBody Map<String, Object> params) {
         Integer userId = (Integer) params.get("userId");
@@ -58,6 +63,8 @@ public class BoardModeratorController {
 
     @ApiOperation(value = "编辑版主管理的板块（差异更新）")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "MODERATOR", action = "MODERATOR_BOARDS_UPDATE",
+            targetType = "MODERATOR_BOARD", targetId = "#params['userId']")
     @PostMapping("/admin/moderator/boards")
     public ResultBean updateBoards(@RequestBody Map<String, Object> params) {
         Integer userId = params.get("userId") != null
@@ -138,6 +145,8 @@ public class BoardModeratorController {
 
     @ApiOperation(value = "发放本月版主履职奖励（每月一次性15积分）")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "MODERATOR", action = "MODERATOR_REWARD_GRANT",
+            targetType = "MODERATOR_REWARD", targetId = "'ALL'", snapshot = false)
     @PostMapping("/admin/moderator/monthlyReward")
     public ResultBean monthlyReward(@RequestBody Map<String, Object> params) {
         Integer operatorId = params.get("operatorId") != null
@@ -147,6 +156,8 @@ public class BoardModeratorController {
 
     @ApiOperation(value = "取消版主本月履职奖励")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "MODERATOR", action = "MODERATOR_REWARD_CANCEL",
+            targetType = "USER", targetId = "#params['userId']")
     @PostMapping("/admin/moderator/cancelReward")
     public ResultBean cancelReward(@RequestBody Map<String, Object> params) {
         Integer userId = params.get("userId") != null ? Integer.parseInt(params.get("userId").toString()) : null;
@@ -157,6 +168,8 @@ public class BoardModeratorController {
 
     @ApiOperation(value = "恢复版主本月履职奖励")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "MODERATOR", action = "MODERATOR_REWARD_RESTORE",
+            targetType = "USER", targetId = "#params['userId']")
     @PostMapping("/admin/moderator/restoreReward")
     public ResultBean restoreReward(@RequestBody Map<String, Object> params) {
         Integer userId = params.get("userId") != null ? Integer.parseInt(params.get("userId").toString()) : null;
@@ -172,6 +185,8 @@ public class BoardModeratorController {
 
     @ApiOperation(value = "手动触发自动发放（测试用）")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "MODERATOR", action = "MODERATOR_REWARD_AUTO",
+            targetType = "MODERATOR_REWARD", targetId = "'ALL'", snapshot = false)
     @PostMapping("/admin/moderator/triggerAutoReward")
     public ResultBean triggerAutoReward() {
         return boardModeratorService.autoMonthlyReward();

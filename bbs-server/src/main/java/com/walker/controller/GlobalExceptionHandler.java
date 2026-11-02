@@ -1,9 +1,11 @@
 package com.walker.controller;
 
+import com.walker.config.audit.AuditDenialRecorder;
 import com.walker.config.security.ForbiddenException;
 import com.walker.vo.ResultBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
@@ -26,6 +28,9 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
     
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @Autowired
+    private AuditDenialRecorder auditDenialRecorder;
     
     /**
      * 处理参数校验异常（@Valid + @RequestBody）
@@ -83,6 +88,7 @@ public class GlobalExceptionHandler {
         }
         logger.warn("[权限拒绝] userId={}, username={}, {} {}, reason={}",
                 userId, username, request.getMethod(), request.getRequestURI(), e.getMessage());
+        auditDenialRecorder.record(request, e.getMessage());
         return ResultBean.forbidden(e.getMessage());
     }
 
@@ -93,6 +99,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.OK)
     public ResultBean<Void> handleAccessDeniedException(AccessDeniedException e, HttpServletRequest request) {
         logger.warn("[权限拒绝] {} {} reason={}", request.getMethod(), request.getRequestURI(), e.getMessage());
+        auditDenialRecorder.record(request, "权限不足，请联系管理员");
         return ResultBean.forbidden("权限不足，请联系管理员");
     }
 

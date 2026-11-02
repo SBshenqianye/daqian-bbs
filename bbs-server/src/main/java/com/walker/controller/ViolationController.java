@@ -1,5 +1,6 @@
 package com.walker.controller;
 
+import com.walker.config.audit.AuditLog;
 import com.walker.service.ViolationService;
 import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
@@ -22,6 +23,10 @@ public class ViolationController {
 
     @ApiOperation(value = "管理员记录违规并扣分")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @AuditLog(module = "VIOLATION", action = "VIOLATION_ADD",
+            targetType = "VIOLATION_TARGET",
+            targetId = "#params['relatedType'] + ':' + #params['relatedId']",
+            snapshot = false)
     @PostMapping("/admin/violation/add")
     public ResultBean addViolation(@RequestBody Map<String, Object> params) {
         Integer userId = (Integer) params.get("userId");
@@ -54,6 +59,8 @@ public class ViolationController {
 
     @ApiOperation(value = "管理员取消违规（回滚扣分+恢复内容，操作人以JWT为准）")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @AuditLog(module = "VIOLATION", action = "VIOLATION_CANCEL",
+            targetType = "VIOLATION", targetId = "#params['violationId']")
     @PostMapping("/admin/violation/cancel")
     public ResultBean cancelViolation(@RequestBody Map<String, Object> params) {
         Integer violationId = params.get("violationId") != null ? Integer.parseInt(params.get("violationId").toString()) : null;

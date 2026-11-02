@@ -1,6 +1,7 @@
 package com.walker.controller;
 
 import com.walker.mapper.SaOrgMapper;
+import com.walker.config.audit.AuditLog;
 import com.walker.pojo.SaOrg;
 import com.walker.service.SaOrgService;
 import com.walker.vo.ResultBean;
@@ -51,6 +52,8 @@ public class SaOrgController {
      */
     @ApiOperation("删除单位")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "CONFIG", action = "CONFIG_ORG_DELETE",
+            targetType = "ORG", targetId = "#orgNo")
     @GetMapping("/saOrg/deleteSaOrgByOrgNo")
     public ResultBean deleteSaOrgByOrgNo(@RequestParam("orgNo") String orgNo) {
         return saOrgService.deleteSaOrgByOrgNo(orgNo);
@@ -66,6 +69,8 @@ public class SaOrgController {
      */
     @ApiOperation("添加单位")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "CONFIG", action = "CONFIG_ORG_CREATE",
+            targetType = "ORG", snapshot = false)
     @GetMapping("/saOrg/addSaOrg")
     public ResultBean addSaOrg(@RequestParam("pOrgNo") String pOrgNo, @RequestParam("orgName") String orgName) {
         return saOrgService.addSaOrg(pOrgNo, orgName);
@@ -82,6 +87,8 @@ public class SaOrgController {
 
     @ApiOperation("批量更新排名选中状态")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "CONFIG", action = "CONFIG_ORG_RANKING_UPDATE",
+            targetType = "ORG", targetId = "'ALL'", snapshot = false)
     @PostMapping("/common/saOrg/batchUpdateRanking")
     public ResultBean batchUpdateRanking(@RequestBody Map<String, Boolean> rankingMap) {
         if (rankingMap == null || rankingMap.isEmpty()) {
@@ -100,6 +107,8 @@ public class SaOrgController {
 
     @ApiOperation("批量更新显示选中状态")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "CONFIG", action = "CONFIG_ORG_DISPLAY_UPDATE",
+            targetType = "ORG", targetId = "'ALL'", snapshot = false)
     @PostMapping("/common/saOrg/batchUpdateDisplay")
     public ResultBean batchUpdateDisplay(@RequestBody Map<String, Boolean> displayMap) {
         if (displayMap == null || displayMap.isEmpty()) {

@@ -2,6 +2,7 @@ package com.walker.controller;
 
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.read.listener.PageReadListener;
+import com.walker.config.audit.AuditLog;
 import com.walker.pojo.SensitiveWord;
 import com.walker.service.SensitiveWordService;
 import com.walker.vo.ResultBean;
@@ -68,6 +69,8 @@ public class SensitiveWordController {
      * @param keyword 敏感词
      * @return ResultBean
      */
+    @AuditLog(module = "CONFIG", action = "CONFIG_SENSITIVE_ADD",
+            targetType = "SENSITIVE_WORD", targetId = "#keyword", snapshot = false)
     @GetMapping("/sensitiveWord/addSensitiveWord")
     public ResultBean addSensitiveWord(@RequestParam("keyword") String keyword) {
         return sensitiveWordService.addSensitiveWord(keyword);
@@ -80,6 +83,8 @@ public class SensitiveWordController {
      * @param id 敏感词id
      * @return ResultBean
      */
+    @AuditLog(module = "CONFIG", action = "CONFIG_SENSITIVE_DELETE",
+            targetType = "SENSITIVE_WORD", targetId = "#id")
     @GetMapping("/sensitiveWord/delSensitiveWord")
     public ResultBean delSensitiveWord(@RequestParam("id") Integer id) {
         return sensitiveWordService.delSensitiveWord(id);
@@ -123,6 +128,8 @@ public class SensitiveWordController {
      * @return ResultBean 导入结果
      */
     @ApiOperation("从 Excel 导入敏感词")
+    @AuditLog(module = "CONFIG", action = "CONFIG_SENSITIVE_IMPORT",
+            targetType = "SENSITIVE_WORD", targetId = "'IMPORT'", snapshot = false)
     @PostMapping("/sensitiveWord/importExcel")
     public ResultBean importExcel(@RequestParam("file") MultipartFile file) {
         if (file == null || file.isEmpty()) {

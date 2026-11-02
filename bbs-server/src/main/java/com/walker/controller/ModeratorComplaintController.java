@@ -1,5 +1,6 @@
 package com.walker.controller;
 
+import com.walker.config.audit.AuditLog;
 import com.walker.service.ModeratorComplaintService;
 import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
@@ -32,6 +33,8 @@ public class ModeratorComplaintController {
 
     @ApiOperation(value = "管理员审核版主投诉")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "MODERATOR", action = "COMPLAINT_REVIEW",
+            targetType = "MODERATOR_COMPLAINT", targetId = "#params['complaintId']")
     @PostMapping("/admin/moderatorComplaint/review")
     public ResultBean review(@RequestBody Map<String, Object> params) {
         Integer complaintId = params.get("complaintId") != null ? Integer.parseInt(params.get("complaintId").toString()) : null;

@@ -1,5 +1,6 @@
 package com.walker.controller;
 
+import com.walker.config.audit.AuditLog;
 import com.walker.service.ReportService;
 import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
@@ -33,6 +34,8 @@ public class ReportController {
 
     @ApiOperation(value = "管理员审核举报")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @AuditLog(module = "REPORT", action = "REPORT_REVIEW",
+            targetType = "REPORT", targetId = "#params['reportId']")
     @PostMapping("/admin/report/review")
     public ResultBean reviewReport(@RequestBody Map<String, Object> params) {
         Integer reportId = (Integer) params.get("reportId");

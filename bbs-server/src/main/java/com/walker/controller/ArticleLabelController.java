@@ -4,6 +4,7 @@ package com.walker.controller;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.github.pagehelper.PageInfo;
+import com.walker.config.audit.AuditLog;
 import com.walker.pojo.ArticleLabel;
 import com.walker.pojo.Article;
 import com.walker.pojo.BoardModerator;
@@ -61,6 +62,8 @@ public class ArticleLabelController {
 
     @ApiOperation(value = "新增文章标签")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "CONFIG", action = "CONFIG_LABEL_CREATE",
+            targetType = "ARTICLE_LABEL", targetId = "#articleLabel.labelId")
     @PostMapping("/admin/addArticleLabel")
     public ResultBean addArticleLabel(@RequestBody ArticleLabel articleLabel) {
         if (articleLabel == null || articleLabel.getLabelName() == null || articleLabel.getLabelName().trim().isEmpty()) {
@@ -81,6 +84,8 @@ public class ArticleLabelController {
 
     @ApiOperation(value = "修改文章标签")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "CONFIG", action = "CONFIG_LABEL_UPDATE",
+            targetType = "ARTICLE_LABEL", targetId = "#articleLabel.labelId")
     @PostMapping("/admin/updArticleLabel")
     public ResultBean updateArticleLabel(@RequestBody ArticleLabel articleLabel) {
         if (articleLabel == null || articleLabel.getLabelId() == null) {
@@ -110,6 +115,8 @@ public class ArticleLabelController {
 
     @ApiOperation(value = "删除文章标签")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "CONFIG", action = "CONFIG_LABEL_DELETE",
+            targetType = "ARTICLE_LABEL", targetId = "#articleLabel.labelId")
     @PostMapping("/admin/delArticleLabel")
     public ResultBean deleteArticleLabel(@RequestBody ArticleLabel articleLabel) {
         if (articleLabel == null || articleLabel.getLabelId() == null) {

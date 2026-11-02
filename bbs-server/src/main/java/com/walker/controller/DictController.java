@@ -1,5 +1,6 @@
 package com.walker.controller;
 
+import com.walker.config.audit.AuditLog;
 import com.walker.pojo.Dict;
 import com.walker.service.DictService;
 import com.walker.vo.ResultBean;
@@ -28,6 +29,8 @@ public class DictController {
 
     @ApiOperation(value = "新增字典")
     @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
+    @AuditLog(module = "CONFIG", action = "CONFIG_DICT_CREATE",
+            targetType = "DICT", targetId = "#dict.id")
     @PostMapping("/admin/addDict")
     public ResultBean addDict(@RequestBody @Valid Dict dict) {
         boolean ok = dictService.saveDict(dict);
@@ -36,6 +39,8 @@ public class DictController {
 
     @ApiOperation(value = "删除字典")
     @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
+    @AuditLog(module = "CONFIG", action = "CONFIG_DICT_DELETE",
+            targetType = "DICT", targetId = "#dict.id")
     @PostMapping("/admin/deleteDict")
     public ResultBean deleteDict(@RequestBody Dict dict) {
         if (dict.getId() == null) {
@@ -47,6 +52,8 @@ public class DictController {
 
     @ApiOperation(value = "修改字典")
     @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
+    @AuditLog(module = "CONFIG", action = "CONFIG_DICT_UPDATE",
+            targetType = "DICT", targetId = "#dict.id")
     @PostMapping("/admin/updateDict")
     public ResultBean updateDict(@RequestBody @Valid Dict dict) {
         if (dict.getId() == null) {

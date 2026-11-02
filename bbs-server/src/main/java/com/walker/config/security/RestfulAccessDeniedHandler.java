@@ -1,7 +1,9 @@
 package com.walker.config.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.walker.config.audit.AuditDenialRecorder;
 import com.walker.vo.ResultBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
@@ -18,11 +20,16 @@ import java.io.PrintWriter;
 @Component
 public class RestfulAccessDeniedHandler implements AccessDeniedHandler {
 
+    @Autowired
+    private AuditDenialRecorder auditDenialRecorder;
 
     @Override
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException, ServletException {
+
+        // 审计权限拒绝（URL 级 /admin/** 拒绝不会经过 GlobalExceptionHandler）
+        auditDenialRecorder.record(request, "权限不足，请联系管理员");
 
         // 通过response设置编码格式
         response.setCharacterEncoding("UTF-8");

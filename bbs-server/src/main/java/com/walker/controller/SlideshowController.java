@@ -1,6 +1,7 @@
 package com.walker.controller;
 
 
+import com.walker.config.audit.AuditLog;
 import com.walker.pojo.Slideshow;
 import com.walker.service.SlideshowService;
 import com.walker.utils.FilePathNormalizer;
@@ -99,6 +100,8 @@ public class SlideshowController {
 
 
     @ApiOperation(value = "添加轮播图")
+    @AuditLog(module = "CONFIG", action = "CONFIG_SLIDESHOW_CREATE",
+            targetType = "SLIDESHOW", snapshot = false)
     @PostMapping("/admin/addSlideshow")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResultBean addSlideshow(@RequestBody SlideshowParam slideshowParam){
@@ -107,6 +110,8 @@ public class SlideshowController {
 
 
     @ApiOperation(value = "修改优先级")
+    @AuditLog(module = "CONFIG", action = "CONFIG_SLIDESHOW_UPDATE",
+            targetType = "SLIDESHOW", targetId = "#slideshowId")
     @PutMapping("/admin/editSuccessive/{slideshowId}/{successive}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResultBean updateSuccessive(@PathVariable Integer slideshowId, @PathVariable Integer successive){

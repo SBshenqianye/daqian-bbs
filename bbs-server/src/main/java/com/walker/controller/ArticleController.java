@@ -9,6 +9,7 @@ import com.walker.pojo.PointsLog;
 import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.service.*;
+import com.walker.config.audit.AuditLog;
 import com.walker.config.security.SelfApprovalException;
 import com.walker.utils.ConstantUtil;
 import com.walker.utils.FilePathNormalizer;
@@ -346,6 +347,8 @@ public class ArticleController {
 
     @ApiOperation(value = "管理员通过文章id删除文章")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @AuditLog(module = "ARTICLE", action = "ARTICLE_DELETE",
+            targetType = "ARTICLE", targetId = "#articleParam.articleId")
     @PostMapping("/admin/deleteArticleByArticleId")
     public ResultBean adminDeleteArticleByArticleId(@RequestBody ArticleParam articleParam){
         if (articleParam.getArticleId() != null){
@@ -360,6 +363,8 @@ public class ArticleController {
 
     @ApiOperation(value = "通过文章id修改文章状态")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @AuditLog(module = "ARTICLE", action = "ARTICLE_AUDIT",
+            targetType = "ARTICLE", targetId = "#articleParam.articleId")
     @PostMapping("/admin/auditArticleByArticleId")
     public ResultBean auditArticleByArticleId(@RequestBody ArticleParam articleParam){
         if (articleParam.getArticleId() != null){
@@ -375,6 +380,8 @@ public class ArticleController {
 
     @ApiOperation(value = "删除所有的已通过审核的文章")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @AuditLog(module = "ARTICLE", action = "ARTICLE_BATCH_DELETE",
+            targetType = "ARTICLE", targetId = "'ALL'", snapshot = false)
     @PostMapping("/admin/handleBatchDeleteArticlesByAlive/all")
     public ResultBean batchDeleteArticlesByAlive(){
         ResultBean superError = requireSuperAdmin("仅超级管理员可执行全量文章删除");
@@ -388,6 +395,8 @@ public class ArticleController {
 
     @ApiOperation(value = "批量审核文章")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @AuditLog(module = "ARTICLE", action = "ARTICLE_BATCH_AUDIT",
+            targetType = "ARTICLE", targetId = "'ALL'", snapshot = false)
     @PostMapping("/admin/batchAudit")
     public ResultBean batchAudit(){
         ResultBean superError = requireSuperAdmin("仅超级管理员可执行全量文章审核");
@@ -577,6 +586,8 @@ public class ArticleController {
 
     @ApiOperation(value = "设置/取消精华帖")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @AuditLog(module = "ARTICLE", action = "ARTICLE_FEATURE_CHANGE",
+            targetType = "ARTICLE", targetId = "#articleParam.articleId")
     @PostMapping("/admin/featured/set")
     public ResultBean setFeatured(@RequestBody ArticleParam articleParam) {
         if (articleParam.getArticleId() == null) {
@@ -623,6 +634,8 @@ public class ArticleController {
 
     @ApiOperation(value = "管理员采纳建议")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @AuditLog(module = "ADOPT", action = "SUGGESTION_ADOPT",
+            targetType = "ARTICLE", targetId = "#params['articleId']")
     @PostMapping("/admin/suggestion/adopt")
     public ResultBean adoptSuggestion(@RequestBody Map<String, Object> params) {
         Integer articleId = (Integer) params.get("articleId");

@@ -8,6 +8,7 @@ import com.walker.pojo.Comment;
 import com.walker.pojo.Reply;
 import com.walker.pojo.User;
 import com.walker.service.*;
+import com.walker.config.audit.AuditLog;
 import com.walker.config.security.Permission;
 import com.walker.config.security.SelfApprovalException;
 import com.walker.vo.ResultBean;
@@ -148,6 +149,9 @@ public class ReplyController {
 
     @ApiOperation(value = "管理员审批采纳 - 支持评论和回复")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @AuditLog(module = "ADOPT", action = "ADOPT_REVIEW",
+            targetType = "ADOPT",
+            targetId = "#params['replyId'] != null ? 'reply:' + #params['replyId'] : 'comment:' + #params['commentId']")
     @PostMapping("/admin/approveAdopt")
     public ResultBean approveAdopt(@RequestBody Map<String, Object> params) {
         Integer replyId = toInt(params, "replyId");

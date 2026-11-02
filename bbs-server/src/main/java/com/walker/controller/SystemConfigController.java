@@ -1,5 +1,6 @@
 package com.walker.controller;
 
+import com.walker.config.audit.AuditLog;
 import com.walker.pojo.SystemConfig;
 import com.walker.service.SystemConfigService;
 import com.walker.vo.ResultBean;
@@ -24,6 +25,8 @@ public class SystemConfigController {
 
     @ApiOperation(value = "新增配置")
     @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
+    @AuditLog(module = "CONFIG", action = "CONFIG_SYSTEM_CREATE",
+            targetType = "SYSTEM_CONFIG", targetId = "#config.id")
     @PostMapping("/admin/systemConfig/add")
     public ResultBean addConfig(@RequestBody SystemConfig config) {
         if (config == null || StringUtils.isEmpty(config.getConfigKey())) {
@@ -41,6 +44,8 @@ public class SystemConfigController {
 
     @ApiOperation(value = "修改配置")
     @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
+    @AuditLog(module = "CONFIG", action = "CONFIG_SYSTEM_UPDATE",
+            targetType = "SYSTEM_CONFIG", targetId = "#config.id")
     @PostMapping("/admin/systemConfig/update")
     public ResultBean updateConfig(@RequestBody SystemConfig config) {
         if (config == null || config.getId() == null) {
@@ -52,6 +57,8 @@ public class SystemConfigController {
 
     @ApiOperation(value = "删除配置")
     @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
+    @AuditLog(module = "CONFIG", action = "CONFIG_SYSTEM_DELETE",
+            targetType = "SYSTEM_CONFIG", targetId = "#config.id")
     @PostMapping("/admin/systemConfig/delete")
     public ResultBean deleteConfig(@RequestBody SystemConfig config) {
         if (config.getId() == null) {

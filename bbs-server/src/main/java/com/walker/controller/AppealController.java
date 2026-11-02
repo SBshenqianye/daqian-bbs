@@ -1,5 +1,6 @@
 package com.walker.controller;
 
+import com.walker.config.audit.AuditLog;
 import com.walker.service.AppealService;
 import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
@@ -32,6 +33,8 @@ public class AppealController {
 
     @ApiOperation(value = "管理员审核申诉")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @AuditLog(module = "APPEAL", action = "APPEAL_REVIEW",
+            targetType = "APPEAL", targetId = "#params['appealId']")
     @PostMapping("/admin/appeal/review")
     public ResultBean reviewAppeal(@RequestBody Map<String, Object> params) {
         Integer appealId = (Integer) params.get("appealId");

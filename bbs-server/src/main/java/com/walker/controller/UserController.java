@@ -7,6 +7,8 @@ import com.walker.vo.excel.ImportResultVO;
 import com.github.pagehelper.PageInfo;
 import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
+import com.walker.config.audit.AuditContext;
+import com.walker.config.audit.AuditLog;
 import com.walker.service.PointsLogService;
 import com.walker.service.NotificationService;
 import com.walker.service.SaOrgService;
@@ -254,6 +256,8 @@ public class UserController {
 
     @ApiOperation(value = "通过用户id删除用户")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "USER", action = "USER_DELETE",
+            targetType = "USER", targetId = "#userOperationParam.userId")
     @PostMapping("/admin/deleteUserByUserId")
     public ResultBean deleteUserByUserId(@RequestBody UserOperationParam userOperationParam){
         if (userOperationParam.getUserId() != null){
@@ -264,6 +268,8 @@ public class UserController {
 
     @ApiOperation(value = "通过用户id修改用户alive值")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "USER", action = "USER_STATUS_CHANGE",
+            targetType = "USER", targetId = "#userOperationParam.userId")
     @PostMapping("/admin/updateUserAliveByUserId")
     public ResultBean updateUserAliveByUserId(@RequestBody UserOperationParam userOperationParam){
         if (userOperationParam.getUserId() != null){
@@ -274,6 +280,8 @@ public class UserController {
 
     @ApiOperation(value = "通过用户id批量删除用户")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "USER", action = "USER_BATCH_DELETE",
+            targetType = "USER", targetId = "'ALL'", snapshot = false)
     @PostMapping("/admin/batchDeleteUsersByUserIds")
     public ResultBean batchDeleteUsersByUserIds(@RequestBody UserOperationParam userOperationParam){
         if (StringUtils.isNoneBlank(userOperationParam.getUserIds())){
@@ -332,6 +340,8 @@ public class UserController {
      */
     @ApiOperation(value = "更改用户角色")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "USER", action = "USER_ROLE_CHANGE",
+            targetType = "USER", targetId = "#userOperationParam.userId")
     @PostMapping("/updateUserRole")
     public ResultBean updateUserRole(@RequestBody UserOperationParam userOperationParam){
         if (userOperationParam.getUserId() != null && !StringUtils.isEmpty(userOperationParam.getRoleType())){
@@ -414,6 +424,8 @@ public class UserController {
 
     @ApiOperation(value = "管理员新增用户")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "USER", action = "USER_CREATE",
+            targetType = "USER", snapshot = false)
     @PostMapping("/admin/addUser")
     public ResultBean adminAddUser(@RequestBody AdminUserAddParam param) {
         return userService.adminAddUser(param);
@@ -421,9 +433,18 @@ public class UserController {
 
     @ApiOperation(value = "管理员更新用户详细信息")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "USER", action = "USER_UPDATE",
+            targetType = "USER", targetId = "#param.id")
     @PostMapping("/admin/updateUserDetail")
     public ResultBean adminUpdateUserDetail(@RequestBody AdminUserUpdateParam param) {
-        return userService.adminUpdateUserDetail(param);
+        ResultBean result = userService.adminUpdateUserDetail(param);
+        // 重置密码单独留痕；密码本身不落库
+        if (result != null && result.getCode() == 200
+                && (Boolean.TRUE.equals(param.getResetPassword())
+                    || StringUtils.isNoneBlank(param.getPassword()))) {
+            AuditContext.setAction("USER_RESET_PASSWORD");
+        }
+        return result;
     }
 
     // ==================== 运营方案V2 新增接口 ====================
@@ -442,6 +463,8 @@ public class UserController {
 
     @ApiOperation(value = "管理员限制/解除用户发帖")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @AuditLog(module = "USER", action = "USER_RESTRICT_POST",
+            targetType = "USER", targetId = "#params['userId']")
     @PostMapping("/admin/user/restrictPost")
     public ResultBean restrictPost(@RequestBody Map<String, Object> params) {
         Integer userId = (Integer) params.get("userId");
