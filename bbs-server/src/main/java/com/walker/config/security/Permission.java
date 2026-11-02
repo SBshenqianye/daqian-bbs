@@ -19,6 +19,8 @@ public enum Permission {
 
     CONFIG_READ("config:read", true, false),
     CONFIG_WRITE("config:write", false, false),
+    /** 权限矩阵只读页：仅超级管理员 */
+    PERMISSION_MANAGE("permission:manage", false, false),
 
     ARTICLE_READ("article:read", true, true),
     ARTICLE_REVIEW("article:review", true, true),
