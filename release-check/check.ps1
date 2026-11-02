@@ -271,13 +271,23 @@ function Invoke-Http {
             $req['Body'] = ($Body | ConvertTo-Json -Compress)
         }
         $resp = Invoke-WebRequest @req
-        return @{ Status = [int]$resp.StatusCode; Text = $resp.Content }
+        $text = $resp.Content
+        try {
+            if ($resp.RawContentStream) {
+                $text = [System.Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray())
+            }
+        } catch { }
+        return @{ Status = [int]$resp.StatusCode; Text = $text }
     } catch {
         $response = $_.Exception.Response
         if ($null -ne $response) {
-            $reader = New-Object System.IO.StreamReader($response.GetResponseStream())
-            $text = $reader.ReadToEnd()
-            $reader.Close()
+            # 统一按 UTF-8 解码，避免 GBK 系统把中文响应解成乱码
+            $stream = $response.GetResponseStream()
+            $memory = New-Object System.IO.MemoryStream
+            $stream.CopyTo($memory)
+            $text = [System.Text.Encoding]::UTF8.GetString($memory.ToArray())
+            $memory.Dispose()
+            $stream.Close()
             return @{ Status = [int]$response.StatusCode; Text = $text }
         }
         throw
