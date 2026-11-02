@@ -9,7 +9,9 @@
 |---|---|
 | `api/moderator-api-smoke.js` | 登录、板块数据范围、无板块 403、系统接口 403、生命周期、Q9 的 API 冒烟 |
 | `e2e/moderator-role.spec.js` | Playwright 管理端 E2E：菜单、无板块横幅、跨板块 403、编辑板块 |
-| `db/moderator-migration-smoke.js` | v039 迁移 → 校验 → 回滚 → 再迁移（自建测试数据，无需外部 seed） |
+| `db/moderator-migration-smoke.js` | MySQL：v039 迁移 → 校验 → 回滚 → 再迁移（自建测试数据，无需外部 seed） |
+| `db/moderator-migration-smoke-pg.sh` | PostgreSQL：同一套 6 组检查点，基于 podman 容器副本库 |
+| `db/pg/` | PG 烟测用的种子、版本记录与回滚 SQL |
 | `fixtures/moderator-seed.sql` | API/E2E 固定账号、板块、文章等测试数据（仅限 `bbs_e2e_test`） |
 
 ## 前置条件
@@ -67,16 +69,32 @@ npx.cmd playwright test tests/e2e/moderator-role.spec.js --reporter=line
 
 ### 4. v039 迁移烟测
 
+MySQL：
+
 ```powershell
 mysql -uroot -proot -e "CREATE DATABASE IF NOT EXISTS bbs_moderator_test DEFAULT CHARACTER SET utf8mb4"
 # 先把 bbs_db 结构与数据导入 bbs_moderator_test
 node tests/db/moderator-migration-smoke.js
 ```
 
-脚本会自行创建 9101–9108 测试用户、执行 v039 块、校验、回滚、再迁移，并在 `tmp/` 下留备份。
+PostgreSQL（在 WSL 里执行，PG 跑在 podman 容器）：
+
+```bash
+# 默认：容器 bbs-postgres、用户 work_flow、源库 bbs、副本库 bbs_moderator_test_pg
+bash tests/db/moderator-migration-smoke-pg.sh
+
+# 全部可覆盖
+PG_CONTAINER=bbs-postgres PG_USER=work_flow \
+PG_SOURCE_DB=bbs PG_TEST_DB=bbs_moderator_test_pg \
+bash tests/db/moderator-migration-smoke-pg.sh
+```
+
+- 脚本会从源库 `pg_dump` 复制出副本库，再跑 v039 → 校验 → 回滚 → 再迁移；源库只读、不会被写入。
+- 安全阀：`PG_TEST_DB` 必须包含 `test` 且不能等于 `PG_SOURCE_DB`，否则直接拒绝执行。
+- PG 历史库没有 `user_type` 列注释，v039 才首次设置，所以回滚是 `COMMENT ... IS NULL`，不是写回旧文案。
 
 ## 已知限制
 
-- 仅验证 MySQL，PostgreSQL 的 v039 需另行烟测。
+- PG 烟测依赖 podman 容器；本机没有容器时需先准备一个可连接的 PG 副本库。
 - E2E 只跑 Chromium。
 - API/E2E 断言依赖固定 ID（9001–9008 账号，9001–9005 板块），共享库需先重置测试数据。
