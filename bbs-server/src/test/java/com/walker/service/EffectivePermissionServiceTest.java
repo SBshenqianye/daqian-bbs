@@ -274,4 +274,34 @@ class EffectivePermissionServiceTest {
         assertTrue(ids.contains(3));
         assertTrue(ids.contains(99));
     }
+
+    @Test
+    @DisplayName("批量计算与单人一致：临时组 grant 不能覆盖主组 revoke（收回优先）")
+    void userIds_revokePriorityMatchesSingleUser() {
+        User user = user(5, "2");
+        user.setPrimaryGroupId(20);
+        when(permissionGroupMapper.selectById(20)).thenReturn(systemGroup(20, "ADMIN", 1));
+        when(userMapper.selectList(any())).thenReturn(Collections.singletonList(user));
+
+        UserPermissionGroup link = new UserPermissionGroup();
+        link.setUserId(5);
+        link.setGroupId(40);
+        when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(link));
+
+        PermissionGroup temp = new PermissionGroup();
+        temp.setId(40);
+        temp.setEnabled(1);
+        when(permissionGroupMapper.selectList(any()))
+                .thenReturn(Arrays.asList(systemGroup(20, "ADMIN", 1), temp));
+
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Arrays.asList(
+                item(20, Permission.USER_READ, "revoke"),
+                item(40, Permission.USER_READ, "grant")));
+
+        Set<String> single = service.getEffectiveCodes(user);
+        java.util.List<Integer> batch = service.getUserIdsWithPermission(Permission.USER_READ);
+
+        assertFalse(single.contains(Permission.USER_READ.getCode()), "单人计算未按收回优先");
+        assertFalse(batch.contains(5), "批量计算与单人计算不一致");
+    }
 }

@@ -79,11 +79,20 @@ public class AdminAccessFilter extends OncePerRequestFilter {
         }
         // 放行登录、公共接口、文件与改密相关路径
         if ("/admin/login".equals(path)
-                || path.startsWith("/common/")
+                || "/common/login".equals(path)
+                || "/common/logout".equals(path)
+                || "/common/user/info".equals(path)
                 || path.startsWith("/files/")
                 || path.contains("/modPwd")
                 || path.contains("/changePassword")
                 || path.contains("/resetPassword")) {
+            return false;
+        }
+        // /common 下只有历史遗留的组织批量写接口属于管理端
+        if (path.startsWith("/common/saOrg/batchUpdate")) {
+            return true;
+        }
+        if (path.startsWith("/common/")) {
             return false;
         }
         return path.startsWith("/admin")

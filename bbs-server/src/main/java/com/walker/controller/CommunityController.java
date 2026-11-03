@@ -108,7 +108,7 @@ public class CommunityController {
 
 
     @ApiOperation(value = "修改社区的状态")
-    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @PutMapping("/admin/updateCommunityStatus/{communityId}")
     public ResultBean updateCommunityStatus(@PathVariable Integer communityId){
         return communityService.updateCommunityStatus(communityId);
@@ -116,7 +116,7 @@ public class CommunityController {
 
 
     @ApiOperation(value = "通过社区id删除社区")
-    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @DeleteMapping("/admin/deleteCommunityByCommunityId/{communityId}")
     public ResultBean deleteCommunityByCommunityId(@PathVariable Integer communityId){
         return communityService.deleteCommunityByCommunityId(communityId);

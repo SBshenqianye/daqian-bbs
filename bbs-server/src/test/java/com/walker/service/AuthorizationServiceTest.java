@@ -97,6 +97,18 @@ class AuthorizationServiceTest {
     }
 
     @Test
+    @DisplayName("hasPermission: 超管非关键权限也可被权限组收回")
+    void hasPermission_superAdmin_respectsRevokes() {
+        User superUser = user(1, "3");
+        java.util.Set<String> codes = new LinkedHashSet<>(Permission.codesFor(AccountRole.SUPER_ADMIN));
+        codes.remove(Permission.ARTICLE_DELETE.getCode());
+        when(effectivePermissionService.getEffectiveCodes(superUser)).thenReturn(codes);
+
+        assertFalse(authorizationService.hasPermission(superUser, Permission.ARTICLE_DELETE));
+        assertTrue(authorizationService.hasPermission(superUser, Permission.PERMISSION_MANAGE));
+    }
+
+    @Test
     @DisplayName("canModerateBoard: 全局管理员放行；MODERATOR 仅本板块")
     void canModerateBoard_scope() {
         when(currentUserService.getCurrentUser()).thenReturn(user(1, "3"));

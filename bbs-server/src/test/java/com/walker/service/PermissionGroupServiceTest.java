@@ -9,6 +9,7 @@ import com.walker.mapper.UserMapper;
 import com.walker.mapper.UserPermissionGroupMapper;
 import com.walker.pojo.PermissionGroup;
 import com.walker.pojo.PermissionGroupItem;
+import com.walker.pojo.PermissionPreset;
 import com.walker.pojo.User;
 import com.walker.service.impl.PermissionGroupServiceImpl;
 import com.walker.vo.ResultBean;
@@ -209,6 +210,39 @@ class PermissionGroupServiceTest {
         assertEquals(500, result.getCode());
         assertTrue(result.getMessage().contains("系统预置"));
         verify(permissionGroupMapper, never()).insert(any(PermissionGroup.class));
+    }
+
+    @Test
+    @DisplayName("预设应用：不能把自定义组改成系统角色，也不能修改系统组基线")
+    void applyPreset_cannotChangeBaseRole() throws Exception {
+        PermissionGroup custom = group();
+        custom.setId(1);
+        custom.setBaseRole(null);
+        when(permissionGroupMapper.selectById(1)).thenReturn(custom);
+
+        PermissionPreset preset = new PermissionPreset();
+        preset.setId(100);
+        preset.setSnapshotJson(objectMapper.writeValueAsString(
+                Collections.singletonMap("baseRole", "SUPER_ADMIN")));
+        when(permissionPresetMapper.selectById(100)).thenReturn(preset);
+
+        ResultBean toCustom = service.applyPreset(100, 1);
+        assertEquals(500, toCustom.getCode());
+        assertTrue(toCustom.getMessage().contains("不能改为系统角色"));
+
+        PermissionGroup system = group();
+        system.setId(10);
+        system.setBaseRole("ADMIN");
+        when(permissionGroupMapper.selectById(10)).thenReturn(system);
+        java.util.Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
+        snapshot.put("baseRole", "SUPER_ADMIN");
+        snapshot.put("permissionCodes", Collections.emptyList());
+        preset.setSnapshotJson(objectMapper.writeValueAsString(snapshot));
+
+        ResultBean toSystem = service.applyPreset(100, 10);
+        assertEquals(500, toSystem.getCode());
+        assertTrue(toSystem.getMessage().contains("基线不可修改"));
+        verify(permissionGroupMapper, never()).updateById(any(PermissionGroup.class));
     }
 
     @Test

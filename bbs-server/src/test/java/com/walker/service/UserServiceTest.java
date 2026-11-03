@@ -7,6 +7,7 @@ import com.walker.config.security.AccountRole;
 import com.walker.config.security.Permission;
 import com.walker.mapper.SaOrgMapper;
 import com.walker.mapper.UserMapper;
+import com.walker.pojo.PermissionGroup;
 import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.service.impl.SaOrgServiceImpl;
@@ -34,8 +35,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -52,6 +55,9 @@ class UserServiceTest {
 
     @Mock
     private com.walker.mapper.BoardModeratorMapper boardModeratorMapper;
+
+    @Mock
+    private com.walker.mapper.PermissionGroupMapper permissionGroupMapper;
 
     @Mock
     private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
@@ -1023,5 +1029,68 @@ class UserServiceTest {
         assertEquals(500, result.getCode());
         assertEquals("非法用户角色", result.getMessage());
         verify(userMapper, never()).updateById(any(User.class));
+    }
+
+    // ========== 主权限组展示与同步 ==========
+
+    private PermissionGroup roleGroup(int id, String baseRole, int enabled) {
+        PermissionGroup group = new PermissionGroup();
+        group.setId(id);
+        group.setBaseRole(baseRole);
+        group.setEnabled(enabled);
+        group.setGroupName(baseRole == null ? "自定义" : baseRole);
+        group.setGroupCode(baseRole == null ? "custom" : "role_" + baseRole.toLowerCase());
+        return group;
+    }
+
+    @Test
+    @DisplayName("主组信息：停用的主组按 user_type 回退到系统角色组")
+    void getPrimaryGroupInfo_disabledPrimary_fallsBack() {
+        User user = new User();
+        user.setId(5);
+        user.setUserType("2");
+        user.setPrimaryGroupId(10);
+
+        when(permissionGroupMapper.selectById(10)).thenReturn(roleGroup(10, "ADMIN", 0));
+        when(permissionGroupMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Collections.singletonList(roleGroup(20, "ADMIN", 1)));
+
+        Map<String, Object> info = userService.getPrimaryGroupInfo(user);
+
+        assertEquals(20, info.get("primaryGroupId"));
+        assertEquals("role_admin", info.get("primaryGroupCode"));
+    }
+
+    @Test
+    @DisplayName("主组信息：自定义组不能作为主组，按 user_type 回退")
+    void getPrimaryGroupInfo_customPrimary_fallsBack() {
+        User user = new User();
+        user.setId(5);
+        user.setUserType("4");
+        user.setPrimaryGroupId(10);
+
+        PermissionGroup custom = roleGroup(10, null, 1);
+        when(permissionGroupMapper.selectById(10)).thenReturn(custom);
+        when(permissionGroupMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Collections.singletonList(roleGroup(30, "MODERATOR", 1)));
+
+        Map<String, Object> info = userService.getPrimaryGroupInfo(user);
+
+        assertEquals(30, info.get("primaryGroupId"));
+        assertEquals("role_moderator", info.get("primaryGroupCode"));
+    }
+
+    @Test
+    @DisplayName("修改角色：主组与 user_type 同步写入（允许写 NULL 回退）")
+    void updateUserRole_syncsPrimaryGroup() {
+        when(currentUserService.isSuperAdmin()).thenReturn(true);
+        when(userMapper.updateUserRole(2, "2")).thenReturn(1);
+        when(permissionGroupMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Collections.singletonList(roleGroup(20, "ADMIN", 1)));
+
+        ResultBean result = userService.updateUserRole(2, "02");
+
+        assertEquals(200, result.getCode());
+        verify(userMapper).update(isNull(), any());
     }
 }

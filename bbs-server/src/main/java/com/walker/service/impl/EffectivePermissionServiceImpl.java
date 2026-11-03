@@ -55,28 +55,12 @@ public class EffectivePermissionServiceImpl implements EffectivePermissionServic
 
     @Override
     public Set<String> getEffectiveCodes(User user) {
-        Set<String> codes = new LinkedHashSet<>();
         if (user == null) {
-            return codes;
+            return new LinkedHashSet<>();
         }
-
         PermissionGroup primaryGroup = resolveEnabledSystemGroup(user.getPrimaryGroupId());
-        AccountRole baseRole = primaryGroup == null
-                ? AccountRole.fromUserType(user.getUserType())
-                : parseBaseRole(primaryGroup.getBaseRole());
-        if (baseRole == null) {
-            baseRole = AccountRole.USER;
-        }
-        boolean protectSuper = baseRole == AccountRole.SUPER_ADMIN
-                || AccountRole.fromUserType(user.getUserType()) == AccountRole.SUPER_ADMIN;
-
-        codes.addAll(Permission.codesFor(baseRole));
-
-        Map<Integer, List<PermissionGroupItem>> itemsByGroup = loadItemsByGroup(
-                user.getId(), primaryGroup, true);
-        applyItems(codes, itemsByGroup, protectSuper);
-        addSuperProtected(codes, user);
-        return codes;
+        Set<Integer> groupIds = collectGroupIds(primaryGroup, loadTemporaryGroups(user.getId()));
+        return computeEffectiveCodes(user, primaryGroup, groupIds, loadItems(groupIds));
     }
 
     @Override
@@ -146,7 +130,19 @@ public class EffectivePermissionServiceImpl implements EffectivePermissionServic
 
         List<Integer> result = new ArrayList<>();
         for (User user : usersById.values()) {
-            Set<String> codes = effectiveCodes(user, groupById, linksByUser, itemsByGroup);
+            PermissionGroup primaryGroup = systemGroup(groupById.get(user.getPrimaryGroupId()));
+            List<PermissionGroup> temporaryGroups = new ArrayList<>();
+            List<UserPermissionGroup> links = linksByUser.get(user.getId());
+            if (links != null) {
+                for (UserPermissionGroup link : links) {
+                    PermissionGroup group = groupById.get(link.getGroupId());
+                    if (isTemporaryGroup(group)) {
+                        temporaryGroups.add(group);
+                    }
+                }
+            }
+            Set<Integer> groupIds = collectGroupIds(primaryGroup, temporaryGroups);
+            Set<String> codes = computeEffectiveCodes(user, primaryGroup, groupIds, itemsByGroup);
             if (codes.contains(permission.getCode())) {
                 result.add(user.getId());
             }
@@ -154,12 +150,14 @@ public class EffectivePermissionServiceImpl implements EffectivePermissionServic
         return result;
     }
 
-    private Set<String> effectiveCodes(User user,
-                                       Map<Integer, PermissionGroup> groupById,
-                                       Map<Integer, List<UserPermissionGroup>> linksByUser,
-                                       Map<Integer, List<PermissionGroupItem>> itemsByGroup) {
+    /**
+     * 单人/批量共用同一套计算：先合并主组与所有临时组的 grant/revoke，再统一应用收回优先。
+     */
+    private Set<String> computeEffectiveCodes(User user,
+                                              PermissionGroup primaryGroup,
+                                              Set<Integer> groupIds,
+                                              Map<Integer, List<PermissionGroupItem>> itemsByGroup) {
         Set<String> codes = new LinkedHashSet<>();
-        PermissionGroup primaryGroup = systemGroup(groupById.get(user.getPrimaryGroupId()));
         AccountRole baseRole = primaryGroup == null
                 ? AccountRole.fromUserType(user.getUserType())
                 : parseBaseRole(primaryGroup.getBaseRole());
@@ -170,25 +168,28 @@ public class EffectivePermissionServiceImpl implements EffectivePermissionServic
                 || AccountRole.fromUserType(user.getUserType()) == AccountRole.SUPER_ADMIN;
 
         codes.addAll(Permission.codesFor(baseRole));
-        if (primaryGroup != null && primaryGroup.getId() != null) {
-            applyItems(codes, Collections.singletonMap(primaryGroup.getId(),
-                    itemsByGroup.getOrDefault(primaryGroup.getId(), Collections.emptyList())), protectSuper);
-        }
 
-        List<UserPermissionGroup> links = linksByUser.get(user.getId());
-        if (links != null) {
-            for (UserPermissionGroup link : links) {
-                PermissionGroup group = groupById.get(link.getGroupId());
-                if (!isTemporaryGroup(group) || group.getId().equals(
-                        primaryGroup == null ? null : primaryGroup.getId())) {
-                    continue;
-                }
-                applyItems(codes, Collections.singletonMap(group.getId(),
-                        itemsByGroup.getOrDefault(group.getId(), Collections.emptyList())), protectSuper);
-            }
+        Map<Integer, List<PermissionGroupItem>> effectiveItems = new LinkedHashMap<>();
+        for (Integer groupId : groupIds) {
+            effectiveItems.put(groupId, itemsByGroup.getOrDefault(groupId, Collections.emptyList()));
         }
+        applyItems(codes, effectiveItems, protectSuper);
         addSuperProtected(codes, user);
         return codes;
+    }
+
+    private Set<Integer> collectGroupIds(PermissionGroup primaryGroup,
+                                         List<PermissionGroup> temporaryGroups) {
+        Set<Integer> groupIds = new LinkedHashSet<>();
+        if (primaryGroup != null && primaryGroup.getId() != null) {
+            groupIds.add(primaryGroup.getId());
+        }
+        for (PermissionGroup group : temporaryGroups) {
+            if (group != null && group.getId() != null) {
+                groupIds.add(group.getId());
+            }
+        }
+        return groupIds;
     }
 
     /** 超管关键权限在任何主组/临时组组合下都必须保留。 */
@@ -204,41 +205,36 @@ public class EffectivePermissionServiceImpl implements EffectivePermissionServic
     }
 
     /**
-     * 加载主组 + 显式绑定的临时组下所有权限条目。
+     * 显式绑定的临时组（启用且无角色基线）；系统组不参与手动绑定。
      */
-    private Map<Integer, List<PermissionGroupItem>> loadItemsByGroup(Integer userId,
-                                                                     PermissionGroup primaryGroup,
-                                                                     boolean includeTemporary) {
-        Set<Integer> groupIds = new LinkedHashSet<>();
-        if (primaryGroup != null && primaryGroup.getId() != null) {
-            groupIds.add(primaryGroup.getId());
+    private List<PermissionGroup> loadTemporaryGroups(Integer userId) {
+        if (userId == null) {
+            return Collections.emptyList();
         }
-        if (includeTemporary && userId != null) {
-            List<UserPermissionGroup> links = userPermissionGroupMapper.selectList(
-                    new LambdaQueryWrapper<UserPermissionGroup>()
-                            .eq(UserPermissionGroup::getUserId, userId));
-            if (links != null && !links.isEmpty()) {
-                List<Integer> linkedGroupIds = links.stream()
-                        .map(UserPermissionGroup::getGroupId)
-                        .filter(id -> id != null)
-                        .distinct()
-                        .collect(Collectors.toList());
-                if (!linkedGroupIds.isEmpty()) {
-                    List<PermissionGroup> linkedGroups = permissionGroupMapper.selectList(
-                            new LambdaQueryWrapper<PermissionGroup>()
-                                    .in(PermissionGroup::getId, linkedGroupIds)
-                                    .eq(PermissionGroup::getEnabled, 1));
-                    if (linkedGroups != null) {
-                        for (PermissionGroup group : linkedGroups) {
-                            if (isTemporaryGroup(group)) {
-                                groupIds.add(group.getId());
-                            }
-                        }
-                    }
-                }
-            }
+        List<UserPermissionGroup> links = userPermissionGroupMapper.selectList(
+                new LambdaQueryWrapper<UserPermissionGroup>()
+                        .eq(UserPermissionGroup::getUserId, userId));
+        if (links == null || links.isEmpty()) {
+            return Collections.emptyList();
         }
-        return loadItems(groupIds);
+        List<Integer> linkedGroupIds = links.stream()
+                .map(UserPermissionGroup::getGroupId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+        if (linkedGroupIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<PermissionGroup> linkedGroups = permissionGroupMapper.selectList(
+                new LambdaQueryWrapper<PermissionGroup>()
+                        .in(PermissionGroup::getId, linkedGroupIds)
+                        .eq(PermissionGroup::getEnabled, 1));
+        if (linkedGroups == null) {
+            return Collections.emptyList();
+        }
+        return linkedGroups.stream()
+                .filter(this::isTemporaryGroup)
+                .collect(Collectors.toList());
     }
 
     private Map<Integer, List<PermissionGroupItem>> loadItems(Set<Integer> groupIds) {

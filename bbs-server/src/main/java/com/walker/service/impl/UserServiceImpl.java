@@ -50,6 +50,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import javax.servlet.http.HttpServletRequest;
@@ -633,6 +634,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
+    @Transactional
     public ResultBean updateUserRole(Integer userId, String roleType) {
         if (ConstantUtil.MANA_ZERO_ONE.equals(roleType)) {
             roleType = ConstantUtil.MANA_ONE;
@@ -660,12 +662,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return ResultBean.forbidden("仅超级管理员可授予或调整管理员角色");
         }
 
-        Integer primaryGroupId = resolvePrimaryGroupId(roleType);
         int result = userMapper.updateUserRole(userId, roleType);
         if (result > 0) {
-            if (primaryGroupId != null) {
-                userMapper.updateById(new User().setId(userId).setPrimaryGroupId(primaryGroupId));
-            }
+            // 主组必须与 user_type 同步；系统组缺失时写 NULL，让有效权限回退到 user_type
+            updatePrimaryGroupId(userId, resolvePrimaryGroupId(roleType));
             return ResultBean.success("操作成功");
         }
         return ResultBean.error("操作失败");
@@ -999,6 +999,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
+    @Transactional
     public ResultBean adminUpdateUserDetail(AdminUserUpdateParam param) {
         if (param.getId() == null) {
             return ResultBean.error("用户ID不能为空");
@@ -1038,10 +1039,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         if (newUserType != null) {
             updateUser.setUserType(newUserType);
-            Integer primaryGroupId = resolvePrimaryGroupId(newUserType);
-            if (primaryGroupId != null) {
-                updateUser.setPrimaryGroupId(primaryGroupId);
-            }
         }
         if (param.getIsAlive() != null) {
             updateUser.setIsAlive(param.getIsAlive());
@@ -1075,6 +1072,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         userMapper.updateById(updateUser);
+        if (newUserType != null) {
+            updatePrimaryGroupId(param.getId(), resolvePrimaryGroupId(newUserType));
+        }
         return ResultBean.success("更新成功");
     }
 
@@ -1173,7 +1173,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         PermissionGroup group = null;
         if (user != null && user.getPrimaryGroupId() != null && permissionGroupMapper != null) {
             PermissionGroup assigned = permissionGroupMapper.selectById(user.getPrimaryGroupId());
-            if (assigned != null && StringUtils.isNotBlank(assigned.getBaseRole())) {
+            if (isEnabledSystemGroup(assigned)) {
                 group = assigned;
             }
         }
@@ -1190,6 +1190,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public Integer resolvePrimaryGroupId(String userType) {
         PermissionGroup group = findSystemGroupByUserType(userType);
         return group == null ? null : group.getId();
+    }
+
+    /** 显式写入主组（包括 NULL），避免 user_type 与 primary_group_id 不一致。 */
+    private void updatePrimaryGroupId(Integer userId, Integer primaryGroupId) {
+        if (userId == null) {
+            return;
+        }
+        userMapper.update(null, Wrappers.<User>lambdaUpdate()
+                .set(User::getPrimaryGroupId, primaryGroupId)
+                .eq(User::getId, userId));
     }
 
     @Override
@@ -1212,7 +1222,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         for (User user : users) {
             PermissionGroup group = groupById.get(user.getPrimaryGroupId());
-            if (group == null) {
+            if (!isEnabledSystemGroup(group)) {
                 group = findSystemGroupByUserType(user.getUserType());
             }
             if (group != null) {
@@ -1221,6 +1231,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 user.setPrimaryGroupCode(group.getGroupCode());
             }
         }
+    }
+
+    /** 主组必须是启用中的系统角色组；停用/自定义/不存在的组按 user_type 回退。 */
+    private boolean isEnabledSystemGroup(PermissionGroup group) {
+        return group != null
+                && Integer.valueOf(1).equals(group.getEnabled())
+                && StringUtils.isNotBlank(group.getBaseRole());
     }
 
     private PermissionGroup findSystemGroupByUserType(String userType) {

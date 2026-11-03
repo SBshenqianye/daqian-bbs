@@ -52,7 +52,7 @@ public class SaOrgController {
      * @return ResultBean 返回封装结果
      */
     @ApiOperation("删除单位")
-    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @AuditLog(module = "CONFIG", action = "CONFIG_ORG_DELETE",
             targetType = "ORG", targetId = "#orgNo")
     @GetMapping("/saOrg/deleteSaOrgByOrgNo")
@@ -69,7 +69,7 @@ public class SaOrgController {
      * @return ResultBean 返回封装结果
      */
     @ApiOperation("添加单位")
-    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @AuditLog(module = "CONFIG", action = "CONFIG_ORG_CREATE",
             targetType = "ORG", snapshot = false)
     @GetMapping("/saOrg/addSaOrg")
@@ -87,7 +87,7 @@ public class SaOrgController {
     }
 
     @ApiOperation("批量更新排名选中状态")
-    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @AuditLog(module = "CONFIG", action = "CONFIG_ORG_RANKING_UPDATE",
             targetType = "ORG", targetId = "'ALL'", snapshot = false)
     @PostMapping("/common/saOrg/batchUpdateRanking")
@@ -111,7 +111,7 @@ public class SaOrgController {
     }
 
     @ApiOperation("批量更新显示选中状态")
-    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @AuditLog(module = "CONFIG", action = "CONFIG_ORG_DISPLAY_UPDATE",
             targetType = "ORG", targetId = "'ALL'", snapshot = false)
     @PostMapping("/common/saOrg/batchUpdateDisplay")

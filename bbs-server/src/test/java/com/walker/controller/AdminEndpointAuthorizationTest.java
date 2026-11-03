@@ -14,8 +14,12 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * P3 回归：扫描 Controller 上的映射，确保管理端接口都有方法级/类级 @PreAuthorize。
@@ -65,6 +69,41 @@ class AdminEndpointAuthorizationTest {
 
         assertTrue(violations.isEmpty(),
                 "以下管理端接口缺少 @PreAuthorize：\n" + String.join("\n", violations));
+    }
+
+    @Test
+    @DisplayName("标签/社区/组织写接口仍允许 ADMIN（未被 config:write 误伤）")
+    void adminBusinessWritesRemainAvailableToAdmin() {
+        assertPermissionGrantedToAdmin(ArticleLabelController.class, "addArticleLabel");
+        assertPermissionGrantedToAdmin(ArticleLabelController.class, "updateArticleLabel");
+        assertPermissionGrantedToAdmin(ArticleLabelController.class, "deleteArticleLabel");
+        assertPermissionGrantedToAdmin(CommunityController.class, "updateCommunityStatus");
+        assertPermissionGrantedToAdmin(CommunityController.class, "deleteCommunityByCommunityId");
+        assertPermissionGrantedToAdmin(SaOrgController.class, "deleteSaOrgByOrgNo");
+        assertPermissionGrantedToAdmin(SaOrgController.class, "addSaOrg");
+        assertPermissionGrantedToAdmin(SaOrgController.class, "batchUpdateRanking");
+        assertPermissionGrantedToAdmin(SaOrgController.class, "batchUpdateDisplay");
+    }
+
+    private static void assertPermissionGrantedToAdmin(Class<?> controller, String methodName) {
+        for (Method method : controller.getDeclaredMethods()) {
+            if (!method.getName().equals(methodName)) {
+                continue;
+            }
+            PreAuthorize auth = AnnotatedElementUtils.findMergedAnnotation(
+                    method, PreAuthorize.class);
+            assertNotNull(auth, controller.getSimpleName() + "#" + methodName + " 缺少 @PreAuthorize");
+            Matcher matcher = Pattern.compile("Permission\\)\\.([A-Z_]+)").matcher(auth.value());
+            assertTrue(matcher.find(), controller.getSimpleName() + "#" + methodName
+                    + " 未使用权限点: " + auth.value());
+            com.walker.config.security.Permission permission =
+                    com.walker.config.security.Permission.valueOf(matcher.group(1));
+            assertTrue(permission.isGrantedTo(com.walker.config.security.AccountRole.ADMIN),
+                    controller.getSimpleName() + "#" + methodName
+                            + " 使用的权限点 ADMIN 不具备: " + permission.getCode());
+            return;
+        }
+        fail("未找到方法 " + controller.getSimpleName() + "#" + methodName);
     }
 
     private static String firstPath(RequestMapping mapping) {

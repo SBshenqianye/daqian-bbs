@@ -120,14 +120,7 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         if (validation != null) {
             return validation;
         }
-        List<String> effectiveCodes = permissionCodes;
-        if (effectiveCodes == null && StringUtils.isNotBlank(group.getBaseRole())) {
-            AccountRole baseRole = parseBaseRole(group.getBaseRole());
-            if (baseRole != null) {
-                effectiveCodes = new ArrayList<>(Permission.codesFor(baseRole));
-            }
-        }
-        ResultBean codeValidation = validateEffectiveCodes(group, effectiveCodes);
+        ResultBean codeValidation = validateEffectiveCodes(group, permissionCodes);
         if (codeValidation != null) {
             return codeValidation;
         }
@@ -136,7 +129,7 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         group.setGroupName(group.getGroupName().trim());
         normalizeGroup(group, now, true);
         permissionGroupMapper.insert(group);
-        replaceEffectiveItems(group, effectiveCodes, now);
+        replaceEffectiveItems(group, permissionCodes, now);
         return ResultBean.success("创建成功", group.getId());
     }
 
@@ -383,9 +376,16 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         List<String> codes = codesObj instanceof List
                 ? ((List<Object>) codesObj).stream().map(String::valueOf).collect(Collectors.toList())
                 : Collections.emptyList();
-        if (snapshot.containsKey("baseRole")) {
-            Object baseRole = snapshot.get("baseRole");
-            group.setBaseRole(baseRole == null ? null : String.valueOf(baseRole));
+        String presetBaseRole = snapshot.get("baseRole") == null
+                ? null : String.valueOf(snapshot.get("baseRole")).trim();
+        boolean systemGroup = isSystemGroup(group);
+        if (systemGroup) {
+            if (StringUtils.isNotBlank(presetBaseRole)
+                    && !presetBaseRole.equalsIgnoreCase(group.getBaseRole())) {
+                return ResultBean.error("系统角色的基线不可修改");
+            }
+        } else if (StringUtils.isNotBlank(presetBaseRole)) {
+            return ResultBean.error("自定义权限组不能改为系统角色");
         }
         ResultBean codeValidation = validateEffectiveCodes(group, codes);
         if (codeValidation != null) {
@@ -587,6 +587,15 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         List<PermissionGroupItem> items = permissionGroupItemMapper.selectList(
                 new LambdaQueryWrapper<PermissionGroupItem>()
                         .eq(PermissionGroupItem::getGroupId, group.getId()));
+        applyItemEffects(codes, items, baseRole);
+        return codes;
+    }
+
+    /** 合并 grant/revoke 到权限集合；收回优先，超管关键权限不可收回。 */
+    private void applyItemEffects(Set<String> codes, List<PermissionGroupItem> items, AccountRole baseRole) {
+        if (items == null) {
+            return;
+        }
         Set<String> grants = new LinkedHashSet<>();
         Set<String> revokes = new LinkedHashSet<>();
         for (PermissionGroupItem item : items) {
@@ -610,7 +619,6 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
             }
             codes.remove(code);
         }
-        return codes;
     }
 
     private List<String> itemCodes(Integer groupId, String effect) {
@@ -653,7 +661,7 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
     }
 
     /**
-     * 系统角色组自动应用的用户数：主组指向该组，或主组为空时按 user_type 回退到该角色的用户。
+     * 系统角色组自动应用的用户数：主组指向该组，或主组失效（为空/停用/非系统组）时按 user_type 回退到该角色的用户。
      */
     private long roleUserCount(PermissionGroup group) {
         AccountRole role = parseBaseRole(group == null ? null : group.getBaseRole());
@@ -666,7 +674,11 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         Long fallbackCount = userMapper.selectCount(
                 new LambdaQueryWrapper<User>()
                         .eq(User::getUserType, role.getCode())
-                        .isNull(User::getPrimaryGroupId));
+                        .and(w -> w.isNull(User::getPrimaryGroupId)
+                                .or()
+                                .notInSql(User::getPrimaryGroupId,
+                                        "SELECT id FROM bbs_permission_group"
+                                                + " WHERE enabled = 1 AND base_role IS NOT NULL")));
         return (primaryCount == null ? 0L : primaryCount)
                 + (fallbackCount == null ? 0L : fallbackCount);
     }

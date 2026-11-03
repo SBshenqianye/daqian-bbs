@@ -64,9 +64,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         if (user == null || permission == null) {
             return false;
         }
-        if (isSuperAdmin(user)) {
-            return true;
-        }
+        // 超管基线本身包含全部权限；这里不再短路，确保权限组对非关键权限的收回同样生效
         return effectivePermissionService.getEffectiveCodes(user).contains(permission.getCode());
     }
 
