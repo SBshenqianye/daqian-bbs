@@ -36,6 +36,22 @@ public interface UserService extends IService<User> {
     List<Map<String, Object>> getBoardScopes(Integer userId);
 
     /**
+     * 登录/会话响应中的主权限组信息（primaryGroupId/Name/Code）。
+     * 主组为空或不是系统角色组时，回退到 user_type 对应的系统角色组。
+     */
+    Map<String, Object> getPrimaryGroupInfo(User user);
+
+    /**
+     * 按 user_type 找到对应的系统角色组 ID，用于保持 user_type 与主组同步。
+     */
+    Integer resolvePrimaryGroupId(String userType);
+
+    /**
+     * 批量填充用户的主权限组名称/编码（列表展示用）。
+     */
+    void fillPrimaryGroupNames(List<User> users);
+
+    /**
      * 登录之后返回token
      * @param username
      * @param password

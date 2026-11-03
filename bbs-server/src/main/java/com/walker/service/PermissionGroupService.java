@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 权限组（Phase B，grant-only）。
+ * 权限组（系统角色 + 临时权限组）。
  */
 public interface PermissionGroupService {
 

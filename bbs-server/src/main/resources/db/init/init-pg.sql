@@ -264,6 +264,7 @@ CREATE TABLE IF NOT EXISTS bbs_user (
     phone           varchar(20),
     org_no          varchar(20),
     user_type       varchar(20) DEFAULT '1',
+    primary_group_id integer,
     personnel_id    varchar(50),
     id_card         varchar(18),
     is_first_login  smallint DEFAULT 1,
@@ -276,6 +277,9 @@ CREATE TABLE IF NOT EXISTS bbs_user (
 
 COMMENT ON COLUMN bbs_user.user_type
     IS '用户类型（1：普通用户，2：管理员，3：超级管理员，4：版主）';
+COMMENT ON COLUMN bbs_user.primary_group_id
+    IS '主权限组ID（必须指向系统角色组）';
+CREATE INDEX IF NOT EXISTS idx_user_primary_group ON bbs_user (primary_group_id);
 
 -- 重新启用外键检查
 SET session_replication_role = 'origin';
@@ -648,6 +652,7 @@ CREATE TABLE IF NOT EXISTS bbs_permission_group (
     description     varchar(500),
     scope_type      varchar(20) NOT NULL DEFAULT 'ADMIN',
     data_scope_type varchar(20) NOT NULL DEFAULT 'ROLE_DEFAULT',
+    base_role       varchar(20),
     enabled         smallint NOT NULL DEFAULT 1,
     sort_order      integer NOT NULL DEFAULT 0,
     create_by       varchar(64),
@@ -692,6 +697,7 @@ CREATE TABLE IF NOT EXISTS bbs_permission_preset (
 
 COMMENT ON TABLE bbs_permission_group IS '权限组';
 COMMENT ON TABLE bbs_permission_group_item IS '权限组-权限点';
+COMMENT ON COLUMN bbs_permission_group_item.effect IS '效果：grant（授予）/revoke（收回）';
 COMMENT ON TABLE bbs_user_permission_group IS '用户-权限组';
 COMMENT ON TABLE bbs_permission_preset IS '权限预设方案';
 

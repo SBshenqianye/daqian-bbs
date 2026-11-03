@@ -143,6 +143,75 @@ class PermissionGroupServiceTest {
     }
 
     @Test
+    @DisplayName("系统角色：禁止删除、禁止修改编码/baseRole、禁止手动加成员")
+    void systemGroup_immutableIdentityAndNoManualMembers() {
+        PermissionGroup system = group();
+        system.setId(10);
+        system.setBaseRole("ADMIN");
+        when(permissionGroupMapper.selectById(10)).thenReturn(system);
+
+        ResultBean deleted = service.deleteGroup(10);
+        assertEquals(500, deleted.getCode());
+        assertTrue(deleted.getMessage().contains("不可删除"));
+        verify(permissionGroupMapper, never()).deleteById(any());
+
+        PermissionGroup codeChange = group();
+        codeChange.setGroupCode("hacked_code");
+        ResultBean codeResult = service.updateGroup(10, codeChange, null);
+        assertEquals(500, codeResult.getCode());
+        assertTrue(codeResult.getMessage().contains("编码不可修改"));
+
+        PermissionGroup roleChange = group();
+        roleChange.setBaseRole("SUPER_ADMIN");
+        ResultBean roleResult = service.updateGroup(10, roleChange, null);
+        assertEquals(500, roleResult.getCode());
+        assertTrue(roleResult.getMessage().contains("基线不可修改"));
+
+        ResultBean assigned = service.assignUsers(10, Collections.singletonList(5));
+        assertEquals(500, assigned.getCode());
+        assertTrue(assigned.getMessage().contains("自动应用"));
+        verify(userPermissionGroupMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("系统角色：允许修改名称/描述/权限，并返回自动应用信息")
+    void systemGroup_allowsPermissionUpdateAndSummary() {
+        PermissionGroup system = group();
+        system.setId(10);
+        system.setBaseRole("ADMIN");
+        when(permissionGroupMapper.selectById(10)).thenReturn(system);
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.emptyList());
+        when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
+        when(userMapper.selectCount(any())).thenReturn(2L, 1L);
+
+        PermissionGroup rename = new PermissionGroup();
+        rename.setGroupName("管理员角色");
+        ResultBean updated = service.updateGroup(10, rename, null);
+        assertEquals(200, updated.getCode());
+        verify(permissionGroupMapper).updateById(argThat(g -> "管理员角色".equals(((PermissionGroup) g).getGroupName())));
+
+        java.util.Map<String, Object> detail = service.getGroup(10);
+        assertNotNull(detail);
+        assertEquals(Boolean.TRUE, detail.get("system"));
+        assertEquals(Boolean.TRUE, detail.get("autoApply"));
+        assertEquals(3L, detail.get("roleUserCount"));
+        assertEquals(3L, detail.get("userCount"));
+    }
+
+    @Test
+    @DisplayName("系统角色：不能通过创建接口新增")
+    void createGroup_systemRoleRejected() {
+        PermissionGroup system = group();
+        system.setBaseRole("ADMIN");
+
+        ResultBean result = service.createGroup(system, Collections.emptyList());
+
+        assertEquals(500, result.getCode());
+        assertTrue(result.getMessage().contains("系统预置"));
+        verify(permissionGroupMapper, never()).insert(any(PermissionGroup.class));
+    }
+
+    @Test
     @DisplayName("有效权限：返回用户与权限点")
     void effective_returnsCodes() {
         User user = new User();

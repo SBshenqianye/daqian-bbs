@@ -22,7 +22,7 @@ public class FeaturedRecommendationController {
     private FeaturedRecommendationService recommendationService;
 
     @ApiOperation(value = "版主推荐帖子为精华（初审）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).FEATURED_RECOMMEND)")
     @AuditLog(module = "FEATURED", action = "FEATURED_RECOMMEND",
             targetType = "ARTICLE", targetId = "#params['articleId']")
     @PostMapping("/article/recommendFeatured")
@@ -34,7 +34,7 @@ public class FeaturedRecommendationController {
     }
 
     @ApiOperation(value = "总运营审核精华推荐（终审）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).FEATURED_REVIEW)")
     @AuditLog(module = "FEATURED", action = "FEATURED_REVIEW",
             targetType = "FEATURED_RECOMMENDATION", targetId = "#params['recommendationId']")
     @PostMapping("/admin/featured/review")
@@ -47,7 +47,7 @@ public class FeaturedRecommendationController {
     }
 
     @ApiOperation(value = "查询精华推荐列表（管理端）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).FEATURED_RECOMMEND)")
     @PostMapping("/admin/featured/recommendList")
     public ResultBean listRecommendations(@RequestBody Map<String, Object> params) {
         Integer page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;

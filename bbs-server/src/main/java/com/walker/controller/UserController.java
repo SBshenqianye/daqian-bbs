@@ -58,6 +58,9 @@ public class UserController {
     @Autowired
     private NotificationService notificationService;
 
+    @Autowired
+    private com.walker.service.EffectivePermissionService effectivePermissionService;
+
     @Value("${storage.path}")
     private String basePath;
 
@@ -109,7 +112,11 @@ public class UserController {
         com.walker.config.security.AccountRole role =
                 com.walker.config.security.AccountRole.fromUserType(user.getUserType());
         map.put("role", role.name());
-        map.put("permissions", com.walker.config.security.Permission.codesFor(role));
+        Map<String, Object> primaryGroup = userService.getPrimaryGroupInfo(user);
+        map.put("primaryGroupId", primaryGroup.get("primaryGroupId"));
+        map.put("primaryGroupName", primaryGroup.get("primaryGroupName"));
+        map.put("primaryGroupCode", primaryGroup.get("primaryGroupCode"));
+        map.put("permissions", new ArrayList<>(effectivePermissionService.getEffectiveCodes(user)));
         map.put("boardScopes", userService.getBoardScopes(user.getId()));
         map.put("personnelId", user.getPersonnelId());
         map.put("isFirstLogin", user.getIsFirstLogin());
@@ -212,7 +219,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "获取所有用户(搜索 + 分页)")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_READ)")
     @PostMapping("/getAllUser")
     public ResultBean getAllUser(@RequestBody JSONObject params){
         if (params != null && !params.isEmpty()){
@@ -227,7 +234,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "用户搜索（管理员用，按用户名/昵称模糊搜索，返回精简字段供选择器使用）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_READ)")
     @GetMapping("/admin/user/search")
     public ResultBean searchUsers(@RequestParam(value = "keyword", required = false, defaultValue = "") String keyword) {
         if (StringUtils.isBlank(keyword) || keyword.trim().length() < 1) {
@@ -242,6 +249,7 @@ public class UserController {
         List<User> users = userService.list(wrapper);
         // 填充单位名称（orgName 是瞬态字段，需要从 bbs_sa_org 表解析）
         userService.fillOrgNames(users);
+        userService.fillPrimaryGroupNames(users);
         List<Map<String, Object>> result = new ArrayList<>();
         for (User u : users) {
             Map<String, Object> item = new LinkedHashMap<>();
@@ -251,13 +259,16 @@ public class UserController {
             item.put("orgName", u.getOrgName());
             item.put("portrait", u.getPortrait());
             item.put("userType", u.getUserType());
+            item.put("primaryGroupId", u.getPrimaryGroupId());
+            item.put("primaryGroupName", u.getPrimaryGroupName());
+            item.put("primaryGroupCode", u.getPrimaryGroupCode());
             result.add(item);
         }
         return ResultBean.success("搜索结果", result);
     }
 
     @ApiOperation(value = "通过用户id删除用户")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_DELETE)")
     @AuditLog(module = "USER", action = "USER_DELETE",
             targetType = "USER", targetId = "#userOperationParam.userId")
     @PostMapping("/admin/deleteUserByUserId")
@@ -269,7 +280,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "通过用户id修改用户alive值")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_UPDATE)")
     @AuditLog(module = "USER", action = "USER_STATUS_CHANGE",
             targetType = "USER", targetId = "#userOperationParam.userId")
     @PostMapping("/admin/updateUserAliveByUserId")
@@ -281,7 +292,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "通过用户id批量删除用户")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_DELETE)")
     @AuditLog(module = "USER", action = "USER_BATCH_DELETE",
             targetType = "USER", targetId = "'ALL'", snapshot = false)
     @PostMapping("/admin/batchDeleteUsersByUserIds")
@@ -302,21 +313,21 @@ public class UserController {
 
 
     @ApiOperation(value = "获取用户总数")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_READ)")
     @GetMapping("/admin/getUserCount/all")
     public ResultBean getUserCount(){
         return userService.getUserCount();
     }
 
     @ApiOperation(value = "获取地图数据(城市人数和比例)")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_READ)")
     @GetMapping("/admin/getAllCity/all")
     public ResultBean getAllCity(){
         return userService.getAllCity();
     }
 
     @ApiOperation(value = "获取系统最近一年的用户注册数据")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_READ)")
     @GetMapping("/admin/getUserDataWithMonth/all")
     public  ResultBean getUserDataWithMonth(){
         return userService.getUserDataWithMonth();
@@ -342,7 +353,7 @@ public class UserController {
      * @return ResultBean 返回结果
      */
     @ApiOperation(value = "更改用户角色")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_GRANT_ADMIN)")
     @AuditLog(module = "USER", action = "USER_ROLE_CHANGE",
             targetType = "USER", targetId = "#userOperationParam.userId")
     @PostMapping("/updateUserRole")
@@ -368,14 +379,14 @@ public class UserController {
     }
 
     @ApiOperation(value = "导入预览：解析Excel但不存库")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_CREATE)")
     @PostMapping("/admin/previewImport")
     public ImportPreviewVO previewImport(@RequestParam("file") MultipartFile file) {
         return userService.previewImport(file);
     }
 
     @ApiOperation(value = "执行导入（异步）：解析Excel并写入数据库，返回 taskId")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_CREATE)")
     @PostMapping("/admin/importUsers")
     public ResultBean importUsers(
             @RequestParam("file") MultipartFile file,
@@ -406,7 +417,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "查询导入任务进度")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_READ)")
     @GetMapping("/admin/importProgress/{taskId}")
     public ResultBean getImportProgress(@PathVariable String taskId) {
         Map<String, Object> progress = userService.getImportTaskProgress(taskId);
@@ -415,7 +426,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "获取当前导入任务（无需 taskId，供页面刷新/跨管理员恢复使用）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_READ)")
     @GetMapping("/admin/import/current")
     public ResultBean getCurrentImport() {
         Map<String, Object> current = userService.getCurrentImportTask();
@@ -426,7 +437,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "管理员新增用户")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_CREATE)")
     @AuditLog(module = "USER", action = "USER_CREATE",
             targetType = "USER", snapshot = false)
     @PostMapping("/admin/addUser")
@@ -435,7 +446,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "管理员更新用户详细信息")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_UPDATE)")
     @AuditLog(module = "USER", action = "USER_UPDATE",
             targetType = "USER", targetId = "#param.id")
     @PostMapping("/admin/updateUserDetail")
@@ -465,7 +476,7 @@ public class UserController {
     }
 
     @ApiOperation(value = "管理员限制/解除用户发帖")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_UPDATE)")
     @AuditLog(module = "USER", action = "USER_RESTRICT_POST",
             targetType = "USER", targetId = "#params['userId']")
     @PostMapping("/admin/user/restrictPost")

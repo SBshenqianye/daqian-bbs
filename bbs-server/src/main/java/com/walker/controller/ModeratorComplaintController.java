@@ -33,7 +33,7 @@ public class ModeratorComplaintController {
     }
 
     @ApiOperation(value = "管理员审核版主投诉")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_COMPLAINT_REVIEW)")
     @AuditLog(module = "MODERATOR", action = "COMPLAINT_REVIEW",
             targetType = "MODERATOR_COMPLAINT", targetId = "#params['complaintId']")
     @PostMapping("/admin/moderatorComplaint/review")
@@ -46,7 +46,7 @@ public class ModeratorComplaintController {
     }
 
     @ApiOperation(value = "查询投诉列表（管理员端）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_COMPLAINT_REVIEW)")
     @PostMapping("/admin/moderatorComplaint/list")
     public ResultBean listComplaints(@RequestBody Map<String, Object> params) {
         Integer page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;

@@ -61,7 +61,7 @@ public class ArticleLabelController {
     }
 
     @ApiOperation(value = "新增文章标签")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_LABEL_CREATE",
             targetType = "ARTICLE_LABEL", targetId = "#articleLabel.labelId")
     @PostMapping("/admin/addArticleLabel")
@@ -83,7 +83,7 @@ public class ArticleLabelController {
     }
 
     @ApiOperation(value = "修改文章标签")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_LABEL_UPDATE",
             targetType = "ARTICLE_LABEL", targetId = "#articleLabel.labelId")
     @PostMapping("/admin/updArticleLabel")
@@ -114,7 +114,7 @@ public class ArticleLabelController {
     }
 
     @ApiOperation(value = "删除文章标签")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_LABEL_DELETE",
             targetType = "ARTICLE_LABEL", targetId = "#articleLabel.labelId")
     @PostMapping("/admin/delArticleLabel")
@@ -180,7 +180,7 @@ public class ArticleLabelController {
     }
 
     @ApiOperation(value = "分页查询文章标签（可按标签名模糊查询）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @PostMapping("/admin/pageArticleLabel")
     public ResultBean pageArticleLabel(@RequestBody JSONObject jsonObject) {
         int pageIndex = jsonObject.getIntValue("pageIndex");

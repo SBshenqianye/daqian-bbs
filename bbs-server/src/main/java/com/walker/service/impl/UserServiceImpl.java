@@ -13,9 +13,11 @@ import com.walker.config.security.AccountRole;
 import com.walker.config.security.JwtTokenUtil;
 import com.walker.config.security.Permission;
 import com.walker.mapper.BoardModeratorMapper;
+import com.walker.mapper.PermissionGroupMapper;
 import com.walker.mapper.SaOrgMapper;
 import com.walker.mapper.UserMapper;
 import com.walker.pojo.BoardModerator;
+import com.walker.pojo.PermissionGroup;
 import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.utils.ConstantUtil;
@@ -78,6 +80,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private UserMapper userMapper;
     @Autowired
     private BoardModeratorMapper boardModeratorMapper;
+
+    @Autowired
+    private PermissionGroupMapper permissionGroupMapper;
     @Autowired
     private UserDetailsService userDetailsService;
     @Autowired
@@ -172,9 +177,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (userDetails != null && passwordEncoder.matches(password,userDetails.getPassword())){
             User user = (User) userDetails;
             if (ConstantUtil.MANA_ZERO_ONE.equals(channel) || ConstantUtil.MANA_ZERO_TWO.equals(channel)) {
-                // 管理端登录允许管理员/超管/版主；空值/非法 user_type 按普通用户处理（D1/D2）
+                // 管理端登录以“有效 admin:access”为准：主组/临时组收回后立即失效
                 if (ConstantUtil.MANA_ZERO_TWO.equals(channel)
-                        && !AccountRole.fromUserType(user.getUserType()).canAccessAdminConsole()) {
+                        && !effectivePermissionService.getEffectiveCodes(user)
+                                .contains(Permission.ADMIN_ACCESS.getCode())) {
                     return ResultBean.error("用户名或密码不正确！");
                 }
             } else {
@@ -202,6 +208,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             jsonObject.put("role", role.name());
             jsonObject.put("permissions",
                     new ArrayList<>(effectivePermissionService.getEffectiveCodes(user)));
+            Map<String, Object> primaryGroup = getPrimaryGroupInfo(user);
+            jsonObject.put("primaryGroupId", primaryGroup.get("primaryGroupId"));
+            jsonObject.put("primaryGroupName", primaryGroup.get("primaryGroupName"));
+            jsonObject.put("primaryGroupCode", primaryGroup.get("primaryGroupCode"));
             jsonObject.put("boardScopes", loadBoardScopes(user.getId()));
             // 显式设置瞬态组织字段（确保序列化到前端）
             jsonObject.put("orgName", user.getOrgName());
@@ -320,8 +330,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     .like(User::getPersonnelId, searchInfo));
         }
         Page<User> result = userMapper.selectPage(mpPage, wrapper);
-        // 解析单位名称和部门名称
+        // 解析单位名称、部门名称与主权限组
         resolveOrgInfo(result.getRecords());
+        fillPrimaryGroupNames(result.getRecords());
         // 转为 PageInfo 兼容前端
         PageInfo<User> pageInfo = new PageInfo<>(result.getRecords());
         pageInfo.setTotal(result.getTotal());
@@ -649,8 +660,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return ResultBean.forbidden("仅超级管理员可授予或调整管理员角色");
         }
 
+        Integer primaryGroupId = resolvePrimaryGroupId(roleType);
         int result = userMapper.updateUserRole(userId, roleType);
         if (result > 0) {
+            if (primaryGroupId != null) {
+                userMapper.updateById(new User().setId(userId).setPrimaryGroupId(primaryGroupId));
+            }
             return ResultBean.success("操作成功");
         }
         return ResultBean.error("操作失败");
@@ -907,6 +922,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                         existingUser.setPersonnelId(row.getPersonnelId());
                         existingUser.setIdCard(row.getIdCard());
                         existingUser.setOrgNo(orgNo);
+                        if (existingUser.getPrimaryGroupId() == null) {
+                            existingUser.setPrimaryGroupId(
+                                    resolvePrimaryGroupId(existingUser.getUserType()));
+                        }
 
                         if (!passwordChanged) {
                             existingUser.setPassword(new BCryptPasswordEncoder().encode("1234@abcD"));
@@ -930,6 +949,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                                 .setPhone("")
                                 .setGender("0")
                                 .setUserType("1")
+                                .setPrimaryGroupId(resolvePrimaryGroupId(USER_TYPE_USER))
                                 .setFans(0)
                                 .setAttention(0)
                                 .setGood(0)
@@ -1018,6 +1038,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         if (newUserType != null) {
             updateUser.setUserType(newUserType);
+            Integer primaryGroupId = resolvePrimaryGroupId(newUserType);
+            if (primaryGroupId != null) {
+                updateUser.setPrimaryGroupId(primaryGroupId);
+            }
         }
         if (param.getIsAlive() != null) {
             updateUser.setIsAlive(param.getIsAlive());
@@ -1084,6 +1108,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .setOrgNo(param.getOrgNo())
                 .setGender("0")
                 .setUserType(userType)
+                .setPrimaryGroupId(resolvePrimaryGroupId(userType))
                 .setIsAlive(param.getIsAlive() != null ? param.getIsAlive() : 0)
                 .setFans(0)
                 .setAttention(0)
@@ -1140,6 +1165,76 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public List<Map<String, Object>> getBoardScopes(Integer userId) {
         return loadBoardScopes(userId);
+    }
+
+    @Override
+    public Map<String, Object> getPrimaryGroupInfo(User user) {
+        Map<String, Object> info = new LinkedHashMap<>();
+        PermissionGroup group = null;
+        if (user != null && user.getPrimaryGroupId() != null && permissionGroupMapper != null) {
+            PermissionGroup assigned = permissionGroupMapper.selectById(user.getPrimaryGroupId());
+            if (assigned != null && StringUtils.isNotBlank(assigned.getBaseRole())) {
+                group = assigned;
+            }
+        }
+        if (group == null && user != null) {
+            group = findSystemGroupByUserType(user.getUserType());
+        }
+        info.put("primaryGroupId", group == null ? null : group.getId());
+        info.put("primaryGroupName", group == null ? null : group.getGroupName());
+        info.put("primaryGroupCode", group == null ? null : group.getGroupCode());
+        return info;
+    }
+
+    @Override
+    public Integer resolvePrimaryGroupId(String userType) {
+        PermissionGroup group = findSystemGroupByUserType(userType);
+        return group == null ? null : group.getId();
+    }
+
+    @Override
+    public void fillPrimaryGroupNames(List<User> users) {
+        if (users == null || users.isEmpty() || permissionGroupMapper == null) {
+            return;
+        }
+        Set<Integer> groupIds = users.stream()
+                .map(User::getPrimaryGroupId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        Map<Integer, PermissionGroup> groupById = new LinkedHashMap<>();
+        if (!groupIds.isEmpty()) {
+            List<PermissionGroup> groups = permissionGroupMapper.selectBatchIds(groupIds);
+            for (PermissionGroup group : groups) {
+                if (group.getId() != null) {
+                    groupById.put(group.getId(), group);
+                }
+            }
+        }
+        for (User user : users) {
+            PermissionGroup group = groupById.get(user.getPrimaryGroupId());
+            if (group == null) {
+                group = findSystemGroupByUserType(user.getUserType());
+            }
+            if (group != null) {
+                user.setPrimaryGroupId(group.getId());
+                user.setPrimaryGroupName(group.getGroupName());
+                user.setPrimaryGroupCode(group.getGroupCode());
+            }
+        }
+    }
+
+    private PermissionGroup findSystemGroupByUserType(String userType) {
+        if (permissionGroupMapper == null) {
+            return null;
+        }
+        String baseRole = AccountRole.fromUserType(userType).name();
+        List<PermissionGroup> groups = permissionGroupMapper.selectList(
+                new LambdaQueryWrapper<PermissionGroup>()
+                        .eq(PermissionGroup::getBaseRole, baseRole)
+                        .orderByAsc(PermissionGroup::getSortOrder)
+                        .orderByAsc(PermissionGroup::getId)
+                        .last("LIMIT 1"));
+        return groups == null || groups.isEmpty() ? null : groups.get(0);
     }
 
     private List<Map<String, Object>> loadBoardScopes(Integer userId) {

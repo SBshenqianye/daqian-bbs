@@ -150,7 +150,7 @@ public class ReplyController {
     }
 
     @ApiOperation(value = "管理员审批采纳 - 支持评论和回复")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ADOPT_REVIEW)")
     @AuditLog(module = "ADOPT", action = "ADOPT_REVIEW",
             targetType = "ADOPT",
             targetId = "#params['replyId'] != null ? 'reply:' + #params['replyId'] : 'comment:' + #params['commentId']")
@@ -259,7 +259,7 @@ public class ReplyController {
     }
 
     @ApiOperation(value = "获取待审批采纳列表（管理员，含评论和回复）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ADOPT_REVIEW)")
     @PostMapping("/admin/pendingAdopts")
     public ResultBean pendingAdopts(@RequestBody Map<String, Object> params) {
         Integer page = toInt(params, "page");

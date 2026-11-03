@@ -28,7 +28,7 @@ public class DictController {
     private DictService dictService;
 
     @ApiOperation(value = "新增字典")
-    @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_DICT_CREATE",
             targetType = "DICT", targetId = "#dict.id")
     @PostMapping("/admin/addDict")
@@ -38,7 +38,7 @@ public class DictController {
     }
 
     @ApiOperation(value = "删除字典")
-    @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_DICT_DELETE",
             targetType = "DICT", targetId = "#dict.id")
     @PostMapping("/admin/deleteDict")
@@ -51,7 +51,7 @@ public class DictController {
     }
 
     @ApiOperation(value = "修改字典")
-    @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_DICT_UPDATE",
             targetType = "DICT", targetId = "#dict.id")
     @PostMapping("/admin/updateDict")
@@ -74,7 +74,7 @@ public class DictController {
     }
 
     @ApiOperation(value = "查询字典列表（不分页）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @PostMapping("/admin/listDict")
     public ResultBean listDict() {
         List<Dict> list = dictService.listDict();

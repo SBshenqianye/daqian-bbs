@@ -3,6 +3,7 @@ package com.walker.config.security;
 
 import com.walker.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -31,6 +32,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
     private RestAuthorizationEntryPoint restAuthorizationEntryPoint;
+
+    @Autowired
+    private AdminAccessFilter adminAccessFilter;
 
 
     @Override
@@ -71,7 +75,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 // 旧版管理员登录接口保留兼容（前端实际使用 /common/login），必须放在 /admin/** 之前
                 .antMatchers("/admin/login")
                 .permitAll()
-                // 管理端接口统一要求管理员/超级管理员角色；含未挂在 /admin 前缀下的历史管理接口
+                // 管理端接口统一要求已认证；实际 admin:access 由 AdminAccessFilter + 方法级权限点校验
                 .antMatchers(
                         "/admin/**",
                         "/reply/admin/**",
@@ -82,7 +86,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                         "/common/saOrg/batchUpdateRanking",
                         "/common/saOrg/batchUpdateDisplay"
                 )
-                .hasAnyRole("ADMIN", "SUPER_ADMIN", "MODERATOR")
+                .authenticated()
                 .antMatchers("/common/**", "/files/**")
                 .permitAll() // common（登录/注册等）和文件放行
                 .anyRequest()
@@ -93,8 +97,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         //添加jwt 登录授权过滤器
         http.addFilterBefore(JwtAuthenticationTokenFilter(),
                 UsernamePasswordAuthenticationFilter.class);
-        // 管理端首次登录强制改密：JWT 认证之后、业务接口之前
-        http.addFilterAfter(firstLoginPasswordFilter(), JwtAuthenticationTokenFilter.class);
+        // 管理路径入口校验：JWT 之后，确保旧 token 也按当前有效权限重新判断
+        http.addFilterAfter(adminAccessFilter, JwtAuthenticationTokenFilter.class);
+        // 管理端首次登录强制改密：入口校验之后、业务接口之前
+        http.addFilterAfter(firstLoginPasswordFilter(), AdminAccessFilter.class);
         //添加自定义未授权和未登录结果返回
         http.exceptionHandling()
                 .accessDeniedHandler(restfulAccessDeniedHandler)
@@ -122,5 +128,16 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Bean
     public FirstLoginPasswordFilter firstLoginPasswordFilter() {
         return new FirstLoginPasswordFilter();
+    }
+
+    /**
+     * AdminAccessFilter 已加入 Spring Security 过滤链，关闭 Servlet 容器的自动注册，避免重复执行。
+     */
+    @Bean
+    public FilterRegistrationBean<AdminAccessFilter> adminAccessFilterRegistration() {
+        FilterRegistrationBean<AdminAccessFilter> registration =
+                new FilterRegistrationBean<>(adminAccessFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 }

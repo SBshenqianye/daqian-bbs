@@ -365,8 +365,10 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
         User update = new User();
         update.setId(user.getId());
         update.setUserType("4");
+        update.setPrimaryGroupId(userService.resolvePrimaryGroupId("4"));
         userService.updateById(update);
         user.setUserType("4");
+        user.setPrimaryGroupId(update.getPrimaryGroupId());
     }
 
     @Override

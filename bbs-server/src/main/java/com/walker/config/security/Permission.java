@@ -33,6 +33,10 @@ public enum Permission {
     REPORT_REVIEW("report:review", true, true),
     APPEAL_REVIEW("appeal:review", true, true),
 
+    VIOLATION_REVIEW("violation:review", true, true),
+    VIOLATION_ADD("violation:add", true, true),
+    VIOLATION_CANCEL("violation:cancel", true, true),
+
     MODERATOR_MANAGE("moderator:manage", true, false),
     MODERATOR_COMPLAINT_REVIEW("moderator:complaint:review", true, false),
     ADOPT_REVIEW("adopt:review", true, true),
@@ -104,6 +108,19 @@ public enum Permission {
     /** 是否为前台动作权限（Phase D） */
     public boolean isFrontAction() {
         return userDefault;
+    }
+
+    /**
+     * 超管关键权限：权限组不允许收回。
+     *
+     * <p>这些权限是超管维持系统可控性的底线：进入后台、管理权限、授予管理员、查看审计。
+     * 其余超管权限允许通过权限组临时收回。</p>
+     */
+    public boolean isSuperAdminProtected() {
+        return this == ADMIN_ACCESS
+                || this == PERMISSION_MANAGE
+                || this == USER_GRANT_ADMIN
+                || this == AUDIT_READ;
     }
 
     /** 按编码查找权限点；未知编码返回 null */

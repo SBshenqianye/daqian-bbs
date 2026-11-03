@@ -93,6 +93,10 @@ public class User implements Serializable,UserDetails {
     @TableField("user_type")
     private String userType;
 
+    @ApiModelProperty("主权限组ID（必须指向系统角色组；为空时按 user_type 回退）")
+    @TableField("primary_group_id")
+    private Integer primaryGroupId;
+
     @ApiModelProperty("人员编号")
     @TableField("personnel_id")
     private String personnelId;
@@ -112,6 +116,14 @@ public class User implements Serializable,UserDetails {
     @ApiModelProperty("限制发帖截止时间")
     @TableField("post_restricted_until")
     private String postRestrictedUntil;
+
+    @ApiModelProperty("主权限组名称（非数据库字段，查询时动态填充）")
+    @TableField(exist = false)
+    private String primaryGroupName;
+
+    @ApiModelProperty("主权限组编码（非数据库字段，查询时动态填充）")
+    @TableField(exist = false)
+    private String primaryGroupCode;
 
     @ApiModelProperty("单位名称（非数据库字段，查询时动态填充）")
     @TableField(exist = false)

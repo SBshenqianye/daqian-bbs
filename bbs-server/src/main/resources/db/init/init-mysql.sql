@@ -302,6 +302,7 @@ CREATE TABLE `bbs_user` (
   `phone`          varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '电话',
   `org_no`         varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '单位编号',
   `user_type`      varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT '1' COMMENT '用户类型（1：普通用户，2：管理员，3：超级管理员，4：版主）',
+  `primary_group_id` int(11) NULL DEFAULT NULL COMMENT '主权限组ID（必须指向系统角色组）',
   `personnel_id`   varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '人员编号（Excel B列）',
   `id_card`        varchar(18) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '身份证号',
   `is_first_login` tinyint(1) NULL DEFAULT 1 COMMENT '是否首次登录(1=需改密码,0=已修改)',
@@ -310,7 +311,8 @@ CREATE TABLE `bbs_user` (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `uk_bbs_user_username` (`username`),
   UNIQUE KEY `uk_bbs_user_personnel_id` (`personnel_id`),
-  UNIQUE KEY `uk_bbs_user_id_card` (`id_card`)
+  UNIQUE KEY `uk_bbs_user_id_card` (`id_card`),
+  KEY `idx_user_primary_group` (`primary_group_id`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 -- ============================================
@@ -681,6 +683,7 @@ CREATE TABLE `bbs_permission_group` (
   `description`     varchar(500) DEFAULT NULL COMMENT '描述',
   `scope_type`      varchar(20) NOT NULL DEFAULT 'ADMIN' COMMENT '范围：ADMIN/FRONT/ALL',
   `data_scope_type` varchar(20) NOT NULL DEFAULT 'ROLE_DEFAULT' COMMENT '数据范围：ROLE_DEFAULT/BOARD_MODERATOR',
+  `base_role`       varchar(20) DEFAULT NULL COMMENT '角色基线：USER/MODERATOR/ADMIN/SUPER_ADMIN',
   `enabled`         tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
   `sort_order`      int(11) NOT NULL DEFAULT 0 COMMENT '排序',
   `create_by`       varchar(64) DEFAULT NULL COMMENT '创建人',
@@ -700,7 +703,7 @@ CREATE TABLE `bbs_permission_group_item` (
   `id`              int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `group_id`        int(11) NOT NULL COMMENT '权限组ID',
   `permission_code` varchar(64) NOT NULL COMMENT '权限点编码',
-  `effect`          varchar(10) NOT NULL DEFAULT 'grant' COMMENT '效果：grant（MVP 仅支持 grant）',
+  `effect`          varchar(10) NOT NULL DEFAULT 'grant' COMMENT '效果：grant（授予）/revoke（收回）',
   `create_time`     varchar(20) DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `uk_group_permission` (`group_id`, `permission_code`),

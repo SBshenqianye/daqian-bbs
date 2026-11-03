@@ -29,7 +29,7 @@ public class BoardModeratorController {
     private UserService userService;
 
     @ApiOperation(value = "任命版主")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_MANAGE)")
     @AuditLog(module = "MODERATOR", action = "MODERATOR_APPOINT",
             targetType = "MODERATOR_BOARD", targetId = "#params['userId']")
     @PostMapping("/admin/moderator/appoint")
@@ -41,7 +41,7 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "撤销版主")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_MANAGE)")
     @AuditLog(module = "MODERATOR", action = "MODERATOR_DISMISS",
             targetType = "MODERATOR_BOARD", targetId = "#params['userId']")
     @PostMapping("/admin/moderator/dismiss")
@@ -52,7 +52,7 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "版主列表")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_MANAGE)")
     @PostMapping("/admin/moderator/list")
     public ResultBean listModerators(@RequestBody Map<String, Object> params) {
         Integer page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;
@@ -62,7 +62,7 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "编辑版主管理的板块（差异更新）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_MANAGE)")
     @AuditLog(module = "MODERATOR", action = "MODERATOR_BOARDS_UPDATE",
             targetType = "MODERATOR_BOARD", targetId = "#params['userId']")
     @PostMapping("/admin/moderator/boards")
@@ -144,7 +144,7 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "发放本月版主履职奖励（每月一次性15积分）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_MANAGE)")
     @AuditLog(module = "MODERATOR", action = "MODERATOR_REWARD_GRANT",
             targetType = "MODERATOR_REWARD", targetId = "'ALL'", snapshot = false)
     @PostMapping("/admin/moderator/monthlyReward")
@@ -155,7 +155,7 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "取消版主本月履职奖励")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_MANAGE)")
     @AuditLog(module = "MODERATOR", action = "MODERATOR_REWARD_CANCEL",
             targetType = "USER", targetId = "#params['userId']")
     @PostMapping("/admin/moderator/cancelReward")
@@ -167,7 +167,7 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "恢复版主本月履职奖励")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_MANAGE)")
     @AuditLog(module = "MODERATOR", action = "MODERATOR_REWARD_RESTORE",
             targetType = "USER", targetId = "#params['userId']")
     @PostMapping("/admin/moderator/restoreReward")
@@ -177,14 +177,14 @@ public class BoardModeratorController {
     }
 
     @ApiOperation(value = "查询本月被取消奖励的版主列表")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_MANAGE)")
     @PostMapping("/admin/moderator/cancelledRewards")
     public ResultBean cancelledRewards() {
         return boardModeratorService.listCancelledRewards();
     }
 
     @ApiOperation(value = "手动触发自动发放（测试用）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_MANAGE)")
     @AuditLog(module = "MODERATOR", action = "MODERATOR_REWARD_AUTO",
             targetType = "MODERATOR_REWARD", targetId = "'ALL'", snapshot = false)
     @PostMapping("/admin/moderator/triggerAutoReward")

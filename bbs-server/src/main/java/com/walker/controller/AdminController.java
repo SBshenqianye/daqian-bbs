@@ -44,13 +44,13 @@ public class AdminController {
     }
 
     @GetMapping("/test")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ADMIN_ACCESS)")
     public String test(){
         return "test";
     }
 
     @ApiOperation(value = "调整用户积分")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POINTS_ADJUST)")
     @PostMapping("/points/adjust")
     public ResultBean adjustUserPoints(@RequestBody PointsAdjustParam param){
         if (param.getUserId() == null || param.getPointsChange() == null) {
@@ -67,7 +67,7 @@ public class AdminController {
     }
 
     @ApiOperation(value = "查询用户积分调整记录")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POINTS_READ)")
     @GetMapping("/points/log/{userId}")
     public ResultBean getPointsLogByUserId(@PathVariable Integer userId){
         if (userId == null) {
@@ -82,7 +82,7 @@ public class AdminController {
     }
 
     @ApiOperation(value = "查询用户手动积分调整总额")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POINTS_READ)")
     @GetMapping("/points/total/{userId}")
     public ResultBean getPointsTotal(@PathVariable Integer userId){
         if (userId == null) {
@@ -93,7 +93,7 @@ public class AdminController {
     }
 
     @ApiOperation(value = "撤销一条积分调整记录")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POINTS_ADJUST)")
     @PostMapping("/points/undo/{logId}")
     public ResultBean undoPointsLog(@PathVariable Integer logId){
         if (logId == null) {

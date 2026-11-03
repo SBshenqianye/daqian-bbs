@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 有效权限计算：角色基线 + 权限组 grant（Phase B，grant-only）。
+ * 有效权限计算：主权限组角色基线 + grant/revoke，再叠加临时权限组。
  */
 public interface EffectivePermissionService {
 

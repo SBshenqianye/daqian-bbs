@@ -2,6 +2,7 @@ package com.walker.service.impl;
 
 import com.walker.config.security.AccountRole;
 import com.walker.config.security.Permission;
+import com.walker.service.PermissionGroupService;
 import com.walker.service.PermissionMatrixService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.AnnotatedElementUtils;
@@ -42,12 +43,16 @@ public class PermissionMatrixServiceImpl implements PermissionMatrixService {
     @Autowired
     private RequestMappingHandlerMapping requestMappingHandlerMapping;
 
+    @Autowired
+    private PermissionGroupService permissionGroupService;
+
     @Override
     public Map<String, Object> getMatrix() {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("generatedAt", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
         result.put("roles", buildRoles());
         result.put("permissions", buildPermissions());
+        result.put("groups", buildGroups());
 
         List<Map<String, Object>> endpoints = buildEndpoints();
         result.put("endpoints", endpoints);
@@ -79,9 +84,39 @@ public class PermissionMatrixServiceImpl implements PermissionMatrixService {
             row.put("moderator", permission.isGrantedTo(AccountRole.MODERATOR));
             row.put("admin", permission.isGrantedTo(AccountRole.ADMIN));
             row.put("super", permission.isGrantedTo(AccountRole.SUPER_ADMIN));
+            row.put("superProtected", permission.isSuperAdminProtected());
             list.add(row);
         }
         return list;
+    }
+
+    /**
+     * 权限矩阵中“显示权限组”区域的数据：组本身、角色基线、最终权限集合、不可剥离项。
+     */
+    private List<Map<String, Object>> buildGroups() {
+        List<Map<String, Object>> result = new ArrayList<>();
+        List<Map<String, Object>> groups = permissionGroupService.listGroups();
+        for (Map<String, Object> summary : groups) {
+            Object idValue = summary.get("id");
+            Integer id = idValue instanceof Number ? ((Number) idValue).intValue() : null;
+            Map<String, Object> detail = id == null ? null : permissionGroupService.getGroup(id);
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", id);
+            row.put("groupCode", summary.get("groupCode"));
+            row.put("groupName", summary.get("groupName"));
+            row.put("description", summary.get("description"));
+            row.put("baseRole", summary.get("baseRole"));
+            row.put("enabled", summary.get("enabled"));
+            row.put("system", summary.get("system"));
+            row.put("autoApply", summary.get("autoApply"));
+            row.put("roleUserCount", summary.get("roleUserCount"));
+            row.put("permissions", detail == null
+                    ? Collections.emptyList() : detail.get("permissionCodes"));
+            row.put("protectedCodes", detail == null
+                    ? Collections.emptyList() : detail.get("protectedCodes"));
+            result.add(row);
+        }
+        return result;
     }
 
     private List<Map<String, Object>> buildEndpoints() {

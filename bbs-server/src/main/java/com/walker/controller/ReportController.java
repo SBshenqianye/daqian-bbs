@@ -34,7 +34,7 @@ public class ReportController {
     }
 
     @ApiOperation(value = "管理员审核举报")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).REPORT_REVIEW)")
     @AuditLog(module = "REPORT", action = "REPORT_REVIEW",
             targetType = "REPORT", targetId = "#params['reportId']")
     @PostMapping("/admin/report/review")
@@ -51,7 +51,7 @@ public class ReportController {
     }
 
     @ApiOperation(value = "管理员查看举报列表")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).REPORT_REVIEW)")
     @PostMapping("/admin/report/list")
     public ResultBean listReports(@RequestBody Map<String, Object> params) {
         String status = (String) params.get("status");
@@ -61,7 +61,7 @@ public class ReportController {
     }
 
     @ApiOperation(value = "管理员查看举报列表（按举报目标分组折叠，避免同内容刷屏）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).REPORT_REVIEW)")
     @PostMapping("/admin/report/listGrouped")
     public ResultBean listReportsGrouped(@RequestBody Map<String, Object> params) {
         String status = (String) params.get("status");

@@ -90,14 +90,14 @@ public class CommunityController {
 
 
     @ApiOperation(value = "获取所有的社区信息")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @GetMapping("/admin/getAllCommunity/all")
     public ResultBean getAllCommunity(){
         return communityService.getAllCommunity();
     }
 
     @ApiOperation(value = "通过关键词搜索朝代信息")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @GetMapping("/admin/getCommunityByKeywords/{keywords}")
     public ResultBean getCommunityByKeywords(@PathVariable String keywords){
         if (StringUtils.isNoneBlank(keywords)){
@@ -108,7 +108,7 @@ public class CommunityController {
 
 
     @ApiOperation(value = "修改社区的状态")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @PutMapping("/admin/updateCommunityStatus/{communityId}")
     public ResultBean updateCommunityStatus(@PathVariable Integer communityId){
         return communityService.updateCommunityStatus(communityId);
@@ -116,7 +116,7 @@ public class CommunityController {
 
 
     @ApiOperation(value = "通过社区id删除社区")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @DeleteMapping("/admin/deleteCommunityByCommunityId/{communityId}")
     public ResultBean deleteCommunityByCommunityId(@PathVariable Integer communityId){
         return communityService.deleteCommunityByCommunityId(communityId);
@@ -124,7 +124,7 @@ public class CommunityController {
 
 
     @ApiOperation(value = "获取社区的数量")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @GetMapping("/admin/getCommunityCount/all")
     public ResultBean getCommunityCount(){
         return communityService.getCommunityCount();

@@ -24,7 +24,7 @@ public class SystemConfigController {
     private SystemConfigService systemConfigService;
 
     @ApiOperation(value = "新增配置")
-    @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_SYSTEM_CREATE",
             targetType = "SYSTEM_CONFIG", targetId = "#config.id")
     @PostMapping("/admin/systemConfig/add")
@@ -43,7 +43,7 @@ public class SystemConfigController {
     }
 
     @ApiOperation(value = "修改配置")
-    @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_SYSTEM_UPDATE",
             targetType = "SYSTEM_CONFIG", targetId = "#config.id")
     @PostMapping("/admin/systemConfig/update")
@@ -56,7 +56,7 @@ public class SystemConfigController {
     }
 
     @ApiOperation(value = "删除配置")
-    @PreAuthorize("hasRole('SUPER_ADMIN')") // config:write
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_SYSTEM_DELETE",
             targetType = "SYSTEM_CONFIG", targetId = "#config.id")
     @PostMapping("/admin/systemConfig/delete")
@@ -69,7 +69,7 @@ public class SystemConfigController {
     }
 
     @ApiOperation(value = "查询配置列表（不分页）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @PostMapping("/admin/systemConfig/list")
     public ResultBean listConfig() {
         List<SystemConfig> list = systemConfigService.listConfig();

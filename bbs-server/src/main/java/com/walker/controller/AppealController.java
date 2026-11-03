@@ -33,7 +33,7 @@ public class AppealController {
     }
 
     @ApiOperation(value = "管理员审核申诉")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).APPEAL_REVIEW)")
     @AuditLog(module = "APPEAL", action = "APPEAL_REVIEW",
             targetType = "APPEAL", targetId = "#params['appealId']")
     @PostMapping("/admin/appeal/review")
@@ -46,7 +46,7 @@ public class AppealController {
     }
 
     @ApiOperation(value = "管理员查看申诉列表")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).APPEAL_REVIEW)")
     @PostMapping("/admin/appeal/list")
     public ResultBean listAppeals(@RequestBody Map<String, Object> params) {
         String status = (String) params.get("status");

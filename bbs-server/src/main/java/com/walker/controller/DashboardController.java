@@ -20,7 +20,7 @@ public class DashboardController {
     private DashboardService dashboardService;
 
     @ApiOperation(value = "仪表盘概览统计（用户/帖子/评论/待办等）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).DASHBOARD_READ)")
     @PostMapping("/admin/dashboard/counts")
     public ResultBean counts() {
         return dashboardService.getCounts();

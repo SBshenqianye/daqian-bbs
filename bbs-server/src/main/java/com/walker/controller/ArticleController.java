@@ -320,7 +320,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "查询所有的已审核的文章")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_READ)")
     @GetMapping("/admin/getAliveArticles/all")
     public ResultBean getAliveArticles(){
         ResultBean result = articleService.getAliveArticles();
@@ -333,7 +333,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "查询所有的未审核的文章")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_READ)")
     @GetMapping("/admin/getNotAliveArticles/all")
     public ResultBean getNotAliveArticles(){
         ResultBean result = articleService.getNotAliveArticles();
@@ -347,7 +347,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "管理员通过文章id删除文章")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_DELETE)")
     @AuditLog(module = "ARTICLE", action = "ARTICLE_DELETE",
             targetType = "ARTICLE", targetId = "#articleParam.articleId")
     @PostMapping("/admin/deleteArticleByArticleId")
@@ -363,7 +363,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "通过文章id修改文章状态")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_REVIEW)")
     @AuditLog(module = "ARTICLE", action = "ARTICLE_AUDIT",
             targetType = "ARTICLE", targetId = "#articleParam.articleId")
     @PostMapping("/admin/auditArticleByArticleId")
@@ -442,7 +442,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "通过文章id获取文章信息")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_READ)")
     @GetMapping("/admin/getArticleByArticleId/{articleId}")
     public ResultBean getArticleByArticle(@PathVariable Integer articleId){
         if (articleId != null){
@@ -456,7 +456,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "通过文章id获取文章信息（含已删除，管理员用）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_READ)")
     @GetMapping("/admin/getArticleByIdInclDeleted/{articleId}")
     public ResultBean getArticleByIdInclDeleted(@PathVariable Integer articleId){
         if (articleId != null){
@@ -482,7 +482,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "获取文章总数")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_READ)")
     @GetMapping("/admin/getArticleCount/all")
     public ResultBean getArticleCount(){
         return articleService.getArticleCount();
@@ -490,7 +490,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "获取未通过审核的文章数量")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_READ)")
     @GetMapping("/admin/getArticleCountWithNotPass/all")
     public ResultBean getArticleCountWithNotPass(){
         return articleService.getArticleCountWithNotPass();
@@ -521,7 +521,7 @@ public class ArticleController {
      * @return ResultBean 返回结果
      */
     @ApiOperation(value = "按单位统计文章数")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_READ)")
     @PostMapping("/admin/articleStatisticByOrg")
     public ResultBean articleStatisticByOrg(@RequestBody ArticleStatisticParam articleStatisticParam){
         if (StringUtils.isEmpty(articleStatisticParam.getOrgNo())){
@@ -571,7 +571,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "管理员获取文章列表（支持搜索过滤分页，含标签名；deleted=1 查已删除）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_READ)")
     @PostMapping("/admin/article/list")
     public ResultBean getAdminArticleList(@RequestBody Map<String, Object> params) {
         String keywords = (String) params.getOrDefault("keywords", "");
@@ -588,7 +588,7 @@ public class ArticleController {
     // ==================== 精华帖接口 ====================
 
     @ApiOperation(value = "设置/取消精华帖")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_FEATURE)")
     @AuditLog(module = "ARTICLE", action = "ARTICLE_FEATURE_CHANGE",
             targetType = "ARTICLE", targetId = "#articleParam.articleId")
     @PostMapping("/admin/featured/set")
@@ -600,7 +600,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "精华帖管理列表（支持搜索过滤分页）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_READ)")
     @PostMapping("/admin/featured/list")
     public ResultBean getFeaturedList(@RequestBody Map<String, Object> params) {
         String keywords = (String) params.getOrDefault("keywords", "");
@@ -613,7 +613,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "帖子管理页各 tab 总数（已审核/未审核/精华）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_READ)")
     @GetMapping("/admin/article/tabCounts")
     public ResultBean getArticleTabCounts() {
         return articleService.getArticleTabCounts();
@@ -636,7 +636,7 @@ public class ArticleController {
     // ==================== 运营方案V2 新增接口 ====================
 
     @ApiOperation(value = "管理员采纳建议")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_SUGGESTION_ADOPT)")
     @AuditLog(module = "ADOPT", action = "SUGGESTION_ADOPT",
             targetType = "ARTICLE", targetId = "#params['articleId']")
     @PostMapping("/admin/suggestion/adopt")
@@ -717,7 +717,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "积分排名导出 Excel（单位排名 + 个人排名 + 积分明细）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POINTS_READ)")
     @GetMapping("/admin/points/export")
     public void exportPointsRank(
             @RequestParam(required = false, defaultValue = "01") String rankType,

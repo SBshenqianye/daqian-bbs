@@ -12,7 +12,7 @@ import lombok.Setter;
 import java.io.Serializable;
 
 /**
- * 权限组（Phase B，grant-only）。
+ * 权限组（baseRole 非空为系统角色组，否则为临时权限组）。
  */
 @Getter
 @Setter
@@ -38,6 +38,10 @@ public class PermissionGroup implements Serializable {
 
     @TableField("data_scope_type")
     private String dataScopeType;
+
+    /** 角色基线；为空表示自定义权限组（只做额外授予）。 */
+    @TableField("base_role")
+    private String baseRole;
 
     private Integer enabled;
 

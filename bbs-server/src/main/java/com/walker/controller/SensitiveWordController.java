@@ -29,7 +29,6 @@ import java.util.List;
  */
 @Api(tags = "SensitiveWordController")
 @RestController
-@PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
 public class SensitiveWordController {
     @Autowired
     private SensitiveWordService sensitiveWordService;
@@ -40,6 +39,7 @@ public class SensitiveWordController {
      * @date 2026/4/8 18:02
      * @return ResultBean
      */
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @GetMapping("/sensitiveWord/getList")
     public ResultBean getList() {
         List<SensitiveWord> list = sensitiveWordService.getList();
@@ -54,6 +54,7 @@ public class SensitiveWordController {
      * @return ResultBean 包含分页数据
      */
     @ApiOperation("分页查询敏感词列表")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @GetMapping("/sensitiveWord/getPage")
     public ResultBean getPage(
             @RequestParam(value = "page", defaultValue = "1") Integer page,
@@ -69,6 +70,7 @@ public class SensitiveWordController {
      * @param keyword 敏感词
      * @return ResultBean
      */
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_SENSITIVE_ADD",
             targetType = "SENSITIVE_WORD", targetId = "#keyword", snapshot = false)
     @GetMapping("/sensitiveWord/addSensitiveWord")
@@ -83,6 +85,7 @@ public class SensitiveWordController {
      * @param id 敏感词id
      * @return ResultBean
      */
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_SENSITIVE_DELETE",
             targetType = "SENSITIVE_WORD", targetId = "#id")
     @GetMapping("/sensitiveWord/delSensitiveWord")
@@ -95,6 +98,7 @@ public class SensitiveWordController {
      * @param response HTTP 响应
      */
     @ApiOperation("导出敏感词为 Excel")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_READ)")
     @GetMapping("/sensitiveWord/export")
     public void exportExcel(HttpServletResponse response) throws IOException {
         // 查询所有敏感词
@@ -128,6 +132,7 @@ public class SensitiveWordController {
      * @return ResultBean 导入结果
      */
     @ApiOperation("从 Excel 导入敏感词")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_SENSITIVE_IMPORT",
             targetType = "SENSITIVE_WORD", targetId = "'IMPORT'", snapshot = false)
     @PostMapping("/sensitiveWord/importExcel")

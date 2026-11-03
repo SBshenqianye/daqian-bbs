@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 权限组管理（Phase B/C，仅超级管理员）。
+ * 权限组管理（系统角色 + 临时权限组，仅超级管理员）。
  */
 @Api(tags = "PermissionGroupController")
 @RestController
@@ -145,6 +145,7 @@ public class PermissionGroupController {
         group.setDescription(stringValue(body.get("description")));
         group.setScopeType(stringValue(body.get("scopeType")));
         group.setDataScopeType(stringValue(body.get("dataScopeType")));
+        group.setBaseRole(stringValue(body.get("baseRole")));
         group.setEnabled(intValue(body.get("enabled")));
         group.setSortOrder(intValue(body.get("sortOrder")));
         return group;

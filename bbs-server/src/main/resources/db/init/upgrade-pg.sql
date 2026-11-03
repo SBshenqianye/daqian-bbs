@@ -8521,3 +8521,44 @@ COMMENT ON COLUMN bbs_permission_group.data_scope_type IS '数据范围：ROLE_D
 COMMENT ON TABLE bbs_permission_group_item IS '权限组-权限点';
 COMMENT ON TABLE bbs_user_permission_group IS '用户-权限组';
 COMMENT ON TABLE bbs_permission_preset IS '权限预设方案';
+
+-- @migration: v042-permission-group-base-role 权限组角色基线与预设组
+-- 目标：权限组支持“角色基线 + 授予/收回”；预置超管/管理/版主/用户四个组。
+-- 幂等：ADD COLUMN IF NOT EXISTS；ON CONFLICT DO NOTHING。
+ALTER TABLE bbs_permission_group
+  ADD COLUMN IF NOT EXISTS base_role varchar(20);
+
+COMMENT ON COLUMN bbs_permission_group.base_role
+  IS '角色基线：USER/MODERATOR/ADMIN/SUPER_ADMIN';
+
+INSERT INTO bbs_permission_group
+  (group_code, group_name, description, scope_type, data_scope_type, base_role, enabled, sort_order, create_by, create_time)
+VALUES
+  ('role_super',     '超级管理员', '超级管理员默认权限模板；关键权限不可剥离', 'ALL', 'ROLE_DEFAULT', 'SUPER_ADMIN', 1, 10, 'system', to_char(now(), 'YYYY-MM-DD HH24:MI:SS')),
+  ('role_admin',     '管理员',     '管理员默认权限模板；可剥离任一管理权限',   'ALL', 'ROLE_DEFAULT', 'ADMIN',       1, 20, 'system', to_char(now(), 'YYYY-MM-DD HH24:MI:SS')),
+  ('role_moderator', '版主',       '版主默认权限模板；可剥离任一版主权限',     'ALL', 'ROLE_DEFAULT', 'MODERATOR',   1, 30, 'system', to_char(now(), 'YYYY-MM-DD HH24:MI:SS')),
+  ('role_user',      '普通用户',   '普通用户默认权限模板；可剥离任一前台权限', 'ALL', 'ROLE_DEFAULT', 'USER',        1, 40, 'system', to_char(now(), 'YYYY-MM-DD HH24:MI:SS'))
+ON CONFLICT (group_code) DO NOTHING;
+
+-- @migration: v043-user-primary-group 用户主权限组
+-- 目标：bbs_user 增加 primary_group_id，按 user_type 回填四个系统角色组。
+-- 幂等：ADD COLUMN IF NOT EXISTS；CREATE INDEX IF NOT EXISTS；仅回填 NULL。
+ALTER TABLE bbs_user
+  ADD COLUMN IF NOT EXISTS primary_group_id integer;
+
+COMMENT ON COLUMN bbs_user.primary_group_id
+  IS '主权限组ID（必须指向系统角色组）';
+
+CREATE INDEX IF NOT EXISTS idx_user_primary_group
+  ON bbs_user (primary_group_id);
+
+UPDATE bbs_user u
+SET primary_group_id = g.id
+FROM bbs_permission_group g
+WHERE u.primary_group_id IS NULL
+  AND g.base_role = CASE u.user_type
+       WHEN '1' THEN 'USER'
+       WHEN '2' THEN 'ADMIN'
+       WHEN '3' THEN 'SUPER_ADMIN'
+       WHEN '4' THEN 'MODERATOR'
+     END;

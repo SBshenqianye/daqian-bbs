@@ -190,6 +190,54 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("channel=02 登录：有效 admin:access 被收回后失败")
+    void login_channel02_revokedAdminAccess_fails() {
+        User user = new User();
+        user.setId(2);
+        user.setUsername("ADMIN1");
+        user.setPassword("$2a$encoded");
+        user.setUserType("2");
+        user.setIsFirstLogin(0);
+
+        when(userDetailsService.loadUserByUsername("ADMIN1")).thenReturn(user);
+        when(passwordEncoder.matches("1234@abcD", "$2a$encoded")).thenReturn(true);
+        when(effectivePermissionService.getEffectiveCodes(user))
+                .thenReturn(new LinkedHashSet<>());
+
+        ResultBean result = userService.login("admin1", "1234@abcD", "02", request);
+
+        assertEquals(500, result.getCode());
+        assertEquals("用户名或密码不正确！", result.getMessage());
+    }
+
+    @Test
+    @DisplayName("channel=02 登录：有效 admin:access 恢复后成功")
+    void login_channel02_restoredAdminAccess_succeeds() {
+        User user = new User();
+        user.setId(2);
+        user.setUsername("ADMIN1");
+        user.setPassword("$2a$encoded");
+        user.setUserType("2");
+        user.setIsFirstLogin(0);
+
+        java.util.Set<String> codes = new LinkedHashSet<>(
+                Permission.codesFor(AccountRole.ADMIN));
+        when(userDetailsService.loadUserByUsername("ADMIN1")).thenReturn(user);
+        when(passwordEncoder.matches("1234@abcD", "$2a$encoded")).thenReturn(true);
+        when(effectivePermissionService.getEffectiveCodes(user)).thenReturn(codes);
+        when(saOrgService.resolveDisplayOrgName(any(), any())).thenReturn("内江市公司");
+
+        ResultBean result = userService.login("admin1", "1234@abcD", "02", request);
+
+        assertEquals(200, result.getCode());
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> tokenMap = (java.util.Map<String, Object>) result.getObj();
+        com.alibaba.fastjson.JSONObject userJson =
+                (com.alibaba.fastjson.JSONObject) tokenMap.get("user");
+        assertTrue(userJson.getJSONArray("permissions").contains("admin:access"));
+    }
+
+    @Test
     @DisplayName("登录密码错误 → 返回错误")
     void login_wrongPassword_returnsError() {
         User user = new User();

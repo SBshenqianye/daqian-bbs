@@ -1,6 +1,7 @@
 package com.walker.service.impl;
 
 import com.walker.config.security.Permission;
+import com.walker.service.PermissionGroupService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +33,9 @@ class PermissionMatrixServiceTest {
     @Mock
     private RequestMappingHandlerMapping requestMappingHandlerMapping;
 
+    @Mock
+    private PermissionGroupService permissionGroupService;
+
     @Test
     @DisplayName("parseRoles：hasRole / hasAnyRole / ROLE_ 前缀 / 非角色表达式")
     void parseRoles_cases() {
@@ -53,6 +57,7 @@ class PermissionMatrixServiceTest {
     @SuppressWarnings("unchecked")
     void matrix_rolesAndPermissions() {
         when(requestMappingHandlerMapping.getHandlerMethods()).thenReturn(Collections.emptyMap());
+        when(permissionGroupService.listGroups()).thenReturn(Collections.emptyList());
 
         Map<String, Object> matrix = service.getMatrix();
         List<Map<String, Object>> roles = (List<Map<String, Object>>) matrix.get("roles");
@@ -92,6 +97,7 @@ class PermissionMatrixServiceTest {
                 new DemoController(), DemoController.class.getMethod("demo"));
         when(requestMappingHandlerMapping.getHandlerMethods())
                 .thenReturn(Collections.singletonMap(info, handler));
+        when(permissionGroupService.listGroups()).thenReturn(Collections.emptyList());
 
         Map<String, Object> matrix = service.getMatrix();
         List<Map<String, Object>> endpoints = (List<Map<String, Object>>) matrix.get("endpoints");
@@ -121,6 +127,7 @@ class PermissionMatrixServiceTest {
                 new DemoController(), DemoController.class.getMethod("open"));
         when(requestMappingHandlerMapping.getHandlerMethods())
                 .thenReturn(Collections.singletonMap(info, handler));
+        when(permissionGroupService.listGroups()).thenReturn(Collections.emptyList());
 
         Map<String, Object> matrix = service.getMatrix();
         List<Map<String, Object>> endpoints = (List<Map<String, Object>>) matrix.get("endpoints");

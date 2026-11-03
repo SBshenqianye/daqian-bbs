@@ -22,7 +22,7 @@ public class ViolationController {
     private ViolationService violationService;
 
     @ApiOperation(value = "管理员记录违规并扣分")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).VIOLATION_ADD)")
     @AuditLog(module = "VIOLATION", action = "VIOLATION_ADD",
             targetType = "VIOLATION_TARGET",
             targetId = "#params['relatedType'] + ':' + #params['relatedId']",
@@ -39,7 +39,7 @@ public class ViolationController {
     }
 
     @ApiOperation(value = "管理员查看违规列表")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).VIOLATION_REVIEW)")
     @PostMapping("/admin/violation/list")
     public ResultBean listViolations(@RequestBody Map<String, Object> params) {
         Integer userId = params.get("userId") != null ? Integer.parseInt(params.get("userId").toString()) : null;
@@ -58,7 +58,7 @@ public class ViolationController {
     }
 
     @ApiOperation(value = "管理员取消违规（回滚扣分+恢复内容，操作人以JWT为准）")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MODERATOR')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).VIOLATION_CANCEL)")
     @AuditLog(module = "VIOLATION", action = "VIOLATION_CANCEL",
             targetType = "VIOLATION", targetId = "#params['violationId']")
     @PostMapping("/admin/violation/cancel")
