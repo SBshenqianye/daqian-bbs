@@ -38,6 +38,18 @@ ON DUPLICATE KEY UPDATE
   password=VALUES(password), nickname=VALUES(nickname), user_type=VALUES(user_type),
   is_delete=0, is_first_login=0, post_restricted=0;
 
+-- 主权限组：与 user_type 对应的系统角色组保持同步
+UPDATE bbs_user u
+JOIN bbs_permission_group g
+  ON g.base_role = CASE u.user_type
+       WHEN '1' THEN 'USER'
+       WHEN '2' THEN 'ADMIN'
+       WHEN '3' THEN 'SUPER_ADMIN'
+       WHEN '4' THEN 'MODERATOR'
+     END
+SET u.primary_group_id = g.id
+WHERE u.id IN (9001,9002,9003,9004,9005,9006,9007,9008);
+
 -- 测试板块：9001 为建议类型（便于验证建议采纳）
 INSERT INTO bbs_article_label (label_id, label_name, enabled, icon, description, label_type)
 VALUES

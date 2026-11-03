@@ -92,6 +92,44 @@ function mysqlQuery(sql, db = 'bbs_e2e_test') {
   return out.trim() ? out.trim().split(/\r?\n/).map(line => line.split('\t')) : [];
 }
 
+function mysqlExec(sql, db = 'bbs_e2e_test') {
+  execFileSync('mysql', [
+    '-h', 'localhost', '-P', '3306', '-u', 'root', '-N', '-B', db, '-e', sql,
+  ], { env: { ...process.env, MYSQL_PWD: 'root' }, encoding: 'utf8' });
+}
+
+function systemGroupId(baseRole) {
+  const rows = mysqlQuery(`SELECT id FROM bbs_permission_group WHERE base_role='${baseRole}' ORDER BY id LIMIT 1`);
+  assert(rows.length === 1, `缺少系统角色组 base_role=${baseRole}`);
+  return Number(rows[0][0]);
+}
+
+function revokeGroupCodes(groupId, codes) {
+  const values = codes.map(code => `(${groupId}, '${code}', 'revoke', NOW())`).join(',');
+  mysqlExec(`INSERT INTO bbs_permission_group_item (group_id, permission_code, effect, create_time)
+             VALUES ${values}
+             ON DUPLICATE KEY UPDATE effect='revoke'`);
+}
+
+function clearGroupRevokes(groupId, codes) {
+  if (!codes || codes.length === 0) return;
+  const inList = codes.map(code => `'${code}'`).join(',');
+  mysqlExec(`DELETE FROM bbs_permission_group_item
+             WHERE group_id=${groupId} AND effect='revoke' AND permission_code IN (${inList})`);
+}
+
+const ALL_PERMISSION_CODES = [
+  'admin:access', 'user:read', 'user:create', 'user:update', 'user:delete', 'user:grant:admin',
+  'config:read', 'config:write', 'permission:manage', 'audit:read',
+  'article:read', 'article:review', 'article:delete', 'article:feature', 'article:suggestion:adopt',
+  'report:review', 'appeal:review', 'violation:review', 'violation:add', 'violation:cancel',
+  'moderator:manage', 'moderator:complaint:review', 'adopt:review',
+  'featured:recommend', 'featured:review', 'points:read', 'points:adjust', 'dashboard:read',
+  'post:create', 'post:update:own', 'post:delete:own', 'comment:create', 'comment:delete:own',
+  'reply:create', 'reply:delete:own', 'report:submit', 'appeal:submit', 'moderator:complain',
+  'upload:file', 'profile:update', 'password:update'
+];
+
 async function main() {
   // ---------- A. 登录 ----------
   group('A. 登录');
@@ -451,7 +489,7 @@ async function main() {
     }
     return '6 个系统接口均为 403';
   });
-  await test('D14', 'ADMIN 可访问系统接口（不被 403）', async () => {
+  await test('D14', 'ADMIN 可访问系统接口（user:grant:admin 除外）', async () => {
     const details = [];
     // 管理员访问验证只证明“未被 403”；写接口传空参数触发业务错误即可，避免副作用干扰后续生命周期用例
     const noMutation = { D3: { body: {} }, D6: { body: {} }, D9: { body: {} }, D12: { body: {} } };
@@ -460,6 +498,11 @@ async function main() {
       const r = await call(method, path, { token: admin1Token, ...callOpts });
       const forbidden = isForbidden(r);
       details.push(`${id}:${r.data && r.data.code}`);
+      if (id === 'D12') {
+        // 角色变更映射到 user:grant:admin，管理员默认不具备，仅超管可操作
+        assert(forbidden, `ADMIN 不应拥有 user:grant:admin: ${path}`);
+        continue;
+      }
       assert(!forbidden, `${path} 被 403`);
     }
     return details.join(',');
@@ -473,9 +516,11 @@ async function main() {
       token: superToken, body: { userId: 9006, labelId: 9001 },
     });
     assert(Number(r.data.code) === 200, `code=${r.data.code} ${msgOf(r)}`);
-    const rows = mysqlQuery('SELECT user_type FROM bbs_user WHERE id=9006');
+    const rows = mysqlQuery(`SELECT u.user_type, g.group_code FROM bbs_user u
+      LEFT JOIN bbs_permission_group g ON g.id=u.primary_group_id WHERE u.id=9006`);
     assert(rows[0][0] === '4', `user_type=${rows[0][0]}`);
-    return 'user_type=4';
+    assert(rows[0][1] === 'role_moderator', `primary_group=${rows[0][1]}`);
+    return 'user_type=4, primary_group=role_moderator';
   });
 
   await test('E2', 'admin1 任命版主后 user_type 仍为 2', async () => {
@@ -483,9 +528,11 @@ async function main() {
       token: superToken, body: { userId: 9002, labelId: 9002 },
     });
     assert(Number(r.data.code) === 200, `code=${r.data.code} ${msgOf(r)}`);
-    const rows = mysqlQuery('SELECT user_type FROM bbs_user WHERE id=9002');
+    const rows = mysqlQuery(`SELECT u.user_type, g.group_code FROM bbs_user u
+      LEFT JOIN bbs_permission_group g ON g.id=u.primary_group_id WHERE u.id=9002`);
     assert(rows[0][0] === '2', `user_type=${rows[0][0]}`);
-    return 'user_type=2';
+    assert(rows[0][1] === 'role_admin', `primary_group=${rows[0][1]}`);
+    return 'user_type=2, primary_group=role_admin';
   });
 
   await test('E3', '撤销 normal1 最后一个板块后仍为版主且可登录、boardScopes=[]', async () => {
@@ -493,12 +540,14 @@ async function main() {
       token: superToken, body: { userId: 9006, labelId: 9001 },
     });
     assert(Number(r.data.code) === 200, `code=${r.data.code} ${msgOf(r)}`);
-    const rows = mysqlQuery('SELECT user_type FROM bbs_user WHERE id=9006');
+    const rows = mysqlQuery(`SELECT u.user_type, g.group_code FROM bbs_user u
+      LEFT JOIN bbs_permission_group g ON g.id=u.primary_group_id WHERE u.id=9006`);
     assert(rows[0][0] === '4', `user_type=${rows[0][0]}`);
+    assert(rows[0][1] === 'role_moderator', `撤销版主后 primary_group 应保留: ${rows[0][1]}`);
     const { user } = await loginOk('NORMAL1');
     assert(user.role === 'MODERATOR', `role=${user.role}`);
     assert((user.boardScopes || []).length === 0, `boardScopes=${JSON.stringify(user.boardScopes)}`);
-    return 'user_type=4, login ok, boardScopes=[]';
+    return 'user_type=4, primary_group=role_moderator, login ok, boardScopes=[]';
   });
 
   await test('E4', '/admin/moderator/boards 差异更新 + 幂等', async () => {
@@ -548,6 +597,157 @@ async function main() {
     const rows = mysqlQuery('SELECT COUNT(*) FROM bbs_article_label WHERE label_id=9005');
     assert(Number(rows[0][0]) === 0, '标签仍存在');
     return msgOf(r);
+  });
+
+  // ---------- G. 权限组即角色 ----------
+  group('G. 权限组即角色');
+
+  let moderatorGroupId;
+  let adminGroupId;
+  let superGroupId;
+  await test('G1', '登录返回主权限组，四个系统角色组存在', async () => {
+    moderatorGroupId = systemGroupId('MODERATOR');
+    adminGroupId = systemGroupId('ADMIN');
+    superGroupId = systemGroupId('SUPER_ADMIN');
+    systemGroupId('USER');
+
+    const { user } = await loginOk('MOD2');
+    assert(Number(user.primaryGroupId) === moderatorGroupId, `primaryGroupId=${user.primaryGroupId}`);
+    assert(user.primaryGroupCode === 'role_moderator', `primaryGroupCode=${user.primaryGroupCode}`);
+    assert(user.primaryGroupName === '版主', `primaryGroupName=${user.primaryGroupName}`);
+    return `moderator=${moderatorGroupId}, admin=${adminGroupId}, super=${superGroupId}`;
+  });
+
+  await test('G2', '版主组收回 article:read：登录权限不含且文章列表 403，恢复后 200', async () => {
+    const affected = ['article:read'];
+    revokeGroupCodes(moderatorGroupId, affected);
+    try {
+      const { token, user } = await loginOk('MOD2');
+      assert(!user.permissions.includes('article:read'), '收回后仍包含 article:read');
+      const forbidden = await call('POST', '/admin/article/list', {
+        token, body: { page: 1, size: 10 },
+      });
+      assert(isForbidden(forbidden), `收回后列表未 403: code=${forbidden.data && forbidden.data.code}`);
+    } finally {
+      clearGroupRevokes(moderatorGroupId, affected);
+    }
+    const { token, user } = await loginOk('MOD2');
+    assert(user.permissions.includes('article:read'), '恢复后仍缺少 article:read');
+    const ok = await call('POST', '/admin/article/list', { token, body: { page: 1, size: 10 } });
+    assert(Number(ok.data.code) === 200, `恢复后列表 code=${ok.data.code}`);
+    return '收回 403 → 恢复 200';
+  });
+
+  await test('G3', '版主组全部收回：channel=02 登录失败且有效权限为空，恢复后成功', async () => {
+    revokeGroupCodes(moderatorGroupId, ALL_PERMISSION_CODES);
+    try {
+      const denied = await login('MOD2');
+      assert(Number(denied.data && denied.data.code) !== 200,
+        `期望登录失败，实际 code=${denied.data && denied.data.code}`);
+      const effective = await call('GET', `/admin/permission/effective/9004`, { token: superToken });
+      assert(Number(effective.data.code) === 200, `effective code=${effective.data.code}`);
+      assert((effective.data.obj.permissions || []).length === 0,
+        `有效权限未清空: ${JSON.stringify(effective.data.obj.permissions)}`);
+    } finally {
+      clearGroupRevokes(moderatorGroupId, ALL_PERMISSION_CODES);
+    }
+    const restored = await login('MOD2');
+    assert(Number(restored.data && restored.data.code) === 200,
+      `恢复后登录失败: code=${restored.data && restored.data.code}`);
+    return '全部收回登录失败 → 恢复登录成功';
+  });
+
+  await test('G4', '管理员组收回 user:read：/admin/user/search 403，恢复后 200', async () => {
+    const affected = ['user:read'];
+    revokeGroupCodes(adminGroupId, affected);
+    try {
+      const forbidden = await call('GET', '/admin/user/search', {
+        token: admin1Token, query: { keyword: 'NORMAL' },
+      });
+      assert(isForbidden(forbidden), `收回后未 403: code=${forbidden.data && forbidden.data.code}`);
+    } finally {
+      clearGroupRevokes(adminGroupId, affected);
+    }
+    const ok = await call('GET', '/admin/user/search', {
+      token: admin1Token, query: { keyword: 'NORMAL' },
+    });
+    assert(Number(ok.data.code) === 200, `恢复后 code=${ok.data.code}`);
+    return '收回 403 → 恢复 200';
+  });
+
+  await test('G5', '管理员组收回 admin:access：后台登录失败且旧 token 访问 /admin/** 403，恢复后正常', async () => {
+    const affected = ['admin:access'];
+    revokeGroupCodes(adminGroupId, affected);
+    try {
+      const denied = await login('ADMIN1');
+      assert(Number(denied.data && denied.data.code) !== 200,
+        `期望后台登录失败，实际 code=${denied.data && denied.data.code}`);
+      const forbidden = await call('GET', '/admin/user/search', {
+        token: admin1Token, query: { keyword: 'NORMAL' },
+      });
+      assert(isForbidden(forbidden), `旧 token 未被拦截: status=${forbidden.status}, code=${forbidden.data && forbidden.data.code}`);
+    } finally {
+      clearGroupRevokes(adminGroupId, affected);
+    }
+    const restored = await login('ADMIN1');
+    assert(Number(restored.data && restored.data.code) === 200,
+      `恢复后登录失败: code=${restored.data && restored.data.code}`);
+    return '登录失败 + 旧 token 403 → 恢复成功';
+  });
+
+  await test('G6', '超管 4 个关键权限不可收回', async () => {
+    const protectedCodes = ['admin:access', 'user:grant:admin', 'permission:manage', 'audit:read'];
+    revokeGroupCodes(superGroupId, protectedCodes);
+    try {
+      const { user } = await loginOk('SUPER1');
+      for (const code of protectedCodes) {
+        assert(user.permissions.includes(code), `超管关键权限被收回: ${code}`);
+      }
+    } finally {
+      clearGroupRevokes(superGroupId, protectedCodes);
+    }
+    return protectedCodes.join(',');
+  });
+
+  await test('G7', '系统角色不可删除/改编码/改基线/手动加成员', async () => {
+    const deleted = await call('DELETE', `/admin/permission/groups/${superGroupId}`, { token: superToken });
+    assert(Number(deleted.data.code) !== 200, `删除系统角色未拒绝: code=${deleted.data.code}`);
+    assert(msgOf(deleted).includes('不可删除'), `message=${msgOf(deleted)}`);
+
+    const codeChanged = await call('PUT', `/admin/permission/groups/${superGroupId}`, {
+      token: superToken, body: { groupCode: 'role_super_hacked' },
+    });
+    assert(Number(codeChanged.data.code) !== 200, `改编码未拒绝: code=${codeChanged.data.code}`);
+    assert(msgOf(codeChanged).includes('编码不可修改'), `message=${msgOf(codeChanged)}`);
+
+    const roleChanged = await call('PUT', `/admin/permission/groups/${superGroupId}`, {
+      token: superToken, body: { baseRole: 'ADMIN' },
+    });
+    assert(Number(roleChanged.data.code) !== 200, `改基线未拒绝: code=${roleChanged.data.code}`);
+    assert(msgOf(roleChanged).includes('基线不可修改'), `message=${msgOf(roleChanged)}`);
+
+    const assigned = await call('POST', `/admin/permission/groups/${superGroupId}/users`, {
+      token: superToken, body: { userIds: [9006] },
+    });
+    assert(Number(assigned.data.code) !== 200, `手动加成员未拒绝: code=${assigned.data.code}`);
+    assert(msgOf(assigned).includes('自动应用'), `message=${msgOf(assigned)}`);
+    return '4 项保护均生效';
+  });
+
+  await test('G8', '权限矩阵/权限组返回 system/autoApply/roleUserCount', async () => {
+    const groups = await call('GET', '/admin/permission/groups', { token: superToken });
+    assert(Number(groups.data.code) === 200, `groups code=${groups.data.code}`);
+    const superRow = (groups.data.obj || []).find(g => g.groupCode === 'role_super');
+    assert(superRow && superRow.system === true, `system=${superRow && superRow.system}`);
+    assert(superRow.autoApply === true, `autoApply=${superRow && superRow.autoApply}`);
+    assert(Number(superRow.roleUserCount) >= 1, `roleUserCount=${superRow && superRow.roleUserCount}`);
+
+    const matrix = await call('GET', '/admin/permission/matrix', { token: superToken });
+    assert(Number(matrix.data.code) === 200, `matrix code=${matrix.data.code}`);
+    const matrixSuper = (matrix.data.obj.groups || []).find(g => g.groupCode === 'role_super');
+    assert(matrixSuper && matrixSuper.system === true && matrixSuper.autoApply === true,
+      `matrix super=${JSON.stringify(matrixSuper)}`);
+    return `roleUserCount=${superRow.roleUserCount}`;
   });
 
   // ---------- 汇总 ----------

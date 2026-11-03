@@ -4,6 +4,10 @@ SELECT 'schema_version', COALESCE(MAX(version), '(none)') FROM bbs_schema_versio
 SELECT 'has_v039', COUNT(1) FROM bbs_schema_version WHERE version = 'v039-moderator-role';
 SELECT 'has_v040', COUNT(1) FROM bbs_schema_version WHERE version = 'v040-audit-log';
 SELECT 'has_v041', COUNT(1) FROM bbs_schema_version WHERE version = 'v041-permission-group';
+SELECT 'has_v042', COUNT(1) FROM bbs_schema_version WHERE version = 'v042-permission-group-base-role';
+SELECT 'has_v043', COUNT(1) FROM bbs_schema_version WHERE version = 'v043-user-primary-group';
+SELECT 'primary_group_column_exists', COUNT(1) FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'bbs_user' AND column_name = 'primary_group_id';
 SELECT 'audit_table_exists', COUNT(1) FROM information_schema.tables
 WHERE table_schema = 'public' AND table_name = 'bbs_audit_log';
 SELECT 'permission_group_table_exists', COUNT(1) FROM information_schema.tables
