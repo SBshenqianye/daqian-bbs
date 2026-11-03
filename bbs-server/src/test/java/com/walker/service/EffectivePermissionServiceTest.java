@@ -304,4 +304,21 @@ class EffectivePermissionServiceTest {
         assertFalse(single.contains(Permission.USER_READ.getCode()), "单人计算未按收回优先");
         assertFalse(batch.contains(5), "批量计算与单人计算不一致");
     }
+
+    @Test
+    @DisplayName("2000 个同角色用户批量广播完整返回")
+    void userIds_manyUsersSameProfile() {
+        java.util.List<User> users = new java.util.ArrayList<>();
+        for (int i = 1; i <= 2000; i++) {
+            users.add(user(i, "1"));
+        }
+        when(userMapper.selectList(any())).thenReturn(users);
+        when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        java.util.List<Integer> ids = service.getUserIdsWithPermission(Permission.POST_CREATE);
+
+        assertEquals(2000, ids.size());
+        assertTrue(ids.contains(1));
+        assertTrue(ids.contains(2000));
+    }
 }

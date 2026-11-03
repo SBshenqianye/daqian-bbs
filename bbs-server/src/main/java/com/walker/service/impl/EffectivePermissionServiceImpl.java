@@ -1,6 +1,7 @@
 package com.walker.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.walker.config.security.AccountRole;
 import com.walker.config.security.Permission;
 import com.walker.mapper.PermissionGroupItemMapper;
@@ -68,7 +69,9 @@ public class EffectivePermissionServiceImpl implements EffectivePermissionServic
         if (permission == null) {
             return Collections.emptyList();
         }
-        List<User> users = userMapper.selectList(null);
+        // 广播只需要身份/主组字段，避免把密码等大字段一并加载；用户量增长时内存更可控。
+        List<User> users = userMapper.selectList(new QueryWrapper<User>()
+                .select("id", "user_type", "primary_group_id"));
         List<UserPermissionGroup> allLinks = userPermissionGroupMapper.selectList(null);
         if (users == null) {
             users = Collections.emptyList();
@@ -129,6 +132,9 @@ public class EffectivePermissionServiceImpl implements EffectivePermissionServic
         Map<Integer, List<PermissionGroupItem>> itemsByGroup = loadItems(referencedGroupIds);
 
         List<Integer> result = new ArrayList<>();
+        // 2000+ 用户里大多数共享同一“主组 + user_type + 临时组集合”，按 profile 缓存，
+        // 把逐用户重复的权限集合计算降为按权限组合计算。
+        Map<String, Set<String>> codesByProfile = new LinkedHashMap<>();
         for (User user : usersById.values()) {
             PermissionGroup primaryGroup = systemGroup(groupById.get(user.getPrimaryGroupId()));
             List<PermissionGroup> temporaryGroups = new ArrayList<>();
@@ -142,7 +148,12 @@ public class EffectivePermissionServiceImpl implements EffectivePermissionServic
                 }
             }
             Set<Integer> groupIds = collectGroupIds(primaryGroup, temporaryGroups);
-            Set<String> codes = computeEffectiveCodes(user, primaryGroup, groupIds, itemsByGroup);
+            String profileKey = profileKey(user, temporaryGroups);
+            Set<String> codes = codesByProfile.get(profileKey);
+            if (codes == null) {
+                codes = computeEffectiveCodes(user, primaryGroup, groupIds, itemsByGroup);
+                codesByProfile.put(profileKey, codes);
+            }
             if (codes.contains(permission.getCode())) {
                 result.add(user.getId());
             }
@@ -176,6 +187,20 @@ public class EffectivePermissionServiceImpl implements EffectivePermissionServic
         applyItems(codes, effectiveItems, protectSuper);
         addSuperProtected(codes, user);
         return codes;
+    }
+
+    /** 批量计算的缓存键：主组 + user_type + 临时组集合决定最终权限。 */
+    private String profileKey(User user, List<PermissionGroup> temporaryGroups) {
+        List<Integer> tempGroupIds = new ArrayList<>();
+        for (PermissionGroup group : temporaryGroups) {
+            if (group != null && group.getId() != null) {
+                tempGroupIds.add(group.getId());
+            }
+        }
+        Collections.sort(tempGroupIds);
+        return (user.getPrimaryGroupId() == null ? "null" : user.getPrimaryGroupId())
+                + "|" + (user.getUserType() == null ? "null" : user.getUserType())
+                + "|" + tempGroupIds;
     }
 
     private Set<Integer> collectGroupIds(PermissionGroup primaryGroup,
