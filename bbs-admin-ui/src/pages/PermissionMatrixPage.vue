@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="bg-surface min-h-screen">
     <div class="max-w-7xl mx-auto px-page-margin-desktop py-6">
       <!-- Header -->
@@ -76,7 +76,7 @@
             />
             <span class="text-on-surface" :title="group.groupCode">{{ group.groupName }}</span>
             <span class="text-[11px] px-1.5 py-0.5 rounded" :class="isSystemGroup(group) ? 'bg-surface-variant text-on-surface-variant' : 'bg-amber-50 text-amber-700'">
-              {{ isSystemGroup(group) ? '系统角色' : '临时权限组' }}
+              {{ groupKind(group) }}
             </span>
             <span v-if="isSystemGroup(group) && group.autoApply" class="text-[11px] text-emerald-700">自动应用</span>
           </label>
@@ -120,7 +120,7 @@
             <div class="flex items-center justify-between mb-2">
               <span class="font-title-md text-title-md">{{ group.groupName }}</span>
               <span class="text-[11px] px-2 py-0.5 rounded-full" :class="isSystemGroup(group) ? 'bg-primary-fixed/60 text-on-surface' : 'bg-amber-50 text-amber-700'">
-                {{ isSystemGroup(group) ? '系统角色' : '临时权限组' }}
+                {{ groupKind(group) }}
               </span>
             </div>
             <div class="text-[11px] text-outline mb-2">
@@ -259,7 +259,13 @@
 </template>
 
 <script>
-import { ROLE_LABELS, PERMISSION_LABELS, labelOf } from '@/utils/labels'
+import {
+  PERMISSION_LABELS,
+  groupKindLabel,
+  isSystemGroup as isSystemGroupData,
+  labelOf,
+  roleLabelOf
+} from '@/utils/labels'
 
 export default {
   name: 'PermissionMatrixPage',
@@ -308,13 +314,16 @@ export default {
   },
   methods: {
     roleLabel(code) {
-      return labelOf(ROLE_LABELS, code, code)
+      return roleLabelOf(code)
     },
     permissionLabel(code) {
       return labelOf(PERMISSION_LABELS, code, code)
     },
     isSystemGroup(group) {
-      return !!(group && (group.system || group.baseRole))
+      return isSystemGroupData(group)
+    },
+    groupKind(group) {
+      return groupKindLabel(group)
     },
     isGroupVisible(id) {
       return this.visibleGroupIds.map(String).indexOf(String(id)) !== -1

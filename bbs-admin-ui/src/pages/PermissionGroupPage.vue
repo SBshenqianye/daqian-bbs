@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="bg-surface min-h-screen">
     <div class="max-w-[1600px] mx-auto px-page-margin-desktop py-6">
       <div class="flex items-center justify-between mb-6">
@@ -43,7 +43,7 @@
               </div>
               <div class="flex items-center gap-1.5 mt-1">
                 <span class="text-[11px] px-1.5 py-0.5 rounded" :class="isSystemElement(element) ? 'bg-primary-fixed/60 text-on-surface' : 'bg-amber-50 text-amber-700'">
-                  {{ isSystemElement(element) ? '系统角色' : '临时权限组' }}
+                  {{ groupKind(element) }}
                 </span>
                 <span v-if="isSystemElement(element) && element.autoApply" class="text-[11px] text-emerald-700">自动应用</span>
               </div>
@@ -96,8 +96,8 @@
         <!-- 右：设置 -->
         <div class="xl:col-span-4 space-y-4">
           <div class="bg-container border border-border rounded-xl p-card-padding">
-            <h3 class="font-title-lg text-title-lg mb-3">{{ form.id ? (isSystemGroup ? '编辑系统角色' : '编辑临时权限组') : '新建临时权限组' }}</h3>
-            <div v-if="isSystemGroup" class="mb-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-body-sm">
+            <h3 class="font-title-lg text-title-lg mb-3">{{ form.id ? (isSystemRole ? '编辑系统角色' : '编辑临时权限组') : '新建临时权限组' }}</h3>
+            <div v-if="isSystemRole" class="mb-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-body-sm">
               <div class="text-on-surface">角色基线：{{ roleLabel(form.baseRole) }}</div>
               <div class="text-on-surface-variant mt-0.5">取消勾选即收回该权限；带锁的关键权限不可收回。</div>
               <div class="text-on-surface-variant mt-0.5">自动应用于 {{ form.roleUserCount || 0 }} 名{{ roleLabel(form.baseRole) }}用户。</div>
@@ -105,7 +105,7 @@
             <div class="space-y-3">
               <div>
                 <label class="font-label-md text-label-md text-secondary mb-1 block">编码</label>
-                <input v-model.trim="form.groupCode" :disabled="isSystemGroup" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded focus:border-primary outline-none text-body-sm disabled:bg-surface-container-low disabled:text-outline" placeholder="如 content_operator" />
+                <input v-model.trim="form.groupCode" :disabled="isSystemRole" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded focus:border-primary outline-none text-body-sm disabled:bg-surface-container-low disabled:text-outline" placeholder="如 content_operator" />
               </div>
               <div>
                 <label class="font-label-md text-label-md text-secondary mb-1 block">名称</label>
@@ -118,7 +118,7 @@
               <div class="space-y-3">
                 <div>
                   <label class="font-label-md text-label-md text-secondary mb-1 block">范围</label>
-                  <select v-model="form.scopeType" :disabled="isSystemGroup" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-sm disabled:bg-surface-container-low disabled:text-outline">
+                  <select v-model="form.scopeType" :disabled="isSystemRole" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-sm disabled:bg-surface-container-low disabled:text-outline">
                     <option value="ADMIN">管理端</option>
                     <option value="FRONT">前台</option>
                     <option value="ALL">全部</option>
@@ -126,7 +126,7 @@
                 </div>
                 <div>
                   <label class="font-label-md text-label-md text-secondary mb-1 block">数据范围</label>
-                  <select v-model="form.dataScopeType" :disabled="isSystemGroup" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-sm disabled:bg-surface-container-low disabled:text-outline">
+                  <select v-model="form.dataScopeType" :disabled="isSystemRole" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-sm disabled:bg-surface-container-low disabled:text-outline">
                     <option value="ROLE_DEFAULT">跟随角色/版主任职（默认）</option>
                     <option value="BOARD_MODERATOR">引用版主任职</option>
                   </select>
@@ -141,14 +141,14 @@
               </label>
               <div class="flex items-center gap-2 pt-1">
                 <button class="px-4 py-2 bg-primary text-on-primary rounded-lg text-body-sm hover:opacity-90" @click="saveGroup">{{ form.id ? '保存' : '创建' }}</button>
-                <button v-if="form.id && !isSystemGroup" class="px-4 py-2 border border-error text-error rounded-lg text-body-sm hover:bg-error/5" @click="deleteGroup">删除</button>
+                <button v-if="form.id && !isSystemRole" class="px-4 py-2 border border-error text-error rounded-lg text-body-sm hover:bg-error/5" @click="deleteGroup">删除</button>
               </div>
             </div>
           </div>
 
           <div v-if="form.id" class="bg-container border border-border rounded-xl p-card-padding">
             <h3 class="font-title-lg text-title-lg mb-3">成员</h3>
-            <template v-if="isSystemGroup">
+            <template v-if="isSystemRole">
               <div class="rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-body-sm text-on-surface-variant">
                 系统角色按用户主组自动应用，无需手动添加成员。当前自动应用于 {{ form.roleUserCount || 0 }} 名用户。
               </div>
@@ -189,7 +189,11 @@
 </template>
 
 <script>
-import { ROLE_LABELS } from '@/utils/labels'
+import {
+  groupKindLabel as groupKindLabelOf,
+  isSystemGroup as isSystemGroupData,
+  roleLabelOf
+} from '@/utils/labels'
 
 const ADMIN_PERMISSIONS = [
   { section: '基础', items: [
@@ -260,7 +264,7 @@ export default {
         { key: 'front', label: '前台动作权限', sections: FRONT_PERMISSIONS }
       ]
     },
-    isSystemGroup() {
+    isSystemRole() {
       return !!this.form.baseRole
     }
   },
@@ -286,7 +290,10 @@ export default {
       this.protectedCodes = []
     },
     isSystemElement(element) {
-      return !!(element && (element.system || element.baseRole))
+      return isSystemGroupData(element)
+    },
+    groupKind(element) {
+      return groupKindLabelOf(element)
     },
     selectGroup(group) {
       if (!group || !group.id) return
@@ -326,7 +333,7 @@ export default {
       return ''
     },
     roleLabel(value) {
-      return ROLE_LABELS[value] || value || ''
+      return roleLabelOf(value)
     },
     toggleCode(code) {
       if (this.isLocked(code)) return
@@ -345,7 +352,7 @@ export default {
         description: this.form.description,
         scopeType: this.form.scopeType,
         dataScopeType: this.form.dataScopeType,
-        baseRole: this.isSystemGroup ? undefined : null,
+        baseRole: this.isSystemRole ? undefined : null,
         enabled: this.form.enabled,
         sortOrder: this.form.sortOrder,
         permissionCodes: this.selectedCodes
@@ -365,7 +372,7 @@ export default {
     },
     deleteGroup() {
       if (!this.form.id) return
-      if (this.isSystemGroup) {
+      if (this.isSystemRole) {
         this.$message.warning('系统角色不可删除')
         return
       }

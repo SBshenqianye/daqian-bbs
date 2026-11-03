@@ -219,3 +219,17 @@ export function labelOf(map, value, fallback = '—') {
   if (value === null || value === undefined || value === '') return fallback
   return map[value] || String(value)
 }
+
+/** 系统角色组：baseRole 非空（后端同时返回 system 标记，兼容旧响应）。 */
+export function isSystemGroup(group) {
+  return !!(group && (group.system || group.baseRole))
+}
+
+export function groupKindLabel(group) {
+  return isSystemGroup(group) ? '系统角色' : '临时权限组'
+}
+
+export function roleLabelOf(code) {
+  if (code === null || code === undefined || code === '') return ''
+  return ROLE_LABELS[code] || String(code)
+}
