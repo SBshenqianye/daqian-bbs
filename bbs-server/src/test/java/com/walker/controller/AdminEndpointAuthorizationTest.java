@@ -106,6 +106,30 @@ class AdminEndpointAuthorizationTest {
         fail("未找到方法 " + controller.getSimpleName() + "#" + methodName);
     }
 
+    @Test
+    @DisplayName("全局统计/积分明细接口保留 ADMIN/SUPER 数据范围（MODERATOR 不可访问）")
+    void globalOnlyEndpointsKeepGlobalAdminScope() {
+        assertGlobalAdminOnly(AdminController.class, "getPointsLogByUserId");
+        assertGlobalAdminOnly(ArticleController.class, "articleStatisticByOrg");
+        assertGlobalAdminOnly(ArticleController.class, "exportPointsRank");
+    }
+
+    private static void assertGlobalAdminOnly(Class<?> controller, String methodName) {
+        for (Method method : controller.getDeclaredMethods()) {
+            if (!method.getName().equals(methodName)) {
+                continue;
+            }
+            PreAuthorize auth = AnnotatedElementUtils.findMergedAnnotation(
+                    method, PreAuthorize.class);
+            assertNotNull(auth, controller.getSimpleName() + "#" + methodName + " 缺少 @PreAuthorize");
+            assertTrue(auth.value().contains("@authz.isGlobalAdmin(principal)"),
+                    controller.getSimpleName() + "#" + methodName
+                            + " 未限制全局管理员数据范围: " + auth.value());
+            return;
+        }
+        fail("未找到方法 " + controller.getSimpleName() + "#" + methodName);
+    }
+
     private static String firstPath(RequestMapping mapping) {
         if (mapping == null) {
             return "";

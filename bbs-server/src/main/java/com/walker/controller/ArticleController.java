@@ -521,7 +521,7 @@ public class ArticleController {
      * @return ResultBean 返回结果
      */
     @ApiOperation(value = "按单位统计文章数")
-    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_READ)")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_READ) and @authz.isGlobalAdmin(principal)")
     @PostMapping("/admin/articleStatisticByOrg")
     public ResultBean articleStatisticByOrg(@RequestBody ArticleStatisticParam articleStatisticParam){
         if (StringUtils.isEmpty(articleStatisticParam.getOrgNo())){
@@ -717,7 +717,7 @@ public class ArticleController {
     }
 
     @ApiOperation(value = "积分排名导出 Excel（单位排名 + 个人排名 + 积分明细）")
-    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POINTS_READ)")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POINTS_READ) and @authz.isGlobalAdmin(principal)")
     @GetMapping("/admin/points/export")
     public void exportPointsRank(
             @RequestParam(required = false, defaultValue = "01") String rankType,

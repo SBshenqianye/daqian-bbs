@@ -507,6 +507,27 @@ async function main() {
     }
     return details.join(',');
   });
+  await test('D15', 'MODERATOR 不能查看他人积分明细（全局数据范围）', async () => {
+    const r = await call('GET', '/admin/points/log/9006', { token: mod1Token });
+    assert(isForbidden(r), `status=${r.status}, code=${r.data && r.data.code}`);
+    return msgOf(r);
+  });
+  await test('D16', 'MODERATOR 不能按单位统计全局文章（全局数据范围）', async () => {
+    const r = await call('POST', '/admin/articleStatisticByOrg', {
+      token: mod1Token, body: { orgNo: '51404' },
+    });
+    assert(isForbidden(r), `status=${r.status}, code=${r.data && r.data.code}`);
+    return msgOf(r);
+  });
+  await test('D17', 'ADMIN 仍可查看积分明细与单位统计', async () => {
+    const log = await call('GET', '/admin/points/log/9006', { token: admin1Token });
+    assert(!isForbidden(log), `points/log 被 403: ${msgOf(log)}`);
+    const stat = await call('POST', '/admin/articleStatisticByOrg', {
+      token: admin1Token, body: { orgNo: '51404' },
+    });
+    assert(!isForbidden(stat), `articleStatisticByOrg 被 403: ${msgOf(stat)}`);
+    return `pointsLog=${log.data && log.data.code}, statistic=${stat.data && stat.data.code}`;
+  });
 
   // ---------- E. 生命周期 ----------
   group('E. 生命周期');

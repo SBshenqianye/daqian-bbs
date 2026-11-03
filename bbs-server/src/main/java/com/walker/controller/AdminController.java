@@ -67,7 +67,7 @@ public class AdminController {
     }
 
     @ApiOperation(value = "查询用户积分调整记录")
-    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POINTS_READ)")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POINTS_READ) and @authz.isGlobalAdmin(principal)")
     @GetMapping("/points/log/{userId}")
     public ResultBean getPointsLogByUserId(@PathVariable Integer userId){
         if (userId == null) {
