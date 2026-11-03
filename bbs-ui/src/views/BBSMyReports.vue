@@ -55,6 +55,7 @@
 
 <script>
 import { handleResponse } from '../../../shared/feedback'
+import { getUser } from '@/utils/auth'
 
 export default {
   name: 'BBSMyReports',
@@ -81,7 +82,7 @@ export default {
   },
   mounted() { this.loadList() },
   methods: {
-    getUserId() { return JSON.parse(localStorage.getItem('user') || '{}').id },
+    getUserId() { const user = getUser(); return user && user.id },
     getStatusLabel(s) { return { pending: '审核中', confirmed: '已核实', rejected: '已驳回' }[s] || s },
     getTargetTypeLabel(t) { return { article: '文章', comment: '评论', reply: '回复' }[t] || t },
     statusBadgeClass(s) {

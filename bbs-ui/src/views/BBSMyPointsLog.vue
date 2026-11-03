@@ -56,6 +56,8 @@
 </template>
 
 <script>
+import { getUser } from '@/utils/auth'
+
 export default {
   name: 'BBSMyPointsLog',
   data() {
@@ -67,7 +69,7 @@ export default {
     this.loadList()
   },
   methods: {
-    getUserId() { return JSON.parse(localStorage.getItem('user') || '{}').id },
+    getUserId() { const user = getUser(); return user && user.id },
     async loadLevel() {
       const userId = this.getUserId()
       if (!userId) return

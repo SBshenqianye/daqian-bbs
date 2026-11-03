@@ -87,7 +87,7 @@ export default {
   },
   methods: {
     tooltipContent(user) {
-      return `ID: ${user.id} | 用户名: ${user.username} | 昵称: ${user.nickname || '无'} | 单位: ${user.orgName || '未分配'} | 类型: ${TYPE_MAP[user.userType] || '用户'}`
+      return `ID: ${user.id} | 用户名: ${user.username} | 昵称: ${user.nickname || '无'} | 单位: ${user.orgName || '未分配'} | 角色: ${user.primaryGroupName || TYPE_MAP[user.userType] || '用户'}`
     },
     onInput() {
       clearTimeout(this.debounceTimer)

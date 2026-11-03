@@ -92,7 +92,9 @@
                 <td class="p-4 font-body-md text-on-surface max-w-[160px] truncate" :title="user.nickname">{{ user.nickname }}</td>
                 <td class="p-4 font-body-md text-on-surface-variant">{{ user.phone }}</td>
                 <td class="p-4">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="roleClass(user.userType)">{{ roleLabel(user.userType) }}</span>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="roleClass(user.userType)" :title="'主权限组：' + (user.primaryGroupName || roleLabel(user.userType))">
+                    {{ user.primaryGroupName || roleLabel(user.userType) }}
+                  </span>
                 </td>
                 <td class="p-4">
                   <div class="flex items-center gap-1.5 flex-wrap">
@@ -197,7 +199,7 @@
             </div>
             <div class="flex items-start gap-6">
               <div class="space-y-1">
-                <label class="text-label-md text-secondary">角色</label>
+                <label class="text-label-md text-secondary">角色（主权限组）</label>
                 <div class="grid grid-cols-1 grid-rows-1">
                   <select v-model="editForm.userType" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
                     <option value="1">普通用户</option>
@@ -396,7 +398,7 @@
             </div>
             <div class="flex items-center gap-6">
               <div class="space-y-1">
-                <label class="text-label-md text-secondary">角色</label>
+                <label class="text-label-md text-secondary">角色（主权限组）</label>
                 <div class="grid grid-cols-1 grid-rows-1">
                   <select v-model="addForm.userType" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
                     <option value="1">普通用户</option>
@@ -527,7 +529,7 @@
                 <span class="font-label-md text-label-md text-on-surface">{{ hoverUser.username }}</span>
                 <span class="text-body-sm text-on-surface-variant ml-1">({{ hoverUser.nickname }})</span>
               </div>
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap" :class="roleClass(hoverUser.userType)">{{ roleLabel(hoverUser.userType) }}</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap" :class="roleClass(hoverUser.userType)">{{ hoverUser.primaryGroupName || roleLabel(hoverUser.userType) }}</span>
               <span class="inline-flex items-center gap-1 text-[11px] font-medium whitespace-nowrap" :class="hoverUser.isAlive === 0 ? 'text-green-700' : 'text-error'">
                 <span class="w-1.5 h-1.5 rounded-full" :class="hoverUser.isAlive === 0 ? 'bg-green-500' : 'bg-error'"></span>
                 {{ hoverUser.isAlive === 0 ? '活跃' : '禁用' }}

@@ -55,13 +55,14 @@
 
 <script>
 import { handleResponse } from '../../../shared/feedback'
+import { getUser } from '@/utils/auth'
 
 export default {
   name: 'BBSMyViolations',
   data() { return { loading: false, list: [] } },
   mounted() { this.loadList() },
   methods: {
-    getUserId() { return JSON.parse(localStorage.getItem('user') || '{}').id },
+    getUserId() { const user = getUser(); return user && user.id },
     getViolationLabel(t) {
       return { illegal: '违法违规内容', attack: '人身攻击', spam: '恶意灌水', plagiarism: '抄袭剽窃', false_report: '虚假举报', leak: '泄露秘密' }[t] || t
     },

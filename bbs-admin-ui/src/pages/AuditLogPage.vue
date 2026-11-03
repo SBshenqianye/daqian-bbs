@@ -9,7 +9,7 @@
             审计日志
           </h1>
           <p class="text-body-md text-secondary mt-1">
-            关键写操作与权限拒绝留痕。密码、Token 等敏感字段不落库。
+            关键写操作与权限拒绝留痕。模块、操作、目标显示中文名称，鼠标悬浮可查看内部编码。
           </p>
         </div>
         <div class="flex items-center gap-3">
@@ -37,7 +37,12 @@
           </div>
           <div>
             <label class="font-label-md text-label-md text-secondary mb-1.5 block">操作</label>
-            <input v-model.trim="filters.action" class="w-full px-3 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary outline-none font-body-md text-body-md" placeholder="如 ARTICLE_AUDIT" />
+            <select v-model="filters.action" class="w-full px-3 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary outline-none font-body-md text-body-md">
+              <option value="">全部</option>
+              <optgroup v-for="group in actionGroups" :key="group.module" :label="group.label">
+                <option v-for="action in group.actions" :key="action.value" :value="action.value">{{ action.label }}</option>
+              </optgroup>
+            </select>
           </div>
           <div>
             <label class="font-label-md text-label-md text-secondary mb-1.5 block">操作人 ID</label>
@@ -51,13 +56,16 @@
             <label class="font-label-md text-label-md text-secondary mb-1.5 block">结果</label>
             <select v-model="filters.result" class="w-full px-3 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary outline-none font-body-md text-body-md">
               <option value="">全部</option>
-              <option value="success">success</option>
-              <option value="fail">fail</option>
+              <option value="success">成功</option>
+              <option value="fail">失败</option>
             </select>
           </div>
           <div>
             <label class="font-label-md text-label-md text-secondary mb-1.5 block">目标类型</label>
-            <input v-model.trim="filters.targetType" class="w-full px-3 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary outline-none font-body-md text-body-md" placeholder="如 ARTICLE" />
+            <select v-model="filters.targetType" class="w-full px-3 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary outline-none font-body-md text-body-md">
+              <option value="">全部</option>
+              <option v-for="item in targetTypes" :key="item.value" :value="item.value">{{ item.label }}</option>
+            </select>
           </div>
           <div>
             <label class="font-label-md text-label-md text-secondary mb-1.5 block">开始时间</label>
@@ -97,18 +105,23 @@
                   <div>{{ row.operatorName || '-' }}</div>
                   <div v-if="row.operatorId" class="text-[12px] text-outline">ID: {{ row.operatorId }}</div>
                 </td>
-                <td class="p-4 font-body-md text-on-surface">{{ row.module }}</td>
-                <td class="p-4 font-mono text-[12px] text-on-surface-variant">{{ row.action }}</td>
+                <td class="p-4 font-body-md text-on-surface">
+                  <span class="cursor-help border-b border-dotted border-outline/50" :title="row.module">{{ moduleLabel(row.module) }}</span>
+                </td>
+                <td class="p-4 font-body-md text-on-surface">
+                  <span class="cursor-help border-b border-dotted border-outline/50" :title="row.action">{{ actionLabel(row.action) }}</span>
+                </td>
                 <td class="p-4 font-body-sm text-on-surface-variant">
-                  <span v-if="row.targetType">{{ row.targetType }}</span>
+                  <span v-if="row.targetType" class="cursor-help border-b border-dotted border-outline/50" :title="row.targetType">{{ targetTypeLabel(row.targetType) }}</span>
                   <span v-if="row.targetId" class="ml-1 text-outline">#{{ row.targetId }}</span>
                   <span v-if="!row.targetType && !row.targetId">-</span>
                 </td>
                 <td class="p-4">
                   <span
-                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium"
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium cursor-help"
                     :class="row.result === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'"
-                  >{{ row.result }}</span>
+                    :title="row.result"
+                  >{{ resultLabel(row.result) }}</span>
                 </td>
                 <td class="p-4 font-body-sm text-on-surface-variant">{{ row.ip || '-' }}</td>
                 <td class="p-4">
@@ -155,16 +168,17 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-body-sm">
               <div><span class="text-on-surface-variant">时间：</span>{{ detail.createTime || '-' }}</div>
               <div><span class="text-on-surface-variant">操作人：</span>{{ detail.operatorName || '-' }}<span v-if="detail.operatorId"> (ID: {{ detail.operatorId }})</span></div>
-              <div><span class="text-on-surface-variant">结果：</span>{{ detail.result }}</div>
-              <div><span class="text-on-surface-variant">模块：</span>{{ detail.module }}</div>
-              <div><span class="text-on-surface-variant">操作：</span>{{ detail.action }}</div>
-              <div><span class="text-on-surface-variant">目标：</span>{{ detail.targetType || '-' }}<span v-if="detail.targetId"> #{{ detail.targetId }}</span></div>
+              <div><span class="text-on-surface-variant">结果：</span><span class="cursor-help border-b border-dotted border-outline/50" :title="detail.result">{{ resultLabel(detail.result) }}</span></div>
+              <div><span class="text-on-surface-variant">模块：</span><span class="cursor-help border-b border-dotted border-outline/50" :title="detail.module">{{ moduleLabel(detail.module) }}</span></div>
+              <div><span class="text-on-surface-variant">操作：</span><span class="cursor-help border-b border-dotted border-outline/50" :title="detail.action">{{ actionLabel(detail.action) }}</span></div>
+              <div><span class="text-on-surface-variant">目标：</span><span v-if="detail.targetType" class="cursor-help border-b border-dotted border-outline/50" :title="detail.targetType">{{ targetTypeLabel(detail.targetType) }}</span><span v-if="detail.targetId"> #{{ detail.targetId }}</span><span v-if="!detail.targetType && !detail.targetId">-</span></div>
               <div class="md:col-span-2"><span class="text-on-surface-variant">请求：</span>{{ detail.requestMethod }} {{ detail.requestPath }}</div>
               <div><span class="text-on-surface-variant">IP：</span>{{ detail.ip || '-' }}</div>
             </div>
             <div v-if="detail.errorMsg" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-body-sm text-red-700">
               {{ detail.errorMsg }}
             </div>
+            <p class="text-[12px] text-outline">变更快照保留原始字段名，便于技术排查。</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p class="font-label-md text-label-md text-secondary mb-1.5">变更前</p>
@@ -188,19 +202,16 @@
 
 <script>
 import adminStore from '@/utils/adminStore'
-
-const MODULES = [
-  { value: 'ARTICLE', label: '文章' },
-  { value: 'REPORT', label: '举报' },
-  { value: 'VIOLATION', label: '违规' },
-  { value: 'APPEAL', label: '申诉' },
-  { value: 'ADOPT', label: '采纳' },
-  { value: 'FEATURED', label: '精华' },
-  { value: 'MODERATOR', label: '版主' },
-  { value: 'USER', label: '用户' },
-  { value: 'CONFIG', label: '配置' },
-  { value: 'AUTH', label: '权限拒绝' }
-]
+import {
+  AUDIT_MODULE_OPTIONS,
+  AUDIT_ACTION_GROUPS,
+  AUDIT_TARGET_TYPE_OPTIONS,
+  AUDIT_MODULE_LABELS,
+  AUDIT_ACTION_LABELS,
+  AUDIT_TARGET_TYPE_LABELS,
+  AUDIT_RESULT_LABELS,
+  labelOf
+} from '@/utils/labels'
 
 function pad(value) {
   return String(value).padStart(2, '0')
@@ -221,7 +232,9 @@ export default {
   name: 'AuditLogPage',
   data() {
     return {
-      modules: MODULES,
+      modules: AUDIT_MODULE_OPTIONS,
+      actionGroups: AUDIT_ACTION_GROUPS,
+      targetTypes: AUDIT_TARGET_TYPE_OPTIONS,
       loading: false,
       records: [],
       total: 0,
@@ -257,6 +270,18 @@ export default {
     this.load()
   },
   methods: {
+    moduleLabel(value) {
+      return labelOf(AUDIT_MODULE_LABELS, value)
+    },
+    actionLabel(value) {
+      return labelOf(AUDIT_ACTION_LABELS, value)
+    },
+    targetTypeLabel(value) {
+      return labelOf(AUDIT_TARGET_TYPE_LABELS, value)
+    },
+    resultLabel(value) {
+      return labelOf(AUDIT_RESULT_LABELS, value)
+    },
     buildQuery() {
       const params = new URLSearchParams()
       params.set('page', this.page)

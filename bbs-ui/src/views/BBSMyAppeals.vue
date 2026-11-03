@@ -122,6 +122,7 @@
 
 <script>
 import { handleResponse } from '../../../shared/feedback'
+import { getUser } from '@/utils/auth'
 
 export default {
   name: 'BBSMyAppeals',
@@ -144,7 +145,7 @@ export default {
     this.loadList()
   },
   methods: {
-    getUserId() { return JSON.parse(localStorage.getItem('user') || '{}').id },
+    getUserId() { const user = getUser(); return user && user.id },
     getStatusLabel(s) { return { pending: '待审核', accepted: '已通过', rejected: '已驳回' }[s] || s },
     getAppealLabel(t) { return { violation: '违规申诉', points: '积分申诉', other: '其他' }[t] || t },
     getViolationLabel(t) {
