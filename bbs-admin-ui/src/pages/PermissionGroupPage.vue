@@ -241,7 +241,7 @@ const FRONT_PERMISSIONS = [  { section: '发帖/互动', items: [
   ] }
 ]
 
-const SUPER_ONLY_CODES = ['user:grant:admin', 'config:write', 'permission:manage', 'audit:read']
+const FORBIDDEN_GRANT_CODES = ['user:grant:admin', 'config:write', 'permission:manage', 'audit:read']
 
 export default {
   name: 'PermissionGroupPage',
@@ -254,7 +254,8 @@ export default {
       groupUsers: [],
       assignUserId: '',
       presetName: '',
-      protectedCodes: []
+      protectedCodes: [],
+      baselineCodes: []
     }
   },
   computed: {
@@ -288,6 +289,7 @@ export default {
       this.selectedCodes = []
       this.groupUsers = []
       this.protectedCodes = []
+      this.baselineCodes = []
     },
     isSystemElement(element) {
       return isSystemGroupData(element)
@@ -311,6 +313,7 @@ export default {
           }
           this.selectedCodes = data.permissionCodes || []
           this.protectedCodes = data.protectedCodes || []
+          this.baselineCodes = data.baselineCodes || []
           this.groupUsers = data.users || []
         }
       })
@@ -321,15 +324,18 @@ export default {
     isProtected(code) {
       return this.protectedCodes.indexOf(code) !== -1
     },
-    isSuperOnly(code) {
-      return SUPER_ONLY_CODES.indexOf(code) !== -1
+    isGrantForbidden(code) {
+      return FORBIDDEN_GRANT_CODES.indexOf(code) !== -1
+    },
+    isInBaseline(code) {
+      return this.baselineCodes.indexOf(code) !== -1
     },
     isLocked(code) {
-      return this.isProtected(code) || (this.isSuperOnly(code) && this.form.baseRole !== 'SUPER_ADMIN')
+      return this.isProtected(code) || (this.isGrantForbidden(code) && !this.isInBaseline(code))
     },
     lockTitle(code) {
       if (this.isProtected(code)) return '超管关键权限，不可收回'
-      if (this.isSuperOnly(code) && this.form.baseRole !== 'SUPER_ADMIN') return '仅超级管理员可使用'
+      if (this.isGrantForbidden(code) && !this.isInBaseline(code)) return '仅超级管理员可使用'
       return ''
     },
     roleLabel(value) {

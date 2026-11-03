@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="bg-surface min-h-screen">
     <div class="max-w-7xl mx-auto px-page-margin-desktop py-6">
       <!-- Header -->
@@ -17,8 +17,8 @@
         <div class="flex flex-wrap items-center gap-3">
           <button
             class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md disabled:opacity-40 disabled:cursor-not-allowed"
-            :disabled="!isAdminId1"
-            :title="isAdminId1 ? '新增字典' : '仅超级管理员可写配置'"
+            :disabled="!canWriteConfig"
+            :title="canWriteConfig ? '新增字典' : '无配置修改权限'"
             @click="openAdd"
           >
             <span class="material-symbols-outlined text-[18px]">add</span>
@@ -57,8 +57,8 @@
                   <div class="flex items-center gap-2">
                     <button
                       class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-primary bg-primary/5 rounded hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      :disabled="!isAdminId1"
-                      :title="isAdminId1 ? '编辑' : '仅超级管理员可写配置'"
+                      :disabled="!canWriteConfig"
+                      :title="canWriteConfig ? '编辑' : '无配置修改权限'"
                       @click="openEdit(item)"
                     >
                       <span class="material-symbols-outlined text-[14px]">edit</span>
@@ -66,8 +66,8 @@
                     </button>
                     <button
                       class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      :disabled="!isAdminId1"
-                      :title="isAdminId1 ? '删除' : '仅超级管理员可写配置'"
+                      :disabled="!canWriteConfig"
+                      :title="canWriteConfig ? '删除' : '无配置修改权限'"
                       @click="handleDelete(item)"
                     >
                       <span class="material-symbols-outlined text-[14px]">delete</span>
@@ -205,9 +205,9 @@ export default {
       const type = (this.editForm.dictType || '').toString().trim().toLowerCase()
       return type === 'points-start-time' || type === 'point-end-time'
     },
-    isAdminId1() {
-      // 配置写权限 = 超管（config:write），按登录返回的角色判断
-      return adminStore.isSuperAdmin()
+    canWriteConfig() {
+      // 配置写权限由后端 config:write 决定（ADMIN 默认可用）
+      return adminStore.hasPermission('config:write')
     }
   },
   mounted() { this.loadDictList() },

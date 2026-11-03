@@ -2,10 +2,8 @@ package com.walker.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.walker.pojo.PointsLog;
-import com.walker.service.AdminService;
 import com.walker.service.PointsLogService;
 import com.walker.vo.ResultBean;
-import com.walker.vo.param.AdminParam;
 import com.walker.vo.param.PointsAdjustParam;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,20 +25,15 @@ import java.util.List;
 public class AdminController {
 
     @Autowired
-    private AdminService adminService;
-
-    @Autowired
     private PointsLogService pointsLogService;
 
 
 
-    @ApiOperation(value = "管理员登录")
+    @ApiOperation(value = "旧版管理员登录（已停用）")
     @PostMapping("/login")
-    public ResultBean login(@RequestBody AdminParam adminParam){
-        if (adminParam != null){
-            return adminService.login(adminParam.getUsername(),adminParam.getPassword());
-        }
-        return ResultBean.error("用户名或密码不能为空！");
+    public ResultBean login(){
+        // 旧 bbs_admin 表为明文密码，且不签发 JWT；统一走 /common/login
+        return ResultBean.error("该接口已停用，请使用 /common/login");
     }
 
     @GetMapping("/test")

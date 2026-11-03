@@ -197,6 +197,7 @@ class PermissionGroupServiceTest {
         assertEquals(Boolean.TRUE, detail.get("autoApply"));
         assertEquals(3L, detail.get("roleUserCount"));
         assertEquals(3L, detail.get("userCount"));
+        assertTrue(((java.util.List<?>) detail.get("baselineCodes")).contains("config:write"));
     }
 
     @Test

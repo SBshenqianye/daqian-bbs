@@ -72,7 +72,7 @@ class AdminEndpointAuthorizationTest {
     }
 
     @Test
-    @DisplayName("标签/社区/组织写接口仍允许 ADMIN（未被 config:write 误伤）")
+    @DisplayName("标签/社区/组织/配置写接口仍允许 ADMIN")
     void adminBusinessWritesRemainAvailableToAdmin() {
         assertPermissionGrantedToAdmin(ArticleLabelController.class, "addArticleLabel");
         assertPermissionGrantedToAdmin(ArticleLabelController.class, "updateArticleLabel");
@@ -83,6 +83,18 @@ class AdminEndpointAuthorizationTest {
         assertPermissionGrantedToAdmin(SaOrgController.class, "addSaOrg");
         assertPermissionGrantedToAdmin(SaOrgController.class, "batchUpdateRanking");
         assertPermissionGrantedToAdmin(SaOrgController.class, "batchUpdateDisplay");
+        assertPermissionGrantedToAdmin(DictController.class, "addDict");
+        assertPermissionGrantedToAdmin(DictController.class, "updateDict");
+        assertPermissionGrantedToAdmin(DictController.class, "deleteDict");
+        assertPermissionGrantedToAdmin(SystemConfigController.class, "addConfig");
+        assertPermissionGrantedToAdmin(SystemConfigController.class, "updateConfig");
+        assertPermissionGrantedToAdmin(SystemConfigController.class, "deleteConfig");
+        assertPermissionGrantedToAdmin(SensitiveWordController.class, "addSensitiveWord");
+        assertPermissionGrantedToAdmin(SensitiveWordController.class, "delSensitiveWord");
+        assertPermissionGrantedToAdmin(SensitiveWordController.class, "importExcel");
+        assertPermissionGrantedToAdmin(SlideshowController.class, "addSlideshowReturnUrl");
+        assertPermissionGrantedToAdmin(SlideshowController.class, "addSlideshow");
+        assertPermissionGrantedToAdmin(SlideshowController.class, "updateSuccessive");
     }
 
     private static void assertPermissionGrantedToAdmin(Class<?> controller, String methodName) {

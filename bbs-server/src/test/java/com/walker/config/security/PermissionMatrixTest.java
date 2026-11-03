@@ -25,18 +25,17 @@ class PermissionMatrixTest {
     }
 
     @Test
-    @DisplayName("ADMIN 默认拥有除 user:grant:admin、config:write、permission:manage、audit:read 外的权限")
+    @DisplayName("ADMIN 默认拥有除 user:grant:admin、permission:manage、audit:read 外的权限")
     void admin_defaultPermissions() {
         for (Permission permission : Permission.values()) {
             boolean expected = permission.isFrontAction()
                     || (permission != Permission.USER_GRANT_ADMIN
-                    && permission != Permission.CONFIG_WRITE
                     && permission != Permission.PERMISSION_MANAGE
                     && permission != Permission.AUDIT_READ);
             assertEquals(expected, permission.isGrantedTo(AccountRole.ADMIN), permission.getCode());
         }
         assertFalse(Permission.codesFor(AccountRole.ADMIN).contains("user:grant:admin"));
-        assertFalse(Permission.codesFor(AccountRole.ADMIN).contains("config:write"));
+        assertTrue(Permission.codesFor(AccountRole.ADMIN).contains("config:write"));
         assertFalse(Permission.codesFor(AccountRole.ADMIN).contains("permission:manage"));
         assertFalse(Permission.codesFor(AccountRole.ADMIN).contains("audit:read"));
         assertTrue(Permission.codesFor(AccountRole.ADMIN).contains("admin:access"));

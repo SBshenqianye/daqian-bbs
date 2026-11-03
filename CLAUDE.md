@@ -88,7 +88,7 @@ CREATE TABLE bbs_schema_version (
 - 业务代码**禁止**再通过 `id == 1` 判断超级管理员，统一使用 `AuthorizationService.isSuperAdmin(...)`。
 - 超管不再依赖固定 id；初始化 SQL 仍以 `id=1` 作为引导账号，并在迁移中确保其 `user_type='3'`。
 - 权限点使用 `Permission` 枚举（如 `admin:access`、`user:grant:admin`、`config:write`、`adopt:review`）。
-- `ADMIN` 默认拥有除 `user:grant:admin`、`config:write` 外的管理权限；`SUPER_ADMIN` 拥有全部权限。
+- `ADMIN` 默认拥有除 `user:grant:admin`、`permission:manage`、`audit:read` 外的管理权限；`SUPER_ADMIN` 拥有全部权限。
 - 版主是板块级数据范围（`bbs_board_moderator.status=1`），不是账号角色；数据范围统一通过 `AuthorizationService.canModerateBoard(userId,labelId)` 判断。
 - 版主数据范围覆盖：待审采纳、采纳审批、精华推荐、文章审核/删除、举报处理、违规新增/取消；举报/违规按内容所属板块解析，用户端“我的记录”不受影响。
 - 系统通知按权限点广播：举报、版主投诉、精华推荐、待审采纳分别通知拥有对应权限点的管理员/超管，举报通知还会按板块范围过滤接收人；不再依赖固定 `id=1`。

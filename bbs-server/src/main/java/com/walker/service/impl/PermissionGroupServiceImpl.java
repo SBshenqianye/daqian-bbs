@@ -103,6 +103,7 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         }
         Map<String, Object> data = groupSummary(group);
         data.put("permissionCodes", new ArrayList<>(effectiveCodes(group)));
+        data.put("baselineCodes", baselineCodes(group));
         data.put("grantCodes", itemCodes(id, "grant"));
         data.put("revokeCodes", itemCodes(id, "revoke"));
         data.put("protectedCodes", protectedCodes(group));
@@ -643,6 +644,15 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
             }
         }
         return codes;
+    }
+
+    /** 角色基线权限点；自定义组为空。前端据此判断“不可额外授予”的权限点是否可勾选。 */
+    private List<String> baselineCodes(PermissionGroup group) {
+        AccountRole baseRole = parseBaseRole(group == null ? null : group.getBaseRole());
+        if (baseRole == null) {
+            return Collections.emptyList();
+        }
+        return new ArrayList<>(Permission.codesFor(baseRole));
     }
 
     private AccountRole parseBaseRole(String baseRole) {

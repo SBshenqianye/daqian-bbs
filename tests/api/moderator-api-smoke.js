@@ -528,6 +528,30 @@ async function main() {
     assert(!isForbidden(stat), `articleStatisticByOrg 被 403: ${msgOf(stat)}`);
     return `pointsLog=${log.data && log.data.code}, statistic=${stat.data && stat.data.code}`;
   });
+  await test('D18', 'MODERATOR 不能导出全局积分排名（全局数据范围）', async () => {
+    const r = await call('GET', '/admin/points/export', {
+      token: mod1Token, query: { rankType: '01' },
+    });
+    assert(isForbidden(r), `status=${r.status}, code=${r.data && r.data.code}`);
+    return msgOf(r);
+  });
+  await test('D19', 'ADMIN 可导出全局积分排名', async () => {
+    const r = await call('GET', '/admin/points/export', {
+      token: admin1Token, query: { rankType: '01' },
+    });
+    assert(!isForbidden(r), `status=${r.status}, code=${r.data && r.data.code}`);
+    return `status=${r.status}`;
+  });
+  await test('D20', 'ADMIN 拥有 config:write（配置写接口非 403）', async () => {
+    const r = await call('POST', '/admin/systemConfig/update', { token: admin1Token, body: {} });
+    assert(!isForbidden(r), `status=${r.status}, code=${r.data && r.data.code}`);
+    return msgOf(r);
+  });
+  await test('D21', 'MODERATOR 不具备 config:write', async () => {
+    const r = await call('POST', '/admin/systemConfig/update', { token: mod1Token, body: {} });
+    assert(isForbidden(r), `status=${r.status}, code=${r.data && r.data.code}`);
+    return msgOf(r);
+  });
 
   // ---------- E. 生命周期 ----------
   group('E. 生命周期');
@@ -769,6 +793,26 @@ async function main() {
     assert(matrixSuper && matrixSuper.system === true && matrixSuper.autoApply === true,
       `matrix super=${JSON.stringify(matrixSuper)}`);
     return `roleUserCount=${superRow.roleUserCount}`;
+  });
+
+  await test('G9', '主组停用后回退 user_type 基线，展示主组同步回退', async () => {
+    const original = mysqlQuery('SELECT primary_group_id FROM bbs_user WHERE id=9004');
+    try {
+      mysqlExec(`UPDATE bbs_user SET primary_group_id=${adminGroupId} WHERE id=9004`);
+      const asAdmin = await loginOk('MOD2');
+      assert(asAdmin.user.permissions.includes('user:read'), '主组 ADMIN 未生效');
+
+      mysqlExec(`UPDATE bbs_permission_group SET enabled=0 WHERE id=${adminGroupId}`);
+      const fallback = await loginOk('MOD2');
+      assert(!fallback.user.permissions.includes('user:read'), '停用主组后仍按 ADMIN 计算');
+      assert(fallback.user.permissions.includes('article:read'), '停用主组后未回退 MODERATOR 基线');
+      assert(fallback.user.primaryGroupCode === 'role_moderator',
+        `展示主组未回退: ${fallback.user.primaryGroupCode}`);
+    } finally {
+      mysqlExec(`UPDATE bbs_permission_group SET enabled=1 WHERE id=${adminGroupId}`);
+      mysqlExec(`UPDATE bbs_user SET primary_group_id=${original[0][0]} WHERE id=9004`);
+    }
+    return 'ADMIN 主组生效 → 停用后回退 MODERATOR';
   });
 
   // ---------- 汇总 ----------

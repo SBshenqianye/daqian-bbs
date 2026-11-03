@@ -3,7 +3,7 @@ package com.walker.config.security;
 /**
  * 权限点（固定角色 + 静态权限映射）。
  *
- * <p>ADMIN 默认拥有除 user:grant:admin、config:write、permission:manage、audit:read 外的管理权限；
+ * <p>ADMIN 默认拥有除 user:grant:admin、permission:manage、audit:read 外的管理权限；
  * SUPER_ADMIN 拥有全部权限；MODERATOR 仅拥有业务管理权限（板块范围在服务层校验）；
  * USER 不具备管理端权限点。</p>
  */
@@ -18,7 +18,7 @@ public enum Permission {
     USER_GRANT_ADMIN("user:grant:admin", false, false),
 
     CONFIG_READ("config:read", true, false),
-    CONFIG_WRITE("config:write", false, false),
+    CONFIG_WRITE("config:write", true, false),
     /** 权限矩阵只读页：仅超级管理员 */
     PERMISSION_MANAGE("permission:manage", false, false),
     /** 审计日志查询：仅超级管理员 */
