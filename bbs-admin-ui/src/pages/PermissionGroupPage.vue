@@ -335,7 +335,11 @@ export default {
     },
     lockTitle(code) {
       if (this.isProtected(code)) return '超管关键权限，不可收回'
-      if (this.isGrantForbidden(code) && !this.isInBaseline(code)) return '仅超级管理员可使用'
+      if (this.isGrantForbidden(code) && !this.isInBaseline(code)) {
+        return code === 'config:write'
+          ? '管理员/超管默认拥有，权限组不可额外授予'
+          : '仅超级管理员可使用'
+      }
       return ''
     },
     roleLabel(value) {
