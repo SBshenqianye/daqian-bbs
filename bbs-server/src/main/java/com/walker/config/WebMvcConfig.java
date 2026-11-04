@@ -1,8 +1,10 @@
 package com.walker.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -23,12 +25,25 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addResourceLocations("file:" + normalizedPath);
     }
 
+    /**
+     * CORS 过滤器必须排在 Spring Security 之前。
+     *
+     * <p>浏览器的预检 OPTIONS 不携带 Authorization；如果 Security 先执行，
+     * /admin/** 会直接返回 401 且没有 CORS 头，浏览器随后拦截真正的 DELETE。
+     * 显式提高优先级后，预检由 CorsFilter 直接短路返回。</p>
+     */
     @Bean
-    public CorsFilter corsFilter() {
+    public FilterRegistrationBean<CorsFilter> corsFilter() {
         // 配置跨域规则生效的路径（包括/files/**和所有接口）
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", corsConfiguration());
-        return new CorsFilter(source);
+        FilterRegistrationBean<CorsFilter> registration =
+                new FilterRegistrationBean<>(new CorsFilter(source));
+        // 必须早于 Spring Security（默认 -100）：预检 OPTIONS 不带 token，
+        // 若 Security 先执行会返回 401 且不写 CORS 头，浏览器会拦截真正的 DELETE。
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        registration.addUrlPatterns("/*");
+        return registration;
     }
 
     /** 提取为包级方法，便于回归测试校验允许的请求方法。 */
