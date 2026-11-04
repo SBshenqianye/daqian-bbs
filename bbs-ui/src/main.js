@@ -7,6 +7,8 @@ import router from "@/router";
 
 // 引入 Tailwind CSS 全局样式
 import './assets/tailwind.css'
+// 系统级弹层视口约束
+import './assets/css/overlay.css'
 
 //按需引入element-ui
 import {

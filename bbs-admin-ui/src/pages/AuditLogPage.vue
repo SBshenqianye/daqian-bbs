@@ -155,16 +155,16 @@
       <div v-if="detailVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="detailVisible = false">
         <div class="fixed inset-0 bg-black/30"></div>
         <div class="relative bg-container w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-          <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+          <div class="flex shrink-0 items-center justify-between p-5 border-b border-outline-variant">
             <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">receipt_long</span>
               审计详情
             </h3>
-            <button class="text-outline hover:text-error transition-colors" @click="detailVisible = false">
+            <button class="text-outline hover:text-error transition-colors" aria-label="关闭审计详情" @click="detailVisible = false">
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
-          <div class="p-5 space-y-4 overflow-y-auto">
+          <div class="min-h-0 flex-1 p-5 space-y-4 overflow-y-auto">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-body-sm">
               <div><span class="text-on-surface-variant">时间：</span>{{ detail.createTime || '-' }}</div>
               <div><span class="text-on-surface-variant">操作人：</span>{{ detail.operatorName || '-' }}<span v-if="detail.operatorId"> (ID: {{ detail.operatorId }})</span></div>
@@ -267,9 +267,18 @@ export default {
     const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
     this.filters.startTime = formatLocalDateTime(start).replace(' ', 'T').slice(0, 16)
     this.filters.endTime = formatLocalDateTime(end).replace(' ', 'T').slice(0, 16)
+    document.addEventListener('keydown', this.handleKeydown)
     this.load()
   },
+  beforeDestroy() {
+    document.removeEventListener('keydown', this.handleKeydown)
+  },
   methods: {
+    handleKeydown(event) {
+      if (event.key === 'Escape' && this.detailVisible) {
+        this.detailVisible = false
+      }
+    },
     moduleLabel(value) {
       return labelOf(AUDIT_MODULE_LABELS, value)
     },

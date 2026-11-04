@@ -8,6 +8,7 @@ import 'element-ui/lib/theme-chalk/index.css'; // 默认主题
 import './assets/css/icon.css';
 import 'babel-polyfill';
 import './assets/tailwind.css';
+import './assets/css/overlay.css';
 import {postRequest,putRequest,getRequest,getRequestUrl,deleteRequest,uploadFile,downloadFile} from "@/api/api";
 import {installErrorHandler} from "./utils/errorHandler";
 import adminStore from "./utils/adminStore";
