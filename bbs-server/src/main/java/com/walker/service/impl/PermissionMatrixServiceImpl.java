@@ -1,6 +1,5 @@
 package com.walker.service.impl;
 
-import com.walker.config.security.AccountRole;
 import com.walker.config.security.Permission;
 import com.walker.service.PermissionGroupService;
 import com.walker.service.PermissionMatrixService;
@@ -19,26 +18,20 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
- * 权限矩阵只读实现（Phase A）。
+ * 权限矩阵只读实现。
  *
- * <p>不修改任何鉴权逻辑，只把两处“事实来源”汇总出来：
- * 1) 角色 → 权限点：{@link Permission#codesFor(AccountRole)}；
+ * <p>只汇总两处事实来源：
+ * 1) 权限组 → 权限点：来自权限组自身的权限点配置；
  * 2) 接口 → 注解：Spring 已注册的 {@link RequestMappingHandlerMapping} +
  *    方法级/类级 {@link PreAuthorize}。</p>
  */
 @Service
 public class PermissionMatrixServiceImpl implements PermissionMatrixService {
-
-    private static final Pattern ROLE_IN_EXPRESSION = Pattern.compile("['\"]([A-Z][A-Z0-9_]*)['\"]");
-    private static final String ROLE_PREFIX = "ROLE_";
 
     @Autowired
     private RequestMappingHandlerMapping requestMappingHandlerMapping;
@@ -50,7 +43,6 @@ public class PermissionMatrixServiceImpl implements PermissionMatrixService {
     public Map<String, Object> getMatrix() {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("generatedAt", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
-        result.put("roles", buildRoles());
         result.put("permissions", buildPermissions());
         result.put("groups", buildGroups());
 
@@ -60,38 +52,18 @@ public class PermissionMatrixServiceImpl implements PermissionMatrixService {
         return result;
     }
 
-    private List<Map<String, Object>> buildRoles() {
-        AccountRole[] order = {
-                AccountRole.USER, AccountRole.MODERATOR, AccountRole.ADMIN, AccountRole.SUPER_ADMIN
-        };
-        List<Map<String, Object>> roles = new ArrayList<>();
-        for (AccountRole role : order) {
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("code", role.name());
-            row.put("userType", role.getCode());
-            row.put("permissions", Permission.codesFor(role));
-            roles.add(row);
-        }
-        return roles;
-    }
-
     private List<Map<String, Object>> buildPermissions() {
         List<Map<String, Object>> list = new ArrayList<>();
         for (Permission permission : Permission.values()) {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("code", permission.getCode());
-            row.put("user", permission.isGrantedTo(AccountRole.USER));
-            row.put("moderator", permission.isGrantedTo(AccountRole.MODERATOR));
-            row.put("admin", permission.isGrantedTo(AccountRole.ADMIN));
-            row.put("super", permission.isGrantedTo(AccountRole.SUPER_ADMIN));
-            row.put("superProtected", permission.isSuperAdminProtected());
             list.add(row);
         }
         return list;
     }
 
     /**
-     * 权限矩阵中“显示权限组”区域的数据：组本身、角色基线、最终权限集合、不可剥离项。
+     * 权限矩阵中的权限组数据：组本身与最终权限集合。
      */
     private List<Map<String, Object>> buildGroups() {
         List<Map<String, Object>> result = new ArrayList<>();
@@ -105,15 +77,10 @@ public class PermissionMatrixServiceImpl implements PermissionMatrixService {
             row.put("groupCode", summary.get("groupCode"));
             row.put("groupName", summary.get("groupName"));
             row.put("description", summary.get("description"));
-            row.put("baseRole", summary.get("baseRole"));
+            row.put("dataScopeType", summary.get("dataScopeType"));
             row.put("enabled", summary.get("enabled"));
-            row.put("system", summary.get("system"));
-            row.put("autoApply", summary.get("autoApply"));
-            row.put("roleUserCount", summary.get("roleUserCount"));
             row.put("permissions", detail == null
                     ? Collections.emptyList() : detail.get("permissionCodes"));
-            row.put("protectedCodes", detail == null
-                    ? Collections.emptyList() : detail.get("protectedCodes"));
             result.add(row);
         }
         return result;
@@ -142,16 +109,15 @@ public class PermissionMatrixServiceImpl implements PermissionMatrixService {
                 continue;
             }
 
-            List<String> roles = parseRoles(expression);
             String method = resolveMethod(info);
             String handlerName = handler.getBeanType().getSimpleName() + "#" + handler.getMethod().getName();
 
             if (patterns.isEmpty()) {
-                endpoints.add(endpointRow(method, "—", expression, roles, handlerName));
+                endpoints.add(endpointRow(method, "—", expression, handlerName));
                 continue;
             }
             for (String path : patterns) {
-                endpoints.add(endpointRow(method, path, expression, roles, handlerName));
+                endpoints.add(endpointRow(method, path, expression, handlerName));
             }
         }
 
@@ -162,33 +128,19 @@ public class PermissionMatrixServiceImpl implements PermissionMatrixService {
     }
 
     private Map<String, Object> endpointRow(String method, String path,
-                                            String expression, List<String> roles, String handler) {
+                                            String expression, String handler) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("method", method);
         row.put("path", path);
         row.put("expression", expression);
-        row.put("roles", roles);
         row.put("declared", expression != null);
-        row.put("nonRoleExpression", expression != null && roles.isEmpty());
         row.put("handler", handler);
         return row;
     }
 
     private Map<String, Object> buildSummary(List<Map<String, Object>> endpoints) {
-        int undeclared = 0;
-        int nonRole = 0;
-        for (Map<String, Object> row : endpoints) {
-            if (Boolean.FALSE.equals(row.get("declared"))) {
-                undeclared++;
-            }
-            if (Boolean.TRUE.equals(row.get("nonRoleExpression"))) {
-                nonRole++;
-            }
-        }
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("endpointCount", endpoints.size());
-        summary.put("undeclaredAdminCount", undeclared);
-        summary.put("nonRoleExpressionCount", nonRole);
         return summary;
     }
 
@@ -215,31 +167,5 @@ public class PermissionMatrixServiceImpl implements PermissionMatrixService {
         }
         Collections.sort(names);
         return String.join(",", names);
-    }
-
-    /**
-     * 从 SpEL 中解析角色名，例如：
-     * {@code hasAnyRole('ADMIN','SUPER_ADMIN')} → [ADMIN, SUPER_ADMIN]
-     * {@code hasRole('ROLE_MODERATOR')} → [MODERATOR]
-     *
-     * <p>非角色表达式（如 {@code @authz.has('x')}）返回空列表，由前端标红提示。</p>
-     */
-    public static List<String> parseRoles(String expression) {
-        if (expression == null || expression.trim().isEmpty()) {
-            return Collections.emptyList();
-        }
-        if (!expression.contains("hasRole") && !expression.contains("hasAnyRole")) {
-            return Collections.emptyList();
-        }
-        Set<String> roles = new LinkedHashSet<>();
-        Matcher matcher = ROLE_IN_EXPRESSION.matcher(expression);
-        while (matcher.find()) {
-            String role = matcher.group(1);
-            if (role.startsWith(ROLE_PREFIX)) {
-                role = role.substring(ROLE_PREFIX.length());
-            }
-            roles.add(role);
-        }
-        return new ArrayList<>(roles);
     }
 }

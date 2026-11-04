@@ -30,7 +30,10 @@ public class AdminUserAddParam {
     @NotBlank(message = "单位不能为空")
     private String orgNo;
 
-    @ApiModelProperty("用户类型(1=普通用户,2=管理员)")
+    @ApiModelProperty("主权限组ID（账号身份）")
+    private Integer primaryGroupId;
+
+    @ApiModelProperty("兼容字段：旧用户类型(1=普通用户,2=管理员,4=版主)")
     private String userType;
 
     @ApiModelProperty("是否禁用(0=活跃,1=禁用)")

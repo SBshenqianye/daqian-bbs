@@ -13,11 +13,13 @@ import com.walker.config.security.AccountRole;
 import com.walker.config.security.JwtTokenUtil;
 import com.walker.config.security.Permission;
 import com.walker.mapper.BoardModeratorMapper;
+import com.walker.mapper.PermissionGroupItemMapper;
 import com.walker.mapper.PermissionGroupMapper;
 import com.walker.mapper.SaOrgMapper;
 import com.walker.mapper.UserMapper;
 import com.walker.pojo.BoardModerator;
 import com.walker.pojo.PermissionGroup;
+import com.walker.pojo.PermissionGroupItem;
 import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.utils.ConstantUtil;
@@ -84,6 +86,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private PermissionGroupMapper permissionGroupMapper;
+    @Autowired
+    private PermissionGroupItemMapper permissionGroupItemMapper;
     @Autowired
     private UserDetailsService userDetailsService;
     @Autowired
@@ -182,7 +186,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 if (ConstantUtil.MANA_ZERO_TWO.equals(channel)
                         && !effectivePermissionService.getEffectiveCodes(user)
                                 .contains(Permission.ADMIN_ACCESS.getCode())) {
-                    return ResultBean.error("用户名或密码不正确！");
+                    // 密码已验证通过，失败原因是权限组缺少 admin:access；明确提示，避免误以为密码错误
+                    return ResultBean.error("该账号没有管理端访问权限，请联系管理员");
                 }
             } else {
                 return ResultBean.error("非法渠道登录！");
@@ -213,6 +218,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             jsonObject.put("primaryGroupId", primaryGroup.get("primaryGroupId"));
             jsonObject.put("primaryGroupName", primaryGroup.get("primaryGroupName"));
             jsonObject.put("primaryGroupCode", primaryGroup.get("primaryGroupCode"));
+            jsonObject.put("dataScopeType", primaryGroup.get("dataScopeType"));
             jsonObject.put("boardScopes", loadBoardScopes(user.getId()));
             // 显式设置瞬态组织字段（确保序列化到前端）
             jsonObject.put("orgName", user.getOrgName());
@@ -636,39 +642,43 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     @Transactional
     public ResultBean updateUserRole(Integer userId, String roleType) {
-        if (ConstantUtil.MANA_ZERO_ONE.equals(roleType)) {
-            roleType = ConstantUtil.MANA_ONE;
-        } else if (ConstantUtil.MANA_ZERO_TWO.equals(roleType)) {
-            roleType = ConstantUtil.MANA_TWO;
-        } else if ("04".equals(roleType) || USER_TYPE_MODERATOR.equals(roleType)) {
-            roleType = USER_TYPE_MODERATOR;
-        } else {
+        // 兼容旧调用：把旧角色编码映射到默认内置权限组。
+        Integer groupId = resolvePrimaryGroupId(roleType);
+        if (groupId == null) {
             return ResultBean.error("权限越界");
         }
+        return assignPrimaryGroup(userId, groupId);
+    }
 
-        if (!USER_TYPE_USER.equals(roleType)
-                && !USER_TYPE_ADMIN.equals(roleType)
-                && !USER_TYPE_MODERATOR.equals(roleType)) {
-            return ResultBean.error("权限越界");
+    @Override
+    @Transactional
+    public ResultBean assignPrimaryGroup(Integer userId, Integer groupId) {
+        if (userId == null || groupId == null) {
+            return ResultBean.error("参数不全！");
         }
-
-        User target = userId != null ? userMapper.selectById(userId) : null;
-        if (target != null && USER_TYPE_SUPER_ADMIN.equals(target.getUserType())) {
-            return ResultBean.forbidden("超级管理员角色不可通过此接口变更");
+        User target = userMapper.selectById(userId);
+        if (target == null) {
+            return ResultBean.error("用户不存在");
         }
-        boolean grantingAdmin = USER_TYPE_ADMIN.equals(roleType);
-        boolean targetPrivileged = target != null && isPrivilegedUserType(target.getUserType());
-        if ((grantingAdmin || targetPrivileged) && !isCurrentUserSuperAdmin()) {
-            return ResultBean.forbidden("仅超级管理员可授予或调整管理员角色");
+        PermissionGroup group = permissionGroupMapper.selectById(groupId);
+        if (group == null) {
+            return ResultBean.error("权限组不存在");
         }
-
-        int result = userMapper.updateUserRole(userId, roleType);
-        if (result > 0) {
-            // 主组必须与 user_type 同步；系统组缺失时写 NULL，让有效权限回退到 user_type
-            updatePrimaryGroupId(userId, resolvePrimaryGroupId(roleType));
-            return ResultBean.success("操作成功");
+        if (!Integer.valueOf(1).equals(group.getEnabled())) {
+            return ResultBean.error("权限组已停用");
         }
-        return ResultBean.error("操作失败");
+        if (isSuperGroup(target.getPrimaryGroupId()) && !isCurrentUserSuperAdmin()) {
+            return ResultBean.forbidden("超级管理员账号不可通过此接口变更");
+        }
+        boolean targetPrivileged = isPrivilegedGroupId(target.getPrimaryGroupId());
+        boolean grantingPrivileged = isPrivilegedGroupId(groupId);
+        if ((targetPrivileged || grantingPrivileged) && !isCurrentUserSuperAdmin()) {
+            return ResultBean.forbidden("仅超级管理员可分配管理类权限组");
+        }
+        updatePrimaryGroupId(userId, groupId);
+        // user_type 仅作为旧接口/旧数据的兼容字段，不再参与权限判断。
+        userMapper.updateUserRole(userId, legacyUserType(group));
+        return ResultBean.success("操作成功");
     }
 
     @Override
@@ -923,8 +933,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                         existingUser.setIdCard(row.getIdCard());
                         existingUser.setOrgNo(orgNo);
                         if (existingUser.getPrimaryGroupId() == null) {
-                            existingUser.setPrimaryGroupId(
-                                    resolvePrimaryGroupId(existingUser.getUserType()));
+                            existingUser.setPrimaryGroupId(resolveDefaultGroupId());
                         }
 
                         if (!passwordChanged) {
@@ -949,7 +958,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                                 .setPhone("")
                                 .setGender("0")
                                 .setUserType("1")
-                                .setPrimaryGroupId(resolvePrimaryGroupId(USER_TYPE_USER))
+                                .setPrimaryGroupId(resolveDefaultGroupId())
                                 .setFans(0)
                                 .setAttention(0)
                                 .setGood(0)
@@ -1009,45 +1018,62 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return ResultBean.error("用户不存在");
         }
 
-        // 角色变更白名单 + 仅超管可调整管理员账号（D3）
-        String newUserType = StringUtils.isNoneBlank(param.getUserType()) ? param.getUserType().trim() : null;
-        if (newUserType != null) {
-            ResultBean grantError = checkUserTypeGrant(newUserType, user);
-            if (grantError != null) {
-                return grantError;
+        // 权限组变更：仅超管可分配管理类权限组，且不能由普通管理员改动超管账号。
+        Integer newGroupId = param.getPrimaryGroupId();
+        if (newGroupId == null && StringUtils.isNoneBlank(param.getUserType())) {
+            newGroupId = resolvePrimaryGroupId(param.getUserType().trim());
+        }
+        if (newGroupId != null) {
+            PermissionGroup targetGroup = permissionGroupMapper.selectById(newGroupId);
+            if (targetGroup == null) {
+                return ResultBean.error("权限组不存在");
             }
-            if (USER_TYPE_SUPER_ADMIN.equals(user.getUserType())
-                    && !USER_TYPE_SUPER_ADMIN.equals(newUserType)) {
-                return ResultBean.forbidden("超级管理员角色不可通过此接口变更");
+            if (!Integer.valueOf(1).equals(targetGroup.getEnabled())) {
+                return ResultBean.error("权限组已停用");
             }
-        } else if (isPrivilegedUserType(user.getUserType()) && !isCurrentUserSuperAdmin()) {
-            // 与前端“管理员/超管账号仅超管可编辑”保持一致，防止直接调接口绕过
-            return ResultBean.forbidden("仅超级管理员可修改管理员账号");
+            if (isSuperGroup(user.getPrimaryGroupId()) && !isCurrentUserSuperAdmin()) {
+                return ResultBean.forbidden("超级管理员账号不可通过此接口变更");
+            }
+            boolean targetPrivileged = isPrivilegedGroupId(user.getPrimaryGroupId());
+            boolean grantingPrivileged = isPrivilegedGroupId(newGroupId);
+            if ((targetPrivileged || grantingPrivileged) && !isCurrentUserSuperAdmin()) {
+                return ResultBean.forbidden("仅超级管理员可修改管理类权限组账号");
+            }
+        } else if (isPrivilegedGroupId(user.getPrimaryGroupId()) && !isCurrentUserSuperAdmin()) {
+            // 与前端“管理类账号仅超管可编辑”保持一致，防止直接调接口绕过
+            return ResultBean.forbidden("仅超级管理员可修改管理类权限组账号");
         }
 
         User updateUser = new User();
         updateUser.setId(param.getId());
+        // MyBatis-Plus 的 updateById 按非空字段生成 SET 子句：
+        // 如果只改主权限组而没有任何普通字段，必须把主组也放进同一次更新，
+        // 否则会出现 "UPDATE bbs_user WHERE id=?" 的非法 SQL。
+        boolean hasFieldChanges = false;
 
         if (StringUtils.isNoneBlank(param.getNickname())) {
             updateUser.setNickname(param.getNickname());
+            hasFieldChanges = true;
         }
         if (StringUtils.isNoneBlank(param.getPhone())) {
             updateUser.setPhone(param.getPhone());
+            hasFieldChanges = true;
         }
         if (StringUtils.isNoneBlank(param.getOrgNo())) {
             updateUser.setOrgNo(param.getOrgNo());
-        }
-        if (newUserType != null) {
-            updateUser.setUserType(newUserType);
+            hasFieldChanges = true;
         }
         if (param.getIsAlive() != null) {
             updateUser.setIsAlive(param.getIsAlive());
+            hasFieldChanges = true;
         }
         if (StringUtils.isNoneBlank(param.getPersonnelId())) {
             updateUser.setPersonnelId(param.getPersonnelId());
+            hasFieldChanges = true;
         }
         if (StringUtils.isNoneBlank(param.getIdCard())) {
             updateUser.setIdCard(param.getIdCard());
+            hasFieldChanges = true;
         }
         if (StringUtils.isNoneBlank(param.getUsername())) {
             // 校验用户名唯一性
@@ -1061,33 +1087,53 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 return ResultBean.error("用户名已被其他用户使用");
             }
             updateUser.setUsername(param.getUsername());
+            hasFieldChanges = true;
         }
         // 优先使用自定义密码，其次判断是否重置
         if (StringUtils.isNoneBlank(param.getPassword())) {
             updateUser.setPassword(new BCryptPasswordEncoder().encode(param.getPassword()));
             updateUser.setIsFirstLogin(0);
+            hasFieldChanges = true;
         } else if (param.getResetPassword() != null && param.getResetPassword()) {
             updateUser.setPassword(new BCryptPasswordEncoder().encode("1234@abcD"));
             updateUser.setIsFirstLogin(1);
+            hasFieldChanges = true;
+        }
+        if (newGroupId != null) {
+            updateUser.setPrimaryGroupId(newGroupId);
+            hasFieldChanges = true;
         }
 
-        userMapper.updateById(updateUser);
-        if (newUserType != null) {
-            updatePrimaryGroupId(param.getId(), resolvePrimaryGroupId(newUserType));
+        if (hasFieldChanges) {
+            userMapper.updateById(updateUser);
+        }
+        if (newGroupId != null) {
+            PermissionGroup group = permissionGroupMapper.selectById(newGroupId);
+            userMapper.updateUserRole(param.getId(), legacyUserType(group));
         }
         return ResultBean.success("更新成功");
     }
 
     @Override
     public ResultBean adminAddUser(AdminUserAddParam param) {
-        String userType = StringUtils.isNoneBlank(param.getUserType())
-                ? param.getUserType().trim() : USER_TYPE_USER;
-
-        // 角色白名单 + 仅超管可创建管理员（D3）
-        ResultBean grantError = checkUserTypeGrant(userType, null);
-        if (grantError != null) {
-            return grantError;
+        Integer groupId = param.getPrimaryGroupId();
+        if (groupId == null && StringUtils.isNoneBlank(param.getUserType())) {
+            groupId = resolvePrimaryGroupId(param.getUserType().trim());
         }
+        if (groupId == null) {
+            groupId = resolveDefaultGroupId();
+        }
+        PermissionGroup group = groupId == null ? null : permissionGroupMapper.selectById(groupId);
+        if (group == null) {
+            return ResultBean.error("权限组不存在");
+        }
+        if (!Integer.valueOf(1).equals(group.getEnabled())) {
+            return ResultBean.error("权限组已停用");
+        }
+        if (isPrivilegedGroupId(groupId) && !isCurrentUserSuperAdmin()) {
+            return ResultBean.forbidden("仅超级管理员可创建管理类权限组账号");
+        }
+        String userType = legacyUserType(group);
 
         // 校验用户名唯一性
         if (userMapper.selectCount(
@@ -1108,7 +1154,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .setOrgNo(param.getOrgNo())
                 .setGender("0")
                 .setUserType(userType)
-                .setPrimaryGroupId(resolvePrimaryGroupId(userType))
+                .setPrimaryGroupId(groupId)
                 .setIsAlive(param.getIsAlive() != null ? param.getIsAlive() : 0)
                 .setFans(0)
                 .setAttention(0)
@@ -1173,26 +1219,136 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         PermissionGroup group = null;
         if (user != null && user.getPrimaryGroupId() != null && permissionGroupMapper != null) {
             PermissionGroup assigned = permissionGroupMapper.selectById(user.getPrimaryGroupId());
-            if (isEnabledSystemGroup(assigned)) {
+            if (isEnabledGroup(assigned)) {
                 group = assigned;
             }
         }
         if (group == null && user != null) {
-            group = findSystemGroupByUserType(user.getUserType());
+            group = resolveDefaultGroup();
         }
         info.put("primaryGroupId", group == null ? null : group.getId());
         info.put("primaryGroupName", group == null ? null : group.getGroupName());
         info.put("primaryGroupCode", group == null ? null : group.getGroupCode());
+        info.put("dataScopeType", group == null ? null : group.getDataScopeType());
         return info;
     }
 
     @Override
-    public Integer resolvePrimaryGroupId(String userType) {
-        PermissionGroup group = findSystemGroupByUserType(userType);
+    public Integer resolvePrimaryGroupId(String roleType) {
+        if (StringUtils.isBlank(roleType)) {
+            return null;
+        }
+        String type = roleType.trim();
+        if (ConstantUtil.MANA_ZERO_ONE.equals(type)) {
+            type = USER_TYPE_USER;
+        } else if (ConstantUtil.MANA_ZERO_TWO.equals(type)) {
+            type = USER_TYPE_ADMIN;
+        } else if ("04".equals(type) || USER_TYPE_MODERATOR.equals(type)) {
+            type = USER_TYPE_MODERATOR;
+        }
+        String groupCode = USER_TYPE_SUPER_ADMIN.equals(type) ? "role_super"
+                : USER_TYPE_ADMIN.equals(type) ? "role_admin"
+                : USER_TYPE_MODERATOR.equals(type) ? "role_moderator"
+                : USER_TYPE_USER.equals(type) ? "role_user" : null;
+        if (groupCode == null) {
+            return null;
+        }
+        PermissionGroup group = findEnabledGroupByCode(groupCode);
+        if (group == null) {
+            group = resolveDefaultGroup();
+        }
         return group == null ? null : group.getId();
     }
 
-    /** 显式写入主组（包括 NULL），避免 user_type 与 primary_group_id 不一致。 */
+    @Override
+    public Integer resolveDefaultGroupId() {
+        PermissionGroup group = resolveDefaultGroup();
+        return group == null ? null : group.getId();
+    }
+
+    @Override
+    public Integer resolveModeratorGroupId() {
+        PermissionGroup group = findEnabledGroupByCode("role_moderator");
+        if (group == null) {
+            group = firstEnabledGroupByDataScope("BOARD_MODERATOR");
+        }
+        return group == null ? null : group.getId();
+    }
+
+    @Override
+    public List<Map<String, Object>> listPrimaryGroupOptions() {
+        List<PermissionGroup> groups = permissionGroupMapper.selectList(
+                new LambdaQueryWrapper<PermissionGroup>()
+                        .eq(PermissionGroup::getEnabled, 1)
+                        .orderByAsc(PermissionGroup::getSortOrder)
+                        .orderByAsc(PermissionGroup::getId));
+        PermissionGroup defaultGroup = resolveDefaultGroup();
+        Integer defaultGroupId = defaultGroup == null ? null : defaultGroup.getId();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (PermissionGroup group : groups) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", group.getId());
+            row.put("groupCode", group.getGroupCode());
+            row.put("groupName", group.getGroupName());
+            row.put("dataScopeType", group.getDataScopeType());
+            row.put("defaultGroup", group.getId() != null && group.getId().equals(defaultGroupId));
+            // 供前端判断“该组账号是否仅超管可编辑”，避免把 role_super/role_admin 编码写死在前端。
+            row.put("superGroup", groupHasAnyPermission(group.getId(),
+                    Collections.singletonList(Permission.USER_GRANT_ADMIN.getCode())));
+            row.put("privileged", groupHasAnyPermission(group.getId(), Arrays.asList(
+                    Permission.USER_READ.getCode(),
+                    Permission.USER_GRANT_ADMIN.getCode(),
+                    Permission.PERMISSION_MANAGE.getCode(),
+                    Permission.AUDIT_READ.getCode(),
+                    Permission.CONFIG_WRITE.getCode())));
+            result.add(row);
+        }
+        return result;
+    }
+
+    private PermissionGroup resolveDefaultGroup() {
+        PermissionGroup group = findEnabledGroupByCode("role_user");
+        if (group == null) {
+            group = firstEnabledGroupByDataScope("GLOBAL");
+        }
+        if (group == null) {
+            List<PermissionGroup> groups = permissionGroupMapper.selectList(
+                    new LambdaQueryWrapper<PermissionGroup>()
+                            .eq(PermissionGroup::getEnabled, 1)
+                            .orderByAsc(PermissionGroup::getSortOrder)
+                            .orderByAsc(PermissionGroup::getId)
+                            .last("LIMIT 1"));
+            group = groups == null || groups.isEmpty() ? null : groups.get(0);
+        }
+        return group;
+    }
+
+    private PermissionGroup findEnabledGroupByCode(String groupCode) {
+        if (permissionGroupMapper == null) {
+            return null;
+        }
+        List<PermissionGroup> groups = permissionGroupMapper.selectList(
+                new LambdaQueryWrapper<PermissionGroup>()
+                        .eq(PermissionGroup::getGroupCode, groupCode)
+                        .eq(PermissionGroup::getEnabled, 1)
+                        .orderByAsc(PermissionGroup::getSortOrder)
+                        .orderByAsc(PermissionGroup::getId)
+                        .last("LIMIT 1"));
+        return groups == null || groups.isEmpty() ? null : groups.get(0);
+    }
+
+    private PermissionGroup firstEnabledGroupByDataScope(String dataScopeType) {
+        List<PermissionGroup> groups = permissionGroupMapper.selectList(
+                new LambdaQueryWrapper<PermissionGroup>()
+                        .eq(PermissionGroup::getEnabled, 1)
+                        .eq(PermissionGroup::getDataScopeType, dataScopeType)
+                        .orderByAsc(PermissionGroup::getSortOrder)
+                        .orderByAsc(PermissionGroup::getId)
+                        .last("LIMIT 1"));
+        return groups == null || groups.isEmpty() ? null : groups.get(0);
+    }
+
+    /** 显式写入主组（包括 NULL）。 */
     private void updatePrimaryGroupId(Integer userId, Integer primaryGroupId) {
         if (userId == null) {
             return;
@@ -1220,10 +1376,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 }
             }
         }
+        PermissionGroup fallback = resolveDefaultGroup();
         for (User user : users) {
             PermissionGroup group = groupById.get(user.getPrimaryGroupId());
-            if (!isEnabledSystemGroup(group)) {
-                group = findSystemGroupByUserType(user.getUserType());
+            if (!isEnabledGroup(group)) {
+                group = fallback;
             }
             if (group != null) {
                 user.setPrimaryGroupId(group.getId());
@@ -1233,25 +1390,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
     }
 
-    /** 主组必须是启用中的系统角色组；停用/自定义/不存在的组按 user_type 回退。 */
-    private boolean isEnabledSystemGroup(PermissionGroup group) {
-        return group != null
-                && Integer.valueOf(1).equals(group.getEnabled())
-                && StringUtils.isNotBlank(group.getBaseRole());
-    }
-
-    private PermissionGroup findSystemGroupByUserType(String userType) {
-        if (permissionGroupMapper == null) {
-            return null;
-        }
-        String baseRole = AccountRole.fromUserType(userType).name();
-        List<PermissionGroup> groups = permissionGroupMapper.selectList(
-                new LambdaQueryWrapper<PermissionGroup>()
-                        .eq(PermissionGroup::getBaseRole, baseRole)
-                        .orderByAsc(PermissionGroup::getSortOrder)
-                        .orderByAsc(PermissionGroup::getId)
-                        .last("LIMIT 1"));
-        return groups == null || groups.isEmpty() ? null : groups.get(0);
+    private boolean isEnabledGroup(PermissionGroup group) {
+        return group != null && Integer.valueOf(1).equals(group.getEnabled());
     }
 
     private List<Map<String, Object>> loadBoardScopes(Integer userId) {
@@ -1273,24 +1413,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return scopes;
     }
 
-    /** 是否为管理员/超级管理员账号类型 */
-    private boolean isPrivilegedUserType(String userType) {
-        return USER_TYPE_ADMIN.equals(userType) || USER_TYPE_SUPER_ADMIN.equals(userType);
-    }
-
     /**
      * 删除/禁用账号的越权保护：超管账号不可通过通用接口操作；
-     * 管理员账号仅超管可操作（与“管理员不能操作其他管理员”产品规则一致）。
+     * 管理类权限组账号仅超管可操作。
      */
     private ResultBean checkTargetManageable(User target) {
         if (target == null) {
             return null;
         }
-        if (USER_TYPE_SUPER_ADMIN.equals(target.getUserType())) {
+        if (isSuperGroup(target.getPrimaryGroupId())) {
             return ResultBean.forbidden("超级管理员账号不可执行该操作");
         }
-        if (USER_TYPE_ADMIN.equals(target.getUserType()) && !isCurrentUserSuperAdmin()) {
-            return ResultBean.forbidden("仅超级管理员可操作管理员账号");
+        if (isPrivilegedGroupId(target.getPrimaryGroupId()) && !isCurrentUserSuperAdmin()) {
+            return ResultBean.forbidden("仅超级管理员可操作管理类权限组账号");
         }
         return null;
     }
@@ -1300,24 +1435,63 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return currentUserService != null && currentUserService.isSuperAdmin();
     }
 
-    /**
-     * 校验 userType 写入权限。
-     * <p>白名单允许 1/2/4：超级管理员不通过业务界面新增（D2）；
-     * 授予管理员或调整管理员/超管账号仅超级管理员可操作（D3）。
-     * MODERATOR 属于普通管理角色，ADMIN 可授予/管理（Q10）。</p>
-     */
-    private ResultBean checkUserTypeGrant(String newUserType, User target) {
-        if (!USER_TYPE_USER.equals(newUserType)
-                && !USER_TYPE_ADMIN.equals(newUserType)
-                && !USER_TYPE_MODERATOR.equals(newUserType)) {
-            return ResultBean.error("非法用户角色");
+    /** 是否超管组：授予 user:grant:admin 的权限组。 */
+    private boolean isSuperGroup(Integer groupId) {
+        return groupHasAnyPermission(groupId,
+                Collections.singletonList(Permission.USER_GRANT_ADMIN.getCode()));
+    }
+
+    /** 是否管理类权限组：授予用户管理/权限管理/审计/配置修改等敏感能力。 */
+    private boolean isPrivilegedGroupId(Integer groupId) {
+        return groupHasAnyPermission(groupId, Arrays.asList(
+                Permission.USER_READ.getCode(),
+                Permission.USER_GRANT_ADMIN.getCode(),
+                Permission.PERMISSION_MANAGE.getCode(),
+                Permission.AUDIT_READ.getCode(),
+                Permission.CONFIG_WRITE.getCode()));
+    }
+
+    private boolean groupHasAnyPermission(Integer groupId, List<String> codes) {
+        if (groupId == null || permissionGroupItemMapper == null) {
+            return false;
         }
-        boolean grantingAdmin = USER_TYPE_ADMIN.equals(newUserType);
-        boolean targetPrivileged = target != null && isPrivilegedUserType(target.getUserType());
-        if ((grantingAdmin || targetPrivileged) && !isCurrentUserSuperAdmin()) {
-            return ResultBean.forbidden("仅超级管理员可创建或调整管理员账号");
+        List<PermissionGroupItem> items = permissionGroupItemMapper.selectList(
+                new LambdaQueryWrapper<PermissionGroupItem>()
+                        .eq(PermissionGroupItem::getGroupId, groupId));
+        if (items == null) {
+            return false;
         }
-        return null;
+        for (PermissionGroupItem item : items) {
+            if (item.getPermissionCode() != null
+                    && !"revoke".equalsIgnoreCase(item.getEffect())
+                    && codes.contains(item.getPermissionCode())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 旧 user_type 兼容字段，不参与权限判断。 */
+    private String legacyUserType(PermissionGroup group) {
+        if (group == null) {
+            return USER_TYPE_USER;
+        }
+        if ("role_super".equals(group.getGroupCode())
+                || groupHasAnyPermission(group.getId(),
+                        Collections.singletonList(Permission.USER_GRANT_ADMIN.getCode()))) {
+            return USER_TYPE_SUPER_ADMIN;
+        }
+        // 版主组同样带 admin:access，必须在管理员判断之前识别，否则会被误标成管理员。
+        if ("role_moderator".equals(group.getGroupCode())
+                || "BOARD_MODERATOR".equalsIgnoreCase(group.getDataScopeType())) {
+            return USER_TYPE_MODERATOR;
+        }
+        if ("role_admin".equals(group.getGroupCode())
+                || groupHasAnyPermission(group.getId(),
+                        Collections.singletonList(Permission.ADMIN_ACCESS.getCode()))) {
+            return USER_TYPE_ADMIN;
+        }
+        return USER_TYPE_USER;
     }
 
 }

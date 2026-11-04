@@ -2,7 +2,6 @@ package com.walker.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.walker.config.security.AccountRole;
 import com.walker.config.security.Permission;
 import com.walker.mapper.PermissionGroupItemMapper;
 import com.walker.mapper.PermissionGroupMapper;
@@ -37,26 +36,27 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 权限组实现（权限组即角色）。
+ * 权限组实现。
  *
- * <p>base_role 非空的是系统角色组：不可删除、不可修改编码/baseRole，
- * 由用户主组自动应用，不允许手动添加成员；base_role 为空的是临时权限组，
- * 可按用户显式绑定并叠加。</p>
+ * <p>权限组是账号权限的唯一来源：每个组直接保存自己授予的权限点；
+ * 用户通过主权限组获得身份与数据范围，并可通过额外绑定权限组叠加权限。
+ * 组之间没有“系统角色/临时权限组”之分，默认内置的四个组也可以像普通组一样编辑和删除。</p>
  */
 @Service
 public class PermissionGroupServiceImpl implements PermissionGroupService {
 
-    /** 权限组不能授予的越权能力。 */
-    private static final Set<String> FORBIDDEN_GRANTS = new HashSet<>(Arrays.asList(
-            Permission.USER_GRANT_ADMIN.getCode(),
-            Permission.CONFIG_WRITE.getCode(),
-            Permission.PERMISSION_MANAGE.getCode(),
-            Permission.AUDIT_READ.getCode()
-    ));
-
     private static final Set<String> SCOPE_TYPES = new HashSet<>(Arrays.asList("ADMIN", "FRONT", "ALL"));
     private static final Set<String> DATA_SCOPE_TYPES = new HashSet<>(Arrays.asList(
-            "ROLE_DEFAULT", "BOARD_MODERATOR"));
+            "BOARD_MODERATOR", "GLOBAL"));
+    /**
+     * 一个组要真正能“救回系统”，必须同时包含这三个关键权限：
+     * 进入管理后台、权限管理、授予/调整管理员。
+     * 只看 user:grant:admin 不够——曾出现过去掉 admin:access 后无人能登录管理端的事故。
+     */
+    private static final List<String> SUPER_GROUP_REQUIRED_CODES = Arrays.asList(
+            Permission.ADMIN_ACCESS.getCode(),
+            Permission.PERMISSION_MANAGE.getCode(),
+            Permission.USER_GRANT_ADMIN.getCode());
 
     @Autowired
     private PermissionGroupMapper permissionGroupMapper;
@@ -103,10 +103,6 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         }
         Map<String, Object> data = groupSummary(group);
         data.put("permissionCodes", new ArrayList<>(effectiveCodes(group)));
-        data.put("baselineCodes", baselineCodes(group));
-        data.put("grantCodes", itemCodes(id, "grant"));
-        data.put("revokeCodes", itemCodes(id, "revoke"));
-        data.put("protectedCodes", protectedCodes(group));
         data.put("users", groupUsers(id));
         return data;
     }
@@ -114,16 +110,19 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
     @Override
     @Transactional
     public ResultBean createGroup(PermissionGroup group, List<String> permissionCodes) {
-        if (group != null && StringUtils.isNotBlank(group.getBaseRole())) {
-            return ResultBean.error("系统角色由系统预置，不能新建");
+        if (group != null) {
+            group.setDataScopeType(normalizeDataScope(group.getDataScopeType()));
         }
         ResultBean validation = validateGroup(group, null);
         if (validation != null) {
             return validation;
         }
-        ResultBean codeValidation = validateEffectiveCodes(group, permissionCodes);
+        ResultBean codeValidation = validatePermissionCodes(permissionCodes);
         if (codeValidation != null) {
             return codeValidation;
+        }
+        if (permissionCodes != null) {
+            group.setScopeType(deriveScopeType(permissionCodes));
         }
         String now = now();
         group.setGroupCode(group.getGroupCode().trim());
@@ -145,44 +144,25 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
             group = new PermissionGroup();
         }
         group.setId(id);
-        boolean systemGroup = isSystemGroup(existing);
-        if (systemGroup) {
-            if (StringUtils.isNotBlank(group.getGroupCode())
-                    && !group.getGroupCode().trim().equals(existing.getGroupCode())) {
-                return ResultBean.error("系统角色的编码不可修改");
-            }
-            if (StringUtils.isNotBlank(group.getBaseRole())
-                    && !group.getBaseRole().trim().equalsIgnoreCase(existing.getBaseRole())) {
-                return ResultBean.error("系统角色的基线不可修改");
-            }
-        } else if (StringUtils.isNotBlank(group.getBaseRole())) {
-            return ResultBean.error("自定义权限组不能改为系统角色");
-        }
         if (StringUtils.isBlank(group.getGroupCode())) {
             group.setGroupCode(existing.getGroupCode());
         }
         if (StringUtils.isBlank(group.getGroupName())) {
             group.setGroupName(existing.getGroupName());
         }
-        if (StringUtils.isBlank(group.getBaseRole())) {
-            group.setBaseRole(existing.getBaseRole());
-        }
+        group.setDataScopeType(normalizeDataScope(group.getDataScopeType()));
         ResultBean validation = validateGroup(group, id);
         if (validation != null) {
             return validation;
         }
         if (permissionCodes != null) {
-            ResultBean codeValidation = validateEffectiveCodes(group, permissionCodes);
+            ResultBean codeValidation = validatePermissionCodes(permissionCodes);
             if (codeValidation != null) {
                 return codeValidation;
             }
         }
-        if (!systemGroup && StringUtils.isNotBlank(group.getGroupCode())) {
-            existing.setGroupCode(group.getGroupCode().trim());
-        }
-        if (StringUtils.isNotBlank(group.getGroupName())) {
-            existing.setGroupName(group.getGroupName().trim());
-        }
+        existing.setGroupCode(group.getGroupCode().trim());
+        existing.setGroupName(group.getGroupName().trim());
         if (group.getDescription() != null) {
             existing.setDescription(group.getDescription());
         }
@@ -192,17 +172,32 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         if (StringUtils.isNotBlank(group.getDataScopeType())) {
             existing.setDataScopeType(group.getDataScopeType());
         }
-        if (!systemGroup && StringUtils.isNotBlank(group.getBaseRole())) {
-            existing.setBaseRole(group.getBaseRole().trim());
-        }
         if (group.getEnabled() != null) {
             existing.setEnabled(group.getEnabled());
         }
         if (group.getSortOrder() != null) {
             existing.setSortOrder(group.getSortOrder());
         }
+        if (permissionCodes != null) {
+            existing.setScopeType(deriveScopeType(permissionCodes));
+        }
         existing.setUpdateBy(currentUsername());
         existing.setUpdateTime(now());
+        // 风险保护：不能让系统失去最后一个启用且拥有“授予/调整管理员”的权限组。
+        boolean targetEnabled = group.getEnabled() != null
+                ? Integer.valueOf(1).equals(group.getEnabled())
+                : Integer.valueOf(1).equals(existing.getEnabled());
+        boolean targetSuper = permissionCodes != null
+                ? containsAllCritical(permissionCodes)
+                : groupHasAllCritical(id);
+        ResultBean selfGuard = ensureCurrentUserKeepsCriticalPermissions(id, permissionCodes, targetEnabled);
+        if (selfGuard != null) {
+            return selfGuard;
+        }
+        ResultBean superGuard = ensureSuperAdminGroupRemains(id, targetEnabled && targetSuper);
+        if (superGuard != null) {
+            return superGuard;
+        }
         permissionGroupMapper.updateById(existing);
         if (permissionCodes != null) {
             replaceEffectiveItems(existing, permissionCodes, now());
@@ -217,13 +212,24 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         if (group == null) {
             return ResultBean.error("权限组不存在");
         }
-        if (isSystemGroup(group)) {
-            return ResultBean.error("系统角色不可删除");
+        ResultBean superGuard = ensureSuperAdminGroupRemains(id, false);
+        if (superGuard != null) {
+            return superGuard;
+        }
+        ResultBean selfGuard = ensureCurrentUserKeepsCriticalPermissions(id, Collections.emptyList(), false);
+        if (selfGuard != null) {
+            return selfGuard;
         }
         permissionGroupItemMapper.delete(new LambdaQueryWrapper<PermissionGroupItem>()
                 .eq(PermissionGroupItem::getGroupId, id));
         userPermissionGroupMapper.delete(new LambdaQueryWrapper<UserPermissionGroup>()
                 .eq(UserPermissionGroup::getGroupId, id));
+        // 主组用户优先迁移到普通用户组，避免留下空主组导致身份/数据范围悬空；
+        // 找不到普通组时宁可置空，也不能把普通用户误升级到管理类组。
+        Integer fallbackGroupId = resolveFallbackGroupId(id);
+        userMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<User>()
+                .set(User::getPrimaryGroupId, fallbackGroupId)
+                .eq(User::getPrimaryGroupId, id));
         permissionGroupMapper.deleteById(id);
         return ResultBean.success("删除成功");
     }
@@ -235,10 +241,26 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         if (group == null) {
             return ResultBean.error("权限组不存在");
         }
-        ResultBean validation = validateEffectiveCodes(group, permissionCodes);
+        ResultBean validation = validatePermissionCodes(permissionCodes);
         if (validation != null) {
             return validation;
         }
+        boolean targetSuper = permissionCodes != null
+                && containsAllCritical(permissionCodes);
+        ResultBean superGuard = ensureSuperAdminGroupRemains(id,
+                Integer.valueOf(1).equals(group.getEnabled()) && targetSuper);
+        if (superGuard != null) {
+            return superGuard;
+        }
+        ResultBean selfGuard = ensureCurrentUserKeepsCriticalPermissions(id, permissionCodes,
+                Integer.valueOf(1).equals(group.getEnabled()));
+        if (selfGuard != null) {
+            return selfGuard;
+        }
+        group.setScopeType(deriveScopeType(permissionCodes));
+        group.setUpdateBy(currentUsername());
+        group.setUpdateTime(now());
+        permissionGroupMapper.updateById(group);
         replaceEffectiveItems(group, permissionCodes, now());
         return ResultBean.success("权限点已更新");
     }
@@ -249,9 +271,6 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         PermissionGroup group = id == null ? null : permissionGroupMapper.selectById(id);
         if (group == null) {
             return ResultBean.error("权限组不存在");
-        }
-        if (isSystemGroup(group)) {
-            return ResultBean.error("系统角色自动应用，不能手动添加成员");
         }
         if (userIds == null || userIds.isEmpty()) {
             return ResultBean.error("请选择用户");
@@ -313,6 +332,22 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
             row.put("presetName", preset.getPresetName());
             row.put("createBy", preset.getCreateBy());
             row.put("createTime", preset.getCreateTime());
+            // 预设详情：把快照里的来源组、数据范围和权限点一并返回，前端可直接展开查看。
+            if (StringUtils.isNotBlank(preset.getSnapshotJson())) {
+                try {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> snapshot = objectMapper.readValue(
+                            preset.getSnapshotJson(), LinkedHashMap.class);
+                    row.put("sourceGroupName", snapshot.get("groupName"));
+                    row.put("sourceGroupCode", snapshot.get("groupCode"));
+                    row.put("scopeType", snapshot.get("scopeType"));
+                    row.put("dataScopeType", snapshot.get("dataScopeType"));
+                    Object codes = snapshot.get("permissionCodes");
+                    row.put("permissionCodes", codes instanceof List ? codes : Collections.emptyList());
+                } catch (Exception ignored) {
+                    // 历史快照格式异常时只返回基础字段，不影响列表展示
+                }
+            }
             result.add(row);
         }
         return result;
@@ -338,7 +373,6 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         snapshot.put("description", group.getDescription());
         snapshot.put("scopeType", group.getScopeType());
         snapshot.put("dataScopeType", group.getDataScopeType());
-        snapshot.put("baseRole", group.getBaseRole());
         snapshot.put("permissionCodes", new ArrayList<>(effectiveCodes(group)));
 
         PermissionPreset preset = new PermissionPreset();
@@ -353,6 +387,17 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         preset.setCreateTime(now());
         permissionPresetMapper.insert(preset);
         return ResultBean.success("预设已保存", preset.getId());
+    }
+
+    @Override
+    @Transactional
+    public ResultBean deletePreset(Integer presetId) {
+        PermissionPreset preset = presetId == null ? null : permissionPresetMapper.selectById(presetId);
+        if (preset == null) {
+            return ResultBean.error("预设不存在");
+        }
+        permissionPresetMapper.deleteById(presetId);
+        return ResultBean.success("删除成功");
     }
 
     @Override
@@ -377,22 +422,14 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         List<String> codes = codesObj instanceof List
                 ? ((List<Object>) codesObj).stream().map(String::valueOf).collect(Collectors.toList())
                 : Collections.emptyList();
-        String presetBaseRole = snapshot.get("baseRole") == null
-                ? null : String.valueOf(snapshot.get("baseRole")).trim();
-        boolean systemGroup = isSystemGroup(group);
-        if (systemGroup) {
-            if (StringUtils.isNotBlank(presetBaseRole)
-                    && !presetBaseRole.equalsIgnoreCase(group.getBaseRole())) {
-                return ResultBean.error("系统角色的基线不可修改");
-            }
-        } else if (StringUtils.isNotBlank(presetBaseRole)) {
-            return ResultBean.error("自定义权限组不能改为系统角色");
-        }
-        ResultBean codeValidation = validateEffectiveCodes(group, codes);
+        ResultBean codeValidation = validatePermissionCodes(codes);
         if (codeValidation != null) {
             return codeValidation;
         }
 
+        if (snapshot.get("groupCode") != null) {
+            group.setGroupCode(String.valueOf(snapshot.get("groupCode")));
+        }
         if (snapshot.get("groupName") != null) {
             group.setGroupName(String.valueOf(snapshot.get("groupName")));
         }
@@ -403,7 +440,24 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
             group.setScopeType(String.valueOf(snapshot.get("scopeType")));
         }
         if (snapshot.get("dataScopeType") != null) {
-            group.setDataScopeType(String.valueOf(snapshot.get("dataScopeType")));
+            group.setDataScopeType(normalizeDataScope(String.valueOf(snapshot.get("dataScopeType"))));
+        }
+        // 适用端由权限点决定，不信任快照中的旧标记。
+        group.setScopeType(deriveScopeType(codes));
+        ResultBean validation = validateGroup(group, groupId);
+        if (validation != null) {
+            return validation;
+        }
+        boolean targetSuper = containsAllCritical(codes);
+        ResultBean superGuard = ensureSuperAdminGroupRemains(groupId,
+                Integer.valueOf(1).equals(group.getEnabled()) && targetSuper);
+        if (superGuard != null) {
+            return superGuard;
+        }
+        ResultBean selfGuard = ensureCurrentUserKeepsCriticalPermissions(groupId, codes,
+                Integer.valueOf(1).equals(group.getEnabled()));
+        if (selfGuard != null) {
+            return selfGuard;
         }
         group.setUpdateBy(currentUsername());
         group.setUpdateTime(now());
@@ -422,7 +476,7 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         data.put("userId", user.getId());
         data.put("username", user.getUsername());
         data.put("nickname", user.getNickname());
-        data.put("userType", user.getUserType());
+        data.put("primaryGroupId", user.getPrimaryGroupId());
         data.put("permissions", new ArrayList<>(effectivePermissionService.getEffectiveCodes(user)));
         List<UserPermissionGroup> links = userPermissionGroupMapper.selectList(
                 new LambdaQueryWrapper<UserPermissionGroup>()
@@ -433,6 +487,209 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
                 .collect(Collectors.toList());
         data.put("groupIds", groupIds);
         return data;
+    }
+
+    /** 组是否同时具备三个管理端关键权限。 */
+    private boolean groupHasAllCritical(Integer groupId) {
+        for (String code : SUPER_GROUP_REQUIRED_CODES) {
+            if (!groupGrants(groupId, code)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean containsAllCritical(List<String> codes) {
+        return codes != null && codes.containsAll(SUPER_GROUP_REQUIRED_CODES);
+    }
+
+    /** 权限组是否直接授予某个权限点（只看 grant）。 */
+    private boolean groupGrants(Integer groupId, String permissionCode) {
+        if (groupId == null || StringUtils.isBlank(permissionCode)) {
+            return false;
+        }
+        Long count = permissionGroupItemMapper.selectCount(
+                new LambdaQueryWrapper<PermissionGroupItem>()
+                        .eq(PermissionGroupItem::getGroupId, groupId)
+                        .eq(PermissionGroupItem::getPermissionCode, permissionCode)
+                        .eq(PermissionGroupItem::getEffect, "grant"));
+        return count != null && count > 0;
+    }
+
+    /** 当前所有“启用且同时具备管理端关键权限”的权限组。 */
+    private Set<Integer> enabledSuperGroupIds() {
+        List<PermissionGroup> enabledGroups = permissionGroupMapper.selectList(
+                new LambdaQueryWrapper<PermissionGroup>()
+                        .eq(PermissionGroup::getEnabled, 1));
+        if (enabledGroups == null || enabledGroups.isEmpty()) {
+            return Collections.emptySet();
+        }
+        List<Integer> groupIds = enabledGroups.stream()
+                .map(PermissionGroup::getId)
+                .filter(id -> id != null)
+                .collect(Collectors.toList());
+        if (groupIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        List<PermissionGroupItem> items = permissionGroupItemMapper.selectList(
+                new LambdaQueryWrapper<PermissionGroupItem>()
+                        .in(PermissionGroupItem::getGroupId, groupIds)
+                        .in(PermissionGroupItem::getPermissionCode, SUPER_GROUP_REQUIRED_CODES)
+                        .eq(PermissionGroupItem::getEffect, "grant"));
+        if (items == null) {
+            return Collections.emptySet();
+        }
+        Map<Integer, Set<String>> codesByGroup = new LinkedHashMap<>();
+        for (PermissionGroupItem item : items) {
+            if (item.getGroupId() == null || item.getPermissionCode() == null) {
+                continue;
+            }
+            codesByGroup.computeIfAbsent(item.getGroupId(), key -> new LinkedHashSet<>())
+                    .add(item.getPermissionCode());
+        }
+        Set<Integer> result = new LinkedHashSet<>();
+        for (Map.Entry<Integer, Set<String>> entry : codesByGroup.entrySet()) {
+            if (entry.getValue().containsAll(SUPER_GROUP_REQUIRED_CODES)) {
+                result.add(entry.getKey());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 防止当前登录的超管把自己锁在系统外：
+     * 不能从“自己的主权限组”里移除 admin:access / permission:manage / user:grant:admin，
+     * 也不能停用或删除这个组。
+     */
+    private ResultBean ensureCurrentUserKeepsCriticalPermissions(Integer targetGroupId,
+                                                                 List<String> newCodes,
+                                                                 boolean targetEnabled) {
+        User current = currentUserService == null ? null : currentUserService.getCurrentUser();
+        if (current == null || current.getPrimaryGroupId() == null
+                || !current.getPrimaryGroupId().equals(targetGroupId)) {
+            return null;
+        }
+        // 没改权限点且组仍启用：不会丢失关键权限
+        if (newCodes == null && targetEnabled) {
+            return null;
+        }
+        for (String code : SUPER_GROUP_REQUIRED_CODES) {
+            if (!groupGrants(targetGroupId, code)) {
+                continue;
+            }
+            boolean retained = targetEnabled && newCodes != null && newCodes.contains(code);
+            if (!retained) {
+                return ResultBean.error("不能移除当前登录账号主权限组的关键权限（进入管理后台 / 权限管理 / 授予管理员），否则你将无法继续管理系统");
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 防止把系统改到“没有任何启用超管组”的状态。
+     * 系统本来就没有超管组时放行，避免阻止修复操作。
+     */
+    private ResultBean ensureSuperAdminGroupRemains(Integer targetGroupId, boolean targetWillBeSuperEnabled) {
+        Set<Integer> superGroupIds = enabledSuperGroupIds();
+        if (superGroupIds.isEmpty() || targetWillBeSuperEnabled) {
+            return null;
+        }
+        boolean hasOther = superGroupIds.stream()
+                .anyMatch(groupId -> !groupId.equals(targetGroupId));
+        if (hasOther) {
+            return null;
+        }
+        return ResultBean.error("至少保留一个启用且拥有「授予/调整管理员」权限的权限组，否则将无人能管理权限");
+    }
+
+    /**
+     * 删除组后给原主组用户找一个安全的落点：
+     * 优先普通用户组，其次全局且没有 admin:access 的组；找不到就返回 null。
+     */
+    private Integer resolveFallbackGroupId(Integer excludeGroupId) {
+        List<PermissionGroup> enabledGroups = permissionGroupMapper.selectList(
+                new LambdaQueryWrapper<PermissionGroup>()
+                        .eq(PermissionGroup::getEnabled, 1)
+                        .orderByAsc(PermissionGroup::getSortOrder)
+                        .orderByAsc(PermissionGroup::getId));
+        if (enabledGroups == null || enabledGroups.isEmpty()) {
+            return null;
+        }
+        List<PermissionGroup> candidates = enabledGroups.stream()
+                .filter(group -> group.getId() != null && !group.getId().equals(excludeGroupId))
+                .collect(Collectors.toList());
+        for (PermissionGroup group : candidates) {
+            if ("role_user".equals(group.getGroupCode())) {
+                return group.getId();
+            }
+        }
+        Set<Integer> adminGroupIds = adminGrantGroupIds(candidates);
+        for (PermissionGroup group : candidates) {
+            if ("GLOBAL".equalsIgnoreCase(group.getDataScopeType())
+                    && !adminGroupIds.contains(group.getId())) {
+                return group.getId();
+            }
+        }
+        for (PermissionGroup group : candidates) {
+            if (!adminGroupIds.contains(group.getId())) {
+                return group.getId();
+            }
+        }
+        return null;
+    }
+
+    /** 给定候选组里，哪些组授予了 admin:access。 */
+    private Set<Integer> adminGrantGroupIds(List<PermissionGroup> groups) {
+        List<Integer> groupIds = groups.stream()
+                .map(PermissionGroup::getId)
+                .filter(id -> id != null)
+                .collect(Collectors.toList());
+        if (groupIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        List<PermissionGroupItem> items = permissionGroupItemMapper.selectList(
+                new LambdaQueryWrapper<PermissionGroupItem>()
+                        .in(PermissionGroupItem::getGroupId, groupIds)
+                        .eq(PermissionGroupItem::getPermissionCode, Permission.ADMIN_ACCESS.getCode())
+                        .eq(PermissionGroupItem::getEffect, "grant"));
+        if (items == null) {
+            return Collections.emptySet();
+        }
+        return items.stream()
+                .map(PermissionGroupItem::getGroupId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+    }
+
+    /** 适用端自动标记：勾选权限点里同时有管理端/前台动作时为 ALL。 */
+    private String deriveScopeType(List<String> permissionCodes) {
+        boolean hasAdmin = false;
+        boolean hasFront = false;
+        if (permissionCodes != null) {
+            for (String code : permissionCodes) {
+                Permission permission = Permission.fromCode(code);
+                if (permission == null) {
+                    continue;
+                }
+                if (permission.isFrontAction()) {
+                    hasFront = true;
+                } else {
+                    hasAdmin = true;
+                }
+            }
+        }
+        if (hasAdmin && hasFront) {
+            return "ALL";
+        }
+        return hasFront ? "FRONT" : "ADMIN";
+    }
+
+    /** 旧枚举名 ROLE_DEFAULT 与 GLOBAL 等价；统一转成 GLOBAL 后再校验。 */
+    private String normalizeDataScope(String dataScopeType) {
+        if (StringUtils.isBlank(dataScopeType)) {
+            return dataScopeType;
+        }
+        return "ROLE_DEFAULT".equalsIgnoreCase(dataScopeType.trim()) ? "GLOBAL" : dataScopeType.trim();
     }
 
     private ResultBean validateGroup(PermissionGroup group, Integer excludeId) {
@@ -454,48 +711,29 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         }
         if (StringUtils.isNotBlank(group.getDataScopeType())
                 && !DATA_SCOPE_TYPES.contains(group.getDataScopeType())) {
-            return ResultBean.error("数据范围只能是 ROLE_DEFAULT/BOARD_MODERATOR");
-        }
-        if (StringUtils.isNotBlank(group.getBaseRole())) {
-            try {
-                AccountRole.valueOf(group.getBaseRole().trim().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                return ResultBean.error("角色基线只能是 USER/MODERATOR/ADMIN/SUPER_ADMIN");
-            }
+            return ResultBean.error("数据范围只能是 GLOBAL/BOARD_MODERATOR");
         }
         return null;
     }
 
-    private ResultBean validateEffectiveCodes(PermissionGroup group, List<String> permissionCodes) {
+    private ResultBean validatePermissionCodes(List<String> permissionCodes) {
         if (permissionCodes == null) {
             return null;
         }
-        AccountRole baseRole = parseBaseRole(group == null ? null : group.getBaseRole());
-        Set<String> defaults = baseRole == null
-                ? Collections.emptySet()
-                : new LinkedHashSet<>(Permission.codesFor(baseRole));
         for (String code : permissionCodes) {
-            Permission permission = Permission.fromCode(code);
-            if (permission == null) {
+            if (Permission.fromCode(code) == null) {
                 return ResultBean.error("未知权限点: " + code);
-            }
-            boolean wouldGrant = !defaults.contains(code);
-            if (wouldGrant && FORBIDDEN_GRANTS.contains(code)) {
-                return ResultBean.error("权限组不能授予该权限点: " + code);
             }
         }
         return null;
     }
 
     private void normalizeGroup(PermissionGroup group, String now, boolean create) {
-        if (StringUtils.isNotBlank(group.getBaseRole())) {
-            group.setBaseRole(group.getBaseRole().trim().toUpperCase());
-        }
         if (StringUtils.isBlank(group.getScopeType())) {
             group.setScopeType("ADMIN");
         }
         if (StringUtils.isBlank(group.getDataScopeType())) {
-            group.setDataScopeType("ROLE_DEFAULT");
+            group.setDataScopeType("GLOBAL");
         }
         if (group.getEnabled() == null) {
             group.setEnabled(1);
@@ -511,12 +749,7 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         group.setUpdateTime(now);
     }
 
-    /**
-     * 把“组最终应有的权限集合”转换为 grant / revoke 条目。
-     *
-     * <p>有角色基线的组只保存差异：基线已有的权限不落库，取消勾选写 revoke，
-     * 基线之外额外勾选写 grant。没有角色基线的自定义组保持原来的纯授予行为。</p>
-     */
+    /** 权限组直接保存勾选的权限点，不再区分角色基线与 grant/revoke 差异。 */
     private void replaceEffectiveItems(PermissionGroup group, List<String> permissionCodes, String now) {
         if (group == null || group.getId() == null) {
             return;
@@ -524,42 +757,15 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         Integer groupId = group.getId();
         permissionGroupItemMapper.delete(new LambdaQueryWrapper<PermissionGroupItem>()
                 .eq(PermissionGroupItem::getGroupId, groupId));
-
-        Set<String> selected = permissionCodes == null
-                ? new LinkedHashSet<>()
-                : new LinkedHashSet<>(permissionCodes);
-        AccountRole baseRole = parseBaseRole(group.getBaseRole());
-        Set<String> defaults = baseRole == null
-                ? Collections.emptySet()
-                : new LinkedHashSet<>(Permission.codesFor(baseRole));
-
-        if (baseRole == AccountRole.SUPER_ADMIN) {
-            for (Permission permission : Permission.values()) {
-                if (permission.isSuperAdminProtected()) {
-                    selected.add(permission.getCode());
-                }
-            }
+        if (permissionCodes == null) {
+            return;
         }
-
+        Set<String> selected = new LinkedHashSet<>(permissionCodes);
         for (String code : selected) {
-            Permission permission = Permission.fromCode(code);
-            if (permission == null || defaults.contains(code)) {
+            if (Permission.fromCode(code) == null) {
                 continue;
             }
             insertItem(groupId, code, "grant", now);
-        }
-        for (String code : defaults) {
-            if (selected.contains(code)) {
-                continue;
-            }
-            Permission permission = Permission.fromCode(code);
-            if (permission == null) {
-                continue;
-            }
-            if (baseRole == AccountRole.SUPER_ADMIN && permission.isSuperAdminProtected()) {
-                continue;
-            }
-            insertItem(groupId, code, "revoke", now);
         }
     }
 
@@ -572,31 +778,15 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         permissionGroupItemMapper.insert(item);
     }
 
-    /** 权限组自身展示用的最终权限集合（不涉及具体用户）。 */
+    /** 权限组自身最终权限集合：grant 叠加，历史 revoke 兼容收回。 */
     private Set<String> effectiveCodes(PermissionGroup group) {
         Set<String> codes = new LinkedHashSet<>();
-        if (group == null) {
-            return codes;
-        }
-        AccountRole baseRole = parseBaseRole(group.getBaseRole());
-        if (baseRole != null) {
-            codes.addAll(Permission.codesFor(baseRole));
-        }
-        if (group.getId() == null) {
+        if (group == null || group.getId() == null) {
             return codes;
         }
         List<PermissionGroupItem> items = permissionGroupItemMapper.selectList(
                 new LambdaQueryWrapper<PermissionGroupItem>()
                         .eq(PermissionGroupItem::getGroupId, group.getId()));
-        applyItemEffects(codes, items, baseRole);
-        return codes;
-    }
-
-    /** 合并 grant/revoke 到权限集合；收回优先，超管关键权限不可收回。 */
-    private void applyItemEffects(Set<String> codes, List<PermissionGroupItem> items, AccountRole baseRole) {
-        if (items == null) {
-            return;
-        }
         Set<String> grants = new LinkedHashSet<>();
         Set<String> revokes = new LinkedHashSet<>();
         for (PermissionGroupItem item : items) {
@@ -610,87 +800,8 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
             }
         }
         codes.addAll(grants);
-        for (String code : revokes) {
-            Permission permission = Permission.fromCode(code);
-            if (permission == null) {
-                continue;
-            }
-            if (baseRole == AccountRole.SUPER_ADMIN && permission.isSuperAdminProtected()) {
-                continue;
-            }
-            codes.remove(code);
-        }
-    }
-
-    private List<String> itemCodes(Integer groupId, String effect) {
-        List<PermissionGroupItem> items = permissionGroupItemMapper.selectList(
-                new LambdaQueryWrapper<PermissionGroupItem>()
-                        .eq(PermissionGroupItem::getGroupId, groupId)
-                        .eq(PermissionGroupItem::getEffect, effect)
-                        .orderByAsc(PermissionGroupItem::getId));
-        return items.stream()
-                .map(PermissionGroupItem::getPermissionCode)
-                .collect(Collectors.toList());
-    }
-
-    private List<String> protectedCodes(PermissionGroup group) {
-        if (group == null || parseBaseRole(group.getBaseRole()) != AccountRole.SUPER_ADMIN) {
-            return Collections.emptyList();
-        }
-        List<String> codes = new ArrayList<>();
-        for (Permission permission : Permission.values()) {
-            if (permission.isSuperAdminProtected()) {
-                codes.add(permission.getCode());
-            }
-        }
+        codes.removeAll(revokes);
         return codes;
-    }
-
-    /** 角色基线权限点；自定义组为空。前端据此判断“不可额外授予”的权限点是否可勾选。 */
-    private List<String> baselineCodes(PermissionGroup group) {
-        AccountRole baseRole = parseBaseRole(group == null ? null : group.getBaseRole());
-        if (baseRole == null) {
-            return Collections.emptyList();
-        }
-        return new ArrayList<>(Permission.codesFor(baseRole));
-    }
-
-    private AccountRole parseBaseRole(String baseRole) {
-        if (StringUtils.isBlank(baseRole)) {
-            return null;
-        }
-        try {
-            return AccountRole.valueOf(baseRole.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    private boolean isSystemGroup(PermissionGroup group) {
-        return group != null && StringUtils.isNotBlank(group.getBaseRole());
-    }
-
-    /**
-     * 系统角色组自动应用的用户数：主组指向该组，或主组失效（为空/停用/非系统组）时按 user_type 回退到该角色的用户。
-     */
-    private long roleUserCount(PermissionGroup group) {
-        AccountRole role = parseBaseRole(group == null ? null : group.getBaseRole());
-        if (role == null || group.getId() == null) {
-            return 0L;
-        }
-        Long primaryCount = userMapper.selectCount(
-                new LambdaQueryWrapper<User>()
-                        .eq(User::getPrimaryGroupId, group.getId()));
-        Long fallbackCount = userMapper.selectCount(
-                new LambdaQueryWrapper<User>()
-                        .eq(User::getUserType, role.getCode())
-                        .and(w -> w.isNull(User::getPrimaryGroupId)
-                                .or()
-                                .notInSql(User::getPrimaryGroupId,
-                                        "SELECT id FROM bbs_permission_group"
-                                                + " WHERE enabled = 1 AND base_role IS NOT NULL")));
-        return (primaryCount == null ? 0L : primaryCount)
-                + (fallbackCount == null ? 0L : fallbackCount);
     }
 
     private List<Map<String, Object>> groupUsers(Integer groupId) {
@@ -704,6 +815,9 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
                 .map(UserPermissionGroup::getUserId)
                 .filter(uid -> uid != null)
                 .collect(Collectors.toList());
+        if (userIds.isEmpty()) {
+            return Collections.emptyList();
+        }
         List<User> users = userMapper.selectBatchIds(userIds);
         List<Map<String, Object>> result = new ArrayList<>();
         for (User user : users) {
@@ -711,14 +825,12 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
             row.put("userId", user.getId());
             row.put("username", user.getUsername());
             row.put("nickname", user.getNickname());
-            row.put("userType", user.getUserType());
             result.add(row);
         }
         return result;
     }
 
     private Map<String, Object> groupSummary(PermissionGroup group) {
-        boolean system = isSystemGroup(group);
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("id", group.getId());
         row.put("groupCode", group.getGroupCode());
@@ -726,20 +838,20 @@ public class PermissionGroupServiceImpl implements PermissionGroupService {
         row.put("description", group.getDescription());
         row.put("scopeType", group.getScopeType());
         row.put("dataScopeType", group.getDataScopeType());
-        row.put("baseRole", group.getBaseRole());
         row.put("enabled", group.getEnabled());
         row.put("sortOrder", group.getSortOrder());
         row.put("createBy", group.getCreateBy());
         row.put("createTime", group.getCreateTime());
         row.put("updateTime", group.getUpdateTime());
-        row.put("system", system);
-        row.put("autoApply", system && Integer.valueOf(1).equals(group.getEnabled()));
         row.put("permissionCount", effectiveCodes(group).size());
-        long roleUserCount = system ? roleUserCount(group) : 0L;
-        row.put("roleUserCount", roleUserCount);
-        row.put("userCount", system ? roleUserCount : userPermissionGroupMapper.selectCount(
+        long primaryCount = userMapper.selectCount(
+                new LambdaQueryWrapper<User>().eq(User::getPrimaryGroupId, group.getId()));
+        long memberCount = userPermissionGroupMapper.selectCount(
                 new LambdaQueryWrapper<UserPermissionGroup>()
-                        .eq(UserPermissionGroup::getGroupId, group.getId())));
+                        .eq(UserPermissionGroup::getGroupId, group.getId()));
+        row.put("primaryUserCount", primaryCount);
+        row.put("memberCount", memberCount);
+        row.put("userCount", primaryCount + memberCount);
         return row;
     }
 

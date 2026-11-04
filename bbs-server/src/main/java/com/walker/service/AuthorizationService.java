@@ -13,16 +13,16 @@ import java.util.List;
  */
 public interface AuthorizationService {
 
-    /** 指定用户是否超级管理员（按 AccountRole/SUPER_ADMIN 判定，不依赖 id） */
+    /** 指定用户是否超级管理员（按权限组授予 user:grant:admin 判定，不依赖 id） */
     boolean isSuperAdmin(User user);
 
     /** 按用户 ID 判断超级管理员；当前登录人优先使用登录态，避免额外查询 */
     boolean isSuperAdmin(Integer userId);
 
-    /** 是否全局管理员（ADMIN 或 SUPER_ADMIN）；全局管理员不受板块范围限制 */
+    /** 是否全局管理员（主权限组数据范围为全局且拥有管理端权限）；全局管理员不受板块范围限制 */
     boolean isGlobalAdmin(User user);
 
-    /** 是否 MODERATOR 账号角色 */
+    /** 是否版主（主权限组数据范围为按版主任职） */
     boolean isModerator(User user);
 
     /** 用户的有效板块 ID（status=1）；无任职返回空列表 */

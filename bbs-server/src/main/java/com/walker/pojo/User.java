@@ -93,7 +93,7 @@ public class User implements Serializable,UserDetails {
     @TableField("user_type")
     private String userType;
 
-    @ApiModelProperty("主权限组ID（必须指向系统角色组；为空时按 user_type 回退）")
+    @ApiModelProperty("主权限组ID（账号身份与数据范围来源）")
     @TableField("primary_group_id")
     private Integer primaryGroupId;
 

@@ -1,5 +1,7 @@
 package com.walker.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.walker.config.security.Permission;
 import com.walker.mapper.PermissionGroupItemMapper;
@@ -13,6 +15,8 @@ import com.walker.pojo.PermissionPreset;
 import com.walker.pojo.User;
 import com.walker.service.impl.PermissionGroupServiceImpl;
 import com.walker.vo.ResultBean;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +27,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -58,11 +64,20 @@ class PermissionGroupServiceTest {
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
+    @BeforeAll
+    static void initMybatisPlusCache() {
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""),
+                User.class
+        );
+    }
+
     private PermissionGroup group() {
         PermissionGroup group = new PermissionGroup();
         group.setGroupCode("content_operator");
         group.setGroupName("内容运营");
         group.setScopeType("ADMIN");
+        group.setDataScopeType("GLOBAL");
         group.setEnabled(1);
         return group;
     }
@@ -89,17 +104,22 @@ class PermissionGroupServiceTest {
     }
 
     @Test
-    @DisplayName("创建权限组：禁止授予 user:grant:admin")
-    void createGroup_forbiddenGrant() {
+    @DisplayName("创建权限组：所有权限点都可直接配置（默认内置组也是普通组）")
+    void createGroup_anyPermissionAllowed() {
         PermissionGroup group = group();
         when(permissionGroupMapper.selectCount(any())).thenReturn(0L);
+        when(permissionGroupMapper.insert(any(PermissionGroup.class))).thenAnswer(invocation -> {
+            PermissionGroup g = invocation.getArgument(0);
+            g.setId(1);
+            return 1;
+        });
 
         ResultBean result = service.createGroup(group,
                 Collections.singletonList(Permission.USER_GRANT_ADMIN.getCode()));
 
-        assertEquals(500, result.getCode());
-        assertTrue(result.getMessage().contains("不能授予"));
-        verify(permissionGroupMapper, never()).insert(any(PermissionGroup.class));
+        assertEquals(200, result.getCode());
+        verify(permissionGroupItemMapper).insert(argThat(item ->
+                Permission.USER_GRANT_ADMIN.getCode().equals(((PermissionGroupItem) item).getPermissionCode())));
     }
 
     @Test
@@ -115,7 +135,7 @@ class PermissionGroupServiceTest {
     }
 
     @Test
-    @DisplayName("替换权限点：先删后插")
+    @DisplayName("替换权限点：先删后插，全部保存为 grant")
     void replaceItems_success() {
         PermissionGroup group = group();
         group.setId(1);
@@ -126,7 +146,8 @@ class PermissionGroupServiceTest {
 
         assertEquals(200, result.getCode());
         verify(permissionGroupItemMapper).delete(any());
-        verify(permissionGroupItemMapper, times(2)).insert(any(PermissionGroupItem.class));
+        verify(permissionGroupItemMapper, times(2)).insert(argThat(item ->
+                "grant".equals(((PermissionGroupItem) item).getEffect())));
     }
 
     @Test
@@ -144,106 +165,176 @@ class PermissionGroupServiceTest {
     }
 
     @Test
-    @DisplayName("系统角色：禁止删除、禁止修改编码/baseRole、禁止手动加成员")
-    void systemGroup_immutableIdentityAndNoManualMembers() {
-        PermissionGroup system = group();
-        system.setId(10);
-        system.setBaseRole("ADMIN");
-        when(permissionGroupMapper.selectById(10)).thenReturn(system);
+    @DisplayName("默认内置组也是普通组：可删除、可改编码、可手动加成员")
+    void builtInGroup_isEditableAndDeletable() {
+        PermissionGroup builtIn = group();
+        builtIn.setId(10);
+        builtIn.setGroupCode("role_admin");
+        when(permissionGroupMapper.selectById(10)).thenReturn(builtIn);
+        when(currentUserService.getCurrentUser()).thenReturn(null);
+
+        PermissionGroup codeChange = new PermissionGroup();
+        codeChange.setGroupCode("renamed_admin");
+        ResultBean codeResult = service.updateGroup(10, codeChange, null);
+        assertEquals(200, codeResult.getCode());
+        verify(permissionGroupMapper).updateById(argThat(g ->
+                "renamed_admin".equals(((PermissionGroup) g).getGroupCode())));
+
+        when(userMapper.selectBatchIds(any())).thenReturn(Collections.singletonList(
+                new User().setId(5).setUsername("u5")));
+        when(userPermissionGroupMapper.selectCount(any())).thenReturn(0L);
+        ResultBean assigned = service.assignUsers(10, Collections.singletonList(5));
+        assertEquals(200, assigned.getCode());
+        verify(userPermissionGroupMapper).insert(any());
 
         ResultBean deleted = service.deleteGroup(10);
-        assertEquals(500, deleted.getCode());
-        assertTrue(deleted.getMessage().contains("不可删除"));
-        verify(permissionGroupMapper, never()).deleteById(any());
-
-        PermissionGroup codeChange = group();
-        codeChange.setGroupCode("hacked_code");
-        ResultBean codeResult = service.updateGroup(10, codeChange, null);
-        assertEquals(500, codeResult.getCode());
-        assertTrue(codeResult.getMessage().contains("编码不可修改"));
-
-        PermissionGroup roleChange = group();
-        roleChange.setBaseRole("SUPER_ADMIN");
-        ResultBean roleResult = service.updateGroup(10, roleChange, null);
-        assertEquals(500, roleResult.getCode());
-        assertTrue(roleResult.getMessage().contains("基线不可修改"));
-
-        ResultBean assigned = service.assignUsers(10, Collections.singletonList(5));
-        assertEquals(500, assigned.getCode());
-        assertTrue(assigned.getMessage().contains("自动应用"));
-        verify(userPermissionGroupMapper, never()).insert(any());
+        assertEquals(200, deleted.getCode());
+        verify(permissionGroupMapper).deleteById(10);
     }
 
     @Test
-    @DisplayName("系统角色：允许修改名称/描述/权限，并返回自动应用信息")
-    void systemGroup_allowsPermissionUpdateAndSummary() {
-        PermissionGroup system = group();
-        system.setId(10);
-        system.setBaseRole("ADMIN");
-        when(permissionGroupMapper.selectById(10)).thenReturn(system);
-        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.emptyList());
+    @DisplayName("删除最后一个超管组 → 拒绝，避免无人能管理权限")
+    void deleteGroup_lastSuperGroup_blocked() {
+        PermissionGroup superGroup = group();
+        superGroup.setId(10);
+        superGroup.setGroupCode("role_super");
+        when(permissionGroupMapper.selectById(10)).thenReturn(superGroup);
+        when(permissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(superGroup));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Arrays.asList(
+                item(10, Permission.ADMIN_ACCESS),
+                item(10, Permission.PERMISSION_MANAGE),
+                item(10, Permission.USER_GRANT_ADMIN)));
+
+        ResultBean result = service.deleteGroup(10);
+
+        assertNotEquals(200, result.getCode());
+        verify(permissionGroupMapper, never()).deleteById(10);
+    }
+
+    @Test
+    @DisplayName("移除最后一个超管组的授予管理员权限 → 拒绝")
+    void replaceItems_lastSuperGroup_blocked() {
+        PermissionGroup superGroup = group();
+        superGroup.setId(10);
+        superGroup.setEnabled(1);
+        when(permissionGroupMapper.selectById(10)).thenReturn(superGroup);
+        when(permissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(superGroup));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Arrays.asList(
+                item(10, Permission.ADMIN_ACCESS),
+                item(10, Permission.PERMISSION_MANAGE),
+                item(10, Permission.USER_GRANT_ADMIN)));
+
+        ResultBean result = service.replaceItems(10, Collections.emptyList());
+
+        assertNotEquals(200, result.getCode());
+        verify(permissionGroupItemMapper, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("移除最后一个超管组的进入后台权限 → 拒绝，避免管理员无法登录")
+    void replaceItems_removeAdminAccess_blocked() {
+        PermissionGroup superGroup = group();
+        superGroup.setId(10);
+        superGroup.setEnabled(1);
+        when(permissionGroupMapper.selectById(10)).thenReturn(superGroup);
+        when(permissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(superGroup));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Arrays.asList(
+                item(10, Permission.ADMIN_ACCESS),
+                item(10, Permission.PERMISSION_MANAGE),
+                item(10, Permission.USER_GRANT_ADMIN)));
+
+        ResultBean result = service.replaceItems(10, Arrays.asList(
+                Permission.PERMISSION_MANAGE.getCode(),
+                Permission.USER_GRANT_ADMIN.getCode()));
+
+        assertNotEquals(200, result.getCode());
+        verify(permissionGroupItemMapper, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("当前登录账号主组移除关键权限 → 拒绝，避免把自己锁在系统外")
+    void updateGroup_ownPrimaryCriticalRemoval_blocked() {
+        PermissionGroup superGroup = group();
+        superGroup.setId(10);
+        superGroup.setEnabled(1);
+        when(permissionGroupMapper.selectById(10)).thenReturn(superGroup);
+        when(permissionGroupMapper.selectCount(any())).thenReturn(0L);
+        when(permissionGroupItemMapper.selectCount(any())).thenReturn(1L);
+        User current = new User();
+        current.setId(1);
+        current.setPrimaryGroupId(10);
+        when(currentUserService.getCurrentUser()).thenReturn(current);
+
+        PermissionGroup update = new PermissionGroup();
+        update.setGroupCode(superGroup.getGroupCode());
+        update.setGroupName(superGroup.getGroupName());
+        ResultBean result = service.updateGroup(10, update, Arrays.asList(
+                Permission.PERMISSION_MANAGE.getCode(),
+                Permission.USER_GRANT_ADMIN.getCode()));
+
+        assertNotEquals(200, result.getCode());
+        verify(permissionGroupMapper, never()).updateById(any());
+    }
+
+    @Test
+    @DisplayName("删除预设方案 → 存在则删除")
+    void deletePreset_success() {
+        PermissionPreset preset = new PermissionPreset();
+        preset.setId(9);
+        preset.setPresetName("内容运营预设");
+        when(permissionPresetMapper.selectById(9)).thenReturn(preset);
+
+        ResultBean result = service.deletePreset(9);
+
+        assertEquals(200, result.getCode());
+        verify(permissionPresetMapper).deleteById(9);
+    }
+
+    @Test
+    @DisplayName("权限组详情：返回权限点、主组人数与叠加人数")
+    void getGroup_returnsPermissionAndCounts() {
+        PermissionGroup builtIn = group();
+        builtIn.setId(10);
+        when(permissionGroupMapper.selectById(10)).thenReturn(builtIn);
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                item(10, Permission.CONFIG_WRITE)));
         when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
-        when(userMapper.selectCount(any())).thenReturn(2L, 1L);
+        when(userMapper.selectCount(any())).thenReturn(2L);
+        when(userPermissionGroupMapper.selectCount(any())).thenReturn(1L);
 
-        PermissionGroup rename = new PermissionGroup();
-        rename.setGroupName("管理员角色");
-        ResultBean updated = service.updateGroup(10, rename, null);
-        assertEquals(200, updated.getCode());
-        verify(permissionGroupMapper).updateById(argThat(g -> "管理员角色".equals(((PermissionGroup) g).getGroupName())));
+        Map<String, Object> detail = service.getGroup(10);
 
-        java.util.Map<String, Object> detail = service.getGroup(10);
         assertNotNull(detail);
-        assertEquals(Boolean.TRUE, detail.get("system"));
-        assertEquals(Boolean.TRUE, detail.get("autoApply"));
-        assertEquals(3L, detail.get("roleUserCount"));
+        assertEquals(2L, detail.get("primaryUserCount"));
+        assertEquals(1L, detail.get("memberCount"));
         assertEquals(3L, detail.get("userCount"));
-        assertTrue(((java.util.List<?>) detail.get("baselineCodes")).contains("config:write"));
+        assertTrue(((java.util.List<?>) detail.get("permissionCodes"))
+                .contains(Permission.CONFIG_WRITE.getCode()));
     }
 
     @Test
-    @DisplayName("系统角色：不能通过创建接口新增")
-    void createGroup_systemRoleRejected() {
-        PermissionGroup system = group();
-        system.setBaseRole("ADMIN");
-
-        ResultBean result = service.createGroup(system, Collections.emptyList());
-
-        assertEquals(500, result.getCode());
-        assertTrue(result.getMessage().contains("系统预置"));
-        verify(permissionGroupMapper, never()).insert(any(PermissionGroup.class));
-    }
-
-    @Test
-    @DisplayName("预设应用：不能把自定义组改成系统角色，也不能修改系统组基线")
-    void applyPreset_cannotChangeBaseRole() throws Exception {
+    @DisplayName("预设应用：覆盖名称/描述/权限点，不再涉及角色基线")
+    void applyPreset_appliesDirectPermissions() throws Exception {
         PermissionGroup custom = group();
         custom.setId(1);
-        custom.setBaseRole(null);
         when(permissionGroupMapper.selectById(1)).thenReturn(custom);
+        when(permissionGroupMapper.selectCount(any())).thenReturn(0L);
 
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("groupName", "运营组");
+        snapshot.put("permissionCodes", Arrays.asList(
+                Permission.ARTICLE_READ.getCode(), Permission.REPORT_REVIEW.getCode()));
         PermissionPreset preset = new PermissionPreset();
         preset.setId(100);
-        preset.setSnapshotJson(objectMapper.writeValueAsString(
-                Collections.singletonMap("baseRole", "SUPER_ADMIN")));
+        preset.setSnapshotJson(objectMapper.writeValueAsString(snapshot));
         when(permissionPresetMapper.selectById(100)).thenReturn(preset);
 
-        ResultBean toCustom = service.applyPreset(100, 1);
-        assertEquals(500, toCustom.getCode());
-        assertTrue(toCustom.getMessage().contains("不能改为系统角色"));
+        ResultBean result = service.applyPreset(100, 1);
 
-        PermissionGroup system = group();
-        system.setId(10);
-        system.setBaseRole("ADMIN");
-        when(permissionGroupMapper.selectById(10)).thenReturn(system);
-        java.util.Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
-        snapshot.put("baseRole", "SUPER_ADMIN");
-        snapshot.put("permissionCodes", Collections.emptyList());
-        preset.setSnapshotJson(objectMapper.writeValueAsString(snapshot));
-
-        ResultBean toSystem = service.applyPreset(100, 10);
-        assertEquals(500, toSystem.getCode());
-        assertTrue(toSystem.getMessage().contains("基线不可修改"));
-        verify(permissionGroupMapper, never()).updateById(any(PermissionGroup.class));
+        assertEquals(200, result.getCode());
+        verify(permissionGroupMapper).updateById(argThat(g ->
+                "运营组".equals(((PermissionGroup) g).getGroupName())));
+        verify(permissionGroupItemMapper, times(2)).insert(any(PermissionGroupItem.class));
     }
 
     @Test
@@ -252,16 +343,23 @@ class PermissionGroupServiceTest {
         User user = new User();
         user.setId(5);
         user.setUsername("tester");
-        user.setUserType("2");
         when(userMapper.selectById(5)).thenReturn(user);
         when(effectivePermissionService.getEffectiveCodes(user))
                 .thenReturn(new java.util.LinkedHashSet<>(Arrays.asList("admin:access", "article:read")));
         when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
 
-        java.util.Map<String, Object> data = service.effective(5);
+        Map<String, Object> data = service.effective(5);
 
         assertNotNull(data);
         assertEquals(5, data.get("userId"));
         assertTrue(((java.util.List<?>) data.get("permissions")).contains("article:read"));
+    }
+
+    private PermissionGroupItem item(int groupId, Permission permission) {
+        PermissionGroupItem item = new PermissionGroupItem();
+        item.setGroupId(groupId);
+        item.setPermissionCode(permission.getCode());
+        item.setEffect("grant");
+        return item;
     }
 }

@@ -5,9 +5,14 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.BoardModeratorMapper;
 import com.walker.mapper.ModeratorRewardCancelMapper;
+import com.walker.mapper.PermissionGroupItemMapper;
+import com.walker.mapper.PermissionGroupMapper;
+import com.walker.config.security.Permission;
 import com.walker.pojo.ArticleLabel;
 import com.walker.pojo.BoardModerator;
 import com.walker.pojo.ModeratorRewardCancel;
+import com.walker.pojo.PermissionGroup;
+import com.walker.pojo.PermissionGroupItem;
 import com.walker.pojo.PointsLog;
 import com.walker.pojo.User;
 import com.walker.service.ArticleLabelService;
@@ -58,6 +63,12 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
 
     @Autowired
     private ArticleLabelService articleLabelService;
+
+    @Autowired
+    private PermissionGroupMapper permissionGroupMapper;
+
+    @Autowired
+    private PermissionGroupItemMapper permissionGroupItemMapper;
 
     @Override
     @Transactional
@@ -152,18 +163,23 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
             byUser.computeIfAbsent(m.getUserId(), k -> new ArrayList<>()).add(m);
         }
 
-        // 无有效板块的 MODERATOR 也要出现在列表里，便于重新分配板块（D5）
-        List<User> moderatorUsers = userService.list(new LambdaQueryWrapper<User>()
-                .eq(User::getUserType, "4")
-                .eq(User::getIsDelete, 0));
-        for (User u : moderatorUsers) {
-            byUser.computeIfAbsent(u.getId(), k -> new ArrayList<>());
+        // 无有效板块的版主也要出现在列表里，便于重新分配板块（D5）
+        Integer moderatorGroupId = userService.resolveModeratorGroupId();
+        if (moderatorGroupId != null) {
+            List<User> moderatorUsers = userService.list(new LambdaQueryWrapper<User>()
+                    .eq(User::getPrimaryGroupId, moderatorGroupId)
+                    .eq(User::getIsDelete, 0));
+            for (User u : moderatorUsers) {
+                byUser.computeIfAbsent(u.getId(), k -> new ArrayList<>());
+            }
         }
 
         List<Integer> userIds = new ArrayList<>(byUser.keySet());
         Map<Integer, User> userMap = new HashMap<>();
         if (!userIds.isEmpty()) {
-            for (User u : userService.listByIds(userIds)) {
+            List<User> users = userService.listByIds(userIds);
+            userService.fillPrimaryGroupNames(users);
+            for (User u : users) {
                 userMap.put(u.getId(), u);
             }
         }
@@ -215,7 +231,9 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
             item.put("userId", id);
             item.put("username", u != null ? u.getUsername() : "");
             item.put("nickname", u != null ? u.getNickname() : "");
-            item.put("userType", u != null ? u.getUserType() : "");
+            item.put("primaryGroupId", u != null ? u.getPrimaryGroupId() : null);
+            item.put("primaryGroupName", u != null ? u.getPrimaryGroupName() : null);
+            item.put("primaryGroupCode", u != null ? u.getPrimaryGroupCode() : null);
             item.put("boardCount", rows.size());
             item.put("appointTime", latestAppointTime(rows));
 
@@ -347,7 +365,8 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
     }
 
     /**
-     * 任命/新增板块时，普通用户升级为 MODERATOR；ADMIN/SUPER_ADMIN 保持不变（D6）。
+     * 任命/新增板块时，将普通用户的主权限组切换为默认版主权限组；
+     * 已属于管理类或其他定制权限组的账号保持不变。
      */
     private void upgradeAccountToModerator(Integer userId) {
         upgradeAccountToModerator(userService.getById(userId));
@@ -357,18 +376,43 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
         if (user == null) {
             return;
         }
-        String userType = user.getUserType();
-        // 只升级普通用户（兼容历史空值）；ADMIN/SUPER/MODERATOR 保持不变
-        if (userType != null && !userType.trim().isEmpty() && !"1".equals(userType.trim())) {
+        Integer moderatorGroupId = userService.resolveModeratorGroupId();
+        if (moderatorGroupId == null) {
             return;
+        }
+        Integer currentGroupId = user.getPrimaryGroupId();
+        if (currentGroupId != null && moderatorGroupId.equals(currentGroupId)) {
+            return;
+        }
+        // 只把“无主组/普通用户组”的账号升级为版主；管理类或其他自定义组保持不变。
+        // 判断依据是主组自身是否带 admin:access，而不是写死 role_user 编码。
+        if (currentGroupId != null) {
+            PermissionGroup current = permissionGroupMapper.selectById(currentGroupId);
+            if (current != null && !isOrdinaryGroup(current)) {
+                return;
+            }
         }
         User update = new User();
         update.setId(user.getId());
-        update.setUserType("4");
-        update.setPrimaryGroupId(userService.resolvePrimaryGroupId("4"));
+        update.setPrimaryGroupId(moderatorGroupId);
         userService.updateById(update);
-        user.setUserType("4");
-        user.setPrimaryGroupId(update.getPrimaryGroupId());
+        user.setPrimaryGroupId(moderatorGroupId);
+    }
+
+    /**
+     * 普通用户组：主组自身没有 admin:access。
+     * 不依赖 role_user 编码，内置组被重命名或删除后仍能正确识别。
+     */
+    private boolean isOrdinaryGroup(PermissionGroup group) {
+        if (group == null || group.getId() == null) {
+            return true;
+        }
+        Long count = permissionGroupItemMapper.selectCount(
+                new LambdaQueryWrapper<PermissionGroupItem>()
+                        .eq(PermissionGroupItem::getGroupId, group.getId())
+                        .eq(PermissionGroupItem::getPermissionCode, Permission.ADMIN_ACCESS.getCode())
+                        .eq(PermissionGroupItem::getEffect, "grant"));
+        return count == null || count == 0;
     }
 
     @Override

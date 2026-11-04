@@ -1,23 +1,39 @@
 package com.walker.config.security;
 
 import com.walker.pojo.User;
+import com.walker.service.EffectivePermissionService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 
 /**
  * 管理端首次登录强制改密过滤器测试（C3）。
  */
+@ExtendWith(MockitoExtension.class)
 class FirstLoginPasswordFilterTest {
 
-    private final FirstLoginPasswordFilter filter = new FirstLoginPasswordFilter();
+    @InjectMocks
+    private FirstLoginPasswordFilter filter;
+
+    @Mock
+    private EffectivePermissionService effectivePermissionService;
 
     @AfterEach
     void tearDown() {
@@ -32,6 +48,11 @@ class FirstLoginPasswordFilterTest {
         user.setIsFirstLogin(firstLogin);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
+        Set<String> codes = new LinkedHashSet<>();
+        if (!"1".equals(userType)) {
+            codes.add(Permission.ADMIN_ACCESS.getCode());
+        }
+        lenient().when(effectivePermissionService.getEffectiveCodes(any(User.class))).thenReturn(codes);
     }
 
     private MockHttpServletResponse run(String path) throws Exception {

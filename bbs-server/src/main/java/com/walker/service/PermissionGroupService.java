@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 权限组（系统角色 + 临时权限组）。
+ * 权限组：账号权限的唯一来源。
  */
 public interface PermissionGroupService {
 
@@ -30,6 +30,8 @@ public interface PermissionGroupService {
     List<Map<String, Object>> listPresets();
 
     ResultBean createPreset(String presetCode, String presetName, Integer groupId);
+
+    ResultBean deletePreset(Integer presetId);
 
     ResultBean applyPreset(Integer presetId, Integer groupId);
 

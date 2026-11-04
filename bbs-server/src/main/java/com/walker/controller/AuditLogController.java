@@ -28,7 +28,7 @@ public class AuditLogController {
     private AuditLogService auditLogService;
 
     @ApiOperation(value = "分页查询审计日志")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).AUDIT_READ)")
     @GetMapping("/list")
     public ResultBean list(
             @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,

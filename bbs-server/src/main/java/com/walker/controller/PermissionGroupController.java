@@ -24,12 +24,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 权限组管理（系统角色 + 临时权限组，仅超级管理员）。
+ * 权限组管理。
  */
 @Api(tags = "PermissionGroupController")
 @RestController
 @RequestMapping("/admin/permission")
-@PreAuthorize("hasRole('SUPER_ADMIN')")
+@PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).PERMISSION_MANAGE)")
 public class PermissionGroupController {
 
     @Autowired
@@ -123,6 +123,14 @@ public class PermissionGroupController {
         return result;
     }
 
+    @ApiOperation("删除预设方案")
+    @AuditLog(module = "PERMISSION", action = "PERMISSION_PRESET_DELETE",
+            targetType = "PERMISSION_PRESET", targetId = "#id")
+    @DeleteMapping("/presets/{id}")
+    public ResultBean deletePreset(@PathVariable Integer id) {
+        return permissionGroupService.deletePreset(id);
+    }
+
     @ApiOperation("应用预设方案")
     @AuditLog(module = "PERMISSION", action = "PERMISSION_PRESET_APPLY",
             targetType = "PERMISSION_GROUP", targetId = "#groupId")
@@ -145,7 +153,6 @@ public class PermissionGroupController {
         group.setDescription(stringValue(body.get("description")));
         group.setScopeType(stringValue(body.get("scopeType")));
         group.setDataScopeType(stringValue(body.get("dataScopeType")));
-        group.setBaseRole(stringValue(body.get("baseRole")));
         group.setEnabled(intValue(body.get("enabled")));
         group.setSortOrder(intValue(body.get("sortOrder")));
         return group;

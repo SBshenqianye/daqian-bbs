@@ -1,8 +1,10 @@
 package com.walker.service.impl;
 
-import com.walker.config.security.AccountRole;
+import com.walker.config.security.Permission;
 import com.walker.pojo.User;
 import com.walker.service.CurrentUserService;
+import com.walker.service.EffectivePermissionService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -12,6 +14,9 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class CurrentUserServiceImpl implements CurrentUserService {
+
+    @Autowired
+    private EffectivePermissionService effectivePermissionService;
 
     @Override
     public User getCurrentUser() {
@@ -35,6 +40,8 @@ public class CurrentUserServiceImpl implements CurrentUserService {
     @Override
     public boolean isSuperAdmin() {
         User user = getCurrentUser();
-        return user != null && AccountRole.fromUserType(user.getUserType()) == AccountRole.SUPER_ADMIN;
+        return user != null
+                && effectivePermissionService.getEffectiveCodes(user)
+                        .contains(Permission.USER_GRANT_ADMIN.getCode());
     }
 }

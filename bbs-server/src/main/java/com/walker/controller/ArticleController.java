@@ -380,7 +380,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "删除所有的已通过审核的文章")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("@authz.isSuperAdmin(principal)")
     @AuditLog(module = "ARTICLE", action = "ARTICLE_BATCH_DELETE",
             targetType = "ARTICLE", targetId = "'ALL'", snapshot = false)
     @PostMapping("/admin/handleBatchDeleteArticlesByAlive/all")
@@ -395,7 +395,7 @@ public class ArticleController {
 
 
     @ApiOperation(value = "批量审核文章")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("@authz.isSuperAdmin(principal)")
     @AuditLog(module = "ARTICLE", action = "ARTICLE_BATCH_AUDIT",
             targetType = "ARTICLE", targetId = "'ALL'", snapshot = false)
     @PostMapping("/admin/batchAudit")

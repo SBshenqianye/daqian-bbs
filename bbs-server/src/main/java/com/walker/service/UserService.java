@@ -36,15 +36,27 @@ public interface UserService extends IService<User> {
     List<Map<String, Object>> getBoardScopes(Integer userId);
 
     /**
-     * 登录/会话响应中的主权限组信息（primaryGroupId/Name/Code）。
-     * 主组为空或不是系统角色组时，回退到 user_type 对应的系统角色组。
+     * 登录/会话响应中的主权限组信息（primaryGroupId/Name/Code/DataScope）。
+     * 主组为空或已停用时回退到默认权限组。
      */
     Map<String, Object> getPrimaryGroupInfo(User user);
 
     /**
-     * 按 user_type 找到对应的系统角色组 ID，用于保持 user_type 与主组同步。
+     * 兼容旧角色编码：映射到默认内置权限组 ID。
      */
-    Integer resolvePrimaryGroupId(String userType);
+    Integer resolvePrimaryGroupId(String roleType);
+
+    /** 默认权限组（普通用户组）ID。 */
+    Integer resolveDefaultGroupId();
+
+    /** 默认版主权限组 ID。 */
+    Integer resolveModeratorGroupId();
+
+    /** 为用户分配主权限组（账号身份）。 */
+    ResultBean assignPrimaryGroup(Integer userId, Integer groupId);
+
+    /** 用户管理可分配的主权限组选项（仅启用组）。 */
+    List<Map<String, Object>> listPrimaryGroupOptions();
 
     /**
      * 批量填充用户的主权限组名称/编码（列表展示用）。

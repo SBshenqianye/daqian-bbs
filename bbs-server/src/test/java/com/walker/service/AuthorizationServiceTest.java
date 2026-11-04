@@ -1,12 +1,11 @@
 package com.walker.service;
 
-import com.walker.config.security.AccountRole;
 import com.walker.config.security.ForbiddenException;
 import com.walker.config.security.Permission;
 import com.walker.pojo.BoardModerator;
+import com.walker.pojo.PermissionGroup;
 import com.walker.pojo.User;
 import com.walker.service.impl.AuthorizationServiceImpl;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,15 +13,18 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * 统一授权服务测试。
+ * 统一授权服务测试：身份与数据范围均来自权限组。
  */
 @ExtendWith(MockitoExtension.class)
 class AuthorizationServiceTest {
@@ -42,38 +44,52 @@ class AuthorizationServiceTest {
     @Mock
     private EffectivePermissionService effectivePermissionService;
 
-    @BeforeEach
-    void setUpPermissionBaseline() {
-        // 默认按角色基线返回；权限组用例可覆盖
-        lenient().when(effectivePermissionService.getEffectiveCodes(any(User.class)))
-                .thenAnswer(invocation -> {
-                    User u = invocation.getArgument(0);
-                    if (u == null) {
-                        return Collections.emptySet();
-                    }
-                    return new LinkedHashSet<>(Permission.codesFor(
-                            AccountRole.fromUserType(u.getUserType())));
-                });
-    }
-
-    private User user(int id, String userType) {
+    private User user(int id, Integer primaryGroupId) {
         User user = new User();
         user.setId(id);
-        user.setUserType(userType);
+        user.setPrimaryGroupId(primaryGroupId);
         return user;
     }
 
+    private PermissionGroup group(Integer id, String dataScopeType) {
+        PermissionGroup group = new PermissionGroup();
+        group.setId(id);
+        group.setGroupCode("group_" + id);
+        group.setGroupName("权限组" + id);
+        group.setDataScopeType(dataScopeType);
+        group.setEnabled(1);
+        return group;
+    }
+
+    private void grant(User user, PermissionGroup group, Permission... permissions) {
+        Set<String> codes = new LinkedHashSet<>();
+        for (Permission permission : permissions) {
+            codes.add(permission.getCode());
+        }
+        lenient().when(effectivePermissionService.getEffectiveCodes(user)).thenReturn(codes);
+        lenient().when(effectivePermissionService.getEffectiveGroups(user)).thenReturn(
+                group == null ? Collections.emptyList() : Collections.singletonList(group));
+    }
+
     @Test
-    @DisplayName("isSuperAdmin 依据 user_type，不依赖 id=1")
-    void isSuperAdmin_byUserTypeNotId() {
-        assertTrue(authorizationService.isSuperAdmin(user(99, "3")));
-        assertFalse(authorizationService.isSuperAdmin(user(1, "1")));
+    @DisplayName("isSuperAdmin 依据权限组授予的 user:grant:admin")
+    void isSuperAdmin_byPermissionNotId() {
+        User superUser = user(99, 10);
+        grant(superUser, group(10, "GLOBAL"), Permission.USER_GRANT_ADMIN);
+        assertTrue(authorizationService.isSuperAdmin(superUser));
+
+        User normal = user(1, 40);
+        grant(normal, group(40, "GLOBAL"), Permission.ADMIN_ACCESS);
+        assertFalse(authorizationService.isSuperAdmin(normal));
     }
 
     @Test
     @DisplayName("isSuperAdmin(userId) 当前登录人优先使用登录态")
     void isSuperAdmin_byUserId_usesCurrentUser() {
-        when(currentUserService.getCurrentUser()).thenReturn(user(7, "3"));
+        User current = user(7, 10);
+        grant(current, group(10, "GLOBAL"), Permission.USER_GRANT_ADMIN);
+        when(currentUserService.getCurrentUser()).thenReturn(current);
+
         assertTrue(authorizationService.isSuperAdmin(7));
         verify(userService, never()).getById(anyInt());
     }
@@ -81,47 +97,53 @@ class AuthorizationServiceTest {
     @Test
     @DisplayName("isSuperAdmin(userId) 非当前用户时查询用户表")
     void isSuperAdmin_byUserId_loadsUser() {
-        when(currentUserService.getCurrentUser()).thenReturn(user(7, "2"));
-        when(userService.getById(8)).thenReturn(user(8, "3"));
+        User current = user(7, 40);
+        User target = user(8, 10);
+        grant(current, group(40, "GLOBAL"), Permission.ADMIN_ACCESS);
+        grant(target, group(10, "GLOBAL"), Permission.USER_GRANT_ADMIN);
+        when(currentUserService.getCurrentUser()).thenReturn(current);
+        when(userService.getById(8)).thenReturn(target);
+
         assertTrue(authorizationService.isSuperAdmin(8));
     }
 
     @Test
-    @DisplayName("hasPermission: USER 拒绝，ADMIN 按矩阵，SUPER 全放行")
+    @DisplayName("hasPermission：完全由有效权限点决定")
     void hasPermission_matrix() {
-        assertFalse(authorizationService.hasPermission(user(2, "1"), Permission.ADMIN_ACCESS));
-        assertTrue(authorizationService.hasPermission(user(2, "2"), Permission.ADMIN_ACCESS));
-        assertFalse(authorizationService.hasPermission(user(2, "2"), Permission.USER_GRANT_ADMIN));
-        assertTrue(authorizationService.hasPermission(user(1, "3"), Permission.USER_GRANT_ADMIN));
+        User admin = user(2, 20);
+        grant(admin, group(20, "GLOBAL"),
+                Permission.ADMIN_ACCESS, Permission.ARTICLE_READ);
+        assertTrue(authorizationService.hasPermission(admin, Permission.ADMIN_ACCESS));
+        assertFalse(authorizationService.hasPermission(admin, Permission.USER_GRANT_ADMIN));
         assertFalse(authorizationService.hasPermission(null, Permission.ADMIN_ACCESS));
     }
 
     @Test
-    @DisplayName("hasPermission: 超管非关键权限也可被权限组收回")
-    void hasPermission_superAdmin_respectsRevokes() {
-        User superUser = user(1, "3");
-        java.util.Set<String> codes = new LinkedHashSet<>(Permission.codesFor(AccountRole.SUPER_ADMIN));
-        codes.remove(Permission.ARTICLE_DELETE.getCode());
-        when(effectivePermissionService.getEffectiveCodes(superUser)).thenReturn(codes);
+    @DisplayName("全局管理员与版主：由主权限组的数据范围决定")
+    void globalAdminAndModerator_byDataScope() {
+        User admin = user(2, 20);
+        grant(admin, group(20, "GLOBAL"), Permission.ADMIN_ACCESS);
+        assertTrue(authorizationService.isGlobalAdmin(admin));
+        assertFalse(authorizationService.isModerator(admin));
 
-        assertFalse(authorizationService.hasPermission(superUser, Permission.ARTICLE_DELETE));
-        assertTrue(authorizationService.hasPermission(superUser, Permission.PERMISSION_MANAGE));
+        User moderator = user(6, 30);
+        grant(moderator, group(30, "BOARD_MODERATOR"), Permission.ADMIN_ACCESS);
+        assertFalse(authorizationService.isGlobalAdmin(moderator));
+        assertTrue(authorizationService.isModerator(moderator));
     }
 
     @Test
-    @DisplayName("canModerateBoard: 全局管理员放行；MODERATOR 仅本板块")
+    @DisplayName("canModerateBoard：全局管理员放行；版主仅本板块")
     void canModerateBoard_scope() {
-        when(currentUserService.getCurrentUser()).thenReturn(user(1, "3"));
+        User superUser = user(1, 10);
+        grant(superUser, group(10, "GLOBAL"), Permission.ADMIN_ACCESS);
+        when(currentUserService.getCurrentUser()).thenReturn(superUser);
         assertTrue(authorizationService.canModerateBoard(1, 10));
+        assertTrue(authorizationService.canModerateBoard(1, null));
 
-        // Q1：ADMIN 为全局管理员，不再按板块限制
-        when(currentUserService.getCurrentUser()).thenReturn(user(5, "2"));
-        assertTrue(authorizationService.canModerateBoard(5, 10));
-        assertTrue(authorizationService.canModerateBoard(5, 20));
-        assertTrue(authorizationService.canModerateBoard(5, null));
-
-        // MODERATOR：仅本板块
-        when(currentUserService.getCurrentUser()).thenReturn(user(6, "4"));
+        User moderator = user(6, 30);
+        grant(moderator, group(30, "BOARD_MODERATOR"), Permission.ADMIN_ACCESS);
+        when(currentUserService.getCurrentUser()).thenReturn(moderator);
         when(boardModeratorService.hasActiveRole(6, 10)).thenReturn(true);
         when(boardModeratorService.hasActiveRole(6, 20)).thenReturn(false);
         assertTrue(authorizationService.canModerateBoard(6, 10));
@@ -133,8 +155,8 @@ class AuthorizationServiceTest {
     @DisplayName("按权限广播 → 返回拥有该权限点的用户 ID")
     void getUserIdsWithPermission_returnsIds() {
         when(effectivePermissionService.getUserIdsWithPermission(Permission.REPORT_REVIEW))
-                .thenReturn(java.util.Arrays.asList(2, 1));
-        assertEquals(java.util.Arrays.asList(2, 1),
+                .thenReturn(Arrays.asList(2, 1));
+        assertEquals(Arrays.asList(2, 1),
                 authorizationService.getUserIdsWithPermission(Permission.REPORT_REVIEW));
     }
 
@@ -148,54 +170,66 @@ class AuthorizationServiceTest {
     @Test
     @DisplayName("requirePermission / requireBoardModerator 无权限时抛 ForbiddenException")
     void require_denied_throwsForbidden() {
+        User normal = user(2, 40);
+        grant(normal, group(40, "GLOBAL"), Permission.ARTICLE_READ);
         assertThrows(ForbiddenException.class,
-                () -> authorizationService.requirePermission(user(2, "1"), Permission.ADMIN_ACCESS));
+                () -> authorizationService.requirePermission(normal, Permission.ADMIN_ACCESS));
 
-        when(currentUserService.getCurrentUser()).thenReturn(user(6, "4"));
+        User moderator = user(6, 30);
+        grant(moderator, group(30, "BOARD_MODERATOR"), Permission.ADMIN_ACCESS);
+        when(currentUserService.getCurrentUser()).thenReturn(moderator);
         when(boardModeratorService.list(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
-                .thenReturn(java.util.Collections.emptyList());
+                .thenReturn(Collections.emptyList());
         assertThrows(ForbiddenException.class,
                 () -> authorizationService.requireBoardModerator(6, 10));
     }
 
     @Test
-    @DisplayName("getVisibleBoardIds：全局管理员 null，MODERATOR 返回板块，无板块返回空")
-    void getVisibleBoardIds_byRole() {
-        assertNull(authorizationService.getVisibleBoardIds(user(5, "2")));
-        assertNull(authorizationService.getVisibleBoardIds(user(1, "3")));
+    @DisplayName("getVisibleBoardIds：全局管理员 null，版主返回板块，无板块返回空")
+    void getVisibleBoardIds_byDataScope() {
+        User admin = user(5, 20);
+        grant(admin, group(20, "GLOBAL"), Permission.ADMIN_ACCESS);
+        assertNull(authorizationService.getVisibleBoardIds(admin));
 
         BoardModerator row = new BoardModerator();
         row.setUserId(6);
         row.setLabelId(10);
         row.setStatus(1);
         when(boardModeratorService.list(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
-                .thenReturn(java.util.Collections.singletonList(row));
-        assertEquals(java.util.Collections.singletonList(10),
-                authorizationService.getVisibleBoardIds(user(6, "4")));
+                .thenReturn(Collections.singletonList(row));
+
+        User moderator = user(6, 30);
+        grant(moderator, group(30, "BOARD_MODERATOR"), Permission.ADMIN_ACCESS);
+        assertEquals(Collections.singletonList(10),
+                authorizationService.getVisibleBoardIds(moderator));
 
         when(boardModeratorService.list(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
-                .thenReturn(java.util.Collections.emptyList());
-        assertTrue(authorizationService.getVisibleBoardIds(user(7, "4")).isEmpty());
+                .thenReturn(Collections.emptyList());
+        assertTrue(authorizationService.getVisibleBoardIds(moderator).isEmpty());
     }
 
     @Test
     @DisplayName("getBoardScopeDenialMessage：无板块/跨板块/全局管理员的文案")
-    void boardScopeDenialMessage_byRole() {
-        assertNull(authorizationService.getBoardScopeDenialMessage(user(5, "2"), 10));
+    void boardScopeDenialMessage_byDataScope() {
+        User admin = user(5, 20);
+        grant(admin, group(20, "GLOBAL"), Permission.ADMIN_ACCESS);
+        assertNull(authorizationService.getBoardScopeDenialMessage(admin, 10));
 
+        User moderator = user(6, 30);
+        grant(moderator, group(30, "BOARD_MODERATOR"), Permission.ADMIN_ACCESS);
         when(boardModeratorService.list(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
-                .thenReturn(java.util.Collections.emptyList());
+                .thenReturn(Collections.emptyList());
         assertEquals("尚未分配板块，请联系管理员",
-                authorizationService.getBoardScopeDenialMessage(user(6, "4"), 10));
+                authorizationService.getBoardScopeDenialMessage(moderator, 10));
 
         BoardModerator row = new BoardModerator();
         row.setUserId(6);
         row.setLabelId(10);
         row.setStatus(1);
         when(boardModeratorService.list(any(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class)))
-                .thenReturn(java.util.Collections.singletonList(row));
-        assertNull(authorizationService.getBoardScopeDenialMessage(user(6, "4"), 10));
+                .thenReturn(Collections.singletonList(row));
+        assertNull(authorizationService.getBoardScopeDenialMessage(moderator, 10));
         assertEquals("无权操作该板块内容",
-                authorizationService.getBoardScopeDenialMessage(user(6, "4"), 20));
+                authorizationService.getBoardScopeDenialMessage(moderator, 20));
     }
 }

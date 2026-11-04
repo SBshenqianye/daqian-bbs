@@ -1,10 +1,10 @@
 package com.walker.service.impl;
 
-import com.walker.config.security.AccountRole;
 import com.walker.config.security.ForbiddenException;
 import com.walker.config.security.Permission;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.walker.pojo.BoardModerator;
+import com.walker.pojo.PermissionGroup;
 import com.walker.pojo.User;
 import com.walker.service.AuthorizationService;
 import com.walker.service.BoardModeratorService;
@@ -44,7 +44,8 @@ public class AuthorizationServiceImpl implements AuthorizationService {
 
     @Override
     public boolean isSuperAdmin(User user) {
-        return user != null && AccountRole.fromUserType(user.getUserType()) == AccountRole.SUPER_ADMIN;
+        // 超级管理员的身份由权限组授予：能授予/调整管理员权限即视为超管。
+        return hasPermission(user, Permission.USER_GRANT_ADMIN);
     }
 
     @Override
@@ -70,12 +71,43 @@ public class AuthorizationServiceImpl implements AuthorizationService {
 
     @Override
     public boolean isGlobalAdmin(User user) {
-        return user != null && AccountRole.fromUserType(user.getUserType()).isAdmin();
+        if (!hasPermission(user, Permission.ADMIN_ACCESS)) {
+            return false;
+        }
+        PermissionGroup identity = primaryGroup(user);
+        return identity == null || !isBoardModeratorScope(identity);
     }
 
     @Override
     public boolean isModerator(User user) {
-        return user != null && AccountRole.fromUserType(user.getUserType()).isModerator();
+        if (user == null || !hasPermission(user, Permission.ADMIN_ACCESS)) {
+            return false;
+        }
+        PermissionGroup identity = primaryGroup(user);
+        return identity != null && isBoardModeratorScope(identity);
+    }
+
+    /** 主权限组决定账号身份与数据范围；主组缺失时视为全局（但仍受权限点约束）。 */
+    private PermissionGroup primaryGroup(User user) {
+        if (user == null) {
+            return null;
+        }
+        List<PermissionGroup> groups = effectivePermissionService.getEffectiveGroups(user);
+        if (groups == null || groups.isEmpty()) {
+            return null;
+        }
+        if (user.getPrimaryGroupId() != null) {
+            for (PermissionGroup group : groups) {
+                if (user.getPrimaryGroupId().equals(group.getId())) {
+                    return group;
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean isBoardModeratorScope(PermissionGroup group) {
+        return group != null && "BOARD_MODERATOR".equalsIgnoreCase(group.getDataScopeType());
     }
 
     @Override

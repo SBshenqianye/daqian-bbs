@@ -1,8 +1,11 @@
 package com.walker.config.security;
 
 import com.walker.pojo.User;
+import com.walker.service.EffectivePermissionService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.servlet.FilterChain;
@@ -19,9 +22,13 @@ import java.io.IOException;
  *
  * <p>用户端（USER）不走这里，沿用 bbs-ui 已有的首次登录改密流程。</p>
  */
+@Component
 public class FirstLoginPasswordFilter extends OncePerRequestFilter {
 
     private static final String MESSAGE = "请先修改初始密码";
+
+    @Autowired
+    private EffectivePermissionService effectivePermissionService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -40,7 +47,8 @@ public class FirstLoginPasswordFilter extends OncePerRequestFilter {
         }
 
         User user = (User) authentication.getPrincipal();
-        if (!AccountRole.fromUserType(user.getUserType()).canAccessAdminConsole()) {
+        if (!effectivePermissionService.getEffectiveCodes(user)
+                .contains(Permission.ADMIN_ACCESS.getCode())) {
             filterChain.doFilter(request, response);
             return;
         }

@@ -57,6 +57,12 @@ class BoardModeratorServiceTest {
     @Mock
     private ArticleLabelService articleLabelService;
 
+    @Mock
+    private com.walker.mapper.PermissionGroupMapper permissionGroupMapper;
+
+    @Mock
+    private com.walker.mapper.PermissionGroupItemMapper permissionGroupItemMapper;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = boardModeratorService.getClass().getSuperclass().getDeclaredField("baseMapper");
@@ -371,12 +377,17 @@ class BoardModeratorServiceTest {
     }
 
     @Test
-    @DisplayName("任命普通用户 → 自动升级为 MODERATOR(4)")
+    @DisplayName("任命普通用户 → 主权限组切换为版主组")
     void appoint_upgradesUserToModerator() {
         User user = new User();
         user.setId(1);
-        user.setUserType("1");
+        user.setPrimaryGroupId(40);
         when(userService.getById(1)).thenReturn(user);
+        when(userService.resolveModeratorGroupId()).thenReturn(30);
+        com.walker.pojo.PermissionGroup userGroup = new com.walker.pojo.PermissionGroup();
+        userGroup.setId(40);
+        userGroup.setGroupCode("role_user");
+        when(permissionGroupMapper.selectById(40)).thenReturn(userGroup);
         when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
         when(pointsLogService.getPointsAdjustment(1)).thenReturn(300);
         when(boardModeratorMapper.insert(any(BoardModerator.class))).thenReturn(1);
@@ -385,16 +396,24 @@ class BoardModeratorServiceTest {
 
         assertEquals(200, result.getCode());
         verify(userService).updateById(argThat((User u) ->
-                Integer.valueOf(1).equals(u.getId()) && "4".equals(u.getUserType())));
+                Integer.valueOf(1).equals(u.getId())
+                        && Integer.valueOf(30).equals(u.getPrimaryGroupId())));
     }
 
     @Test
-    @DisplayName("任命 ADMIN → 不改变账号角色（D6）")
+    @DisplayName("任命管理类权限组账号 → 不改变主权限组")
     void appoint_admin_keepsAdminRole() {
         User user = new User();
         user.setId(1);
-        user.setUserType("2");
+        user.setPrimaryGroupId(20);
         when(userService.getById(1)).thenReturn(user);
+        when(userService.resolveModeratorGroupId()).thenReturn(30);
+        com.walker.pojo.PermissionGroup adminGroup = new com.walker.pojo.PermissionGroup();
+        adminGroup.setId(20);
+        adminGroup.setGroupCode("role_admin");
+        when(permissionGroupMapper.selectById(20)).thenReturn(adminGroup);
+        // 管理类组自身带 admin:access → 不升级为版主
+        when(permissionGroupItemMapper.selectCount(any())).thenReturn(1L);
         when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
         when(pointsLogService.getPointsAdjustment(1)).thenReturn(300);
         when(boardModeratorMapper.insert(any(BoardModerator.class))).thenReturn(1);
@@ -410,8 +429,13 @@ class BoardModeratorServiceTest {
     void updateBoards_addsAndKeeps() {
         User user = new User();
         user.setId(1);
-        user.setUserType("1");
+        user.setPrimaryGroupId(40);
         when(userService.getById(1)).thenReturn(user);
+        when(userService.resolveModeratorGroupId()).thenReturn(30);
+        com.walker.pojo.PermissionGroup userGroup = new com.walker.pojo.PermissionGroup();
+        userGroup.setId(40);
+        userGroup.setGroupCode("role_user");
+        when(permissionGroupMapper.selectById(40)).thenReturn(userGroup);
 
         ArticleLabel label1 = new ArticleLabel();
         label1.setLabelId(1);
@@ -433,7 +457,8 @@ class BoardModeratorServiceTest {
 
         assertEquals(200, result.getCode());
         verify(boardModeratorMapper).insert(argThat((BoardModerator m) -> m.getLabelId() == 2));
-        verify(userService).updateById(argThat((User u) -> "4".equals(u.getUserType())));
+        verify(userService).updateById(argThat((User u) ->
+                Integer.valueOf(30).equals(u.getPrimaryGroupId())));
     }
 
     @Test
@@ -441,7 +466,7 @@ class BoardModeratorServiceTest {
     void updateBoards_empty_removesAllButKeepsRole() {
         User user = new User();
         user.setId(1);
-        user.setUserType("4");
+        user.setPrimaryGroupId(30);
         when(userService.getById(1)).thenReturn(user);
 
         BoardModerator current = new BoardModerator();

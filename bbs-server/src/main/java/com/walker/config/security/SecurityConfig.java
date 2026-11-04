@@ -36,6 +36,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     private AdminAccessFilter adminAccessFilter;
 
+    @Autowired
+    private FirstLoginPasswordFilter firstLoginPasswordFilter;
+
 
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception{
@@ -100,7 +103,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         // 管理路径入口校验：JWT 之后，确保旧 token 也按当前有效权限重新判断
         http.addFilterAfter(adminAccessFilter, JwtAuthenticationTokenFilter.class);
         // 管理端首次登录强制改密：入口校验之后、业务接口之前
-        http.addFilterAfter(firstLoginPasswordFilter(), AdminAccessFilter.class);
+        http.addFilterAfter(firstLoginPasswordFilter, AdminAccessFilter.class);
         //添加自定义未授权和未登录结果返回
         http.exceptionHandling()
                 .accessDeniedHandler(restfulAccessDeniedHandler)
@@ -125,11 +128,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         return new JwtAuthenticationTokenFilter();
     }
 
-    @Bean
-    public FirstLoginPasswordFilter firstLoginPasswordFilter() {
-        return new FirstLoginPasswordFilter();
-    }
-
     /**
      * AdminAccessFilter 已加入 Spring Security 过滤链，关闭 Servlet 容器的自动注册，避免重复执行。
      */
@@ -137,6 +135,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     public FilterRegistrationBean<AdminAccessFilter> adminAccessFilterRegistration() {
         FilterRegistrationBean<AdminAccessFilter> registration =
                 new FilterRegistrationBean<>(adminAccessFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
+     * FirstLoginPasswordFilter 已加入 Spring Security 过滤链，关闭自动注册。
+     */
+    @Bean
+    public FilterRegistrationBean<FirstLoginPasswordFilter> firstLoginPasswordFilterRegistration() {
+        FilterRegistrationBean<FirstLoginPasswordFilter> registration =
+                new FilterRegistrationBean<>(firstLoginPasswordFilter);
         registration.setEnabled(false);
         return registration;
     }

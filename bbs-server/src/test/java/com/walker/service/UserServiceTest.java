@@ -8,6 +8,7 @@ import com.walker.config.security.Permission;
 import com.walker.mapper.SaOrgMapper;
 import com.walker.mapper.UserMapper;
 import com.walker.pojo.PermissionGroup;
+import com.walker.pojo.PermissionGroupItem;
 import com.walker.pojo.SaOrg;
 import com.walker.pojo.User;
 import com.walker.service.impl.SaOrgServiceImpl;
@@ -58,6 +59,9 @@ class UserServiceTest {
 
     @Mock
     private com.walker.mapper.PermissionGroupMapper permissionGroupMapper;
+
+    @Mock
+    private com.walker.mapper.PermissionGroupItemMapper permissionGroupItemMapper;
 
     @Mock
     private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
@@ -111,6 +115,18 @@ class UserServiceTest {
                     return new LinkedHashSet<>(Permission.codesFor(
                             AccountRole.fromUserType(u.getUserType())));
                 });
+
+        // 默认权限组：让未显式指定主组的用例也有可分配的“普通用户”组。
+        PermissionGroup defaultGroup = new PermissionGroup();
+        defaultGroup.setId(40);
+        defaultGroup.setGroupCode("role_user");
+        defaultGroup.setGroupName("普通用户");
+        defaultGroup.setEnabled(1);
+        defaultGroup.setDataScopeType("GLOBAL");
+        lenient().when(permissionGroupMapper.selectList(any())).thenReturn(
+                Collections.singletonList(defaultGroup));
+        lenient().when(permissionGroupMapper.selectById(anyInt())).thenReturn(defaultGroup);
+        lenient().when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.emptyList());
     }
 
     // ========== login ==========
@@ -213,7 +229,7 @@ class UserServiceTest {
         ResultBean result = userService.login("admin1", "1234@abcD", "02", request);
 
         assertEquals(500, result.getCode());
-        assertEquals("用户名或密码不正确！", result.getMessage());
+        assertEquals("该账号没有管理端访问权限，请联系管理员", result.getMessage());
     }
 
     @Test
@@ -382,23 +398,33 @@ class UserServiceTest {
     // ========== updateUserRole ==========
 
     @Test
-    @DisplayName("修改角色 → 有效角色 → 成功")
+    @DisplayName("修改主组 → 旧角色01映射到普通用户组 → 成功")
     void updateUserRole_validRole_success() {
+        User target = new User();
+        target.setId(1);
+        when(userMapper.selectById(1)).thenReturn(target);
+        when(permissionGroupMapper.selectById(40)).thenReturn(roleGroup(40, "USER", 1));
         when(userMapper.updateUserRole(1, "1")).thenReturn(1);
         ResultBean result = userService.updateUserRole(1, "01");
         assertEquals(200, result.getCode());
     }
 
     @Test
-    @DisplayName("修改角色 → 04 → 写入 user_type=4")
+    @DisplayName("修改主组 → 旧角色04映射到版主组 → 成功")
     void updateUserRole_moderator_success() {
+        User target = new User();
+        target.setId(1);
+        when(userMapper.selectById(1)).thenReturn(target);
+        when(permissionGroupMapper.selectList(any())).thenReturn(
+                Collections.singletonList(roleGroup(30, "MODERATOR", 1)));
+        when(permissionGroupMapper.selectById(30)).thenReturn(roleGroup(30, "MODERATOR", 1));
         when(userMapper.updateUserRole(1, "4")).thenReturn(1);
         ResultBean result = userService.updateUserRole(1, "04");
         assertEquals(200, result.getCode());
     }
 
     @Test
-    @DisplayName("修改角色 → 无效角色 → 返回错误")
+    @DisplayName("修改主组 → 无效角色映射 → 返回错误")
     void updateUserRole_invalidRole_returnsError() {
         ResultBean result = userService.updateUserRole(1, "99");
         assertEquals(500, result.getCode());
@@ -697,15 +723,20 @@ class UserServiceTest {
 
         ResultBean result = userService.login("testuser", "1234@abcD", "02", request);
         assertEquals(500, result.getCode());
-        assertEquals("用户名或密码不正确！", result.getMessage());
+        assertEquals("该账号没有管理端访问权限，请联系管理员", result.getMessage());
     }
 
     // ========== updateUserRole: role 02 ==========
 
     @Test
-    @DisplayName("修改角色 → 角色类型02 → 超管操作 → 映射为2，成功")
+    @DisplayName("修改主组 → 角色类型02 → 超管操作 → 映射为管理员组，成功")
     void updateUserRole_role02_succeeds() {
-        when(currentUserService.isSuperAdmin()).thenReturn(true);
+        User target = new User();
+        target.setId(1);
+        when(userMapper.selectById(1)).thenReturn(target);
+        when(permissionGroupMapper.selectList(any())).thenReturn(
+                Collections.singletonList(roleGroup(20, "ADMIN", 1)));
+        when(permissionGroupMapper.selectById(20)).thenReturn(roleGroup(20, "ADMIN", 1));
         when(userMapper.updateUserRole(1, "2")).thenReturn(1);
 
         ResultBean result = userService.updateUserRole(1, "02");
@@ -902,8 +933,12 @@ class UserServiceTest {
     // ========== updateUserRole: role 01 ==========
 
     @Test
-    @DisplayName("修改角色 → 角色类型01 → 映射为1，成功")
+    @DisplayName("修改主组 → 角色类型01 → 映射为普通用户组，成功")
     void updateUserRole_role01_succeeds() {
+        User target = new User();
+        target.setId(1);
+        when(userMapper.selectById(1)).thenReturn(target);
+        when(permissionGroupMapper.selectById(40)).thenReturn(roleGroup(40, "USER", 1));
         when(userMapper.updateUserRole(1, "1")).thenReturn(1);
 
         ResultBean result = userService.updateUserRole(1, "01");
@@ -915,28 +950,16 @@ class UserServiceTest {
     // ========== Phase 1: 角色白名单与超管授权限制 ==========
 
     @Test
-    @DisplayName("新增用户 → userType=3 → 非法角色被拒绝")
-    void adminAddUser_superAdminType_rejected() {
+    @DisplayName("新增超管组账号 → 非超管操作 → 403 拒绝")
+    void adminAddUser_superGroupByNonSuper_forbidden() {
         AdminUserAddParam param = new AdminUserAddParam();
         param.setUsername("newsuper");
         param.setPersonnelId("P200");
-        param.setUserType("3");
+        param.setPrimaryGroupId(10);
 
-        ResultBean result = userService.adminAddUser(param);
-
-        assertEquals(500, result.getCode());
-        assertEquals("非法用户角色", result.getMessage());
-        verify(userMapper, never()).insert(any(User.class));
-    }
-
-    @Test
-    @DisplayName("新增管理员 → 非超管操作 → 403 拒绝")
-    void adminAddUser_grantAdminByNonSuper_forbidden() {
-        AdminUserAddParam param = new AdminUserAddParam();
-        param.setUsername("newadmin");
-        param.setPersonnelId("P201");
-        param.setUserType("2");
-
+        when(permissionGroupMapper.selectById(10)).thenReturn(roleGroup(10, "SUPER", 1));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                permissionItem(Permission.USER_GRANT_ADMIN)));
         when(currentUserService.isSuperAdmin()).thenReturn(false);
 
         ResultBean result = userService.adminAddUser(param);
@@ -946,13 +969,35 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("新增管理员 → 超管操作 → 成功")
+    @DisplayName("新增管理员组账号 → 非超管操作 → 403 拒绝")
+    void adminAddUser_grantAdminByNonSuper_forbidden() {
+        AdminUserAddParam param = new AdminUserAddParam();
+        param.setUsername("newadmin");
+        param.setPersonnelId("P201");
+        param.setPrimaryGroupId(20);
+
+        when(permissionGroupMapper.selectById(20)).thenReturn(roleGroup(20, "ADMIN", 1));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                permissionItem(Permission.USER_READ)));
+        when(currentUserService.isSuperAdmin()).thenReturn(false);
+
+        ResultBean result = userService.adminAddUser(param);
+
+        assertEquals(403, result.getCode());
+        verify(userMapper, never()).insert(any(User.class));
+    }
+
+    @Test
+    @DisplayName("新增管理员组账号 → 超管操作 → 成功")
     void adminAddUser_grantAdminBySuper_succeeds() {
         AdminUserAddParam param = new AdminUserAddParam();
         param.setUsername("newadmin");
         param.setPersonnelId("P202");
-        param.setUserType("2");
+        param.setPrimaryGroupId(20);
 
+        when(permissionGroupMapper.selectById(20)).thenReturn(roleGroup(20, "ADMIN", 1));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                permissionItem(Permission.USER_READ)));
         when(currentUserService.isSuperAdmin()).thenReturn(true);
         when(userMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
         when(userMapper.insert(any(User.class))).thenReturn(1);
@@ -964,16 +1009,19 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("更新用户角色为管理员 → 非超管 → 403 拒绝")
+    @DisplayName("更新用户为管理员组 → 非超管 → 403 拒绝")
     void adminUpdateUserDetail_grantAdminByNonSuper_forbidden() {
         AdminUserUpdateParam param = new AdminUserUpdateParam();
         param.setId(2);
-        param.setUserType("2");
+        param.setPrimaryGroupId(20);
 
         User existing = new User();
         existing.setId(2);
-        existing.setUserType("1");
+        existing.setPrimaryGroupId(40);
         when(userMapper.selectById(2)).thenReturn(existing);
+        when(permissionGroupMapper.selectById(20)).thenReturn(roleGroup(20, "ADMIN", 1));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                permissionItem(Permission.USER_READ)));
         when(currentUserService.isSuperAdmin()).thenReturn(false);
 
         ResultBean result = userService.adminUpdateUserDetail(param);
@@ -983,7 +1031,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("非超管编辑管理员账号 → 403 拒绝")
+    @DisplayName("非超管编辑管理员组账号 → 403 拒绝")
     void adminUpdateUserDetail_editAdminByNonSuper_forbidden() {
         AdminUserUpdateParam param = new AdminUserUpdateParam();
         param.setId(2);
@@ -991,8 +1039,10 @@ class UserServiceTest {
 
         User existing = new User();
         existing.setId(2);
-        existing.setUserType("2");
+        existing.setPrimaryGroupId(20);
         when(userMapper.selectById(2)).thenReturn(existing);
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                permissionItem(Permission.USER_READ)));
         when(currentUserService.isSuperAdmin()).thenReturn(false);
 
         ResultBean result = userService.adminUpdateUserDetail(param);
@@ -1002,8 +1052,17 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("修改用户角色 → 非超管授予管理员 → 403 拒绝")
+    @DisplayName("修改用户主组 → 非超管授予管理员组 → 403 拒绝")
     void updateUserRole_grantAdminByNonSuper_forbidden() {
+        User target = new User();
+        target.setId(2);
+        target.setPrimaryGroupId(40);
+        when(userMapper.selectById(2)).thenReturn(target);
+        when(permissionGroupMapper.selectList(any())).thenReturn(
+                Collections.singletonList(roleGroup(20, "ADMIN", 1)));
+        when(permissionGroupMapper.selectById(20)).thenReturn(roleGroup(20, "ADMIN", 1));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                permissionItem(Permission.USER_READ)));
         when(currentUserService.isSuperAdmin()).thenReturn(false);
 
         ResultBean result = userService.updateUserRole(2, "02");
@@ -1013,84 +1072,124 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("更新用户角色 → 写入 userType=3 → 非法角色拒绝")
-    void adminUpdateUserDetail_superAdminType_rejected() {
+    @DisplayName("更新用户为超管组 → 非超管 → 403 拒绝")
+    void adminUpdateUserDetail_superGroupByNonSuper_forbidden() {
         AdminUserUpdateParam param = new AdminUserUpdateParam();
         param.setId(2);
-        param.setUserType("3");
+        param.setPrimaryGroupId(10);
 
         User existing = new User();
         existing.setId(2);
-        existing.setUserType("1");
+        existing.setPrimaryGroupId(40);
         when(userMapper.selectById(2)).thenReturn(existing);
+        when(permissionGroupMapper.selectById(10)).thenReturn(roleGroup(10, "SUPER", 1));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                permissionItem(Permission.USER_GRANT_ADMIN)));
+        when(currentUserService.isSuperAdmin()).thenReturn(false);
 
         ResultBean result = userService.adminUpdateUserDetail(param);
 
-        assertEquals(500, result.getCode());
-        assertEquals("非法用户角色", result.getMessage());
+        assertEquals(403, result.getCode());
         verify(userMapper, never()).updateById(any(User.class));
+    }
+
+    @Test
+    @DisplayName("仅修改主权限组 → 同一次 updateById 携带 primaryGroupId（避免空 SET 的非法 SQL）")
+    void adminUpdateUserDetail_onlyPrimaryGroup_succeeds() {
+        AdminUserUpdateParam param = new AdminUserUpdateParam();
+        param.setId(2);
+        param.setPrimaryGroupId(40);
+
+        User existing = new User();
+        existing.setId(2);
+        // 原主组为管理类，需超管操作
+        existing.setPrimaryGroupId(20);
+        when(userMapper.selectById(2)).thenReturn(existing);
+        when(permissionGroupMapper.selectById(40)).thenReturn(roleGroup(40, "USER", 1));
+        // 原主组带用户管理权限 → 属于管理类，必须触发超管校验
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                permissionItem(Permission.USER_READ)));
+        when(currentUserService.isSuperAdmin()).thenReturn(true);
+        when(userMapper.updateById(any(User.class))).thenReturn(1);
+
+        ResultBean result = userService.adminUpdateUserDetail(param);
+
+        assertEquals(200, result.getCode());
+        // 只改主组时也必须生成 SET primary_group_id；不能调用一次没有 SET 的 updateById
+        verify(userMapper, times(1)).updateById(argThat(u ->
+                Integer.valueOf(40).equals(((User) u).getPrimaryGroupId())));
+        verify(userMapper).updateUserRole(eq(2), anyString());
     }
 
     // ========== 主权限组展示与同步 ==========
 
-    private PermissionGroup roleGroup(int id, String baseRole, int enabled) {
+    private PermissionGroup roleGroup(int id, String codeSuffix, int enabled) {
         PermissionGroup group = new PermissionGroup();
         group.setId(id);
-        group.setBaseRole(baseRole);
         group.setEnabled(enabled);
-        group.setGroupName(baseRole == null ? "自定义" : baseRole);
-        group.setGroupCode(baseRole == null ? "custom" : "role_" + baseRole.toLowerCase());
+        group.setGroupName(codeSuffix);
+        group.setGroupCode("role_" + codeSuffix.toLowerCase());
+        group.setDataScopeType("MODERATOR".equalsIgnoreCase(codeSuffix) ? "BOARD_MODERATOR" : "GLOBAL");
         return group;
     }
 
+    private PermissionGroupItem permissionItem(Permission permission) {
+        PermissionGroupItem item = new PermissionGroupItem();
+        item.setPermissionCode(permission.getCode());
+        item.setEffect("grant");
+        return item;
+    }
+
     @Test
-    @DisplayName("主组信息：停用的主组按 user_type 回退到系统角色组")
+    @DisplayName("主组信息：停用的主组回退到默认普通用户组")
     void getPrimaryGroupInfo_disabledPrimary_fallsBack() {
         User user = new User();
         user.setId(5);
-        user.setUserType("2");
         user.setPrimaryGroupId(10);
 
         when(permissionGroupMapper.selectById(10)).thenReturn(roleGroup(10, "ADMIN", 0));
         when(permissionGroupMapper.selectList(any(LambdaQueryWrapper.class)))
-                .thenReturn(Collections.singletonList(roleGroup(20, "ADMIN", 1)));
+                .thenReturn(Collections.singletonList(roleGroup(40, "USER", 1)));
 
         Map<String, Object> info = userService.getPrimaryGroupInfo(user);
 
-        assertEquals(20, info.get("primaryGroupId"));
-        assertEquals("role_admin", info.get("primaryGroupCode"));
+        assertEquals(40, info.get("primaryGroupId"));
+        assertEquals("role_user", info.get("primaryGroupCode"));
     }
 
     @Test
-    @DisplayName("主组信息：自定义组不能作为主组，按 user_type 回退")
-    void getPrimaryGroupInfo_customPrimary_fallsBack() {
+    @DisplayName("主组信息：任意启用权限组都可以作为主组")
+    void getPrimaryGroupInfo_customPrimary_isUsed() {
         User user = new User();
         user.setId(5);
-        user.setUserType("4");
         user.setPrimaryGroupId(10);
 
-        PermissionGroup custom = roleGroup(10, null, 1);
+        PermissionGroup custom = roleGroup(10, "CUSTOM", 1);
         when(permissionGroupMapper.selectById(10)).thenReturn(custom);
-        when(permissionGroupMapper.selectList(any(LambdaQueryWrapper.class)))
-                .thenReturn(Collections.singletonList(roleGroup(30, "MODERATOR", 1)));
 
         Map<String, Object> info = userService.getPrimaryGroupInfo(user);
 
-        assertEquals(30, info.get("primaryGroupId"));
-        assertEquals("role_moderator", info.get("primaryGroupCode"));
+        assertEquals(10, info.get("primaryGroupId"));
+        assertEquals("role_custom", info.get("primaryGroupCode"));
     }
 
     @Test
-    @DisplayName("修改角色：主组与 user_type 同步写入（允许写 NULL 回退）")
+    @DisplayName("修改主权限组：写入 primary_group_id 并同步旧 user_type")
     void updateUserRole_syncsPrimaryGroup() {
-        when(currentUserService.isSuperAdmin()).thenReturn(true);
+        User target = new User();
+        target.setId(2);
+        target.setPrimaryGroupId(40);
+        when(userMapper.selectById(2)).thenReturn(target);
         when(userMapper.updateUserRole(2, "2")).thenReturn(1);
         when(permissionGroupMapper.selectList(any(LambdaQueryWrapper.class)))
                 .thenReturn(Collections.singletonList(roleGroup(20, "ADMIN", 1)));
+        when(permissionGroupMapper.selectById(20)).thenReturn(roleGroup(20, "ADMIN", 1));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.emptyList());
 
         ResultBean result = userService.updateUserRole(2, "02");
 
         assertEquals(200, result.getCode());
         verify(userMapper).update(isNull(), any());
+        verify(userMapper).updateUserRole(2, "2");
     }
 }

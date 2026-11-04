@@ -19,6 +19,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -43,74 +45,19 @@ class EffectivePermissionServiceTest {
     @Mock
     private UserMapper userMapper;
 
-    private User user(int id, String type) {
+    private User user(int id) {
         User user = new User();
         user.setId(id);
-        user.setUserType(type);
         return user;
     }
 
-    @Test
-    @DisplayName("角色基线 + 权限组 grant 并集")
-    void effectiveCodes_rolePlusGroup() {
-        UserPermissionGroup link = new UserPermissionGroup();
-        link.setGroupId(10);
-        when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(link));
-
-        PermissionGroup group = new PermissionGroup();
-        group.setId(10);
-        group.setEnabled(1);
-        when(permissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(group));
-
-        PermissionGroupItem item = new PermissionGroupItem();
-        item.setGroupId(10);
-        item.setPermissionCode(Permission.PERMISSION_MANAGE.getCode());
-        item.setEffect("grant");
-        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(item));
-
-        Set<String> codes = service.getEffectiveCodes(user(5, "2"));
-        assertTrue(codes.contains("admin:access"));
-        assertTrue(codes.contains("permission:manage"));
-    }
-
-    @Test
-    @DisplayName("SUPER_ADMIN 保留关键权限，其余权限可被权限组收回")
-    void superAdmin_appliesRevokesButKeepsProtected() {
-        UserPermissionGroup link = new UserPermissionGroup();
-        link.setGroupId(10);
-        when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(link));
-
-        PermissionGroup group = new PermissionGroup();
-        group.setId(10);
-        group.setEnabled(1);
-        when(permissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(group));
-
-        PermissionGroupItem revokeArticleDelete = new PermissionGroupItem();
-        revokeArticleDelete.setGroupId(10);
-        revokeArticleDelete.setPermissionCode(Permission.ARTICLE_DELETE.getCode());
-        revokeArticleDelete.setEffect("revoke");
-
-        PermissionGroupItem revokeProtected = new PermissionGroupItem();
-        revokeProtected.setGroupId(10);
-        revokeProtected.setPermissionCode(Permission.PERMISSION_MANAGE.getCode());
-        revokeProtected.setEffect("revoke");
-
-        when(permissionGroupItemMapper.selectList(any()))
-                .thenReturn(Arrays.asList(revokeArticleDelete, revokeProtected));
-
-        Set<String> codes = service.getEffectiveCodes(user(1, "3"));
-        assertFalse(codes.contains("article:delete"));
-        assertTrue(codes.contains("permission:manage"));
-        assertEquals(Permission.values().length - 1, codes.size());
-    }
-
-    private PermissionGroup systemGroup(int id, String baseRole, int enabled) {
+    private PermissionGroup group(int id, int enabled) {
         PermissionGroup group = new PermissionGroup();
         group.setId(id);
-        group.setBaseRole(baseRole);
         group.setEnabled(enabled);
-        group.setGroupCode("role_" + baseRole.toLowerCase());
-        group.setGroupName(baseRole);
+        group.setGroupCode("group_" + id);
+        group.setGroupName("权限组" + id);
+        group.setDataScopeType("GLOBAL");
         return group;
     }
 
@@ -123,55 +70,73 @@ class EffectivePermissionServiceTest {
     }
 
     @Test
-    @DisplayName("主组自动生效：无需显式绑定，角色基线以主组 baseRole 为准")
-    void primaryGroup_appliesWithoutExplicitBinding() {
-        User user = user(5, "4");
-        user.setPrimaryGroupId(30);
-        when(permissionGroupMapper.selectById(30)).thenReturn(systemGroup(30, "ADMIN", 1));
+    @DisplayName("主权限组 + 额外绑定组：权限点并集")
+    void effectiveCodes_groupUnion() {
+        User user = user(5);
+        user.setPrimaryGroupId(10);
         when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
-        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
-                item(30, Permission.CONFIG_WRITE, "grant")));
+        when(permissionGroupMapper.selectList(any()))
+                .thenReturn(Collections.singletonList(group(10, 1)));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Arrays.asList(
+                item(10, Permission.USER_READ, "grant"),
+                item(10, Permission.PERMISSION_MANAGE, "grant")));
 
         Set<String> codes = service.getEffectiveCodes(user);
 
         assertTrue(codes.contains(Permission.USER_READ.getCode()));
-        assertTrue(codes.contains(Permission.CONFIG_WRITE.getCode()));
-        assertTrue(codes.contains(Permission.FEATURED_REVIEW.getCode()), "应使用主组 ADMIN 基线而非 user_type MODERATOR");
+        assertTrue(codes.contains(Permission.PERMISSION_MANAGE.getCode()));
+        assertFalse(codes.contains(Permission.USER_DELETE.getCode()));
     }
 
     @Test
-    @DisplayName("主组为空：回退 user_type 角色基线")
-    void noPrimaryGroup_fallsBackToUserType() {
+    @DisplayName("没有权限组：没有任何权限点")
+    void noGroup_noPermissions() {
         when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
 
-        Set<String> codes = service.getEffectiveCodes(user(5, "4"));
+        Set<String> codes = service.getEffectiveCodes(user(5));
 
-        assertTrue(codes.contains(Permission.ARTICLE_READ.getCode()));
-        assertFalse(codes.contains(Permission.USER_READ.getCode()));
-        assertFalse(codes.contains(Permission.FEATURED_REVIEW.getCode()));
+        assertTrue(codes.isEmpty());
     }
 
     @Test
-    @DisplayName("主组停用：回退 user_type 角色基线")
-    void disabledPrimaryGroup_fallsBackToUserType() {
-        User user = user(5, "4");
+    @DisplayName("主权限组自动生效，无需额外绑定")
+    void primaryGroup_appliesWithoutExplicitBinding() {
+        User user = user(5);
         user.setPrimaryGroupId(30);
-        when(permissionGroupMapper.selectById(30)).thenReturn(systemGroup(30, "ADMIN", 0));
         when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
+        when(permissionGroupMapper.selectList(any()))
+                .thenReturn(Collections.singletonList(group(30, 1)));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Arrays.asList(
+                item(30, Permission.ARTICLE_READ, "grant"),
+                item(30, Permission.CONFIG_WRITE, "grant")));
 
         Set<String> codes = service.getEffectiveCodes(user);
 
-        assertFalse(codes.contains(Permission.USER_READ.getCode()));
         assertTrue(codes.contains(Permission.ARTICLE_READ.getCode()));
+        assertTrue(codes.contains(Permission.CONFIG_WRITE.getCode()));
+    }
+
+    @Test
+    @DisplayName("停用的权限组不生效")
+    void disabledGroup_ignored() {
+        User user = user(5);
+        user.setPrimaryGroupId(10);
+        when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
+        when(permissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        Set<String> codes = service.getEffectiveCodes(user);
+
+        assertTrue(codes.isEmpty());
     }
 
     @Test
     @DisplayName("收回优先：同组内 grant + revoke 同一权限时以收回为准")
     void revokeWinsOverGrant() {
-        User user = user(5, "2");
+        User user = user(5);
         user.setPrimaryGroupId(20);
-        when(permissionGroupMapper.selectById(20)).thenReturn(systemGroup(20, "ADMIN", 1));
         when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
+        when(permissionGroupMapper.selectList(any()))
+                .thenReturn(Collections.singletonList(group(20, 1)));
         when(permissionGroupItemMapper.selectList(any())).thenReturn(Arrays.asList(
                 item(20, Permission.USER_READ, "grant"),
                 item(20, Permission.USER_READ, "revoke")));
@@ -179,108 +144,58 @@ class EffectivePermissionServiceTest {
         Set<String> codes = service.getEffectiveCodes(user);
 
         assertFalse(codes.contains(Permission.USER_READ.getCode()));
-        assertTrue(codes.contains(Permission.ARTICLE_READ.getCode()));
     }
 
     @Test
-    @DisplayName("临时自定义组叠加：系统组不参与手动绑定")
-    void temporaryGroup_overlaysCustomOnly() {
-        User user = user(5, "4");
+    @DisplayName("额外权限组可叠加任何组，不存在系统角色/临时组限制")
+    void extraGroup_overlaysAnyGroup() {
+        User user = user(5);
         user.setPrimaryGroupId(30);
-        when(permissionGroupMapper.selectById(30)).thenReturn(systemGroup(30, "MODERATOR", 1));
-
         UserPermissionGroup link = new UserPermissionGroup();
         link.setGroupId(40);
         link.setUserId(5);
         when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(link));
-
-        PermissionGroup temp = new PermissionGroup();
-        temp.setId(40);
-        temp.setEnabled(1);
-        temp.setBaseRole(null);
-        PermissionGroup manualSystem = new PermissionGroup();
-        manualSystem.setId(31);
-        manualSystem.setEnabled(1);
-        manualSystem.setBaseRole("ADMIN");
-        when(permissionGroupMapper.selectList(any())).thenReturn(Arrays.asList(manualSystem, temp));
-
-        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+        when(permissionGroupMapper.selectList(any())).thenReturn(Arrays.asList(
+                group(30, 1), group(40, 1)));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Arrays.asList(
+                item(30, Permission.ARTICLE_READ, "grant"),
                 item(40, Permission.USER_READ, "grant")));
 
         Set<String> codes = service.getEffectiveCodes(user);
 
+        assertTrue(codes.contains(Permission.ARTICLE_READ.getCode()));
         assertTrue(codes.contains(Permission.USER_READ.getCode()));
-        assertFalse(codes.contains(Permission.USER_DELETE.getCode()), "手动绑定的系统组不应参与叠加");
     }
 
     @Test
-    @DisplayName("超管主组异常时仍保留 4 个关键权限")
-    void superAdmin_mismatchedPrimaryGroup_keepsProtected() {
-        User user = user(1, "3");
-        user.setPrimaryGroupId(20);
-        when(permissionGroupMapper.selectById(20)).thenReturn(systemGroup(20, "ADMIN", 1));
-        when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
+    @DisplayName("按权限广播：主组与额外组成员都会返回")
+    void userIds_primaryAndExtraGroups() {
+        User primary = user(2);
+        primary.setPrimaryGroupId(10);
+        User extra = user(3);
+        when(userMapper.selectList(any())).thenReturn(Arrays.asList(primary, extra));
+
+        when(permissionGroupMapper.selectList(any()))
+                .thenReturn(Collections.singletonList(group(10, 1)));
         when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
-                item(20, Permission.ADMIN_ACCESS, "revoke")));
+                item(10, Permission.MODERATOR_MANAGE, "grant")));
 
-        Set<String> codes = service.getEffectiveCodes(user);
-
-        for (Permission permission : Permission.values()) {
-            if (permission.isSuperAdminProtected()) {
-                assertTrue(codes.contains(permission.getCode()), "关键权限丢失: " + permission.getCode());
-            }
-        }
-    }
-
-    @Test
-    @DisplayName("禁用权限组不生效")
-    void disabledGroup_ignored() {
         UserPermissionGroup link = new UserPermissionGroup();
+        link.setUserId(3);
         link.setGroupId(10);
         when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(link));
 
-        PermissionGroup group = new PermissionGroup();
-        group.setId(10);
-        group.setEnabled(0);
-        when(permissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
+        List<Integer> ids = service.getUserIdsWithPermission(Permission.MODERATOR_MANAGE);
 
-        Set<String> codes = service.getEffectiveCodes(user(5, "2"));
-        assertFalse(codes.contains("permission:manage"));
-    }
-
-    @Test
-    @DisplayName("按权限广播：角色基线与权限组用户都会返回")
-    void userIds_roleAndGroup() {
-        when(userMapper.selectList(any())).thenReturn(Arrays.asList(user(2, "2"), user(3, "3")));
-
-        PermissionGroupItem item = new PermissionGroupItem();
-        item.setGroupId(10);
-        item.setPermissionCode(Permission.MODERATOR_MANAGE.getCode());
-        item.setEffect("grant");
-        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(item));
-
-        PermissionGroup group = new PermissionGroup();
-        group.setId(10);
-        group.setEnabled(1);
-        when(permissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(group));
-
-        UserPermissionGroup link = new UserPermissionGroup();
-        link.setUserId(99);
-        link.setGroupId(10);
-        when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(link));
-
-        java.util.List<Integer> ids = service.getUserIdsWithPermission(Permission.MODERATOR_MANAGE);
         assertTrue(ids.contains(2));
         assertTrue(ids.contains(3));
-        assertTrue(ids.contains(99));
     }
 
     @Test
-    @DisplayName("批量计算与单人一致：临时组 grant 不能覆盖主组 revoke（收回优先）")
+    @DisplayName("批量计算与单人一致：跨组 revoke 优先")
     void userIds_revokePriorityMatchesSingleUser() {
-        User user = user(5, "2");
+        User user = user(5);
         user.setPrimaryGroupId(20);
-        when(permissionGroupMapper.selectById(20)).thenReturn(systemGroup(20, "ADMIN", 1));
         when(userMapper.selectList(any())).thenReturn(Collections.singletonList(user));
 
         UserPermissionGroup link = new UserPermissionGroup();
@@ -288,37 +203,59 @@ class EffectivePermissionServiceTest {
         link.setGroupId(40);
         when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(link));
 
-        PermissionGroup temp = new PermissionGroup();
-        temp.setId(40);
-        temp.setEnabled(1);
-        when(permissionGroupMapper.selectList(any()))
-                .thenReturn(Arrays.asList(systemGroup(20, "ADMIN", 1), temp));
-
+        when(permissionGroupMapper.selectList(any())).thenReturn(Arrays.asList(
+                group(20, 1), group(40, 1)));
         when(permissionGroupItemMapper.selectList(any())).thenReturn(Arrays.asList(
                 item(20, Permission.USER_READ, "revoke"),
                 item(40, Permission.USER_READ, "grant")));
 
         Set<String> single = service.getEffectiveCodes(user);
-        java.util.List<Integer> batch = service.getUserIdsWithPermission(Permission.USER_READ);
+        List<Integer> batch = service.getUserIdsWithPermission(Permission.USER_READ);
 
         assertFalse(single.contains(Permission.USER_READ.getCode()), "单人计算未按收回优先");
         assertFalse(batch.contains(5), "批量计算与单人计算不一致");
     }
 
     @Test
-    @DisplayName("2000 个同角色用户批量广播完整返回")
+    @DisplayName("2000 个同组用户批量广播完整返回")
     void userIds_manyUsersSameProfile() {
-        java.util.List<User> users = new java.util.ArrayList<>();
+        List<User> users = new java.util.ArrayList<>();
         for (int i = 1; i <= 2000; i++) {
-            users.add(user(i, "1"));
+            User u = user(i);
+            u.setPrimaryGroupId(10);
+            users.add(u);
         }
         when(userMapper.selectList(any())).thenReturn(users);
         when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
+        when(permissionGroupMapper.selectList(any()))
+                .thenReturn(Collections.singletonList(group(10, 1)));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                item(10, Permission.POST_CREATE, "grant")));
 
-        java.util.List<Integer> ids = service.getUserIdsWithPermission(Permission.POST_CREATE);
+        List<Integer> ids = service.getUserIdsWithPermission(Permission.POST_CREATE);
 
         assertEquals(2000, ids.size());
         assertTrue(ids.contains(1));
         assertTrue(ids.contains(2000));
+    }
+
+    @Test
+    @DisplayName("getEffectiveGroups 返回启用中的主组与额外组")
+    void effectiveGroups_returnsEnabledGroups() {
+        User user = user(5);
+        user.setPrimaryGroupId(10);
+        UserPermissionGroup link = new UserPermissionGroup();
+        link.setGroupId(20);
+        when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.singletonList(link));
+        when(permissionGroupMapper.selectList(any())).thenReturn(Arrays.asList(
+                group(10, 1), group(20, 1)));
+
+        List<PermissionGroup> groups = service.getEffectiveGroups(user);
+
+        assertEquals(2, groups.size());
+        Set<Integer> ids = new LinkedHashSet<>();
+        groups.forEach(g -> ids.add(g.getId()));
+        assertTrue(ids.contains(10));
+        assertTrue(ids.contains(20));
     }
 }

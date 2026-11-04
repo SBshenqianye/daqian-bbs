@@ -1,5 +1,7 @@
 package com.walker.config;
 
+import com.walker.config.security.AccountRole;
+import com.walker.config.security.Permission;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -87,6 +89,88 @@ public class DatabaseInitializer {
         // 所有迁移均设计为幂等（PG: IF NOT EXISTS / ON CONFLICT DO NOTHING;
         // MySQL: information_schema 检查 + 捕获 Duplicate column），可安全重复执行。
         executePendingMigrations(dbType);
+        // 权限组改为“直接保存权限点”后，把旧的角色基线一次性物化成权限点行。
+        materializeLegacyRoleGroups(dbType);
+    }
+
+    /**
+     * 兼容 v042/v043 的旧数据：把 base_role 的角色基线物化为权限组自身的权限点，
+     * 然后清空 base_role。执行后权限组不再区分“系统角色/临时权限组”。
+     * 幂等：没有 base_role 的库直接跳过。
+     */
+    private void materializeLegacyRoleGroups(String dbType) {
+        try {
+            List<Map<String, Object>> groups = jdbcTemplate.queryForList(
+                    "SELECT id, base_role FROM bbs_permission_group "
+                            + "WHERE base_role IS NOT NULL AND base_role <> ''");
+            String now = LocalDateTime.now().format(FMT);
+            for (Map<String, Object> row : groups) {
+                Integer groupId = ((Number) row.get("id")).intValue();
+                String baseRole = String.valueOf(row.get("base_role")).trim().toUpperCase();
+                AccountRole role;
+                try {
+                    role = AccountRole.valueOf(baseRole);
+                } catch (IllegalArgumentException e) {
+                    log.warn("Skip unknown base_role={} for permission group {}", baseRole, groupId);
+                    continue;
+                }
+
+                Set<String> revokes = new HashSet<>();
+                List<Map<String, Object>> revokeRows = jdbcTemplate.queryForList(
+                        "SELECT permission_code FROM bbs_permission_group_item "
+                                + "WHERE group_id = ? AND effect = 'revoke'", groupId);
+                for (Map<String, Object> revoke : revokeRows) {
+                    revokes.add(String.valueOf(revoke.get("permission_code")));
+                }
+
+                for (String code : Permission.codesFor(role)) {
+                    if (revokes.contains(code)) {
+                        continue;
+                    }
+                    if ("postgresql".equals(dbType)) {
+                        jdbcTemplate.update(
+                                "INSERT INTO bbs_permission_group_item "
+                                        + "(group_id, permission_code, effect, create_time) "
+                                        + "VALUES (?, ?, 'grant', ?) "
+                                        + "ON CONFLICT (group_id, permission_code) DO NOTHING",
+                                groupId, code, now);
+                    } else {
+                        jdbcTemplate.update(
+                                "INSERT IGNORE INTO bbs_permission_group_item "
+                                        + "(group_id, permission_code, effect, create_time) "
+                                        + "VALUES (?, ?, 'grant', ?)",
+                                groupId, code, now);
+                    }
+                }
+                // 收回行已经体现在“未授予”里，清掉后可避免后续误用。
+                jdbcTemplate.update(
+                        "DELETE FROM bbs_permission_group_item "
+                                + "WHERE group_id = ? AND effect = 'revoke'", groupId);
+
+                String dataScope = role == AccountRole.MODERATOR ? "BOARD_MODERATOR" : "GLOBAL";
+                jdbcTemplate.update(
+                        "UPDATE bbs_permission_group SET base_role = NULL, data_scope_type = ? "
+                                + "WHERE id = ?", dataScope, groupId);
+                log.info("Materialized legacy role group {} ({}) into direct permissions", groupId, baseRole);
+            }
+
+            // 旧枚举名 ROLE_DEFAULT 统一改为 GLOBAL，前端只展示“全局/按版主任职”。
+            jdbcTemplate.update(
+                    "UPDATE bbs_permission_group SET data_scope_type = 'GLOBAL' "
+                            + "WHERE data_scope_type = 'ROLE_DEFAULT'");
+
+            // 没有主组的用户回填默认普通用户组。
+            List<Map<String, Object>> defaultGroups = jdbcTemplate.queryForList(
+                    "SELECT id FROM bbs_permission_group WHERE group_code = 'role_user' LIMIT 1");
+            if (!defaultGroups.isEmpty()) {
+                Integer defaultGroupId = ((Number) defaultGroups.get(0).get("id")).intValue();
+                jdbcTemplate.update(
+                        "UPDATE bbs_user SET primary_group_id = ? WHERE primary_group_id IS NULL",
+                        defaultGroupId);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to materialize legacy role groups: {}", e.getMessage());
+        }
     }
 
     // ==================== 1. 确保版本追踪表存在 ====================

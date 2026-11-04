@@ -116,6 +116,7 @@ public class UserController {
         map.put("primaryGroupId", primaryGroup.get("primaryGroupId"));
         map.put("primaryGroupName", primaryGroup.get("primaryGroupName"));
         map.put("primaryGroupCode", primaryGroup.get("primaryGroupCode"));
+        map.put("dataScopeType", primaryGroup.get("dataScopeType"));
         map.put("permissions", new ArrayList<>(effectivePermissionService.getEffectiveCodes(user)));
         map.put("boardScopes", userService.getBoardScopes(user.getId()));
         map.put("personnelId", user.getPersonnelId());
@@ -267,6 +268,13 @@ public class UserController {
         return ResultBean.success("搜索结果", result);
     }
 
+    @ApiOperation(value = "用户管理：可分配的主权限组选项")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_READ)")
+    @GetMapping("/admin/user/primaryGroupOptions")
+    public ResultBean primaryGroupOptions() {
+        return ResultBean.success("查询成功", userService.listPrimaryGroupOptions());
+    }
+
     @ApiOperation(value = "通过用户id删除用户")
     @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_DELETE)")
     @AuditLog(module = "USER", action = "USER_DELETE",
@@ -352,13 +360,20 @@ public class UserController {
      * @param userOperationParam 修改参数
      * @return ResultBean 返回结果
      */
-    @ApiOperation(value = "更改用户角色")
+    @ApiOperation(value = "更改用户主权限组")
     @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).USER_GRANT_ADMIN)")
     @AuditLog(module = "USER", action = "USER_ROLE_CHANGE",
             targetType = "USER", targetId = "#userOperationParam.userId")
     @PostMapping("/updateUserRole")
     public ResultBean updateUserRole(@RequestBody UserOperationParam userOperationParam){
-        if (userOperationParam.getUserId() != null && !StringUtils.isEmpty(userOperationParam.getRoleType())){
+        if (userOperationParam.getUserId() == null) {
+            return ResultBean.error("参数不全！");
+        }
+        if (userOperationParam.getPermissionGroupId() != null) {
+            return userService.assignPrimaryGroup(
+                    userOperationParam.getUserId(), userOperationParam.getPermissionGroupId());
+        }
+        if (!StringUtils.isEmpty(userOperationParam.getRoleType())) {
             return userService.updateUserRole(userOperationParam.getUserId(), userOperationParam.getRoleType());
         }
         return ResultBean.error("参数不全！");
