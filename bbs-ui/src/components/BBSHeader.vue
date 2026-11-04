@@ -12,27 +12,27 @@
         >
           大千智荟交流论坛
         </router-link>
-        <nav class="hidden md:flex items-center gap-6">
+        <nav class="hidden md:flex items-center gap-8">
           <router-link
             to="/forum"
-            class="font-label-md text-label-md pb-1 border-b-2 transition-colors"
+            class="nav-main-link pb-1 border-b-2 transition-colors"
             :class="isActive('/forum') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
           >
             论坛
           </router-link>
           <router-link
             to="/featured"
-            class="font-label-md text-label-md pb-1 border-b-2 transition-colors"
+            class="nav-main-link pb-1 border-b-2 transition-colors"
             :class="isActive('/featured') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
           >
-            <span class="flex items-center gap-1">
-              <span class="material-symbols-outlined text-[18px]">stars</span>
+            <span class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[20px]">stars</span>
               精华帖
             </span>
           </router-link>
           <router-link
             to="/points"
-            class="font-label-md text-label-md pb-1 border-b-2 transition-colors"
+            class="nav-main-link pb-1 border-b-2 transition-colors"
             :class="isActive('/points') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
           >
             排行榜
@@ -537,3 +537,13 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+/* 顶部主导航：比正文标签更醒目，突出“论坛 / 精华帖 / 排行榜” */
+.nav-main-link {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+</style>
