@@ -53,6 +53,9 @@
 | `tests/api/permission-group-api-smoke.js`（新增） | 11 个真实 HTTP 冒烟：登录、权限组 CRUD、预设、删除迁移、审计、`config:write`、CORS 预检 |
 | `bbs-server/src/test/e2e/permission-groups.spec.ts`（新增） | 5 个 E2E：首页权限概览、权限过滤、关键权限锁定、未保存保护、创建/预设/删除、审计弹层 |
 | `tests/dev/check-dev-port.test.js`（新增） | 3 个 Node 原生测试：端口空闲/占用/非法参数 |
+| `tests/fixtures/permission-api-users.sql`（新增） | CI/隔离库固定账号 `testadmin`、`testuser`，带非生产库安全阀 |
+| `.github/workflows/backend-tests.yml`（新增） | GitHub Actions：单测 + 端口预检查 + 隔离 MySQL API 冒烟 |
+| `bbs-server/src/test/e2e/run-e2e.ps1`（修改） | 隔离 E2E 流水线新增“权限组 API 冒烟”步骤，失败时整体退出码非零 |
 | `tests/TEST-MATRIX.md`（新增） | 本文件 |
 
 ### 修改（行为变更，非弱化断言）
@@ -83,13 +86,19 @@ mvn.cmd test "-Dtest=PermissionGroupServiceTest,EffectivePermissionServiceTest"
 
 ### 3.2 HEAD API 冒烟（隔离库）
 
-前置：`bbs_e2e_test` 从 `bbs_db` 复制；后端以 `e2e` profile 启动在 9084。
+前置：后端以 `e2e` profile 启动在 9084；数据库必须是隔离库。
 
 ```powershell
+# 本地副本库（默认）
+node tests/api/permission-group-api-smoke.js
+
+# CI 从 init-mysql.sql 初始化的库
+$env:BBS_E2E_BASE='http://127.0.0.1:9084/bbs-server'
+$env:BBS_E2E_DB='bbs_ci_test'
 node tests/api/permission-group-api-smoke.js
 ```
 
-结果：**11/11 通过**。
+结果：**11/11 通过**（`bbs_e2e_test` 与 `bbs_ci_test` 两条路径均验证过）。
 
 覆盖：`AUTH-01/02`、`GROUP-01..05`、`PRESET-01`、`AUDIT-01`、`CONFIG-01`、`CORS-01`。
 
@@ -194,3 +203,40 @@ mvn.cmd test "-Dtest=!ViolationServiceTest#cancelViolation_monthlyStillOver20_ke
 | `tests/e2e/moderator-role.spec.js`、`tests/api/moderator-api-smoke.js`、`tests/fixtures/moderator-seed.sql` 已过时 | 仍使用 `base_role` 与旧版主组模型，HEAD 无法直接运行 | 迁移到权限组模型或标记为历史资产 |
 | 审计详情长文本滚动只验证了面板高度 | 未构造超长 JSON 快照 | 可在 E2E 中通过 API 写入长 `beforeJson/afterJson` 后再验证内部滚动 |
 | 前端纯函数（`adminStore` / `permissionCatalog`）无单测 | 两个前端工程没有 Jest/Vitest 测试栈；为少量纯函数引入整套框架成本过高 | 由 E2E 覆盖真实渲染与权限过滤；后续若引入前端测试栈再补 |
+
+## 8. 流水线接入
+
+### 8.1 本地隔离流水线
+
+`bbs-server/src/test/e2e/run-e2e.ps1` 现在是一条命令跑完：
+
+1. 复制 `bbs_db` → `bbs_e2e_test`
+2. 启动 e2e 后端（9084）
+3. **运行权限组 API 冒烟（11 例）**
+4. 启动用户端/管理端前端（9081/9082）
+5. 运行 Playwright 全量（83 例）
+6. 停止服务并删除测试库
+
+最终验证结果：
+
+```text
+权限组 API 冒烟：11/11 通过
+83 passed (6.2m)
+✅ 全部测试通过
+```
+
+API 冒烟失败或 Playwright 失败都会让脚本整体退出码非零。
+
+### 8.2 GitHub Actions
+
+新增 `.github/workflows/backend-tests.yml`：
+
+- `unit` job：`mvn -B test` + `node --test tests/dev/check-dev-port.test.js`
+- `api-smoke` job：
+  - MySQL 8 service（`bbs_ci_test`）
+  - 导入 `db/init/init-mysql.sql`
+  - `mvn -B -DskipTests package` 并启动瘦 jar
+  - 导入 `tests/fixtures/permission-api-users.sql`
+  - 运行 `BBS_E2E_BASE=... BBS_E2E_DB=bbs_ci_test node tests/api/permission-group-api-smoke.js`
+
+该 workflow 的“全新库”路径已在本地用 `bbs_ci_test` 验证：init SQL + 启动迁移 + 固定账号 + API 冒烟 **11/11 通过**。

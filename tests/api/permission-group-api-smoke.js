@@ -23,7 +23,8 @@ const { execFileSync } = require('child_process');
 
 const BASE = process.env.BBS_E2E_BASE || 'http://127.0.0.1:9084/bbs-server';
 const PASSWORD = '1234@abcD';
-const TEST_DB = 'bbs_e2e_test';
+// 必须与后端 e2e profile 实际连接的库一致；CI 从 init-mysql.sql 初始化时用 bbs_ci_test。
+const TEST_DB = process.env.BBS_E2E_DB || 'bbs_e2e_test';
 const STAMP = Date.now();
 const TEMP_GROUP_CODE = `e2e_perm_${STAMP}`;
 const TEMP_GROUP_NAME = `E2E权限组${STAMP}`;

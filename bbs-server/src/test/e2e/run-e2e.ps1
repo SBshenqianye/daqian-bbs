@@ -30,9 +30,11 @@ Write-Host "  测试库: $TEST_DB | 后端端口: $Port" -ForegroundColor Cyan
 Write-Host "  前端端口: 用户=$USER_PORT 管理=$ADMIN_PORT" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
+$apiExitCode = 0
+
 # ========== 1. 复制数据库 ==========
 if (-not $SkipCopy) {
-    Write-Host "`n[1/7] 复制数据库 $PROD_DB → $TEST_DB ..." -ForegroundColor Yellow
+    Write-Host "`n[1/8] 复制数据库 $PROD_DB → $TEST_DB ..." -ForegroundColor Yellow
 
     Invoke-Expression "$MYSQL -e `"DROP DATABASE IF EXISTS $TEST_DB`""
     Write-Host "  已清理旧测试库"
@@ -51,13 +53,13 @@ if (-not $SkipCopy) {
     }
     Write-Host "  已复制 $count 张表" -ForegroundColor Green
 } else {
-    Write-Host "`n[1/7] 跳过数据库复制" -ForegroundColor Yellow
+    Write-Host "`n[1/8] 跳过数据库复制" -ForegroundColor Yellow
 }
 
 # ========== 2. 启动测试后端 ==========
 $backendJob = $null
 if (-not $KeepServer) {
-    Write-Host "`n[2/7] 启动测试后端 (端口 $Port, profile=e2e) ..." -ForegroundColor Yellow
+    Write-Host "`n[2/8] 启动测试后端 (端口 $Port, profile=e2e) ..." -ForegroundColor Yellow
 
     $backendJob = Start-Job -ScriptBlock {
         param($port, $projectRoot)
@@ -88,11 +90,28 @@ if (-not $KeepServer) {
         exit 1
     }
 } else {
-    Write-Host "`n[2/7] 跳过后端启动（服务器已在运行）" -ForegroundColor Yellow
+    Write-Host "`n[2/8] 跳过后端启动（服务器已在运行）" -ForegroundColor Yellow
 }
 
-# ========== 3. 停止已有前端进程 ==========
-Write-Host "`n[3/7] 停止已有前端进程 ..." -ForegroundColor Yellow
+# ========== 3. 权限组 API 冒烟 ==========
+Write-Host "`n[3/8] 运行权限组 API 冒烟 ..." -ForegroundColor Yellow
+try {
+    $env:BBS_E2E_BASE = "http://127.0.0.1:$Port/bbs-server"
+    $env:BBS_E2E_DB = $TEST_DB
+    node "$PROJECT_ROOT\tests\api\permission-group-api-smoke.js"
+    $apiExitCode = $LASTEXITCODE
+} finally {
+    Remove-Item Env:\BBS_E2E_BASE -ErrorAction SilentlyContinue
+    Remove-Item Env:\BBS_E2E_DB -ErrorAction SilentlyContinue
+}
+if ($apiExitCode -eq 0) {
+    Write-Host "  ✅ 权限组 API 冒烟通过" -ForegroundColor Green
+} else {
+    Write-Host "  ❌ 权限组 API 冒烟失败（exit=$apiExitCode）" -ForegroundColor Red
+}
+
+# ========== 4. 停止已有前端进程 ==========
+Write-Host "`n[4/8] 停止已有前端进程 ..." -ForegroundColor Yellow
 $nodeProcs = Get-Process -Name node -ErrorAction SilentlyContinue
 foreach ($proc in $nodeProcs) {
     try {
@@ -107,7 +126,7 @@ Start-Sleep -Seconds 2
 Write-Host "  已清理" -ForegroundColor Green
 
 # ========== 4. 启动前端（指向测试后端） ==========
-Write-Host "`n[4/7] 启动前端 (proxy → localhost:$Port) ..." -ForegroundColor Yellow
+Write-Host "`n[5/8] 启动前端 (proxy → localhost:$Port) ..." -ForegroundColor Yellow
 
 # bbs-ui: DEV_BACKEND_URL 控制 proxy 目标
 $userJob = Start-Job -ScriptBlock {
@@ -175,7 +194,7 @@ try {
 }
 
 # ========== 5. 运行 Playwright 测试 ==========
-Write-Host "`n[5/7] 运行 Playwright E2E 测试 ..." -ForegroundColor Yellow
+Write-Host "`n[6/8] 运行 Playwright E2E 测试 ..." -ForegroundColor Yellow
 
 $env:E2E_USER_PORT = "$USER_PORT"
 $env:E2E_ADMIN_PORT = "$ADMIN_PORT"
@@ -193,15 +212,20 @@ try {
     Set-Location $PROJECT_ROOT
 }
 
+$playwrightExitCode = $testExitCode
+if ($apiExitCode -ne 0) {
+    $testExitCode = 1
+}
+
 if ($testExitCode -eq 0) {
     Write-Host "`n  ✅ 全部测试通过" -ForegroundColor Green
 } else {
-    Write-Host "`n  ❌ 有测试失败 (exit code: $testExitCode)" -ForegroundColor Red
+    Write-Host "`n  ❌ 有测试失败 (api exit: $apiExitCode, playwright exit: $playwrightExitCode)" -ForegroundColor Red
 }
 
 # ========== 6. 停止前端 ==========
 if (-not $KeepFrontend) {
-    Write-Host "`n[6/7] 停止前端 ..." -ForegroundColor Yellow
+    Write-Host "`n[7/8] 停止前端 ..." -ForegroundColor Yellow
     Stop-Job $userJob -ErrorAction SilentlyContinue
     Remove-Job $userJob -ErrorAction SilentlyContinue
     Stop-Job $adminJob -ErrorAction SilentlyContinue
@@ -218,17 +242,17 @@ if (-not $KeepFrontend) {
     }
     Write-Host "  已停止" -ForegroundColor Green
 } else {
-    Write-Host "`n[6/7] 跳过前端停止（-KeepFrontend）" -ForegroundColor Yellow
+    Write-Host "`n[7/8] 跳过前端停止（-KeepFrontend）" -ForegroundColor Yellow
 }
 
 # ========== 7. 停止后端 & 清理数据库 ==========
 if (-not $KeepServer -and $backendJob) {
-    Write-Host "`n[7/7] 停止测试后端 ..." -ForegroundColor Yellow
+    Write-Host "`n[8/8] 停止测试后端 ..." -ForegroundColor Yellow
     Stop-Job $backendJob -ErrorAction SilentlyContinue
     Remove-Job $backendJob -ErrorAction SilentlyContinue
     Write-Host "  已停止"
 } else {
-    Write-Host "`n[7/7] 跳过后端停止" -ForegroundColor Yellow
+    Write-Host "`n[8/8] 跳过后端停止" -ForegroundColor Yellow
 }
 
 if (-not $KeepDb) {

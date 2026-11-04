@@ -211,7 +211,10 @@ test.describe('弹层视口约束', () => {
     const box = await panel.boundingBox();
     const viewport = page.viewportSize();
     expect(box).not.toBeNull();
-    expect(box!.height).toBeLessThanOrEqual(viewport!.height * 0.91);
+    // 真正的约束是“不超出视口”：overlay.css 允许 calc(100vh - 2rem)，
+    // 不能用一个比产品规则更窄的 90vh 硬编码阈值。
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(viewport!.height);
 
     await page.getByRole('button', { name: '关闭审计详情' }).click();
     await expect(detailTitle).toHaveCount(0);
