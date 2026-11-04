@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npm run serve",
-    "serve": "set NODE_OPTIONS=--openssl-legacy-provider&& vue-cli-service serve",
+    "serve": "node ../scripts/check-dev-port.js 9082 && set NODE_OPTIONS=--openssl-legacy-provider&& vue-cli-service serve",
     "build": "set NODE_OPTIONS=--openssl-legacy-provider&& vue-cli-service build --mode production",
     "build:dev": "set NODE_OPTIONS=--openssl-legacy-provider&& vue-cli-service build --mode localdev"
   },

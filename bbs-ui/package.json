@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "vue-cli-service serve",
+    "dev": "node ../scripts/check-dev-port.js 9081 && vue-cli-service serve",
     "build": "vue-cli-service build --mode production",
     "build:dev": "vue-cli-service build --mode localdev",
     "lint": "vue-cli-service lint"

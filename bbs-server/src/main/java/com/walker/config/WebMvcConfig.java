@@ -25,6 +25,14 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Bean
     public CorsFilter corsFilter() {
+        // 配置跨域规则生效的路径（包括/files/**和所有接口）
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", corsConfiguration());
+        return new CorsFilter(source);
+    }
+
+    /** 提取为包级方法，便于回归测试校验允许的请求方法。 */
+    CorsConfiguration corsConfiguration() {
         CorsConfiguration config = new CorsConfiguration();
         // 允许的源（内网环境可直接放行所有，也可指定前端内网IP）
         // 方式1：放行所有源（内网推荐）
@@ -34,21 +42,18 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
         // 允许携带Cookie（如需登录态访问附件则必须）
         config.setAllowCredentials(true);
-        // 允许的请求方法（GET/POST等）
+        // 允许的请求方法（GET/POST/PUT/DELETE 等；缺 DELETE 会让浏览器的删除请求被 CORS 直接拒绝）
         config.addAllowedMethod("GET");
         config.addAllowedMethod("POST");
         config.addAllowedMethod("PUT");
+        config.addAllowedMethod("DELETE");
+        config.addAllowedMethod("PATCH");
+        config.addAllowedMethod("OPTIONS");
         // 允许的请求头
         config.addAllowedHeader("*");
         // 跨域预检请求的有效期（秒），避免频繁预检
         config.setMaxAge(3600L);
-
-        // 配置跨域规则生效的路径（包括/files/**和所有接口）
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // 放行所有路径（包括/files/**）
-        source.registerCorsConfiguration("/**", config);
-
-        return new CorsFilter(source);
+        return config;
     }
 
 }
