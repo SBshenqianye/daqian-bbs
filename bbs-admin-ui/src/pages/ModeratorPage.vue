@@ -101,7 +101,7 @@
             <thead class="bg-surface-container-low">
               <tr>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">用户</th>
-                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">账号角色</th>
+                <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">权限组</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">管理板块</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">最近任命</th>
                 <th class="px-4 py-3 text-body-sm font-medium text-on-surface-variant">操作</th>
@@ -113,7 +113,7 @@
                   <UserCell :user-id="item.userId" />
                   <div class="text-[11px] text-on-surface-variant">ID: {{ item.userId }}</div>
                 </td>
-                <td class="px-4 py-3 text-body-sm">{{ roleLabel(item.userType) }}</td>
+                <td class="px-4 py-3 text-body-sm">{{ item.primaryGroupName || '未分配' }}</td>
                 <td class="px-4 py-3 text-body-sm">
                   <span v-if="!item.boards || item.boards.length === 0" class="text-on-surface-variant">未分配板块</span>
                   <span
@@ -260,14 +260,6 @@ export default {
     labelNameById(labelId) {
       const label = this.labelList.find(l => l.labelId === labelId)
       return label ? label.labelName : '标签#' + labelId
-    },
-    roleLabel(userType) {
-      const type = String(userType || '')
-      if (type === '3') return '超级管理员'
-      if (type === '2') return '管理员'
-      if (type === '4') return '版主'
-      if (type === '1') return '普通用户'
-      return '—'
     },
     openBoardDialog(item) {
       this.boardForm = {

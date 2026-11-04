@@ -53,7 +53,6 @@
 <script>
 import axios from 'axios'
 
-const TYPE_MAP = { '1': '用户', '2': '管理员', '3': '超级管理员' }
 
 export default {
   name: 'UserSelect',
@@ -87,7 +86,7 @@ export default {
   },
   methods: {
     tooltipContent(user) {
-      return `ID: ${user.id} | 用户名: ${user.username} | 昵称: ${user.nickname || '无'} | 单位: ${user.orgName || '未分配'} | 角色: ${user.primaryGroupName || TYPE_MAP[user.userType] || '用户'}`
+      return `ID: ${user.id} | 用户名: ${user.username} | 昵称: ${user.nickname || '无'} | 单位: ${user.orgName || '未分配'} | 权限组: ${user.primaryGroupName || '未分配'}`
     },
     onInput() {
       clearTimeout(this.debounceTimer)

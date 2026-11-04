@@ -5,20 +5,6 @@
  * 新增权限点/审计动作时，在这里补充中文名即可。
  */
 
-export const ROLE_LABELS = {
-  USER: '普通用户',
-  MODERATOR: '版主',
-  ADMIN: '管理员',
-  SUPER_ADMIN: '超级管理员'
-}
-
-export const USER_TYPE_LABELS = {
-  1: '普通用户',
-  2: '管理员',
-  3: '超级管理员',
-  4: '版主'
-}
-
 export const PERMISSION_LABELS = {
   'admin:access': '进入管理后台',
 
@@ -190,6 +176,7 @@ export const AUDIT_ACTION_GROUPS = [
     { value: 'PERMISSION_GROUP_ASSIGN_USERS', label: '绑定权限组用户' },
     { value: 'PERMISSION_GROUP_REMOVE_USER', label: '移除权限组用户' },
     { value: 'PERMISSION_PRESET_CREATE', label: '保存权限预设' },
+    { value: 'PERMISSION_PRESET_DELETE', label: '删除权限预设' },
     { value: 'PERMISSION_PRESET_APPLY', label: '应用权限预设' }
   ] },
   { module: 'AUTH', label: '权限拒绝', actions: [
@@ -218,18 +205,4 @@ export const AUDIT_ACTION_LABELS = actionLabelMap
 export function labelOf(map, value, fallback = '—') {
   if (value === null || value === undefined || value === '') return fallback
   return map[value] || String(value)
-}
-
-/** 系统角色组：baseRole 非空（后端同时返回 system 标记，兼容旧响应）。 */
-export function isSystemGroup(group) {
-  return !!(group && (group.system || group.baseRole))
-}
-
-export function groupKindLabel(group) {
-  return isSystemGroup(group) ? '系统角色' : '临时权限组'
-}
-
-export function roleLabelOf(code) {
-  if (code === null || code === undefined || code === '') return ''
-  return ROLE_LABELS[code] || String(code)
 }

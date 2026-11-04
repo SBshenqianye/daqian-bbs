@@ -64,7 +64,7 @@
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[100px]">用户名</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[100px]">姓名</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[130px]">手机号</th>
-                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">角色</th>
+                <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">权限组</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant">状态</th>
                 <th class="p-4 text-left font-label-md text-label-md text-on-surface-variant min-w-[170px]">注册时间</th>
               </tr>
@@ -92,8 +92,8 @@
                 <td class="p-4 font-body-md text-on-surface max-w-[160px] truncate" :title="user.nickname">{{ user.nickname }}</td>
                 <td class="p-4 font-body-md text-on-surface-variant">{{ user.phone }}</td>
                 <td class="p-4">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="roleClass(user.userType)" :title="'主权限组：' + (user.primaryGroupName || roleLabel(user.userType))">
-                    {{ user.primaryGroupName || roleLabel(user.userType) }}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-primary-fixed/60 text-on-surface" :title="'主权限组：' + (user.primaryGroupName || '未分配')">
+                    {{ user.primaryGroupName || '未分配' }}
                   </span>
                 </td>
                 <td class="p-4">
@@ -199,12 +199,11 @@
             </div>
             <div class="flex items-start gap-6">
               <div class="space-y-1">
-                <label class="text-label-md text-secondary">角色（主权限组）</label>
+                <label class="text-label-md text-secondary">主权限组</label>
                 <div class="grid grid-cols-1 grid-rows-1">
-                  <select v-model="editForm.userType" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
-                    <option value="1">普通用户</option>
-                    <option v-if="isSuperAdmin" value="2">管理员</option>
-                    <option value="4">版主</option>
+                  <select v-model="editForm.primaryGroupId" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
+                    <option :value="null">未分配</option>
+                    <option v-for="group in primaryGroupOptions" :key="group.id" :value="group.id">{{ group.groupName }}</option>
                   </select>
                   <span class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline pointer-events-none">
                     <span class="material-symbols-outlined text-[18px]">unfold_more</span>
@@ -398,12 +397,10 @@
             </div>
             <div class="flex items-center gap-6">
               <div class="space-y-1">
-                <label class="text-label-md text-secondary">角色（主权限组）</label>
+                <label class="text-label-md text-secondary">主权限组</label>
                 <div class="grid grid-cols-1 grid-rows-1">
-                  <select v-model="addForm.userType" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
-                    <option value="1">普通用户</option>
-                    <option v-if="isSuperAdmin" value="2">管理员</option>
-                    <option value="4">版主</option>
+                  <select v-model="addForm.primaryGroupId" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
+                    <option v-for="group in primaryGroupOptions" :key="group.id" :value="group.id">{{ group.groupName }}</option>
                   </select>
                   <span class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline pointer-events-none">
                     <span class="material-symbols-outlined text-[18px]">unfold_more</span>
@@ -529,7 +526,7 @@
                 <span class="font-label-md text-label-md text-on-surface">{{ hoverUser.username }}</span>
                 <span class="text-body-sm text-on-surface-variant ml-1">({{ hoverUser.nickname }})</span>
               </div>
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap" :class="roleClass(hoverUser.userType)">{{ hoverUser.primaryGroupName || roleLabel(hoverUser.userType) }}</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap bg-primary-fixed/60 text-on-surface">{{ hoverUser.primaryGroupName || '未分配权限组' }}</span>
               <span class="inline-flex items-center gap-1 text-[11px] font-medium whitespace-nowrap" :class="hoverUser.isAlive === 0 ? 'text-green-700' : 'text-error'">
                 <span class="w-1.5 h-1.5 rounded-full" :class="hoverUser.isAlive === 0 ? 'bg-green-500' : 'bg-error'"></span>
                 {{ hoverUser.isAlive === 0 ? '活跃' : '禁用' }}
@@ -567,6 +564,7 @@ export default {
       multipleSelection: [],
       pageParams: { pageIndex: 1, pageSize: 15 },
       total: 0,
+      primaryGroupOptions: [],
       orgPickerVisible: false,
       importPreviewVisible: false,
       importPreviewData: { users: [], totalCount: 0 },
@@ -582,7 +580,7 @@ export default {
         orgNo: '',
         orgName: '',
         orgPath: '',
-        userType: '1',
+        primaryGroupId: null,
         isAlive: 0,
         personnelId: '',
         idCard: '',
@@ -605,7 +603,7 @@ export default {
         orgNo: '',
         orgName: '',
         orgPath: '',
-        userType: '1',
+        primaryGroupId: null,
         isAlive: 0,
         personnelId: '',
         idCard: '',
@@ -663,6 +661,7 @@ export default {
     },
   },
   mounted() {
+    this.loadPrimaryGroupOptions()
     this.getAllUserPage()
   },
   watch: {
@@ -685,9 +684,26 @@ export default {
     document.removeEventListener('mouseup', this.stopDrag)
   },
   methods: {
+    loadPrimaryGroupOptions() {
+      this.getRequestUrl('/admin/user/primaryGroupOptions').then(resp => {
+        if (resp && resp.code === 200) {
+          this.primaryGroupOptions = resp.obj || []
+        }
+      })
+    },
+    defaultPrimaryGroupId() {
+      const preferred = this.primaryGroupOptions.find(g => g.defaultGroup)
+      if (preferred) return preferred.id
+      return this.primaryGroupOptions.length ? this.primaryGroupOptions[0].id : null
+    },
     canCheck(row) {
-      if (row.userType == 3) return false
-      if (row.userType == 2) return this.isSuperAdmin
+      // 后端按权限点标记：superGroup=授予管理员，privileged=用户/权限/审计/配置写
+      const option = this.primaryGroupOptions.find(g => String(g.id) === String(row.primaryGroupId))
+      if (option && option.superGroup) return false
+      if (option && option.privileged) return this.isSuperAdmin
+      // 兼容组已停用/已删除、选项列表里查不到的历史数据
+      if (row.primaryGroupCode === 'role_super') return false
+      if (row.primaryGroupCode === 'role_admin') return this.isSuperAdmin
       return true
     },
     canShowOperation(row) { return this.canCheck(row) },
@@ -706,20 +722,6 @@ export default {
       } else {
         this.multipleSelection = this.users.filter(u => this.canCheck(u))
       }
-    },
-    roleClass(type) {
-      if (type == 1) return 'bg-blue-50 text-blue-700'
-      if (type == 2) return 'bg-purple-50 text-purple-700'
-      if (type == 3) return 'bg-amber-50 text-amber-700'
-      if (type == 4) return 'bg-emerald-50 text-emerald-700'
-      return 'bg-surface-variant text-on-surface-variant'
-    },
-    roleLabel(type) {
-      if (type == 1) return '用户'
-      if (type == 2) return '管理员'
-      if (type == 3) return '超级管理员'
-      if (type == 4) return '版主'
-      return '-'
     },
     getAllUserPage() {
       const params = {
@@ -745,15 +747,6 @@ export default {
     handleDelete(index, userId) {
       this.$confirm('确定要删除吗？', '提示', { type: 'warning' }).then(() => {
         this.postRequest('/admin/deleteUserByUserId', { userId }).then(resp => {
-          handleResponse(resp, { onSuccess: () => this.getAllUserPage() })
-        })
-      }).catch(() => {})
-    },
-    handleUpdateUserRole(row) {
-      const roleType = row.userType == 1 ? '02' : '01'
-      const tip = row.userType == 1 ? '确定将该用户转为管理员吗？' : '确定将该用户转为普通用户吗？'
-      this.$confirm(tip, '提示', { type: 'warning' }).then(() => {
-        this.postRequest('/updateUserRole', { userId: row.id, roleType }).then(resp => {
           handleResponse(resp, { onSuccess: () => this.getAllUserPage() })
         })
       }).catch(() => {})
@@ -891,7 +884,7 @@ export default {
         orgNo: user.orgNo || '',
         orgName: user.orgName || '',
         orgPath: user.orgName || '',
-        userType: user.userType || '1',
+        primaryGroupId: user.primaryGroupId || null,
         isAlive: user.isAlive != null ? user.isAlive : 0,
         personnelId: user.personnelId || '',
         idCard: user.idCard || '',
@@ -924,7 +917,7 @@ export default {
       if (this.editForm.nickname !== this.editUser.nickname) params.nickname = this.editForm.nickname
       if (this.editForm.phone !== this.editUser.phone) params.phone = this.editForm.phone
       if (this.editForm.orgNo !== this.editUser.orgNo) params.orgNo = this.editForm.orgNo
-      if (this.editForm.userType !== this.editUser.userType) params.userType = this.editForm.userType
+      if (this.editForm.primaryGroupId !== (this.editUser.primaryGroupId || null)) params.primaryGroupId = this.editForm.primaryGroupId
       if (this.editForm.isAlive !== this.editUser.isAlive) params.isAlive = this.editForm.isAlive
       if (this.editForm.personnelId !== (this.editUser.personnelId || '')) params.personnelId = this.editForm.personnelId
       if (this.editForm.idCard !== (this.editUser.idCard || '')) params.idCard = this.editForm.idCard
@@ -974,7 +967,7 @@ export default {
         orgNo: '',
         orgName: '',
         orgPath: '',
-        userType: '1',
+        primaryGroupId: this.defaultPrimaryGroupId(),
         isAlive: 0,
         personnelId: '',
         idCard: '',
@@ -1015,7 +1008,7 @@ export default {
         nickname: this.addForm.nickname.trim(),
         phone: this.addForm.phone.trim() || null,
         orgNo: this.addForm.orgNo,
-        userType: this.addForm.userType,
+        primaryGroupId: this.addForm.primaryGroupId,
         isAlive: this.addForm.isAlive,
         personnelId: this.addForm.personnelId.trim() || null,
         idCard: this.addForm.idCard.trim() || null,

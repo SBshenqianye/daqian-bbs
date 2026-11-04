@@ -83,7 +83,7 @@ export default new Router({
                 {
                     path: '/violation',
                     component: () => import('../pages/ViolationPage.vue'),
-                    meta: { title: '违规管理', permission: 'article:review' }
+                    meta: { title: '违规管理', permission: 'violation:review' }
                 },
                 {
                     path: '/report',

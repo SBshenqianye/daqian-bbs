@@ -1,10 +1,13 @@
 <template>
   <div class="min-h-screen bg-surface flex items-center justify-center">
     <div class="text-center max-w-md px-8">
-      <div class="mb-6 relative inline-block">
-        <span class="text-[120px] font-bold text-error/20 absolute -top-6 -left-6 select-none">4</span>
-        <span class="material-symbols-outlined text-[100px] text-error mx-4 relative z-10" style="font-variation-settings: 'FILL' 1;">block</span>
-        <span class="text-[120px] font-bold text-error/20 absolute -top-6 -right-6 select-none">3</span>
+      <div class="mb-6 flex items-center justify-center gap-2 select-none">
+        <span class="text-[120px] leading-none font-bold text-error/25">4</span>
+        <span class="text-[120px] leading-none font-bold text-error">0</span>
+        <span class="text-[120px] leading-none font-bold text-error/25">3</span>
+      </div>
+      <div class="mb-4 flex justify-center">
+        <span class="material-symbols-outlined text-[56px] text-error" style="font-variation-settings: 'FILL' 1;">block</span>
       </div>
       <h1 class="font-headline-lg text-headline-lg text-on-surface mb-3">没有权限</h1>
       <p class="text-body-lg text-secondary mb-8">啊哦~ 你没有权限访问该页面哦</p>

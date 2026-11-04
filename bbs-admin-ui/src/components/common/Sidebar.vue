@@ -146,7 +146,7 @@ export default {
         { icon: 'dashboard', label: '系统首页', path: '/dashboard', permission: 'dashboard:read', category: 'business' },
         { icon: 'article', label: '帖子管理', path: '/article', permission: 'article:read', category: 'business' },
         { icon: 'emoji_events', label: '积分排名', path: '/points', permission: 'points:read', category: 'business' },
-        { icon: 'gavel', label: '违规管理', path: '/violation', permission: 'article:review', category: 'business' },
+        { icon: 'gavel', label: '违规管理', path: '/violation', permission: 'violation:review', category: 'business' },
         { icon: 'feedback', label: '举报管理', path: '/report', permission: 'report:review', category: 'business' },
         { icon: 'assignment', label: '申诉管理', path: '/appeal', permission: 'appeal:review', category: 'business' },
         { icon: 'check_circle', label: '采纳审批', path: '/approve-adopt', permission: 'adopt:review', category: 'business' },

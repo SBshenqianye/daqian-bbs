@@ -126,31 +126,30 @@ export function needsPasswordChange() {
   return flag === 1 || flag === '1'
 }
 
-/** 当前账号角色：USER / ADMIN / SUPER_ADMIN / MODERATOR（旧会话回退 userType 映射） */
+/** 兼容旧调用的身份名称：由权限点与数据范围推导，仅用于文案/分支。 */
 export function getRole() {
   if (!state.admin) return null
-  if (state.admin.role) return state.admin.role
-  const type = String(state.admin.userType || '1')
-  if (type === '3') return 'SUPER_ADMIN'
-  if (type === '2') return 'ADMIN'
-  if (type === '4') return 'MODERATOR'
+  if (isSuperAdmin()) return 'SUPER_ADMIN'
+  if (isModerator()) return 'MODERATOR'
+  if (hasPermission('admin:access')) return 'ADMIN'
   return 'USER'
 }
 
-/** 是否是超级管理员（按角色判断，不再依赖 id=1；旧会话回退 userType） */
+/** 是否是超级管理员：由权限组授予 user:grant:admin 决定。 */
 export function isSuperAdmin() {
-  return getRole() === 'SUPER_ADMIN'
+  return hasPermission('user:grant:admin')
 }
 
-/** 是否是全局管理员（ADMIN / SUPER_ADMIN） */
+/** 是否是全局管理员：能进管理后台且数据范围为全局。 */
 export function isGlobalAdmin() {
-  const role = getRole()
-  return role === 'ADMIN' || role === 'SUPER_ADMIN'
+  return hasPermission('admin:access') && !isModerator()
 }
 
-/** 是否是版主账号 */
+/** 是否是版主账号：主权限组的数据范围为“按版主任职”。 */
 export function isModerator() {
-  return getRole() === 'MODERATOR'
+  if (!state.admin) return false
+  if (state.admin.dataScopeType) return state.admin.dataScopeType === 'BOARD_MODERATOR'
+  return state.admin.role === 'MODERATOR'
 }
 
 /** 兼容旧调用名：isAdminId1 现在语义为“是否超级管理员” */
@@ -164,13 +163,13 @@ export function getPermissions() {
     return state.admin.permissions
   }
   // 兼容旧会话/旧后端：管理员按默认权限点渲染，具体操作仍由后端校验
-  return getRole() === 'ADMIN' ? ADMIN_DEFAULT_PERMISSIONS : []
+  const role = state.admin && state.admin.role
+  return role === 'ADMIN' || role === 'SUPER_ADMIN' ? ADMIN_DEFAULT_PERMISSIONS : []
 }
 
 /** 是否拥有权限点；未声明权限点的菜单/按钮默认放行 */
 export function hasPermission(permission) {
   if (!permission) return true
-  if (isSuperAdmin()) return true
   return getPermissions().indexOf(permission) !== -1
 }
 
@@ -200,6 +199,11 @@ export function isBoardModerator(labelId) {
 /** 获取管理员ID */
 export function getAdminId() {
   return state.admin ? state.admin.id : null
+}
+
+/** 获取当前账号主权限组ID */
+export function getPrimaryGroupId() {
+  return state.admin ? (state.admin.primaryGroupId == null ? null : state.admin.primaryGroupId) : null
 }
 
 /** 获取管理员用户名 */
@@ -232,6 +236,7 @@ export default {
   hasBoards,
   isBoardModerator,
   getAdminId,
+  getPrimaryGroupId,
   getUsername,
   getToken,
 }
