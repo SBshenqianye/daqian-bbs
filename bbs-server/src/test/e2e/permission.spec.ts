@@ -77,14 +77,17 @@ test.describe('权限边界', () => {
     })).code).toBe(403);
   });
 
-  test('普通管理员写配置 → 403（config:write 仅超管）', async ({ request }) => {
+  test('普通管理员可写配置（config:write 已开放给管理员）', async ({ request }) => {
     const token = await loginByApi(request, 'testadmin', '02');
     const resp = await request.post(`${API_BASE}/admin/deleteDict`, {
       headers: { Authorization: token },
       data: { id: 999999 },
     });
     const body = await resp.json();
-    expect(body.code).toBe(403);
+    // 行为变更：role_admin 现在拥有 config:write，不再返回 403；
+    // 不存在的字典由业务层返回删除失败，这里只锁定授权边界。
+    expect(body.code).not.toBe(403);
+    expect(body.message).not.toContain('权限不足');
   });
 
   test('超管访问管理接口 → 200', async ({ request }) => {
@@ -94,13 +97,15 @@ test.describe('权限边界', () => {
     expect((await postAs(request, token, '/admin/violation/list', { page: 1, size: 10 })).code).toBe(200);
   });
 
-  test('普通管理员跨板块记录违规 → 403', async ({ request }) => {
+  test('全局管理员跨板块记录违规：不再被板块范围拦截', async ({ request }) => {
     const obj = await loginByApiFull(request, 'testadmin', '02');
     const token = obj.tokenHead + obj.token;
+    // 行为变更：testadmin 的主组 role_admin 数据范围是 GLOBAL，跨板块不应返回 403。
+    // 使用无效 userId，让请求在授权通过后被业务层拒绝，避免真的写入违规记录。
     const resp = await request.post(`${API_BASE}/admin/violation/add`, {
       headers: { Authorization: token },
       data: {
-        userId: 2,
+        userId: -1,
         violationType: 'spam',
         relatedType: 'article',
         relatedId: 13,
@@ -109,19 +114,20 @@ test.describe('权限边界', () => {
       },
     });
     const body = await resp.json();
-    expect(body.code).toBe(403);
+    expect(body.code).not.toBe(403);
+    expect(body.message).not.toContain('无权操作该板块内容');
   });
 
-  test('普通管理员配置写按钮置灰', async ({ page, request }) => {
+  test('普通管理员配置写按钮可用（config:write 已开放）', async ({ page, request }) => {
     await loginAdminUi(page, request, 'testadmin');
     await page.goto(`${ADMIN_BASE}/#/dict`);
     await page.waitForTimeout(2500);
     const addBtn = page.locator('button:has-text("新增字典")');
     await expect(addBtn).toBeVisible();
-    await expect(addBtn).toBeDisabled();
+    await expect(addBtn).toBeEnabled();
     const editBtn = page.locator('button:has-text("编辑")').first();
     if (await editBtn.count() > 0) {
-      await expect(editBtn).toBeDisabled();
+      await expect(editBtn).toBeEnabled();
     }
   });
 

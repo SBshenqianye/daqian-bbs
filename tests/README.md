@@ -1,7 +1,26 @@
-# 版主角色化测试资产
+# 测试资产
 
-本目录是 `MODERATOR`（`user_type=4`）角色功能的可复现测试资产，配套报告见
+> 完整的覆盖矩阵、双版本结论和运行记录见 [`TEST-MATRIX.md`](./TEST-MATRIX.md)。
+
+## 权限组 / 权限边界测试资产（HEAD `538385d` 起）
+
+| 路径 | 说明 |
+|---|---|
+| `api/permission-group-api-smoke.js` | 11 个真实 HTTP 冒烟：channel 02 登录、权限组 CRUD、预设详情/删除、删除组迁移、`permission:manage`/`audit:read` 边界、`config:write` 变更、CORS DELETE 预检 |
+| `../bbs-server/src/test/e2e/permission-groups.spec.ts` | 管理端 E2E：首页我的权限/权限安全/快捷入口过滤、权限组关键权限锁定、未保存保护、创建/预设/删除、审计详情弹层 |
+| `dev/check-dev-port.test.js` | `scripts/check-dev-port.js` 的空闲/占用/非法参数行为（`node --test`） |
+
+运行前置与命令见 `TEST-MATRIX.md` 第 3 节。API/E2E 必须使用从 `bbs_db` 复制的
+`bbs_e2e_test`，禁止直接写 `bbs_db`。
+
+## 版主角色化测试资产（历史）
+
+本目录同时保留了 `MODERATOR`（`user_type=4`）角色功能的测试资产，配套报告见
 `docs/版主角色化-测试报告-2026-10-30.md`（该文档被 `.gitignore` 忽略，仅本地保留）。
+
+> ⚠️ 历史资产提示：`fixtures/moderator-seed.sql`、`api/moderator-api-smoke.js` 等仍使用
+> `bbs_permission_group.base_role` 和旧版主组模型；该列在权限组重构后已移除，
+> 不能在当前 HEAD 的库上直接运行。保留仅用于追溯，新的权限测试请使用上表资产。
 
 ## 目录
 

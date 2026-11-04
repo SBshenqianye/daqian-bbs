@@ -240,6 +240,49 @@ class EffectivePermissionServiceTest {
     }
 
     @Test
+    @DisplayName("主组缺失/被删除：回退到 role_user，且不会继承管理权限")
+    void missingPrimaryGroup_fallsBackToRoleUser() {
+        User user = user(5);
+        user.setPrimaryGroupId(999);
+        when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
+        PermissionGroup roleUser = group(4, 1);
+        roleUser.setGroupCode("role_user");
+        when(permissionGroupMapper.selectList(any()))
+                .thenReturn(Collections.singletonList(roleUser));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                item(4, Permission.POST_CREATE, "grant")));
+
+        Set<String> codes = service.getEffectiveCodes(user);
+
+        assertTrue(codes.contains(Permission.POST_CREATE.getCode()),
+                "主组失效时应保留普通用户的默认前台权限");
+        assertFalse(codes.contains(Permission.ADMIN_ACCESS.getCode()),
+                "回退绝不能把普通用户提升为管理员");
+    }
+
+    @Test
+    @DisplayName("批量广播：不同组组合按各自 profile 计算，不能串用缓存结果")
+    void userIds_differentProfilesAreComputedSeparately() {
+        User reader = user(1);
+        reader.setPrimaryGroupId(10);
+        User userManager = user(2);
+        userManager.setPrimaryGroupId(20);
+        when(userMapper.selectList(any())).thenReturn(Arrays.asList(reader, userManager));
+        when(userPermissionGroupMapper.selectList(any())).thenReturn(Collections.emptyList());
+        when(permissionGroupMapper.selectList(any())).thenReturn(Arrays.asList(
+                group(10, 1), group(20, 1)));
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Arrays.asList(
+                item(10, Permission.ARTICLE_READ, "grant"),
+                item(20, Permission.USER_READ, "grant")));
+
+        List<Integer> userReaders = service.getUserIdsWithPermission(Permission.USER_READ);
+        List<Integer> articleReaders = service.getUserIdsWithPermission(Permission.ARTICLE_READ);
+
+        assertEquals(Collections.singletonList(2), userReaders);
+        assertEquals(Collections.singletonList(1), articleReaders);
+    }
+
+    @Test
     @DisplayName("getEffectiveGroups 返回启用中的主组与额外组")
     void effectiveGroups_returnsEnabledGroups() {
         User user = user(5);
