@@ -100,6 +100,7 @@
 ### 新增（R7）
 - **个人中心 Tab 红点**：侧栏「我的收藏 / 我的回复 / 积分明细 / 违规记录 / 申诉记录 / 版主投诉 / 我的举报」在“上次查看之后有新内容”时显示红点；新增 `GET /user/account/badges` 返回各栏目最新动态时间，查看后按本地时间戳清除
 - **子页面全部 Tab 化**：七个栏目全部内嵌到账户设置，删除独立页面入口；旧地址 `/my-favorites`、`/my-replies`、`/my-points-log`、`/my-violations`、`/my-appeals`、`/moderator-complaint`、`/my-reports` 统一 302 到 `/userinfo?tab=...`，历史链接与通知跳转不失效
+- **账户页解耦**：概览 / 信息设置 / 密码修改拆为独立组件（`components/account/*`），账户页只保留「侧栏 + Tab 路由 + 红点」；所有 10 个 Tab 统一走 `/userinfo?tab=<key>`（含 overview/info/password），URL 格式一致
 
 ### 变更
 - **版主月度履职奖励**：15 分改为默认 400 分，读字典 `moderator_reward_points`，前端可配置
