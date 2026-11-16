@@ -29,4 +29,7 @@ public interface AccountBadgeMapper {
     @Select("SELECT MAX(create_time) FROM bbs_notification "
             + "WHERE user_id = #{userId} AND category = 'interaction' AND (is_read = 0 OR is_read IS NULL)")
     String repliesLatest(@Param("userId") Integer userId);
+
+    @Select("SELECT MAX(create_time) FROM bbs_report WHERE reporter_id = #{userId}")
+    String reportsLatest(@Param("userId") Integer userId);
 }

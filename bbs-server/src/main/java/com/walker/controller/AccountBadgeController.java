@@ -39,6 +39,7 @@ public class AccountBadgeController {
         data.put("violations", safe(() -> accountBadgeMapper.violationsLatest(userId)));
         data.put("appeals", safe(() -> accountBadgeMapper.appealsLatest(userId)));
         data.put("complaint", safe(() -> accountBadgeMapper.complaintsLatest(userId)));
+        data.put("reports", safe(() -> accountBadgeMapper.reportsLatest(userId)));
         return ResultBean.success("查询成功", data);
     }
 
