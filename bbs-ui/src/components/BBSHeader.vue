@@ -144,20 +144,6 @@
                   我的发布
                 </router-link>
                 <router-link
-                  to="/my-favorites"
-                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
-                >
-                  <span class="material-symbols-outlined text-[20px]">bookmark</span>
-                  我的收藏
-                </router-link>
-                <router-link
-                  to="/my-replies?tab=myReplies"
-                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
-                >
-                  <span class="material-symbols-outlined text-[20px]">reply</span>
-                  我回复的
-                </router-link>
-                <router-link
                   to="/my-replies?tab=repliedToMe"
                   class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
                 >
@@ -170,13 +156,6 @@
                   >
                     {{ formatBadge(unreadInteraction) }}
                   </span>
-                </router-link>
-                <router-link
-                  to="/my-points-log"
-                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
-                >
-                  <span class="material-symbols-outlined text-[20px]">receipt_long</span>
-                  积分记录
                 </router-link>
                 <router-link
                   to="/my-reports"
