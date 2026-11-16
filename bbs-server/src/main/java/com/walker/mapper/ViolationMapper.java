@@ -13,8 +13,21 @@ import java.util.Map;
 @Mapper
 public interface ViolationMapper extends BaseMapper<Violation> {
 
-    @Select("SELECT COALESCE(SUM(points_deducted), 0) FROM bbs_violation WHERE user_id = #{userId} AND create_time >= #{monthStart} AND create_time < #{monthEnd}")
+    @Select("SELECT COALESCE(SUM(points_deducted), 0) FROM bbs_violation "
+            + "WHERE user_id = #{userId} AND status = 'active' "
+            + "AND create_time >= #{monthStart} AND create_time < #{monthEnd}")
     Integer sumMonthlyDeductions(@Param("userId") Integer userId, @Param("monthStart") String monthStart, @Param("monthEnd") String monthEnd);
+
+    /**
+     * 当月累计扣分达到阈值的用户（用于部署后补发提醒）。
+     */
+    @Select("SELECT user_id AS userId, COALESCE(SUM(points_deducted), 0) AS points "
+            + "FROM bbs_violation WHERE status = 'active' "
+            + "AND create_time >= #{monthStart} AND create_time < #{monthEnd} "
+            + "GROUP BY user_id HAVING COALESCE(SUM(points_deducted), 0) >= #{threshold}")
+    List<Map<String, Object>> findUsersReachingMonthlyThreshold(@Param("monthStart") String monthStart,
+                                                                @Param("monthEnd") String monthEnd,
+                                                                @Param("threshold") Integer threshold);
 
     @Select("SELECT * FROM bbs_violation WHERE user_id = #{userId} ORDER BY create_time DESC")
     List<Violation> findByUserId(@Param("userId") Integer userId);

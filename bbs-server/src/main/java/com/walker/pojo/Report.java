@@ -63,6 +63,10 @@ public class Report implements Serializable {
     @TableField("points_awarded")
     private Integer pointsAwarded;
 
+    @ApiModelProperty("是否匿名举报(0=否,1=是)")
+    @TableField("is_anonymous")
+    private Integer isAnonymous;
+
     @ApiModelProperty("创建时间")
     @TableField("create_time")
     private String createTime;

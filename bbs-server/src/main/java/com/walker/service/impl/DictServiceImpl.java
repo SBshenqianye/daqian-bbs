@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.DictMapper;
 import com.walker.pojo.Dict;
 import com.walker.service.DictService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,8 +59,19 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
         return lambdaQuery().eq(Dict::getDictType, dictType).list();
     }
 
+    @Autowired
+    private com.walker.mapper.OperationCycleMapper operationCycleMapper;
+
     @Override
     public String getValueByKey(String key) {
+        try {
+            String cycleValue = operationCycleMapper.selectActiveCycleConfig(key);
+            if (cycleValue != null && !cycleValue.trim().isEmpty()) {
+                return cycleValue;
+            }
+        } catch (Exception ignore) {
+            // 周期表尚未迁移时回落到全局字典
+        }
         return getBaseMapper().selectValueByKey(key);
     }
 }

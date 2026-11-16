@@ -30,7 +30,8 @@ public class ReportController {
         Integer targetId = (Integer) params.get("targetId");
         String violationType = (String) params.get("violationType");
         String reason = (String) params.get("reason");
-        return reportService.submitReport(reporterId, targetType, targetId, violationType, reason);
+        Boolean isAnonymous = Boolean.TRUE.equals(params.get("isAnonymous"));
+        return reportService.submitReport(reporterId, targetType, targetId, violationType, reason, isAnonymous);
     }
 
     @ApiOperation(value = "管理员审核举报")

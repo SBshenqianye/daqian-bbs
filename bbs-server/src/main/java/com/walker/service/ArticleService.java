@@ -55,6 +55,21 @@ public interface ArticleService extends IService<Article> {
     List<Article> queryHot();
 
     /**
+     * 用户端帖子分页筛选/排序。
+     */
+    ResultBean queryArticlePage(com.walker.vo.param.ArticleListParam param);
+
+    /**
+     * 标签热榜。
+     */
+    ResultBean queryHotByLabel(com.walker.vo.param.ArticleHotParam param);
+
+    /**
+     * 我的收藏（分页，含作者信息与等级角标）。
+     */
+    ResultBean queryFavoritePage(Integer userId, Integer page, Integer size);
+
+    /**
      * 通过文章Id查询文章
      * @return
      */

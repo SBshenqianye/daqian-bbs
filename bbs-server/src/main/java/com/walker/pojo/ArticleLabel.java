@@ -50,4 +50,12 @@ public class ArticleLabel implements Serializable {
     @TableField("label_type")
     private String labelType;
 
+    @ApiModelProperty("是否允许匿名(0=否,1=是)")
+    @TableField("allow_anonymous")
+    private Integer allowAnonymous;
+
+    @ApiModelProperty("该标签下互动是否不计分(0=否,1=是)")
+    @TableField("no_points")
+    private Integer noPoints;
+
 }

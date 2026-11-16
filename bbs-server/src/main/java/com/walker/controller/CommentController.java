@@ -47,6 +47,15 @@ public class CommentController {
     @Autowired
     private PointsLogService pointsLogService;
 
+    @Autowired
+    private LevelService levelService;
+
+    @Autowired
+    private ThumbService thumbService;
+
+    @Autowired
+    private CurrentUserService currentUserService;
+
     @ApiOperation(value = "保存用户的评论(一级评论)")
     @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).COMMENT_CREATE)")
     @PutMapping("/comment/userComment")
@@ -76,6 +85,31 @@ public class CommentController {
         List<CommentReplyVO> commentReplyVOList = new ArrayList<CommentReplyVO>();
 
         if(!commentList.isEmpty()){
+
+            // 批量准备：等级角标、当前用户点赞状态（避免逐条查询）
+            java.util.Set<Integer> levelUserIds = new java.util.HashSet<>();
+            java.util.List<Integer> commentIds = new java.util.ArrayList<>();
+            java.util.List<Integer> replyIds = new java.util.ArrayList<>();
+            java.util.Map<Integer, List<Reply>> repliesByComment = new java.util.HashMap<>();
+            for (Comment c : commentList) {
+                if (c.getCommentId() != null) commentIds.add(c.getCommentId());
+                if (c.getCommentUserId() != null && !Integer.valueOf(1).equals(c.getIsAnonymous())) {
+                    levelUserIds.add(c.getCommentUserId());
+                }
+                List<Reply> rs = replyService.queryReplyByCommentId(c.getCommentId());
+                repliesByComment.put(c.getCommentId(), rs);
+                for (Reply r : rs) {
+                    if (r.getReplyId() != null) replyIds.add(r.getReplyId());
+                    if (r.getReplyUserId() != null && !Integer.valueOf(1).equals(r.getIsAnonymous())) {
+                        levelUserIds.add(r.getReplyUserId());
+                    }
+                    if (r.getReplyToUserId() != null) levelUserIds.add(r.getReplyToUserId());
+                }
+            }
+            java.util.Map<Integer, Integer> levelMap = levelService.getLevelIndexMap(levelUserIds);
+            Integer currentUserId = currentUserService.getCurrentUserId();
+            java.util.Set<Integer> likedCommentIds = thumbService.likedIds(currentUserId, ThumbService.TYPE_COMMENT, commentIds);
+            java.util.Set<Integer> likedReplyIds = thumbService.likedIds(currentUserId, ThumbService.TYPE_REPLY, replyIds);
             for(int i=0; i < commentList.size();i++){
 
                 CommentReplyVO commentReplyVO = new CommentReplyVO();
@@ -90,20 +124,25 @@ public class CommentController {
 
                 //得到回复用户的id，通过id查询用户信息
                 Integer userId = comment.getCommentUserId();
-                User user = userService.queryUserinfoById(userId);
+                boolean anonymous = Integer.valueOf(1).equals(comment.getIsAnonymous());
+                User user = anonymous ? null : userService.queryUserinfoById(userId);
 
-                commentReplyVO.setUserId(userId);
-                commentReplyVO.setPortrait(user.getPortrait());
-                commentReplyVO.setNickname(user.getNickname());
-                commentReplyVO.setOrgName(user.getOrgName());
-                commentReplyVO.setOrgNameFull(resolveFullOrgName(user.getOrgNo(), user.getOrgName()));
-                commentReplyVO.setDeptName(user.getDeptName());
-                commentReplyVO.setPoints(pointsLogService.getPointsAdjustment(userId));
+                commentReplyVO.setIsAnonymous(anonymous ? 1 : 0);
+                commentReplyVO.setUserId(anonymous ? null : userId);
+                commentReplyVO.setPortrait(anonymous || user == null ? null : user.getPortrait());
+                commentReplyVO.setNickname(anonymous ? "匿名用户" : (user == null ? "用户" : user.getNickname()));
+                commentReplyVO.setOrgName(anonymous || user == null ? null : user.getOrgName());
+                commentReplyVO.setOrgNameFull(anonymous || user == null ? null : resolveFullOrgName(user.getOrgNo(), user.getOrgName()));
+                commentReplyVO.setDeptName(anonymous || user == null ? null : user.getDeptName());
+                commentReplyVO.setPoints(anonymous || user == null ? null : pointsLogService.getPointsAdjustment(userId));
                 commentReplyVO.setAdoptStatus(comment.getAdoptStatus());
+                commentReplyVO.setLevelIndex(anonymous ? null : levelMap.get(userId));
+                commentReplyVO.setGoodNum(comment.getGoodNum() == null ? 0 : comment.getGoodNum());
+                commentReplyVO.setLiked(likedCommentIds.contains(commentId));
 
                 //通过回复的Id去获取回复内容
 
-                List<Reply> replyList = replyService.queryReplyByCommentId(commentId);
+                List<Reply> replyList = repliesByComment.getOrDefault(commentId, new ArrayList<>());
 
                 List<ReplyVO> replyVOList = new ArrayList<ReplyVO>();
 
@@ -120,23 +159,28 @@ public class CommentController {
                         replyVO.setInputShow(false);
 
                         Integer fromUserId = reply.getReplyUserId();
-                        User userVO1 = userService.queryUserinfoById(fromUserId);
+                        boolean replyAnonymous = Integer.valueOf(1).equals(reply.getIsAnonymous());
+                        User userVO1 = replyAnonymous ? null : userService.queryUserinfoById(fromUserId);
 
-                        replyVO.setReplyUserId(fromUserId);
-                        replyVO.setPortrait(userVO1.getPortrait());
-                        replyVO.setNickname(userVO1.getNickname());
-                        replyVO.setOrgName(userVO1.getOrgName());
-                        replyVO.setOrgNameFull(resolveFullOrgName(userVO1.getOrgNo(), userVO1.getOrgName()));
-                        replyVO.setDeptName(userVO1.getDeptName());
-                        replyVO.setPoints(pointsLogService.getPointsAdjustment(fromUserId));
+                        replyVO.setReplyUserId(replyAnonymous ? null : fromUserId);
+                        replyVO.setIsAnonymous(replyAnonymous ? 1 : 0);
+                        replyVO.setPortrait(replyAnonymous || userVO1 == null ? null : userVO1.getPortrait());
+                        replyVO.setNickname(replyAnonymous ? "匿名用户" : (userVO1 == null ? "用户" : userVO1.getNickname()));
+                        replyVO.setOrgName(replyAnonymous || userVO1 == null ? null : userVO1.getOrgName());
+                        replyVO.setOrgNameFull(replyAnonymous || userVO1 == null ? null : resolveFullOrgName(userVO1.getOrgNo(), userVO1.getOrgName()));
+                        replyVO.setDeptName(replyAnonymous || userVO1 == null ? null : userVO1.getDeptName());
+                        replyVO.setPoints(replyAnonymous || userVO1 == null ? null : pointsLogService.getPointsAdjustment(fromUserId));
                         replyVO.setIsAdopted(reply.getIsAdopted());
                         replyVO.setAdoptStatus(reply.getAdoptStatus());
+                        replyVO.setLevelIndex(replyAnonymous ? null : levelMap.get(fromUserId));
+                        replyVO.setGoodNum(reply.getGoodNum() == null ? 0 : reply.getGoodNum());
+                        replyVO.setLiked(likedReplyIds.contains(reply.getReplyId()));
 
                         Integer toUserId = reply.getReplyToUserId();
-                        User userVO2 = userService.queryUserinfoById(toUserId);
+                        User userVO2 = toUserId == null ? null : userService.queryUserinfoById(toUserId);
 
-                        replyVO.setReplyToUserId(userVO2.getId());
-                        replyVO.setReplyToNickname(userVO2.getNickname());
+                        replyVO.setReplyToUserId(userVO2 == null ? toUserId : userVO2.getId());
+                        replyVO.setReplyToNickname(userVO2 == null ? null : userVO2.getNickname());
 
 
                         replyVOList.add(replyVO);

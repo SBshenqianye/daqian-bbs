@@ -42,4 +42,16 @@ public interface PointsLogMapper extends BaseMapper<PointsLog> {
      * @return 已采纳记录数
      */
     Integer countSuggestionAdoptForArticle(@Param("articleId") Integer articleId);
+
+    /**
+     * 批量查询用户的累计积分（用于列表页头像等级角标的批量计算）。
+     * @param userIds 用户ID集合（非空）
+     * @return 每行 { userId, total }
+     */
+    @org.apache.ibatis.annotations.Select(
+            "<script>SELECT user_id AS userId, COALESCE(SUM(points_change), 0) AS total "
+            + "FROM bbs_points_log WHERE user_id IN "
+            + "<foreach collection='userIds' item='id' open='(' separator=',' close=')'>#{id}</foreach> "
+            + "GROUP BY user_id</script>")
+    java.util.List<java.util.Map<String, Object>> sumPointsByUserIds(@Param("userIds") java.util.Collection<Integer> userIds);
 }

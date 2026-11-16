@@ -1,10 +1,13 @@
 package com.walker.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.walker.mapper.DictMapper;
 import com.walker.mapper.LoginLogMapper;
 import com.walker.pojo.LoginLog;
 import com.walker.service.impl.LoginLogServiceImpl;
 import com.walker.vo.ResultBean;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
@@ -45,6 +48,7 @@ class LoginLogServiceTest {
         Field baseMapperField = loginLogService.getClass().getSuperclass().getDeclaredField("baseMapper");
         baseMapperField.setAccessible(true);
         baseMapperField.set(loginLogService, loginLogMapper);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), LoginLog.class);
     }
 
     private LoginLog makeLog(int browseMinutes, int pointsAwarded) {
@@ -121,6 +125,8 @@ class LoginLogServiceTest {
         LoginLog existing = makeLog(3, 0);
         when(loginLogMapper.findByUserAndDate(eq(1), anyString())).thenReturn(existing);
         when(loginLogMapper.updateById(any())).thenReturn(1);
+        // 本用例验证“未达配置阈值”，显式使用 10 分钟阈值；默认值已改为 1 分钟
+        when(dictMapper.selectValueByKey("login_browse_minutes")).thenReturn("10");
 
         ResultBean result = loginLogService.browseHeartbeat(1);
 

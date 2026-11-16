@@ -72,4 +72,30 @@ public class ConstantUtil {
      * 版主履职奖励-发放日（dict_value=日期，1-28）
      */
     public static final String MODERATOR_REWARD_DAY = "moderator_reward_day";
+
+    /**
+     * 版主履职奖励-每月积分（默认 400）
+     */
+    public static final String MODERATOR_REWARD_POINTS = "moderator_reward_points";
+
+    /**
+     * 每日有效浏览分钟数（默认 1）
+     */
+    public static final String LOGIN_BROWSE_MINUTES = "login_browse_minutes";
+
+    /**
+     * 月累计扣分提醒-开关（默认 1）
+     */
+    public static final String MONTHLY_DEDUCTION_ALERT_ENABLED = "monthly_deduction_alert_enabled";
+
+    /**
+     * 月累计扣分提醒-阈值（默认 10）
+     */
+    public static final String MONTHLY_DEDUCTION_ALERT_THRESHOLD = "monthly_deduction_threshold";
+
+    /** 发帖审核模式：AUTO / PRE_REVIEW / POST_REVIEW */
+    public static final String ARTICLE_PUBLISH_MODE = "article_publish_mode";
+
+    /** 精华终审模式：ADMIN_FINAL / MODERATOR_FINAL */
+    public static final String FEATURED_FINAL_REVIEW_MODE = "featured_final_review_mode";
 }

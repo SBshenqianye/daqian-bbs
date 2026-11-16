@@ -52,6 +52,9 @@ public final class NotificationCategory {
         m.put("featured_granted", SYSTEM);       // 帖子被设为精华（通知作者）
         m.put("featured_revoked", SYSTEM);       // 帖子被取消精华（通知作者）
         m.put("points_adjust", SYSTEM);         // 积分变动（通知用户）
+        m.put("monthly_deduction_alert", SYSTEM); // 当月累计扣分达到阈值（通知用户）
+        m.put("achievement_unlocked", SYSTEM);   // 解锁成就
+        m.put("reminder_pending", SYSTEM);       // 待办提醒
         TYPE_CATEGORY = Collections.unmodifiableMap(m);
     }
 

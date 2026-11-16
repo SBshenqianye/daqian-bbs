@@ -33,9 +33,17 @@ public class PointsRankVO {
      */
     private Integer featuredPosts;
     /**
-     * 积分
+     * 积分（组织总分）
      */
     private Integer points;
+    /**
+     * 组织成员数（排除测试账号）
+     */
+    private Integer memberCount;
+    /**
+     * 人均积分（总分 / 成员数，保留 2 位小数）
+     */
+    private Double avgPoints;
     /**
      * 排序序号
      */

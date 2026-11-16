@@ -58,4 +58,7 @@ public class ArticleParam {
 
     @ApiModelProperty(value = "是否为精华帖(0=否,1=是)", required = false)
     private Integer isFeatured;
+
+    @ApiModelProperty(value = "是否匿名发布(0=否,1=是)", required = false)
+    private Integer isAnonymous;
 }

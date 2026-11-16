@@ -469,7 +469,7 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
         // 4. 获取本月取消列表
         List<Integer> cancelledUserIds = cancelMapper.findCancelledUserIds(currentMonth);
 
-        int rewardPoints = 15;
+        int rewardPoints = getRewardPoints();
         int rewarded = 0;
         List<Integer> alreadyRewarded = new ArrayList<>();
         List<Integer> cancelled = new ArrayList<>();
@@ -493,7 +493,7 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
                 continue;
             }
 
-            // 发放15积分
+            // 发放本月履职奖励（默认 400，可通过数据字典 moderator_reward_points 调整）
             pointsLogService.adjustUserPoints(userId, rewardPoints, "版主月度履职奖励",
                     "moderator_reward", null, operatorId);
 
@@ -525,7 +525,24 @@ public class BoardModeratorServiceImpl extends ServiceImpl<BoardModeratorMapper,
     }
 
     /**
-     * 每月1日凌晨1点自动发放（默认发放日，可通过数据字典 moderator_reward_day 修改）
+     * 读取版主月度履职奖励分值：数据字典 moderator_reward_points，缺省 400。
+     */
+    private int getRewardPoints() {
+        int points = 400;
+        try {
+            String value = dictService.getValueByKey(ConstantUtil.MODERATOR_REWARD_POINTS);
+            if (value != null && !value.trim().isEmpty()) {
+                points = Integer.parseInt(value.trim());
+            }
+        } catch (Exception e) {
+            // 配置异常时使用安全默认值
+        }
+        return points > 0 ? points : 400;
+    }
+
+    /**
+     * 每月1日凌晨1点自动发放（默认发放日，可通过数据字典 moderator_reward_day 修改；
+     * 奖励分值由 moderator_reward_points 配置，默认 400）
      * 检查：自动发放开关打开 + 今天是发放日 + 本月尚未发放
      */
     @Scheduled(cron = "0 0 1 1 * ?")

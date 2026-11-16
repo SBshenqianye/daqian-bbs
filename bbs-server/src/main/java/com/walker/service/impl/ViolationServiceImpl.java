@@ -16,6 +16,7 @@ import com.walker.service.CommentService;
 import com.walker.service.AuthorizationService;
 import com.walker.service.ContentBoardResolver;
 import com.walker.service.CurrentUserService;
+import com.walker.service.MonthlyDeductionAlertService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
 import com.walker.service.ReplyService;
@@ -48,6 +49,9 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private MonthlyDeductionAlertService monthlyDeductionAlertService;
 
     @Autowired
     private ArticleMapper articleMapper;
@@ -161,7 +165,19 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
                 "violation", "您有新的违规记录: " + getViolationLabel(violationType),
                 "violation", violation.getId());
 
-        // ── 6. leak 类型：立即限制发帖（不走月度累计逻辑） ──
+        // ── 6. 当月累计扣分（已取消违规不计入）──
+        String monthStr = monthFmt.format(now);
+        String monthStart = monthStr + "-01 00:00:00";
+        String monthEnd = monthStr + "-32 00:00:00";
+        Integer monthlyTotal = violationMapper.sumMonthlyDeductions(userId, monthStart, monthEnd);
+        if (monthlyTotal == null) {
+            monthlyTotal = 0;
+        }
+
+        // ── 7. 当月累计扣分达到阈值（默认10分）→ 站内提醒 ──
+        monthlyDeductionAlertService.checkAndNotify(userId, monthlyTotal, monthStr);
+
+        // ── 8. leak 类型：立即限制发帖（不走月度累计逻辑） ──
         if ("leak".equals(violationType)) {
             User user = userService.getById(userId);
             if (user != null && (user.getPostRestricted() == null || user.getPostRestricted() == 0)) {
@@ -177,12 +193,7 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
                         "user", userId);
             }
         } else {
-            // ── 7. 其他类型：检查月度累计扣分，超过20分自动限制发帖7天 ──
-            String monthStr = monthFmt.format(now);
-            String monthStart = monthStr + "-01 00:00:00";
-            String monthEnd = monthStr + "-32 00:00:00";
-            Integer monthlyTotal = violationMapper.sumMonthlyDeductions(userId, monthStart, monthEnd);
-
+            // ── 9. 其他类型：月度累计扣分超过20分自动限制发帖7天 ──
             if (monthlyTotal > 20) {
                 User user = userService.getById(userId);
                 if (user != null && (user.getPostRestricted() == null || user.getPostRestricted() == 0)) {

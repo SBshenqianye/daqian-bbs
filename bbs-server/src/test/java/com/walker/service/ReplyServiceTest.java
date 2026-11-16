@@ -44,11 +44,16 @@ class ReplyServiceTest {
     @Mock
     private DictService dictService;
 
+    @Mock
+    private LabelPointsPolicyService labelPointsPolicyService;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = replyService.getClass().getSuperclass().getDeclaredField("baseMapper");
         baseMapperField.setAccessible(true);
         baseMapperField.set(replyService, replyMapper);
+        lenient().when(labelPointsPolicyService.shouldAward(any(), anyString())).thenReturn(true);
+        lenient().when(labelPointsPolicyService.allowsAnonymous(any())).thenReturn(true);
     }
 
     @Test
@@ -135,9 +140,11 @@ class ReplyServiceTest {
         Reply reply = new Reply();
         reply.setReplyId(1);
         reply.setReplyUserId(1);
+        reply.setCommentId(1);
         reply.setEnable(1);
         when(replyMapper.selectById(1)).thenReturn(reply);
         when(dictService.getValueByKey("reply")).thenReturn("1");
+        when(pointsLogService.count(any())).thenReturn(1L);
         when(replyMapper.deleteById(1)).thenReturn(1);
 
         ResultBean result = replyService.deleteReplyById(1);

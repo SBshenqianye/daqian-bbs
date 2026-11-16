@@ -65,4 +65,12 @@ public class Reply implements Serializable {
     @TableField("adopt_status")
     private Integer adoptStatus;
 
+    @ApiModelProperty("是否匿名(0=否,1=是)")
+    @TableField("is_anonymous")
+    private Integer isAnonymous;
+
+    @ApiModelProperty("回复点赞数")
+    @TableField("reply_good_num")
+    private Integer goodNum;
+
 }

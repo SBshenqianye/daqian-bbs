@@ -90,7 +90,7 @@ public class LoginLogServiceImpl extends ServiceImpl<LoginLogMapper, LoginLog> i
             return ResultBean.error("登录记录异常，请稍后重试");
         }
 
-        // 已发过分且满10分钟，无需继续累计
+        // 已发过分且达到有效浏览阈值，无需继续累计
         if (existing.getPointsAwarded() != null && existing.getPointsAwarded() == 1) {
             Map<String, Object> data = new HashMap<>();
             data.put("browseMinutes", existing.getBrowseMinutes());
@@ -102,11 +102,11 @@ public class LoginLogServiceImpl extends ServiceImpl<LoginLogMapper, LoginLog> i
         int newMinutes = (existing.getBrowseMinutes() == null ? 0 : existing.getBrowseMinutes()) + 1;
         existing.setBrowseMinutes(newMinutes);
 
-        // 获取阈值（从字典获取，缺省10）
-        int threshold = 10;
+        // 获取阈值（从字典获取，缺省 1 分钟）
+        int threshold = 1;
         try {
             String val = dictMapper.selectValueByKey("login_browse_minutes");
-            if (val != null) threshold = Integer.parseInt(val);
+            if (val != null && !val.trim().isEmpty()) threshold = Integer.parseInt(val.trim());
         } catch (Exception e) {
             // 使用默认值
         }

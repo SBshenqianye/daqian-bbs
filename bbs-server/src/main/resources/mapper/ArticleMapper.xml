@@ -78,6 +78,8 @@
                 JOIN bbs_user u ON t.user_id = u.id
                 WHERE t.is_delete = 0
                   AND t.enable = 1
+                  AND u.is_delete = 0
+                  AND (u.is_test_account IS NULL OR u.is_test_account = 0)
                   AND u.org_no LIKE concat(#{orgNo}, '%')
                   AND <choose>
                         <when test="_databaseId == 'mysql'">t.create_time >= STR_TO_DATE(#{startTime}, '%Y-%m-%d')</when>
@@ -96,6 +98,8 @@
                 JOIN bbs_user u ON t.comment_user_id = u.id
                 WHERE t.is_delete = 0
                   AND t.enable = 1
+                  AND u.is_delete = 0
+                  AND (u.is_test_account IS NULL OR u.is_test_account = 0)
                   AND u.org_no LIKE concat(#{orgNo}, '%')
                   AND <choose>
                         <when test="_databaseId == 'mysql'">t.comment_time >= STR_TO_DATE(#{startTime}, '%Y-%m-%d')</when>
@@ -115,6 +119,8 @@
                 WHERE t.is_delete = 0
                   AND t.enable = 1
                   AND t.is_featured = 1
+                  AND u.is_delete = 0
+                  AND (u.is_test_account IS NULL OR u.is_test_account = 0)
                   AND u.org_no LIKE concat(#{orgNo}, '%')
                   AND <choose>
                         <when test="_databaseId == 'mysql'">t.create_time >= STR_TO_DATE(#{startTime}, '%Y-%m-%d')</when>
@@ -132,6 +138,8 @@
                 FROM bbs_points_log p
                 JOIN bbs_user u ON p.user_id = u.id
                 WHERE (p.is_reversed IS NULL OR p.is_reversed != 1)
+                  AND u.is_delete = 0
+                  AND (u.is_test_account IS NULL OR u.is_test_account = 0)
                   AND u.org_no LIKE concat(#{orgNo}, '%')
                   AND p.create_time >= #{startTime}
                   AND p.create_time <![CDATA[<]]> CONCAT(#{endTime}, ' 23:59:59')
@@ -187,6 +195,7 @@
             GROUP BY user_id
         ) t4 ON u.id = t4.user_id
         WHERE u.is_delete = 0
+          AND (u.is_test_account IS NULL OR u.is_test_account = 0)
           AND COALESCE(t4.logPoints, 0) > 0
         ORDER BY points DESC, u.id
         LIMIT #{size}
@@ -242,6 +251,7 @@
                 GROUP BY user_id
             ) t4 ON u.id = t4.user_id
             WHERE u.is_delete = 0
+              AND (u.is_test_account IS NULL OR u.is_test_account = 0)
               AND COALESCE(t4.logPoints, 0) > 0
         ) ranked
         WHERE ranked.userId = #{userId}

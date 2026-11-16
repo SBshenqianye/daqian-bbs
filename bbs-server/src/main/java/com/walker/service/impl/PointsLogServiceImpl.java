@@ -33,6 +33,9 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
     @Autowired
     private com.walker.service.NotificationService notificationService;
 
+    @Autowired
+    private com.walker.service.OperationCycleService operationCycleService;
+
     @Override
     public ResultBean addPointsLog(PointsLog pointsLog) {
         if (pointsLog.getUserId() == null || pointsLog.getPointsChange() == null) {
@@ -69,6 +72,9 @@ public class PointsLogServiceImpl extends ServiceImpl<PointsLogMapper, PointsLog
         log.setRelatedType(relatedType);
         log.setRelatedId(relatedId);
         log.setOperatorId(operatorId);
+        try {
+            log.setCycleId(operationCycleService.currentCycleId());
+        } catch (Exception ignore) { }
         addPointsLog(log);
         if (autoPair && pointsChange != null && pointsChange < 0 && relatedType != null) {
             PointsLog positive = this.getOne(new LambdaQueryWrapper<PointsLog>()

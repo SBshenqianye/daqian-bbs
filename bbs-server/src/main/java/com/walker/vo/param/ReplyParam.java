@@ -27,4 +27,7 @@ public class ReplyParam {
 
     @ApiModelProperty(value = "评论Id",required = true)
     private Integer replyId;
+
+    @ApiModelProperty(value = "是否匿名(0=否,1=是)")
+    private Integer isAnonymous;
 }

@@ -79,6 +79,13 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     @Override
     @Transactional
     public ResultBean submitReport(Integer reporterId, String targetType, Integer targetId, String violationType, String reason) {
+        return submitReport(reporterId, targetType, targetId, violationType, reason, false);
+    }
+
+    @Override
+    @Transactional
+    public ResultBean submitReport(Integer reporterId, String targetType, Integer targetId, String violationType,
+                                   String reason, Boolean isAnonymous) {
         if (reporterId == null || targetType == null || targetId == null) {
             return ResultBean.error("参数不完整");
         }
@@ -129,6 +136,7 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         report.setReason(reason);
         report.setStatus("pending");
         report.setPointsAwarded(0);
+        report.setIsAnonymous(Boolean.TRUE.equals(isAnonymous) ? 1 : 0);
         report.setCreateTime(fmt.format(now));
         this.save(report);
 
@@ -387,9 +395,23 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         int from = Math.max(0, (page - 1) * size);
         int to = Math.min(from + size, total);
         List<Report> records = from < total ? visible.subList(from, to) : new ArrayList<>();
+        Set<Integer> reporterIds = new HashSet<>();
+        for (Report report : records) {
+            if (report.getReporterId() != null) reporterIds.add(report.getReporterId());
+        }
+        Map<Integer, String> reporterNameMap = new HashMap<>();
+        if (!reporterIds.isEmpty()) {
+            for (User user : userService.listByIds(reporterIds)) {
+                reporterNameMap.put(user.getId(), user.getNickname() != null ? user.getNickname() : user.getUsername());
+            }
+        }
+        List<Map<String, Object>> masked = new ArrayList<>();
+        for (Report report : records) {
+            masked.add(reportToMap(report, reporterNameMap));
+        }
 
         Map<String, Object> data = new HashMap<>();
-        data.put("records", records);
+        data.put("records", masked);
         data.put("total", (long) total);
         return ResultBean.success("查询成功", data);
     }
@@ -593,9 +615,12 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
      */
     private Map<String, Object> reportToMap(Report r, Map<Integer, String> nameMap) {
         Map<String, Object> map = new LinkedHashMap<>();
+        boolean anonymous = Integer.valueOf(1).equals(r.getIsAnonymous());
         map.put("id", r.getId());
-        map.put("reporterId", r.getReporterId());
-        map.put("reporterName", nameMap.getOrDefault(r.getReporterId(), "用户" + r.getReporterId()));
+        map.put("reporterId", anonymous ? null : r.getReporterId());
+        map.put("reporterName", anonymous ? "匿名用户"
+                : nameMap.getOrDefault(r.getReporterId(), "用户" + r.getReporterId()));
+        map.put("isAnonymous", anonymous ? 1 : 0);
         map.put("targetType", r.getTargetType());
         map.put("targetId", r.getTargetId());
         map.put("violationType", r.getViolationType());

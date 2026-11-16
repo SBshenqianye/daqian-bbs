@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.walker.mapper.RankingStatsMapper">
+
+    <sql id="orgFilter">
+        <choose>
+            <when test="includeDescendants">
+                AND u.org_no LIKE CONCAT(#{orgNo}, '%')
+            </when>
+            <otherwise>
+                AND u.org_no = #{orgNo}
+            </otherwise>
+        </choose>
+    </sql>
+
+    <sql id="userFilter">
+        u.is_delete = 0
+        AND (u.is_test_account IS NULL OR u.is_test_account = 0)
+    </sql>
+
+    <select id="countMembers" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM bbs_user u
+        WHERE <include refid="userFilter"/>
+        <include refid="orgFilter"/>
+    </select>
+
+    <select id="sumPoints" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(p.points_change), 0)
+        FROM bbs_points_log p
+        JOIN bbs_user u ON p.user_id = u.id
+        WHERE <include refid="userFilter"/>
+          AND (p.is_reversed IS NULL OR p.is_reversed = 0)
+          AND p.create_time &gt;= #{startTime}
+          AND p.create_time &lt; CONCAT(#{endTime}, ' 23:59:59')
+        <include refid="orgFilter"/>
+    </select>
+
+    <select id="countPosts" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM bbs_article a
+        JOIN bbs_user u ON a.user_id = u.id
+        WHERE <include refid="userFilter"/>
+          AND a.is_delete = 0
+          AND a.enable = 1
+          <choose>
+              <when test="_databaseId == 'mysql'">
+                  AND a.create_time &gt;= STR_TO_DATE(#{startTime}, '%Y-%m-%d')
+                  AND a.create_time &lt; STR_TO_DATE(#{endTime}, '%Y-%m-%d') + INTERVAL 1 DAY
+              </when>
+              <otherwise>
+                  AND to_date(a.create_time, 'YYYY-MM-DD HH24:MI:SS') &gt;= to_date(#{startTime}, 'YYYY-MM-DD')
+                  AND to_date(a.create_time, 'YYYY-MM-DD HH24:MI:SS') &lt; to_date(#{endTime}, 'YYYY-MM-DD') + interval '1 day'
+              </otherwise>
+          </choose>
+        <include refid="orgFilter"/>
+    </select>
+
+    <select id="countReplies" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM bbs_comment c
+        JOIN bbs_user u ON c.comment_user_id = u.id
+        WHERE <include refid="userFilter"/>
+          AND c.is_delete = 0
+          AND c.enable = 1
+          <choose>
+              <when test="_databaseId == 'mysql'">
+                  AND c.comment_time &gt;= STR_TO_DATE(#{startTime}, '%Y-%m-%d')
+                  AND c.comment_time &lt; STR_TO_DATE(#{endTime}, '%Y-%m-%d') + INTERVAL 1 DAY
+              </when>
+              <otherwise>
+                  AND to_date(c.comment_time, 'YYYY-MM-DD HH24:MI:SS') &gt;= to_date(#{startTime}, 'YYYY-MM-DD')
+                  AND to_date(c.comment_time, 'YYYY-MM-DD HH24:MI:SS') &lt; to_date(#{endTime}, 'YYYY-MM-DD') + interval '1 day'
+              </otherwise>
+          </choose>
+        <include refid="orgFilter"/>
+    </select>
+
+</mapper>

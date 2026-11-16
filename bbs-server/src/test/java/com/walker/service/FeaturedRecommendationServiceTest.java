@@ -51,6 +51,9 @@ class FeaturedRecommendationServiceTest {
     @Mock
     private AuthorizationService authorizationService;
 
+    @Mock
+    private LabelPointsPolicyService labelPointsPolicyService;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = recommendationService.getClass().getSuperclass().getDeclaredField("baseMapper");
@@ -61,6 +64,10 @@ class FeaturedRecommendationServiceTest {
         // 默认授予精华终审权限；Q5 用例单独覆盖为 false
         lenient().when(authorizationService.hasPermission(any(User.class), eq(Permission.FEATURED_REVIEW)))
                 .thenReturn(true);
+        lenient().when(labelPointsPolicyService.shouldAward(any(), anyString())).thenReturn(true);
+        lenient().when(dictService.getValueByKey("featured_final_review_mode")).thenReturn("ADMIN_FINAL");
+        lenient().when(dictService.getValueByKey("featured_public_enabled")).thenReturn("0");
+        lenient().when(dictService.getValueByKey("featured_public_days")).thenReturn("5");
         // 默认当前登录管理员 id=1，敏感用例可覆盖
         setCurrentUser(1);
     }
@@ -189,7 +196,7 @@ class FeaturedRecommendationServiceTest {
         assertEquals(200, result.getCode());
         verify(articleService).updateById(argThat(a -> ((Article) a).getIsFeatured() == 1));
         verify(pointsLogService).adjustUserPoints(eq(3), eq(10), eq("精华帖奖励积分"), eq("featured"), eq(10), eq(1));
-        verify(notificationService).createNotification(eq(3), eq(1), eq("adopt"), contains("精华帖"), eq("article"), eq(10));
+        verify(notificationService).createNotification(eq(3), eq(1), eq("featured_granted"), contains("精华帖"), eq("article"), eq(10));
     }
 
     @Test

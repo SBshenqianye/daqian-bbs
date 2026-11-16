@@ -2,6 +2,7 @@ package com.walker.controller;
 
 
 import com.walker.pojo.Article;
+import com.walker.service.ArticleService;
 import com.walker.service.ArticleUserService;
 import com.walker.vo.ResultBean;
 import io.swagger.annotations.Api;
@@ -27,6 +28,9 @@ public class ArticleUserController {
     @Autowired
     private ArticleUserService articleUserService;
 
+    @Autowired
+    private ArticleService articleService;
+
 
     @ApiOperation(value = "用户收藏文章")
     @PostMapping("/saveUserCollection")
@@ -39,6 +43,14 @@ public class ArticleUserController {
     @GetMapping("/getMyCollection")
     public List<Article> getMyCollection(@RequestParam Integer userId){
         return articleUserService.getMyCollection(userId);
+    }
+
+    @ApiOperation(value = "我的收藏（分页，含作者信息与等级）")
+    @GetMapping("/common/user/favorites")
+    public ResultBean favorites(@RequestParam Integer userId,
+                                @RequestParam(defaultValue = "1") Integer page,
+                                @RequestParam(defaultValue = "10") Integer size) {
+        return articleService.queryFavoritePage(userId, page, size);
     }
 
 }

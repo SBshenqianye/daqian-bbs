@@ -21,5 +21,8 @@ public class CommentParam {
     @ApiModelProperty(value = "评论的用户的ID",required = true)
     private Integer commentUserId;
 
+    @ApiModelProperty(value = "是否匿名(0=否,1=是)")
+    private Integer isAnonymous;
+
 
 }

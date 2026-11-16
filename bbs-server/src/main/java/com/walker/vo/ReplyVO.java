@@ -54,4 +54,16 @@ public class ReplyVO {
 
     @ApiModelProperty("采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)")
     private Integer adoptStatus;
+
+    @ApiModelProperty("是否匿名(0=否,1=是)")
+    private Integer isAnonymous;
+
+    @ApiModelProperty("作者等级序号(1..24)，用于头像等级角标")
+    private Integer levelIndex;
+
+    @ApiModelProperty("回复点赞数")
+    private Integer goodNum;
+
+    @ApiModelProperty("当前用户是否已点赞")
+    private Boolean liked;
 }

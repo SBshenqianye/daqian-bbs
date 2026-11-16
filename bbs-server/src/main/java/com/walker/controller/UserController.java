@@ -61,6 +61,24 @@ public class UserController {
     @Autowired
     private com.walker.service.EffectivePermissionService effectivePermissionService;
 
+    @Autowired
+    private com.walker.service.LevelService levelService;
+
+    @Autowired
+    private com.walker.service.AchievementService achievementService;
+
+    @Autowired
+    private com.walker.mapper.ArticleMapper publicArticleMapper;
+
+    @Autowired
+    private com.walker.mapper.CommentMapper publicCommentMapper;
+
+    @Autowired
+    private com.walker.mapper.ReplyMapper publicReplyMapper;
+
+    @Autowired
+    private com.walker.mapper.ArticleUserMapper publicArticleUserMapper;
+
     @Value("${storage.path}")
     private String basePath;
 
@@ -169,6 +187,84 @@ public class UserController {
     public ResultBean updateUserinfo(@RequestBody UserInfoUpdateParam userInfoUpdateParam, HttpServletRequest request){
 
         return userService.updateUserinfo(userInfoUpdateParam);
+    }
+
+    @ApiOperation(value = "公开主页（脱敏，不含手机号/人员编号等敏感字段）")
+    @GetMapping("/common/user/publicProfile/{id}")
+    public ResultBean publicProfile(@PathVariable("id") Integer id) {
+        User user = userService.queryUserinfoById(id);
+        if (user == null) {
+            return ResultBean.error("用户不存在");
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", user.getId());
+        data.put("nickname", user.getNickname());
+        data.put("portrait", FilePathNormalizer.normalizeFieldUrl(user.getPortrait(), contextPath));
+        data.put("introduce", user.getIntroduce());
+        data.put("city", user.getCity());
+        data.put("createTime", user.getCreateTime());
+        data.put("fans", user.getFans());
+        data.put("attention", user.getAttention());
+        data.put("good", user.getGood());
+        data.put("orgName", user.getOrgName());
+        data.put("orgNameFull", resolveFullOrgName(user.getOrgNo(), user.getOrgName()));
+        data.put("level", levelService.getUserLevel(id));
+        data.put("articleCount", publicArticleMapper.selectCount(
+                new LambdaQueryWrapper<com.walker.pojo.Article>()
+                        .eq(com.walker.pojo.Article::getUserId, id)
+                        .eq(com.walker.pojo.Article::getEnable, 1)));
+        data.put("commentCount", publicCommentMapper.selectCount(
+                new LambdaQueryWrapper<com.walker.pojo.Comment>()
+                        .eq(com.walker.pojo.Comment::getCommentUserId, id)
+                        .eq(com.walker.pojo.Comment::getEnable, 1)));
+        data.put("replyCount", publicReplyMapper.selectCount(
+                new LambdaQueryWrapper<com.walker.pojo.Reply>()
+                        .eq(com.walker.pojo.Reply::getReplyUserId, id)
+                        .eq(com.walker.pojo.Reply::getEnable, 1)));
+        Object achievements = achievementService.listUserAchievements(id).getObj();
+        data.put("achievements", achievements);
+
+        // 内容统计 + 最近帖子（公开主页 / 个人中心共用）
+        java.util.List<com.walker.pojo.Article> myArticles = publicArticleMapper.selectList(
+                new LambdaQueryWrapper<com.walker.pojo.Article>()
+                        .eq(com.walker.pojo.Article::getUserId, id)
+                        .eq(com.walker.pojo.Article::getEnable, 1)
+                        .orderByDesc(com.walker.pojo.Article::getCreateTime));
+        int likesReceived = 0;
+        int favoritesReceived = 0;
+        int viewsReceived = 0;
+        int featuredCount = 0;
+        for (com.walker.pojo.Article a : myArticles) {
+            likesReceived += a.getArticleGoodNum() == null ? 0 : a.getArticleGoodNum();
+            favoritesReceived += a.getFavoriteNum() == null ? 0 : a.getFavoriteNum();
+            viewsReceived += a.getArticleViewNum() == null ? 0 : a.getArticleViewNum();
+            if (Integer.valueOf(1).equals(a.getIsFeatured())) featuredCount++;
+        }
+        data.put("likesReceived", likesReceived);
+        data.put("favoritesReceived", favoritesReceived);
+        data.put("viewsReceived", viewsReceived);
+        data.put("featuredCount", featuredCount);
+        data.put("favoriteCount", publicArticleUserMapper.selectCount(
+                new LambdaQueryWrapper<com.walker.pojo.ArticleUser>()
+                        .eq(com.walker.pojo.ArticleUser::getUserId, id)));
+
+        java.util.List<java.util.Map<String, Object>> recent = new java.util.ArrayList<>();
+        for (int i = 0; i < Math.min(5, myArticles.size()); i++) {
+            com.walker.pojo.Article a = myArticles.get(i);
+            java.util.Map<String, Object> row = new java.util.HashMap<>();
+            row.put("articleId", a.getArticleId());
+            row.put("title", a.getArticleTitle());
+            row.put("summary", a.getArticleSummary());
+            row.put("createTime", a.getCreateTime());
+            row.put("views", a.getArticleViewNum() == null ? 0 : a.getArticleViewNum());
+            row.put("comments", a.getCommentNumCount() == null ? 0 : a.getCommentNumCount());
+            row.put("likes", a.getArticleGoodNum() == null ? 0 : a.getArticleGoodNum());
+            row.put("isFeatured", a.getIsFeatured());
+            recent.add(row);
+        }
+        data.put("recentArticles", recent);
+
+        return ResultBean.success("查询成功", data);
     }
 
     @ApiOperation(value = "通过用户ID获取用户信息")
@@ -481,13 +577,7 @@ public class UserController {
     @ApiOperation(value = "获取当前用户等级")
     @GetMapping("/user/level")
     public ResultBean getUserLevel(@RequestParam Integer userId) {
-        Integer totalPoints = pointsLogService.getPointsAdjustment(userId);
-        if (totalPoints == null) totalPoints = 0;
-        int level = totalPoints / 100;
-        Map<String, Object> data = new HashMap<>();
-        data.put("level", level);
-        data.put("totalPoints", totalPoints);
-        return ResultBean.success("查询成功", data);
+        return ResultBean.success("查询成功", levelService.getUserLevel(userId));
     }
 
     @ApiOperation(value = "管理员限制/解除用户发帖")

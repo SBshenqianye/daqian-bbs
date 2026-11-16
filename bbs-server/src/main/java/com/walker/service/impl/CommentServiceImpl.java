@@ -1,15 +1,18 @@
 package com.walker.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.CommentMapper;
 import com.walker.pojo.Article;
 import com.walker.pojo.Comment;
 import com.walker.pojo.Dict;
+import com.walker.pojo.PointsLog;
 import com.walker.pojo.Reply;
 import com.walker.service.ArticleService;
 import com.walker.service.CommentService;
 import com.walker.service.DictService;
+import com.walker.service.LabelPointsPolicyService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
 import com.walker.service.ReplyService;
@@ -54,6 +57,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     @Autowired
     private ReplyService replyService;
 
+    @Autowired
+    private LabelPointsPolicyService labelPointsPolicyService;
+
     /**
      * 保存用户的评论 一级
      * @param commentParam
@@ -69,45 +75,60 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         // ── 内容质量检测：垃圾内容标记为不可见，不计入积分 ──
         ContentQualityUtil.QualityResult quality = ContentQualityUtil.checkContent(null, commentParam.getCommentContent());
 
+        Article targetArticle = articleService.getById(commentParam.getCommentArticleId());
+        boolean anonymous = Integer.valueOf(1).equals(commentParam.getIsAnonymous());
+        if (anonymous && (targetArticle == null
+                || !labelPointsPolicyService.allowsAnonymous(targetArticle.getArticleLabelId()))) {
+            return ResultBean.error("该标签不支持匿名评论");
+        }
+
         Comment comment = new Comment();
         comment.setCommentContent(commentParam.getCommentContent());
         comment.setCommentUserId(commentParam.getCommentUserId());
         comment.setCommentArticleId(commentParam.getCommentArticleId());
         comment.setCommentTime(day);
+        comment.setIsAnonymous(anonymous ? 1 : 0);
         // 垃圾内容标记为不可见
         comment.setEnable(quality.isPassed() ? 1 : 0);
         this.save(comment);
 
         // 评论积分：只有通过质量检测的评论才计分，且同一篇帖子下同一用户最多3次
-        // 运营方案：回帖人在自己的帖子内进行回复不再获得积分
-        if (quality.isPassed()) {
-            Article article = articleService.getById(commentParam.getCommentArticleId());
-            // 自己帖子内评论不计分
-            if (article != null && !article.getUserId().equals(commentParam.getCommentUserId())) {
-                // 检查该用户在此文章下已获得的回帖积分次数
-                int existingCount = pointsLogService.countReplyPointsForArticle(
-                        commentParam.getCommentUserId(), commentParam.getCommentArticleId());
-                if (existingCount < 3) {
-                    int replyPoints = 1; // default
-                    try {
-                        String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
-                        if (val != null) replyPoints = Integer.parseInt(val);
-                    } catch (Exception e) { /* use default */ }
-                    pointsLogService.adjustUserPoints(commentParam.getCommentUserId(), replyPoints, "评论积分",
-                            "comment", comment.getCommentId(), null);
-                }
+        // 运营方案：回帖人在自己的帖子内进行回复不再获得积分；不计分标签跳过
+        if (quality.isPassed() && targetArticle != null
+                && !targetArticle.getUserId().equals(commentParam.getCommentUserId())
+                && labelPointsPolicyService.shouldAward(targetArticle.getArticleLabelId(), "comment")) {
+            // 检查该用户在此文章下已获得的回帖积分次数
+            int existingCount = pointsLogService.countReplyPointsForArticle(
+                    commentParam.getCommentUserId(), commentParam.getCommentArticleId());
+            if (existingCount < 3) {
+                int replyPoints = 1; // default
+                try {
+                    String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
+                    if (val != null) replyPoints = Integer.parseInt(val);
+                } catch (Exception e) { /* use default */ }
+                pointsLogService.adjustUserPoints(commentParam.getCommentUserId(), replyPoints, "评论积分",
+                        "comment", comment.getCommentId(), null);
             }
+        }
+
+        // 更新帖子冗余计数/最后回复时间
+        if (quality.isPassed() && targetArticle != null) {
+            articleService.update(null, new LambdaUpdateWrapper<Article>()
+                    .eq(Article::getArticleId, targetArticle.getArticleId())
+                    .setSql("comment_num = COALESCE(comment_num, 0) + 1")
+                    .set(Article::getLastReplyTime, day)
+                    .set(Article::getLastActivityTime, day));
         }
 
         // 通知文章作者（非自己时）
         if (quality.isPassed()) {
             try {
-                Article article = articleService.getById(commentParam.getCommentArticleId());
-                if (article != null && !article.getUserId().equals(commentParam.getCommentUserId())) {
-                    String title = "有人评论了你的帖子「" + article.getArticleTitle() + "」";
+                if (targetArticle != null && !targetArticle.getUserId().equals(commentParam.getCommentUserId())) {
+                    String who = anonymous ? "匿名用户" : "有人";
+                    String title = who + "评论了你的帖子「" + targetArticle.getArticleTitle() + "」";
                     notificationService.createNotification(
-                            article.getUserId(),
-                            commentParam.getCommentUserId(),
+                            targetArticle.getUserId(),
+                            anonymous ? null : commentParam.getCommentUserId(),
                             "comment",
                             title,
                             "article",
@@ -145,13 +166,25 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         // 删除前先获取评论信息，用于扣回积分
         Comment comment = commentMapper.selectById(commentId);
         if (comment != null && comment.getEnable() != null && comment.getEnable() == 1) {
-            int replyPoints = 1; // default
-            try {
-                String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
-                if (val != null) replyPoints = Integer.parseInt(val);
-            } catch (Exception e) { /* use default */ }
-            pointsLogService.adjustUserPoints(comment.getCommentUserId(), -replyPoints, "删除评论扣回积分",
-                    "comment", commentId, null, true);
+            // 仅当确实发过评论积分时才扣回，避免“不计分标签”被误扣
+            long awarded = pointsLogService.count(new LambdaQueryWrapper<PointsLog>()
+                    .eq(PointsLog::getUserId, comment.getCommentUserId())
+                    .eq(PointsLog::getRelatedType, "comment")
+                    .eq(PointsLog::getRelatedId, commentId)
+                    .gt(PointsLog::getPointsChange, 0)
+                    .and(w -> w.isNull(PointsLog::getIsReversed).or().eq(PointsLog::getIsReversed, 0)));
+            if (awarded > 0) {
+                int replyPoints = 1; // default
+                try {
+                    String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
+                    if (val != null) replyPoints = Integer.parseInt(val);
+                } catch (Exception e) { /* use default */ }
+                pointsLogService.adjustUserPoints(comment.getCommentUserId(), -replyPoints, "删除评论扣回积分",
+                        "comment", commentId, null, true);
+            }
+            articleService.update(null, new LambdaUpdateWrapper<Article>()
+                    .eq(Article::getArticleId, comment.getCommentArticleId())
+                    .setSql("comment_num = GREATEST(COALESCE(comment_num, 0) - 1, 0)"));
         }
         commentMapper.deleteById(commentId);
         return ResultBean.success("删除成功");
@@ -162,6 +195,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         Article article = articleService.queryArticleById(articleId);
         if (article == null || (article.getIsHotBonus() != null && article.getIsHotBonus() == 1)) {
             return; // 文章不存在或已发过热度奖励
+        }
+        if (!labelPointsPolicyService.shouldAward(article.getArticleLabelId(), "hot_bonus")) {
+            return; // 不计分标签
         }
 
         // 获取热度阈值（默认10）

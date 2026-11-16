@@ -117,6 +117,10 @@ public class User implements Serializable,UserDetails {
     @TableField("post_restricted_until")
     private String postRestrictedUntil;
 
+    @ApiModelProperty("是否测试账号(0=否,1=是)，测试账号不参与排行榜统计")
+    @TableField("is_test_account")
+    private Integer isTestAccount;
+
     @ApiModelProperty("主权限组名称（非数据库字段，查询时动态填充）")
     @TableField(exist = false)
     private String primaryGroupName;

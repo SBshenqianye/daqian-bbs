@@ -66,4 +66,8 @@ public class PointsLog implements Serializable {
     @ApiModelProperty("配对记录id（撤销↔原记录，双向）")
     @TableField("pair_id")
     private Integer pairId;
+
+    @ApiModelProperty("运营周期ID（可空）")
+    @TableField("cycle_id")
+    private Integer cycleId;
 }

@@ -1067,6 +1067,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             updateUser.setIsAlive(param.getIsAlive());
             hasFieldChanges = true;
         }
+        if (param.getIsTestAccount() != null) {
+            updateUser.setIsTestAccount(param.getIsTestAccount() == 1 ? 1 : 0);
+            hasFieldChanges = true;
+        }
         if (StringUtils.isNoneBlank(param.getPersonnelId())) {
             updateUser.setPersonnelId(param.getPersonnelId());
             hasFieldChanges = true;

@@ -50,8 +50,8 @@ public interface BoardModeratorService extends IService<BoardModerator> {
     boolean hasActiveRole(Integer userId, Integer labelId);
 
     /**
-     * 发放本月版主履职奖励（每月一次性15积分）
-     * 运营方案：圆满完成月度版务工作，每月给予一次性15积分履职奖励
+     * 发放本月版主履职奖励（默认 400 积分，可通过数据字典 moderator_reward_points 配置）
+     * 运营方案：圆满完成月度版务工作，每月给予一次性履职奖励
      * @param operatorId 操作人ID（管理员触发）
      * @return 发放结果
      */

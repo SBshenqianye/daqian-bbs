@@ -55,13 +55,10 @@ public class ArticleUserServiceImpl extends ServiceImpl<ArticleUserMapper, Artic
             articleUser.setCreateTime(currentDate);
             articleUserMapper.insert(articleUser);
 
-            // 文章表更新收藏数
-            articleService.articleGoodNumPlusOne(articleId);
-
-            // 更新用户表
-            User user = userService.getById(userId);
-            user.setGood(user.getGood() + 1);
-            userService.updateById(user);
+            // 文章表更新收藏数（收藏不再增加点赞/获赞）
+            articleService.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Article>()
+                    .eq(Article::getArticleId, articleId)
+                    .setSql("favorite_num = COALESCE(favorite_num, 0) + 1"));
 
             return ResultBean.success("收藏成功！");
         }

@@ -46,11 +46,16 @@ class CommentServiceTest {
     @Mock
     private ReplyService replyService;
 
+    @Mock
+    private LabelPointsPolicyService labelPointsPolicyService;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = commentService.getClass().getSuperclass().getDeclaredField("baseMapper");
         baseMapperField.setAccessible(true);
         baseMapperField.set(commentService, commentMapper);
+        lenient().when(labelPointsPolicyService.shouldAward(any(), anyString())).thenReturn(true);
+        lenient().when(labelPointsPolicyService.allowsAnonymous(any())).thenReturn(true);
     }
 
     @Test
@@ -118,9 +123,11 @@ class CommentServiceTest {
         Comment comment = new Comment();
         comment.setCommentId(1);
         comment.setCommentUserId(1);
+        comment.setCommentArticleId(1);
         comment.setEnable(1);
         when(commentMapper.selectById(1)).thenReturn(comment);
         when(dictService.getValueByKey("reply")).thenReturn("1");
+        when(pointsLogService.count(any())).thenReturn(1L);
         when(commentMapper.deleteById(1)).thenReturn(1);
 
         ResultBean result = commentService.deleteCommentById(1);

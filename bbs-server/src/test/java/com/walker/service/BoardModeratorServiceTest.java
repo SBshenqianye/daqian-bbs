@@ -223,12 +223,14 @@ class BoardModeratorServiceTest {
         when(pointsLogService.count(any(LambdaQueryWrapper.class))).thenReturn(0L);
         // 本月无取消记录
         when(cancelMapper.findCancelledUserIds(anyString())).thenReturn(new ArrayList<>());
+        // 版主月度奖励默认 400 分
+        when(dictService.getValueByKey("moderator_reward_points")).thenReturn("400");
 
         ResultBean result = boardModeratorService.monthlyReward(1);
         assertEquals(200, result.getCode());
-        // 每位版主发放 15 积分（硬编码值）
+        // 每位版主发放 400 积分
         verify(pointsLogService, times(2)).adjustUserPoints(
-                anyInt(), eq(15), eq("版主月度履职奖励"),
+                anyInt(), eq(400), eq("版主月度履职奖励"),
                 eq("moderator_reward"), isNull(), eq(1));
         // 每位版主收到通知
         verify(notificationService, times(2)).createNotification(
@@ -280,7 +282,7 @@ class BoardModeratorServiceTest {
     // ========== 月度奖励/任命 补充测试 ==========
 
     @Test
-    @DisplayName("月度奖励 → 字典值为空 → 使用默认15积分发放")
+    @DisplayName("月度奖励 → 字典值为空 → 使用默认400积分发放")
     void monthlyReward_emptyDictValue_usesDefault() {
         BoardModerator mod = new BoardModerator();
         mod.setUserId(1);
@@ -292,9 +294,9 @@ class BoardModeratorServiceTest {
 
         ResultBean result = boardModeratorService.monthlyReward(1);
         assertEquals(200, result.getCode());
-        // 验证发放了默认 15 积分（代码中硬编码 rewardPoints=15）
+        // 验证发放了默认 400 积分（代码缺省值 rewardPoints=400）
         verify(pointsLogService).adjustUserPoints(
-                eq(1), eq(15), eq("版主月度履职奖励"),
+                eq(1), eq(400), eq("版主月度履职奖励"),
                 eq("moderator_reward"), isNull(), eq(1));
     }
 

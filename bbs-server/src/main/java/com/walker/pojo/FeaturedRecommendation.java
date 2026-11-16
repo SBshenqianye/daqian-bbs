@@ -50,6 +50,22 @@ public class FeaturedRecommendation {
     @TableField("create_time")
     private String createTime;
 
+    @ApiModelProperty("推荐理由")
+    @TableField("featured_reason")
+    private String featuredReason;
+
+    @ApiModelProperty("公示开始时间")
+    @TableField("public_start_time")
+    private String publicStartTime;
+
+    @ApiModelProperty("公示结束时间")
+    @TableField("public_end_time")
+    private String publicEndTime;
+
+    @ApiModelProperty("公示状态(NONE/PUBLICIZING/PUBLISHED/REVOKED)")
+    @TableField("public_status")
+    private String publicStatus;
+
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
     public Integer getArticleId() { return articleId; }
@@ -68,4 +84,12 @@ public class FeaturedRecommendation {
     public void setReviewTime(String reviewTime) { this.reviewTime = reviewTime; }
     public String getCreateTime() { return createTime; }
     public void setCreateTime(String createTime) { this.createTime = createTime; }
+    public String getFeaturedReason() { return featuredReason; }
+    public void setFeaturedReason(String featuredReason) { this.featuredReason = featuredReason; }
+    public String getPublicStartTime() { return publicStartTime; }
+    public void setPublicStartTime(String publicStartTime) { this.publicStartTime = publicStartTime; }
+    public String getPublicEndTime() { return publicEndTime; }
+    public void setPublicEndTime(String publicEndTime) { this.publicEndTime = publicEndTime; }
+    public String getPublicStatus() { return publicStatus; }
+    public void setPublicStatus(String publicStatus) { this.publicStatus = publicStatus; }
 }

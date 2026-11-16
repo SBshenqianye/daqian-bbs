@@ -29,6 +29,9 @@ class DictServiceTest {
     @Mock
     private DictMapper dictMapper;
 
+    @Mock
+    private com.walker.mapper.OperationCycleMapper operationCycleMapper;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = dictService.getClass().getSuperclass().getDeclaredField("baseMapper");

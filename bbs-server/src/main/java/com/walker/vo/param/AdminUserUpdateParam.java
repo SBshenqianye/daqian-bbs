@@ -34,6 +34,9 @@ public class AdminUserUpdateParam {
     @ApiModelProperty("是否禁用(0=活跃,1=禁用)")
     private Integer isAlive;
 
+    @ApiModelProperty("是否测试账号(0=否,1=是)")
+    private Integer isTestAccount;
+
     @ApiModelProperty("是否重置密码(true=重置为默认密码1234@abcD)")
     private Boolean resetPassword;
 

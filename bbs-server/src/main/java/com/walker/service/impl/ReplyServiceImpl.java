@@ -1,15 +1,18 @@
 package com.walker.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.ReplyMapper;
 import com.walker.pojo.Article;
 import com.walker.pojo.Comment;
 import com.walker.pojo.Dict;
+import com.walker.pojo.PointsLog;
 import com.walker.pojo.Reply;
 import com.walker.service.ArticleService;
 import com.walker.service.CommentService;
 import com.walker.service.DictService;
+import com.walker.service.LabelPointsPolicyService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
 import com.walker.service.ReplyService;
@@ -52,6 +55,9 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
 
     @Autowired
     private DictService dictService;
+
+    @Autowired
+    private LabelPointsPolicyService labelPointsPolicyService;
     /**
      * 通过评论获取回复
      * @param commentId
@@ -82,39 +88,51 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
         // ── 内容质量检测：垃圾内容标记为不可见，不计入积分 ──
         ContentQualityUtil.QualityResult quality = ContentQualityUtil.checkContent(null, replyParam.getReplyContent());
 
+        Comment commentForArticle = commentService.getById(replyParam.getCommentId());
+        Article targetArticle = commentForArticle == null ? null
+                : articleService.getById(commentForArticle.getCommentArticleId());
+        boolean anonymous = Integer.valueOf(1).equals(replyParam.getIsAnonymous());
+        if (anonymous && (targetArticle == null
+                || !labelPointsPolicyService.allowsAnonymous(targetArticle.getArticleLabelId()))) {
+            return ResultBean.error("该标签不支持匿名回复");
+        }
+
         Reply reply = new Reply();
         reply.setReplyContent(replyParam.getReplyContent());
         reply.setReplyTime(day);
         reply.setReplyUserId(replyParam.getReplyUserId());
         reply.setReplyToUserId(replyParam.getReplyToUserId());
         reply.setCommentId(replyParam.getCommentId());
+        reply.setIsAnonymous(anonymous ? 1 : 0);
         // 垃圾内容标记为不可见
         reply.setEnable(quality.isPassed() ? 1 : 0);
         this.save(reply);
 
         // 回复积分：只有通过质量检测的回复才计分，且同一篇帖子下同一用户最多3次
-        // 运营方案：回帖人在自己的帖子内进行回复不再获得积分
-        Comment commentForArticle = null;
-        if (quality.isPassed()) {
-            // 通过评论找到文章ID，检查该用户在此文章下已获得的回帖积分次数
-            commentForArticle = commentService.getById(replyParam.getCommentId());
-            if (commentForArticle != null) {
-                Article article = articleService.getById(commentForArticle.getCommentArticleId());
-                // 自己帖子内回复不计分
-                if (article != null && !article.getUserId().equals(replyParam.getReplyUserId())) {
-                    int existingCount = pointsLogService.countReplyPointsForArticle(
-                            replyParam.getReplyUserId(), commentForArticle.getCommentArticleId());
-                    if (existingCount < 3) {
-                        int replyPoints = 1; // default
-                        try {
-                            String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
-                            if (val != null) replyPoints = Integer.parseInt(val);
-                        } catch (Exception e) { /* use default */ }
-                        pointsLogService.adjustUserPoints(replyParam.getReplyUserId(), replyPoints, "回复积分",
-                                "reply", reply.getReplyId(), null);
-                    }
-                }
+        // 运营方案：回帖人在自己的帖子内进行回复不再获得积分；不计分标签跳过
+        if (quality.isPassed() && targetArticle != null
+                && !targetArticle.getUserId().equals(replyParam.getReplyUserId())
+                && labelPointsPolicyService.shouldAward(targetArticle.getArticleLabelId(), "reply")) {
+            int existingCount = pointsLogService.countReplyPointsForArticle(
+                    replyParam.getReplyUserId(), commentForArticle.getCommentArticleId());
+            if (existingCount < 3) {
+                int replyPoints = 1; // default
+                try {
+                    String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
+                    if (val != null) replyPoints = Integer.parseInt(val);
+                } catch (Exception e) { /* use default */ }
+                pointsLogService.adjustUserPoints(replyParam.getReplyUserId(), replyPoints, "回复积分",
+                        "reply", reply.getReplyId(), null);
             }
+        }
+
+        // 更新帖子冗余计数/最后回复时间
+        if (quality.isPassed() && targetArticle != null) {
+            articleService.update(null, new LambdaUpdateWrapper<Article>()
+                    .eq(Article::getArticleId, targetArticle.getArticleId())
+                    .setSql("comment_num = COALESCE(comment_num, 0) + 1")
+                    .set(Article::getLastReplyTime, day)
+                    .set(Article::getLastActivityTime, day));
         }
 
         // 通知被回复的用户（非自己时）
@@ -128,10 +146,10 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
                 if (commentPreview.length() > 20) {
                     commentPreview = commentPreview.substring(0, 20) + "...";
                 }
-                String title = "有人回复了你的评论「" + commentPreview + "」";
+                String title = (anonymous ? "匿名用户" : "有人") + "回复了你的评论「" + commentPreview + "」";
                 notificationService.createNotification(
                         replyParam.getReplyToUserId(),
-                        replyParam.getReplyUserId(),
+                        anonymous ? null : replyParam.getReplyUserId(),
                         "reply",
                         title,
                         "reply",
@@ -153,13 +171,27 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
         // 删除前先获取回复信息，用于扣回积分
         Reply reply = replyMapper.selectById(replyId);
         if (reply != null && reply.getEnable() != null && reply.getEnable() == 1) {
-            int replyPoints = 1; // default
-            try {
-                String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
-                if (val != null) replyPoints = Integer.parseInt(val);
-            } catch (Exception e) { /* use default */ }
-            pointsLogService.adjustUserPoints(reply.getReplyUserId(), -replyPoints, "删除回复扣回积分",
-                    "reply", replyId, null, true);
+            long awarded = pointsLogService.count(new LambdaQueryWrapper<PointsLog>()
+                    .eq(PointsLog::getUserId, reply.getReplyUserId())
+                    .eq(PointsLog::getRelatedType, "reply")
+                    .eq(PointsLog::getRelatedId, replyId)
+                    .gt(PointsLog::getPointsChange, 0)
+                    .and(w -> w.isNull(PointsLog::getIsReversed).or().eq(PointsLog::getIsReversed, 0)));
+            if (awarded > 0) {
+                int replyPoints = 1; // default
+                try {
+                    String val = dictService.getValueByKey(ConstantUtil.MANA_REPLY);
+                    if (val != null) replyPoints = Integer.parseInt(val);
+                } catch (Exception e) { /* use default */ }
+                pointsLogService.adjustUserPoints(reply.getReplyUserId(), -replyPoints, "删除回复扣回积分",
+                        "reply", replyId, null, true);
+            }
+            Comment comment = commentService.getById(reply.getCommentId());
+            if (comment != null) {
+                articleService.update(null, new LambdaUpdateWrapper<Article>()
+                        .eq(Article::getArticleId, comment.getCommentArticleId())
+                        .setSql("comment_num = GREATEST(COALESCE(comment_num, 0) - 1, 0)"));
+            }
         }
         replyMapper.deleteById(replyId);
         return ResultBean.success("删除成功");

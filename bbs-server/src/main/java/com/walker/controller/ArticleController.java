@@ -267,9 +267,35 @@ public class ArticleController {
     @ApiOperation(value = "通过文章Id查询文章")
     @PostMapping("/common/article/getArticleById/articleId/{articleId}")
     public Article getArticleById(@PathVariable("articleId") Integer articleId) {
+        Article article = articleService.queryArticleById(articleId);
+        if (article != null && article.getArticleLabelId() != null) {
+            ArticleLabel label = articleLabelService.getById(article.getArticleLabelId());
+            if (label != null) {
+                article.setLabelAllowAnonymous(label.getAllowAnonymous());
+                article.setLabelNoPoints(label.getNoPoints());
+            }
+        }
+        if (article != null && Integer.valueOf(1).equals(article.getIsAnonymous())) {
+            article.setArticleAuthor("匿名用户");
+            article.setUserId(null);
+            article.setPortrait(null);
+            article.setAuthorOrgName(null);
+            article.setAuthorOrgNameFull(null);
+            article.setAuthorDeptName(null);
+        }
+        return normalizeArticle(article);
+    }
 
-        return normalizeArticle(articleService.queryArticleById(articleId));
+    @ApiOperation(value = "用户端帖子分页筛选/排序")
+    @PostMapping("/common/article/list")
+    public ResultBean articleList(@RequestBody com.walker.vo.param.ArticleListParam param) {
+        return articleService.queryArticlePage(param);
+    }
 
+    @ApiOperation(value = "标签热榜（可按浏览/评论/收藏/点赞/分享排序）")
+    @PostMapping("/common/article/hot")
+    public ResultBean articleHot(@RequestBody com.walker.vo.param.ArticleHotParam param) {
+        return articleService.queryHotByLabel(param);
     }
 
     @ApiOperation(value = "获取文章对外展示状态（NORMAL/DELETED/NOT_EXIST，供详情页区分已删除与不存在）")

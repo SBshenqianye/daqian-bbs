@@ -2,7 +2,9 @@ package com.walker.service.impl;
 
 import cn.hutool.core.date.DateUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.ArticleMapper;
 import com.walker.mapper.CommentMapper;
@@ -72,6 +74,12 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private CommentMapper commentMapper;
 
     @Autowired
+    private LabelPointsPolicyService labelPointsPolicyService;
+
+    @Autowired
+    private LevelService levelService;
+
+    @Autowired
     private PointsLogService pointsLogService;
 
     @Autowired
@@ -134,6 +142,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             if (label.getEnabled() == null || label.getEnabled() != 1) {
                 return ResultBean.error("所选标签已被禁用，请重新选择");
             }
+            if (Integer.valueOf(1).equals(articleParam.getIsAnonymous())
+                    && !Integer.valueOf(1).equals(label.getAllowAnonymous())) {
+                return ResultBean.error("该标签不支持匿名发帖");
+            }
         }
         // 标题校验：不能为空、不能包含图片/富文本语法（严格拒绝）
         String title = articleParam.getArticleTitle();
@@ -173,8 +185,14 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setUserId(articleParam.getUserId());
         article.setArticleGoodNum(0);
         article.setArticleViewNum(0);
-        // 走到这里已通过质量检测（spam 已在上方拒绝），文章直接可见
-        article.setEnable(1);
+        article.setFavoriteNum(0);
+        article.setShareNum(0);
+        article.setCommentNumCount(0);
+        article.setIsAnonymous(Integer.valueOf(1).equals(articleParam.getIsAnonymous()) ? 1 : 0);
+        article.setLastActivityTime(day);
+        // 审核模式：默认 AUTO（与运营方案自动计分+抽查一致）；PRE_REVIEW 时进入待审核
+        String publishMode = dictService.getValueByKey(ConstantUtil.ARTICLE_PUBLISH_MODE);
+        article.setEnable("PRE_REVIEW".equalsIgnoreCase(publishMode) ? 0 : 1);
         article.setArticleCommunityId(articleParam.getArticleCommunityId());
         article.setCreateTime(day);
 
@@ -184,14 +202,17 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             articleFileService.updateArticleFile(articleParam.getFiles(), article.getArticleId());
         }
 
-        // 发帖积分：通过质量检测的帖子均计分（低质量内容同样计分，仅垃圾内容被拒绝不计分）
-        int postPoints = 2; // default
-        try {
-            String val = dictService.getValueByKey(ConstantUtil.MANA_POST);
-            if (val != null) postPoints = Integer.parseInt(val);
-        } catch (Exception e) { /* use default */ }
-        pointsLogService.adjustUserPoints(articleParam.getUserId(), postPoints, "发帖积分",
-                "article", article.getArticleId(), null);
+        // 发帖积分：通过质量检测且标签允许计分、帖子已可见时才计分
+        if (article.getEnable() != null && article.getEnable() == 1
+                && labelPointsPolicyService.shouldAward(labelId, "publish")) {
+            int postPoints = 2; // default
+            try {
+                String val = dictService.getValueByKey(ConstantUtil.MANA_POST);
+                if (val != null) postPoints = Integer.parseInt(val);
+            } catch (Exception e) { /* use default */ }
+            pointsLogService.adjustUserPoints(articleParam.getUserId(), postPoints, "发帖积分",
+                    "article", article.getArticleId(), null);
+        }
 
         return ResultBean.success("发布成功！");
     }
@@ -287,6 +308,178 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         );
     }
 
+    @Override
+    public ResultBean queryArticlePage(com.walker.vo.param.ArticleListParam param) {
+        if (param == null) {
+            param = new com.walker.vo.param.ArticleListParam();
+        }
+        int pageNo = param.getPage() == null || param.getPage() < 1 ? 1 : param.getPage();
+        int size = param.getSize() == null || param.getSize() < 1 ? 20 : Math.min(param.getSize(), 50);
+        QueryWrapper<Article> wrapper = new QueryWrapper<>();
+        wrapper.eq("enable", 1);
+        if (StringUtils.isNotBlank(param.getKeywords())) {
+            String kw = param.getKeywords().trim();
+            wrapper.and(w -> w.like("article_title", kw)
+                    .or().like("article_content", kw)
+                    .or().like("article_author", kw));
+        }
+        if (param.getLabelId() != null && param.getLabelId() > 0) {
+            wrapper.eq("article_label_id", param.getLabelId());
+        }
+        if (param.getAuthorId() != null) {
+            wrapper.eq("user_id", param.getAuthorId());
+        }
+        if (StringUtils.isNotBlank(param.getOrgNo())) {
+            wrapper.apply("user_id IN (SELECT id FROM bbs_user WHERE is_delete = 0 AND org_no LIKE CONCAT({0}, '%'))",
+                    param.getOrgNo());
+        }
+        if (param.getFeatured() != null) {
+            wrapper.eq("is_featured", param.getFeatured());
+        }
+        if (param.getHasAttachment() != null && param.getHasAttachment() == 1) {
+            wrapper.apply("EXISTS (SELECT 1 FROM bbs_article_file f WHERE f.article_id = bbs_article.article_id)");
+        }
+        if (StringUtils.isNotBlank(param.getStartTime())) {
+            wrapper.ge("create_time", param.getStartTime() + " 00:00:00");
+        }
+        if (StringUtils.isNotBlank(param.getEndTime())) {
+            wrapper.le("create_time", param.getEndTime() + " 23:59:59");
+        }
+        String sortColumn = resolveSortColumn(param.getSortBy());
+        if ("asc".equalsIgnoreCase(param.getSortOrder())) {
+            wrapper.orderByAsc(sortColumn);
+        } else {
+            wrapper.orderByDesc(sortColumn);
+        }
+        wrapper.orderByDesc("article_id");
+
+        Page<Article> page = articleMapper.selectPage(new Page<>(pageNo, size), wrapper);
+        List<Article> list = page.getRecords();
+        for (Article article : list) {
+            article.setCommentNum(article.getCommentNumCount() == null ? 0 : article.getCommentNumCount());
+        }
+        enrichWithUserInfo(list);
+        maskAnonymousArticles(list);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("list", list);
+        data.put("total", page.getTotal());
+        data.put("page", pageNo);
+        data.put("size", size);
+        data.put("pages", page.getPages());
+        return ResultBean.success("查询成功", data);
+    }
+
+    @Override
+    public ResultBean queryHotByLabel(com.walker.vo.param.ArticleHotParam param) {
+        if (param == null) {
+            param = new com.walker.vo.param.ArticleHotParam();
+        }
+        int limit = param.getLimit() == null || param.getLimit() < 1 ? 10 : Math.min(param.getLimit(), 50);
+        QueryWrapper<Article> wrapper = new QueryWrapper<>();
+        wrapper.select("article_id", "article_title", "create_time", "article_view_num",
+                "comment_num", "favorite_num", "article_good_num", "share_num");
+        wrapper.eq("enable", 1);
+        if (param.getLabelId() != null && param.getLabelId() > 0) {
+            wrapper.eq("article_label_id", param.getLabelId());
+        }
+        String range = param.getRange() == null ? "all" : param.getRange();
+        // 热榜口径：默认按全部时间累计排序，不再按 7/30 天截断
+        // （保留 range 入参兼容老前端，仅显式传 7d/30d 时才按时间过滤）
+        if ("7d".equals(range) || "30d".equals(range)) {
+            Calendar cal = Calendar.getInstance();
+            cal.add(Calendar.DAY_OF_MONTH, "7d".equals(range) ? -7 : -30);
+            wrapper.ge("create_time", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(cal.getTime()));
+        }
+        String metric = param.getMetric() == null ? "views" : param.getMetric();
+        String column;
+        switch (metric) {
+            case "comments": column = "comment_num"; break;
+            case "favorites": column = "favorite_num"; break;
+            case "likes": column = "article_good_num"; break;
+            case "shares": column = "share_num"; break;
+            default: column = "article_view_num"; break;
+        }
+        wrapper.orderByDesc(column);
+        wrapper.orderByDesc("article_id");
+        wrapper.last("LIMIT " + limit);
+        return ResultBean.success("查询成功", articleMapper.selectList(wrapper));
+    }
+
+    @Override
+    public ResultBean queryFavoritePage(Integer userId, Integer page, Integer size) {
+        if (userId == null) {
+            return ResultBean.error("用户ID不能为空");
+        }
+        int pageNo = page == null || page < 1 ? 1 : page;
+        int pageSize = size == null || size < 1 ? 10 : Math.min(size, 50);
+
+        Page<ArticleUser> favPage = articleUserService.page(new Page<>(pageNo, pageSize),
+                new LambdaQueryWrapper<ArticleUser>()
+                        .eq(ArticleUser::getUserId, userId)
+                        .orderByDesc(ArticleUser::getCreateTime)
+                        .orderByDesc(ArticleUser::getId));
+
+        List<Integer> articleIds = favPage.getRecords().stream()
+                .map(ArticleUser::getArticleId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        List<Article> list = new ArrayList<>();
+        if (!articleIds.isEmpty()) {
+            List<Article> found = articleMapper.selectList(new LambdaQueryWrapper<Article>()
+                    .in(Article::getArticleId, articleIds)
+                    .eq(Article::getEnable, 1)
+                    .eq(Article::getIsDelete, 0));
+            Map<Integer, Article> byId = found.stream()
+                    .collect(Collectors.toMap(Article::getArticleId, a -> a, (a, b) -> a));
+            for (Integer id : articleIds) {
+                Article a = byId.get(id);
+                if (a == null) continue;
+                a.setCommentNum(a.getCommentNumCount() == null ? 0 : a.getCommentNumCount());
+                list.add(a);
+            }
+            enrichWithUserInfo(list);
+            maskAnonymousArticles(list);
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("list", list);
+        data.put("total", favPage.getTotal());
+        data.put("page", pageNo);
+        data.put("size", pageSize);
+        data.put("pages", favPage.getPages());
+        return ResultBean.success("查询成功", data);
+    }
+
+    private String resolveSortColumn(String sortBy) {        if (sortBy == null) return "create_time";
+        switch (sortBy) {
+            case "lastReplyTime": return "last_reply_time";
+            case "lastActivityTime": return "last_activity_time";
+            case "views": return "article_view_num";
+            case "comments": return "comment_num";
+            case "likes": return "article_good_num";
+            case "favorites": return "favorite_num";
+            case "shares": return "share_num";
+            case "featuredTime": return "create_time";
+            default: return "create_time";
+        }
+    }
+
+    private void maskAnonymousArticles(List<Article> articles) {
+        if (CollectionUtils.isEmpty(articles)) return;
+        for (Article article : articles) {
+            if (article.getIsAnonymous() != null && article.getIsAnonymous() == 1) {
+                article.setArticleAuthor("匿名用户");
+                article.setUserId(null);
+                article.setPortrait(null);
+                article.setAuthorOrgName(null);
+                article.setAuthorOrgNameFull(null);
+                article.setAuthorDeptName(null);
+            }
+        }
+    }
+
     /**
      * 通过文章Id查询文章
      * @return
@@ -305,6 +498,13 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // 更新浏览量
         article.setArticleViewNum(article.getArticleViewNum() + 1);
         articleMapper.updateById(article);
+        try {
+            if (article.getUserId() != null) {
+                article.setAuthorLevelIndex(levelService.getLevelIndex(article.getUserId()));
+            }
+        } catch (Exception ignore) {
+            // 等级查询失败不影响帖子正文展示
+        }
         return article;
         // return this.getById(articleId);
     }
@@ -366,6 +566,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .collect(Collectors.toSet());
         Map<String, String> orgNameMap = saOrgService.resolveDisplayOrgNames(orgNos);
 
+        Map<Integer, Integer> levelMap = levelService.getLevelIndexMap(userIds);
+
         articles.forEach(a -> {
             if (a.getUserId() != null && userMap.containsKey(a.getUserId())) {
                 User u = userMap.get(a.getUserId());
@@ -376,6 +578,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 String fullOrgName = orgNameMap.get(u.getOrgNo());
                 a.setAuthorOrgNameFull(fullOrgName != null ? fullOrgName : u.getOrgName());
                 a.setAuthorDeptName(u.getDeptName());
+            }
+            if (a.getUserId() != null) {
+                a.setAuthorLevelIndex(levelMap.get(a.getUserId()));
             }
         });
     }
@@ -568,10 +773,31 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public ResultBean auditArticleByArticleId(Integer articleId) {
+        Article existing = articleMapper.selectById(articleId);
         Article article = new Article();
         article.setArticleId(articleId)
                 .setEnable(1);
         articleMapper.updateById(article);
+        // 前置审核通过后补发发帖积分（每个帖子只发一次；不计分标签跳过）
+        if (existing != null && existing.getUserId() != null
+                && labelPointsPolicyService.shouldAward(existing.getArticleLabelId(), "publish")) {
+            long awarded = pointsLogService.count(new LambdaQueryWrapper<PointsLog>()
+                    .eq(PointsLog::getUserId, existing.getUserId())
+                    .eq(PointsLog::getRelatedType, "article")
+                    .eq(PointsLog::getRelatedId, articleId)
+                    .eq(PointsLog::getReason, "发帖积分")
+                    .gt(PointsLog::getPointsChange, 0)
+                    .and(w -> w.isNull(PointsLog::getIsReversed).or().eq(PointsLog::getIsReversed, 0)));
+            if (awarded == 0) {
+                int postPoints = 2;
+                try {
+                    String val = dictService.getValueByKey(ConstantUtil.MANA_POST);
+                    if (val != null) postPoints = Integer.parseInt(val);
+                } catch (Exception e) { /* use default */ }
+                pointsLogService.adjustUserPoints(existing.getUserId(), postPoints, "发帖积分",
+                        "article", articleId, null);
+            }
+        }
         return ResultBean.success("修改成功！");
     }
 
@@ -713,6 +939,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (articleParam.getArticleContent() == null || articleParam.getArticleContent().trim().isEmpty()) {
             return ResultBean.error("内容不能为空");
         }
+        if (Integer.valueOf(1).equals(articleParam.getIsAnonymous())
+                && !labelPointsPolicyService.allowsAnonymous(articleParam.getArticleLabelId())) {
+            return ResultBean.error("该标签不支持匿名发帖");
+        }
 
         Article article = new Article();
 
@@ -723,7 +953,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .setArticleSummary(articleParam.getArticleSummary())
                 .setArticleTypeId(articleParam.getArticleTypeId())
                 .setArticleCommunityId(articleParam.getArticleCommunityId())
-                .setArticleLabelId(articleParam.getArticleLabelId());
+                .setArticleLabelId(articleParam.getArticleLabelId())
+                .setIsAnonymous(Integer.valueOf(1).equals(articleParam.getIsAnonymous()) ? 1 : 0);
         // System.out.println("articleParam.getArticleImage() = " + articleParam.getArticleImage());
         if (articleParam.getArticleImage() != null){
             article.setArticleImage(articleParam.getArticleImage());

@@ -57,6 +57,9 @@ class ViolationServiceTest {
     private NotificationService notificationService;
 
     @Mock
+    private MonthlyDeductionAlertService monthlyDeductionAlertService;
+
+    @Mock
     private ArticleMapper articleMapper;
 
     @Mock

@@ -105,6 +105,34 @@ public class Article implements Serializable {
     @TableField("is_hot_bonus")
     private Integer isHotBonus;
 
+    @ApiModelProperty("最后回复时间")
+    @TableField("last_reply_time")
+    private String lastReplyTime;
+
+    @ApiModelProperty("最后活跃时间")
+    @TableField("last_activity_time")
+    private String lastActivityTime;
+
+    @ApiModelProperty("评论+回复数（冗余）")
+    @TableField("comment_num")
+    private Integer commentNumCount;
+
+    @ApiModelProperty("收藏数（冗余）")
+    @TableField("favorite_num")
+    private Integer favoriteNum;
+
+    @ApiModelProperty("分享数（冗余）")
+    @TableField("share_num")
+    private Integer shareNum;
+
+    @ApiModelProperty("是否匿名发布(0=否,1=是)")
+    @TableField("is_anonymous")
+    private Integer isAnonymous;
+
+    @ApiModelProperty("设为精华时间")
+    @TableField("featured_time")
+    private String featuredTime;
+
     @ApiModelProperty("标签名称（关联查询，非数据库字段）")
     @TableField(exist = false)
     private String articleLabelName;
@@ -112,6 +140,18 @@ public class Article implements Serializable {
     @ApiModelProperty("标签用途类型（关联查询，非数据库字段）")
     @TableField(exist = false)
     private String articleLabelType;
+
+    @ApiModelProperty("标签是否允许匿名（关联查询，非数据库字段）")
+    @TableField(exist = false)
+    private Integer labelAllowAnonymous;
+
+    @ApiModelProperty("标签是否不计分（关联查询，非数据库字段）")
+    @TableField(exist = false)
+    private Integer labelNoPoints;
+
+    @ApiModelProperty("作者等级序号（关联查询，非数据库字段）")
+    @TableField(exist = false)
+    private Integer authorLevelIndex;
 
     @ApiModelProperty("用户头像")
     @TableField(exist = false)

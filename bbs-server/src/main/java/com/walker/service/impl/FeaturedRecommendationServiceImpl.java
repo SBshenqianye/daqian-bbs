@@ -13,6 +13,7 @@ import com.walker.service.AuthorizationService;
 import com.walker.service.CurrentUserService;
 import com.walker.service.DictService;
 import com.walker.service.FeaturedRecommendationService;
+import com.walker.service.LabelPointsPolicyService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
 import com.walker.service.SelfApprovalPolicy;
@@ -48,6 +49,9 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
 
     @Autowired
     private DictService dictService;
+
+    @Autowired
+    private LabelPointsPolicyService labelPointsPolicyService;
 
     @Autowired
     private CurrentUserService currentUserService;
@@ -137,8 +141,12 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
             return ResultBean.error("未获取到登录用户信息，请重新登录");
         }
         Integer currentUserId = currentUser.getId();
-        // Q5：精华终审为系统级权限，MODERATOR 只能推荐（featured:recommend），不能终审
-        if (!authorizationService.hasPermission(currentUser, Permission.FEATURED_REVIEW)) {
+        // 终审模式：ADMIN_FINAL 需要 featured:review；MODERATOR_FINAL 允许有推荐权限的版主直接终审
+        boolean moderatorFinal = "MODERATOR_FINAL".equalsIgnoreCase(
+                dictService.getValueByKey(ConstantUtil.FEATURED_FINAL_REVIEW_MODE));
+        boolean canReview = authorizationService.hasPermission(currentUser, Permission.FEATURED_REVIEW)
+                || (moderatorFinal && authorizationService.hasPermission(currentUser, Permission.FEATURED_RECOMMEND));
+        if (!canReview) {
             return ResultBean.forbidden("权限不足，请联系管理员");
         }
         if (reviewerId != null && !currentUserId.equals(reviewerId)) {
@@ -186,16 +194,42 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
                     if (val != null) featuredPoints = Integer.parseInt(val);
                 } catch (Exception e) { /* use default */ }
 
+                SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                String now = dateFmt.format(new Date());
                 article.setIsFeatured(1);
+                article.setFeaturedTime(now);
                 articleService.updateById(article);
-                pointsLogService.adjustUserPoints(article.getUserId(), featuredPoints, "精华帖奖励积分",
-                        "featured", rec.getArticleId(), reviewerId);
+                if (labelPointsPolicyService.shouldAward(article.getArticleLabelId(), "featured")) {
+                    pointsLogService.adjustUserPoints(article.getUserId(), featuredPoints, "精华帖奖励积分",
+                            "featured", rec.getArticleId(), reviewerId);
+                }
+
+                // 公示：默认 5 个工作日；关闭公示则直接发布
+                boolean publicEnabled = !"0".equals(dictService.getValueByKey("featured_public_enabled"));
+                int publicDays = 5;
+                try {
+                    String days = dictService.getValueByKey("featured_public_days");
+                    if (days != null && !days.trim().isEmpty()) publicDays = Integer.parseInt(days.trim());
+                } catch (Exception ignore) { }
+                rec.setFeaturedReason(remark);
+                rec.setPublicStartTime(now);
+                if (publicEnabled) {
+                    rec.setPublicStatus("PUBLICIZING");
+                    rec.setPublicEndTime(addBusinessDays(new Date(), Math.max(1, publicDays)));
+                } else {
+                    rec.setPublicStatus("PUBLISHED");
+                    rec.setPublicEndTime(now);
+                }
+                this.updateById(rec);
 
                 // 通知帖子作者
-                notificationService.createNotification(article.getUserId(), reviewerId, "adopt",
+                notificationService.createNotification(article.getUserId(), reviewerId, "featured_granted",
                         "恭喜！您的帖子《" + (article.getArticleTitle() != null ? article.getArticleTitle() : "") + "》被评定为精华帖，获得+" + featuredPoints + "积分",
                         "article", rec.getArticleId());
             }
+        } else {
+            rec.setPublicStatus("NONE");
+            this.updateById(rec);
         }
 
         // 通知推荐人
@@ -205,6 +239,20 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
                 "article", rec.getArticleId());
 
         return ResultBean.success("审核完成" + ("approved".equals(status) ? "，已设为精华帖" : ""));
+    }
+
+    private String addBusinessDays(Date start, int days) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(start);
+        int added = 0;
+        while (added < days) {
+            cal.add(Calendar.DAY_OF_MONTH, 1);
+            int dow = cal.get(Calendar.DAY_OF_WEEK);
+            if (dow != Calendar.SATURDAY && dow != Calendar.SUNDAY) {
+                added++;
+            }
+        }
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(cal.getTime());
     }
 
     @Override

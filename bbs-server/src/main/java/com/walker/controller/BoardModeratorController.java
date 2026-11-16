@@ -143,7 +143,7 @@ public class BoardModeratorController {
         return result;
     }
 
-    @ApiOperation(value = "发放本月版主履职奖励（每月一次性15积分）")
+    @ApiOperation(value = "发放本月版主履职奖励（默认400积分，可配置）")
     @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).MODERATOR_MANAGE)")
     @AuditLog(module = "MODERATOR", action = "MODERATOR_REWARD_GRANT",
             targetType = "MODERATOR_REWARD", targetId = "'ALL'", snapshot = false)

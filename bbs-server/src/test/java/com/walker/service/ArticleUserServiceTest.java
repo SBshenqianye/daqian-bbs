@@ -55,19 +55,13 @@ class ArticleUserServiceTest {
     void saveUserCollection_firstTime_succeeds() {
         when(articleUserMapper.selectOne(any())).thenReturn(null);
         when(articleUserMapper.insert(any(ArticleUser.class))).thenReturn(1);
-        doNothing().when(articleService).articleGoodNumPlusOne(100);
-
-        User user = new User();
-        user.setGood(0);
-        when(userService.getById(1)).thenReturn(user);
-        when(userService.updateById(any())).thenReturn(true);
+        when(articleService.update(isNull(), any())).thenReturn(true);
 
         ResultBean result = articleUserService.saveUserCollection(1, 100);
 
         assertEquals(200, result.getCode());
         assertEquals("收藏成功！", result.getMessage());
-        verify(articleService).articleGoodNumPlusOne(100);
-        assertEquals(1, user.getGood());
+        verify(articleService).update(isNull(), any());
     }
 
     @Test

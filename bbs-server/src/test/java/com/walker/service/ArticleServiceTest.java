@@ -71,6 +71,12 @@ class ArticleServiceTest {
     private CommentMapper commentMapper;
 
     @Mock
+    private LabelPointsPolicyService labelPointsPolicyService;
+
+    @Mock
+    private LevelService levelService;
+
+    @Mock
     private PointsLogService pointsLogService;
 
     @Mock
@@ -181,6 +187,8 @@ class ArticleServiceTest {
 
         when(userService.getById(1)).thenReturn(null);
         when(dictService.getValueByKey("post")).thenReturn("3");
+        when(dictService.getValueByKey("article_publish_mode")).thenReturn("AUTO");
+        when(labelPointsPolicyService.shouldAward(any(), anyString())).thenReturn(true);
         when(articleMapper.insert(any(Article.class))).thenReturn(1);
 
         ResultBean result = articleService.publish(param);

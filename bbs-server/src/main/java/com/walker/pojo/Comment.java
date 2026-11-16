@@ -56,4 +56,12 @@ public class Comment implements Serializable {
     @ApiModelProperty("采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)")
     @TableField("adopt_status")
     private Integer adoptStatus;
+
+    @ApiModelProperty("是否匿名(0=否,1=是)")
+    @TableField("is_anonymous")
+    private Integer isAnonymous;
+
+    @ApiModelProperty("评论点赞数")
+    @TableField("comment_good_num")
+    private Integer goodNum;
 }
