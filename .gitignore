@@ -83,3 +83,8 @@ docs/manual-images/
 docs/权限架构重构-*.md
 docs/权限管理-*.md
 docs/版主角色化-*.md
+docs/prompt-history.md
+
+# 过程性验收清单 / 返工记录（本地查看，不提交）
+docs/*验收清单*.md
+docs/R2-*.md
