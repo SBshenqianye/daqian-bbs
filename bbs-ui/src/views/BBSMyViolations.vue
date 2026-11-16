@@ -68,7 +68,11 @@ export default {
       return { illegal: '违法违规内容', attack: '人身攻击', spam: '恶意灌水', plagiarism: '抄袭剽窃', false_report: '虚假举报', leak: '泄露秘密' }[t] || t
     },
     goAppeal(violationId) {
-      this.$router.push({ path: '/my-appeals', query: { violationId: String(violationId) } })
+      if (this.embedded) {
+        this.$root.$emit('account-tab', 'appeals', { violationId: String(violationId) })
+      } else {
+        this.$router.push({ path: '/userinfo', query: { tab: 'appeals', violationId: String(violationId) } })
+      }
     },
     async loadList() {
       const userId = this.getUserId()

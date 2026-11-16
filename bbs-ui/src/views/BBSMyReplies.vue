@@ -207,10 +207,12 @@ export default {
     },
   },
   mounted() {
-    // 根据路由参数决定初始 Tab
+    // 根据路由参数决定初始 Tab（内嵌在个人中心时用 sub 参数，避免与外层 tab 冲突）
+    const sub = this.$route.query.sub
     const tab = this.$route.query.tab
-    if (tab === 'repliedToMe') {
-      this.activeTab = 'repliedToMe'
+    const initial = sub === 'repliedToMe' || tab === 'repliedToMe' ? 'repliedToMe' : 'myReplies'
+    this.activeTab = initial
+    if (initial === 'repliedToMe') {
       // 直接通过 URL 进入"回复我的"tab 时也标记已读
       this.$nextTick(() => this.markAsRead())
     }

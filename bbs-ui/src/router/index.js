@@ -77,47 +77,34 @@ const router = new VueRouter({
             component: () => import('@/views/BBSFeaturedArticles.vue'),
             meta: { auth: false }
         },
+        // 以下子页面已迁移为「个人中心」内嵌 Tab，保留旧地址做重定向，避免旧链接 404
         {
-            name: 'BBSMyReplies',
             path: '/my-replies',
-            component: () => import('@/views/BBSMyReplies.vue'),
-            meta: { auth: true }
+            redirect: to => ({ path: '/userinfo', query: { tab: 'replies', ...to.query } })
         },
         {
-            name: 'BBSFavorites',
             path: '/my-favorites',
-            component: () => import('@/views/BBSFavorites.vue'),
-            meta: { auth: true }
+            redirect: { path: '/userinfo', query: { tab: 'favorites' } }
         },
         {
-            name: 'BBSMyPointsLog',
             path: '/my-points-log',
-            component: () => import('@/views/BBSMyPointsLog.vue'),
-            meta: { auth: true }
+            redirect: to => ({ path: '/userinfo', query: { tab: 'points', ...to.query } })
         },
         {
-            name: 'BBSMyViolations',
             path: '/my-violations',
-            component: () => import('@/views/BBSMyViolations.vue'),
-            meta: { auth: true }
+            redirect: { path: '/userinfo', query: { tab: 'violations' } }
         },
         {
-            name: 'BBSMyAppeals',
             path: '/my-appeals',
-            component: () => import('@/views/BBSMyAppeals.vue'),
-            meta: { auth: true }
+            redirect: to => ({ path: '/userinfo', query: { tab: 'appeals', ...to.query } })
         },
         {
-            name: 'BBSMyReports',
             path: '/my-reports',
-            component: () => import('@/views/BBSMyReports.vue'),
-            meta: { auth: true }
+            redirect: { path: '/userinfo', query: { tab: 'reports' } }
         },
         {
-            name: 'BBSModeratorComplaint',
             path: '/moderator-complaint',
-            component: () => import('@/views/BBSModeratorComplaint.vue'),
-            meta: { auth: true }
+            redirect: { path: '/userinfo', query: { tab: 'complaint' } }
         },
         {
             name: 'BBSNotifications',

@@ -26,7 +26,7 @@
     <div v-if="!violationsLoading && violations.length === 0" class="mb-8 p-6 bg-container border border-outline-variant rounded-lg text-center">
       <span class="material-symbols-outlined text-5xl text-outline mb-3 block">verified</span>
       <p class="font-body-md text-on-surface-variant">暂无违规记录，无需申诉</p>
-      <router-link to="/my-violations" class="inline-block mt-3 text-primary text-body-sm hover:underline">查看我的违规记录</router-link>
+      <router-link to="/userinfo?tab=violations" class="inline-block mt-3 text-primary text-body-sm hover:underline">查看我的违规记录</router-link>
     </div>
 
     <!-- 申诉表单 -->
@@ -178,9 +178,9 @@ export default {
               if (target && !this.isAppealed(target.id)) {
                 this.selectedViolation = target
               }
-              // 清除 query 参数，避免刷新重复选中
-              if (this.$route.query.violationId) {
-                this.$router.replace({ path: '/my-appeals' })
+              // 清除 query 参数，避免刷新重复选中（内嵌时不改路由）
+              if (this.$route.query.violationId && !this.embedded) {
+                this.$router.replace({ path: '/userinfo', query: { tab: 'appeals' } })
               }
             }
           },

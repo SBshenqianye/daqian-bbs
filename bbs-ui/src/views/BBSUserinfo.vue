@@ -316,6 +316,7 @@ import BBSMyPointsLog from '@/views/BBSMyPointsLog.vue'
 import BBSMyViolations from '@/views/BBSMyViolations.vue'
 import BBSMyAppeals from '@/views/BBSMyAppeals.vue'
 import BBSModeratorComplaint from '@/views/BBSModeratorComplaint.vue'
+import BBSMyReports from '@/views/BBSMyReports.vue'
 import { levelSpec, normalizeLevel } from '../../../shared/level-icons'
 
 export default {
@@ -329,6 +330,7 @@ export default {
     BBSMyViolations,
     BBSMyAppeals,
     BBSModeratorComplaint,
+    BBSMyReports,
   },
   data() {
     return {
@@ -352,9 +354,10 @@ export default {
         { key: 'violations', label: '违规记录', icon: 'gavel', component: 'BBSMyViolations' },
         { key: 'appeals', label: '申诉记录', icon: 'assignment', component: 'BBSMyAppeals' },
         { key: 'complaint', label: '版主投诉', icon: 'feedback', component: 'BBSModeratorComplaint' },
+        { key: 'reports', label: '我的举报', icon: 'flag', component: 'BBSMyReports' },
       ],
       // Tab 红点：有“上次查看之后的新内容”时亮起
-      badges: { favorites: false, replies: false, points: false, violations: false, appeals: false, complaint: false },
+      badges: { favorites: false, replies: false, points: false, violations: false, appeals: false, complaint: false, reports: false },
       userInfo: {
         nickname: '',
         userId: '',
@@ -412,26 +415,36 @@ export default {
     },
   },
   watch: {
-    '$route.query.tab'() {
-      this.applyRouteTab()
+    '$route.query': {
+      handler() {
+        this.applyRouteTab()
+      },
+      deep: true,
     },
   },
   mounted() {
     this.applyRouteTab()
     this.loadUserInfo()
     this.loadBadges()
+    this.$root.$on('account-tab', this.onAccountTab)
+  },
+  beforeDestroy() {
+    this.$root.$off('account-tab', this.onAccountTab)
   },
   methods: {
     /** 侧栏 Tab 切换（子页面内嵌，不再跳转） */
-    goTab(tab) {
+    goTab(tab, extra) {
       this.activeTab = tab
       const keys = this.panelTabs.map(x => x.key)
-      const query = keys.indexOf(tab) >= 0 ? { tab } : {}
+      const query = keys.indexOf(tab) >= 0 ? { tab, ...(extra || {}) } : {}
       if (keys.indexOf(tab) >= 0) this.markSeen(tab)
       if (String(this.$route.path).indexOf('/userinfo') === 0) {
         this.$router.replace({ path: '/userinfo', query }).catch(() => {})
       }
       window.scrollTo({ top: 0, behavior: 'smooth' })
+    },
+    onAccountTab(tab, extra) {
+      this.goTab(tab, extra || {})
     },
     currentUid() {
       if (this.userInfo.userId) return String(this.userInfo.userId)

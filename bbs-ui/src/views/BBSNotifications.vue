@@ -161,21 +161,22 @@ export default {
      * relatedType/relatedId 只作为内容锚点。不同类型互不干扰。
      */
     // 通知类型 → 跳转目标配置（集中管理，新增类型在此加一行即可）
+    // 个人中心子页面已改为内嵌 Tab，统一跳到 /userinfo?tab=xxx
     jumpMap: {
       'adopt_pending': () => window.open('/bbs-admin/#/approve-adopt', '_blank'),
       'report_pending': () => window.open('/bbs-admin/#/report', '_blank'),
-      'appeal_review': () => '/my-appeals',
-      'report_confirmed': () => '/my-reports',
-      'violation': () => '/my-violations',
-      'post_restricted': () => '/my-violations',
-      'moderator_complaint': () => '/moderator-complaint',
-      'complaint_review': () => '/moderator-complaint',
-      'moderator_reward': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
-      'moderator_reward_cancelled': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
-      'hot_bonus': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
-      'suggestion_adopted': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
-      'points_adjust': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
-      'monthly_deduction_alert': () => '/my-violations',
+      'appeal_review': () => ({ path: '/userinfo', query: { tab: 'appeals' } }),
+      'report_confirmed': () => ({ path: '/userinfo', query: { tab: 'reports' } }),
+      'violation': () => ({ path: '/userinfo', query: { tab: 'violations' } }),
+      'post_restricted': () => ({ path: '/userinfo', query: { tab: 'violations' } }),
+      'moderator_complaint': () => ({ path: '/userinfo', query: { tab: 'complaint' } }),
+      'complaint_review': () => ({ path: '/userinfo', query: { tab: 'complaint' } }),
+      'moderator_reward': (item) => ({ path: '/userinfo', query: { tab: 'points', highlightTime: item.createTime } }),
+      'moderator_reward_cancelled': (item) => ({ path: '/userinfo', query: { tab: 'points', highlightTime: item.createTime } }),
+      'hot_bonus': (item) => ({ path: '/userinfo', query: { tab: 'points', highlightTime: item.createTime } }),
+      'suggestion_adopted': (item) => ({ path: '/userinfo', query: { tab: 'points', highlightTime: item.createTime } }),
+      'points_adjust': (item) => ({ path: '/userinfo', query: { tab: 'points', highlightTime: item.createTime } }),
+      'monthly_deduction_alert': () => ({ path: '/userinfo', query: { tab: 'violations' } }),
     },
     async handleNotificationClick(item) {
       const action = this.jumpMap[item.type]
