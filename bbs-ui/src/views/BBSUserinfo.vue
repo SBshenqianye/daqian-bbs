@@ -42,6 +42,7 @@
             >
               <span class="material-symbols-outlined text-[18px]">{{ item.icon }}</span>
               {{ item.label }}
+              <span v-if="badges[item.key]" class="ml-auto w-2 h-2 rounded-full bg-error shrink-0" title="有新内容"></span>
             </button>
           </nav>
         </div>
@@ -352,6 +353,8 @@ export default {
         { key: 'appeals', label: '申诉记录', icon: 'assignment', component: 'BBSMyAppeals' },
         { key: 'complaint', label: '版主投诉', icon: 'feedback', component: 'BBSModeratorComplaint' },
       ],
+      // Tab 红点：有“上次查看之后的新内容”时亮起
+      badges: { favorites: false, replies: false, points: false, violations: false, appeals: false, complaint: false },
       userInfo: {
         nickname: '',
         userId: '',
@@ -416,6 +419,7 @@ export default {
   mounted() {
     this.applyRouteTab()
     this.loadUserInfo()
+    this.loadBadges()
   },
   methods: {
     /** 侧栏 Tab 切换（子页面内嵌，不再跳转） */
@@ -423,15 +427,66 @@ export default {
       this.activeTab = tab
       const keys = this.panelTabs.map(x => x.key)
       const query = keys.indexOf(tab) >= 0 ? { tab } : {}
+      if (keys.indexOf(tab) >= 0) this.markSeen(tab)
       if (String(this.$route.path).indexOf('/userinfo') === 0) {
         this.$router.replace({ path: '/userinfo', query }).catch(() => {})
       }
       window.scrollTo({ top: 0, behavior: 'smooth' })
     },
+    currentUid() {
+      if (this.userInfo.userId) return String(this.userInfo.userId)
+      try {
+        const u = JSON.parse(window.sessionStorage.getItem('user') || 'null')
+        return u && u.id != null ? String(u.id) : ''
+      } catch (e) {
+        return ''
+      }
+    },
+    seenKey(tab) {
+      return `bbs:acct:seen:${this.currentUid()}:${tab}`
+    },
+    markSeen(tab) {
+      this.badges[tab] = false
+      try {
+        const d = new Date()
+        const pad = n => (n < 10 ? '0' + n : '' + n)
+        const now = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+        window.localStorage.setItem(this.seenKey(tab), now)
+      } catch (e) { /* 忽略存储失败 */ }
+    },
+    /** 拉取各栏目最新动态时间，与本地“上次查看时间”比较后亮红点 */
+    loadBadges() {
+      if (!this.currentUid()) return
+      this.getRequest('/user/account/badges').then(res => {
+        const data = (res && res.obj) || {}
+        const seen = (tab) => {
+          try { return window.localStorage.getItem(this.seenKey(tab)) || '' } catch (e) { return '' }
+        }
+        Object.keys(this.badges).forEach(tab => {
+          const latest = data[tab]
+          if (!latest) { this.badges[tab] = false; return }
+          const last = seen(tab)
+          if (!last) {
+            // 首次进入：仅“回复我的”用未读通知点亮，其余视为已读，避免满屏红点
+            if (tab === 'replies') {
+              this.badges[tab] = true
+            } else {
+              this.badges[tab] = false
+              this.markSeen(tab)
+            }
+            return
+          }
+          this.badges[tab] = String(latest) > String(last)
+        })
+      }).catch(() => { /* 红点失败不影响页面 */ })
+    },
     applyRouteTab() {
       const t = this.$route.query.tab
       const keys = this.panelTabs.map(x => x.key)
-      if (t && keys.indexOf(t) >= 0) this.activeTab = t
+      if (t && keys.indexOf(t) >= 0) {
+        this.activeTab = t
+        this.markSeen(t)
+      }
     },
     loadUserInfo() {
       // First try from sessionStorage
