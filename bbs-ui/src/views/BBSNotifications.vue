@@ -175,6 +175,7 @@ export default {
       'hot_bonus': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
       'suggestion_adopted': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
       'points_adjust': (item) => ({ path: '/my-points-log', query: { highlightTime: item.createTime } }),
+      'monthly_deduction_alert': () => '/my-violations',
     },
     async handleNotificationClick(item) {
       const action = this.jumpMap[item.type]
@@ -230,6 +231,7 @@ export default {
         complaint_review: 'assignment',
         featured_recommend: 'stars',
         featured_review: 'stars',
+        monthly_deduction_alert: 'warning',
       }
       return icons[type] || 'notifications'
     },
@@ -253,6 +255,7 @@ export default {
         complaint_review: 'bg-indigo-50',
         featured_recommend: 'bg-amber-50',
         featured_review: 'bg-amber-50',
+        monthly_deduction_alert: 'bg-red-50',
       }
       return map[type] || 'bg-gray-50'
     },
@@ -276,6 +279,7 @@ export default {
         complaint_review: 'text-indigo-600',
         featured_recommend: 'text-amber-600',
         featured_review: 'text-amber-600',
+        monthly_deduction_alert: 'text-red-600',
       }
       return map[type] || 'text-gray-600'
     },
@@ -299,6 +303,7 @@ export default {
         complaint_review: '投诉审核',
         featured_recommend: '精华推荐',
         featured_review: '精华审核',
+        monthly_deduction_alert: '扣分提醒',
       }
       return labels[type] || '通知'
     },

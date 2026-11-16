@@ -181,11 +181,15 @@
             :key="label.labelId"
             class="px-3 py-1 rounded-full border text-sm transition-colors"
             :class="String(selectedLabelId) === String(label.labelId) ? 'border-primary bg-blue-50 text-primary' : 'border-gray-200 text-gray-500 hover:border-primary hover:text-primary'"
-            @click="selectedLabelId = label.labelId"
+            @click="selectedLabelId = label.labelId; isAnonymous = false"
           >
             {{ label.labelName }}
           </button>
         </div>
+        <label v-if="selectedLabelAllowsAnonymous" class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
+          <input v-model="isAnonymous" type="checkbox" class="w-4 h-4 text-primary border-gray-300 rounded">
+          匿名发布（该标签允许匿名；互动是否计分由标签策略决定）
+        </label>
       </div>
 
       <!-- Attachment Section -->
@@ -256,6 +260,7 @@ export default {
       markdownContent: '',
       articleSummary: '',
       selectedLabelId: null,
+      isAnonymous: false,
       labelList: [],
       // Attachments: { fileId, fileName } after server upload
       attachments: [],
@@ -277,6 +282,10 @@ export default {
     selectedLabelName() {
       const found = this.labelList.find(l => String(l.labelId) === String(this.selectedLabelId))
       return found ? found.labelName : ''
+    },
+    selectedLabelAllowsAnonymous() {
+      const found = this.labelList.find(l => String(l.labelId) === String(this.selectedLabelId))
+      return !!(found && found.allowAnonymous === 1)
     },
     selectedLabelDescription() {
       const found = this.labelList.find(l => String(l.labelId) === String(this.selectedLabelId))
@@ -469,6 +478,7 @@ export default {
           this.markdownContent = resp.articleContent || ''
           this.articleSummary = resp.articleSummary || ''
           this.selectedLabelId = resp.articleLabelId
+          this.isAnonymous = resp.isAnonymous === 1 || resp.isAnonymous === '1'
           // Load attachment files
           this.loadArticleFiles(id)
         }
@@ -774,6 +784,7 @@ export default {
         articleTypeId: 0,
         articleCommunityId: 0,
         articleLabelId: isNaN(parseInt(this.selectedLabelId)) ? 0 : parseInt(this.selectedLabelId),
+        isAnonymous: this.isAnonymous ? 1 : 0,
         userId: user.id,
         articleAuthor: user.nickname,
         files: this.attachments.map(a => a.fileId),

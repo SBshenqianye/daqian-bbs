@@ -20,57 +20,80 @@
       </router-link>
     </div>
 
-    <!-- Article Header Card -->
-    <article v-if="articleState === 'normal'" class="bg-container rounded-lg border border-border shadow-sm overflow-hidden mb-gutter">
-      <div class="p-card-padding">
-        <!-- Title & Meta -->
-        <header class="mb-6">
-          <h1 class="font-headline-lg text-headline-lg text-on-surface mb-4 leading-tight">
-            {{ article.title }}
-          </h1>
-          <div class="flex flex-wrap items-center justify-between gap-4 text-on-surface-variant font-label-md text-label-md">
-            <div class="flex items-center space-x-6">
-              <span class="flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-[16px]">schedule</span>
-                发布时间: {{ formatTime(article.publishTime) }}
-              </span>
-              <div class="flex items-center gap-2">
-                <span>文章标签:</span>
-                <el-tooltip :content="articleTagDescription" placement="top" effect="dark" :disabled="!articleTagDescription">
-                  <span class="px-2 py-0.5 bg-surface-container-low text-primary-container rounded border border-outline-variant font-medium">{{ articleTagName || '--' }}</span>
-                </el-tooltip>
+    <!-- 帖子主体：标题 → 作者/元信息 → 正文 → 互动 -->
+    <article v-if="articleState === 'normal'" class="bg-container rounded-2xl border border-border shadow-sm overflow-hidden mb-gutter">
+      <div class="px-6 md:px-9 pt-7 pb-6">
+        <header>
+          <h1 class="text-[22px] md:text-[27px] font-bold leading-snug tracking-tight text-on-surface">{{ article.title }}</h1>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <BBSUserBadge
+                :avatar="article.authorAvatar"
+                :nickname="article.author"
+                :org-name="article.authorOrgName"
+                :org-name-full="article.authorOrgNameFull"
+                :level-index="article.authorLevelIndex"
+                :user-id="article.userId"
+                size="md"
+              />
+              <span class="w-px h-8 bg-border shrink-0"></span>
+              <div class="text-[12px] text-outline leading-relaxed shrink-0">
+                <div>{{ formatTime(article.publishTime) }}</div>
+                <div class="mt-0.5 flex items-center gap-2">
+                  <span class="inline-flex items-center gap-0.5">
+                    <span class="material-symbols-outlined text-[13px]">visibility</span>{{ article.views }}
+                  </span>
+                  <span class="inline-flex items-center gap-0.5">
+                    <span class="material-symbols-outlined text-[13px]">chat_bubble</span>{{ totalCommentCount }}
+                  </span>
+                </div>
               </div>
             </div>
-            <div class="flex items-center gap-3">
+
+            <div class="flex items-center gap-2">
+              <span v-if="article.isFeatured" class="inline-flex items-center gap-1 px-2 py-1 text-[11px] bg-rank-gold/10 text-rank-gold rounded-md">
+                <span class="material-symbols-outlined text-[13px]">stars</span>精华
+              </span>
+              <el-tooltip :content="articleTagDescription" placement="top" effect="dark" :disabled="!articleTagDescription">
+                <span v-if="articleTagName" class="px-2 py-1 bg-primary/8 text-primary text-[11px] rounded-md">{{ articleTagName }}</span>
+              </el-tooltip>
+              <span v-if="article.isAnonymous" class="px-2 py-1 bg-surface-variant text-on-surface-variant text-[11px] rounded-md">匿名</span>
               <button
                 v-if="canReportArticle"
-                class="flex items-center gap-1 text-on-surface-variant hover:text-error transition-primary"
-                title="实名举报该文章，管理员核实属实后可获得积分奖励"
+                class="w-7 h-7 rounded-md flex items-center justify-center text-outline hover:text-error hover:bg-error/5 transition-colors"
+                title="举报该帖"
                 @click="openArticleReport"
               >
-                <span class="material-symbols-outlined text-[16px]">flag</span> 举报
+                <span class="material-symbols-outlined text-[17px]">flag</span>
               </button>
-              <div class="flex items-center gap-3 py-1 px-3 bg-surface-container-lowest border border-border rounded-lg">
-                <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-white overflow-hidden shadow-inner">
-                  <img alt="Author" class="w-full h-full object-cover" :src="article.authorAvatar || require('@/assets/portrait.png')">
-                </div>
-                <div class="flex flex-col">
-                  <span class="font-bold text-on-surface">{{ article.author }}</span>
-                  <span v-if="article.authorOrgName" class="text-[10px] text-outline" :title="article.authorOrgNameFull || article.authorOrgName">{{ article.authorOrgName }}</span>
-                  <span v-else class="text-[10px] text-outline">{{ article.authorTitle }}</span>
-                </div>
-              </div>
             </div>
           </div>
         </header>
-        <hr class="border-border mb-8">
 
-        <!-- Article Content -->
-        <section class="markdown-body" v-if="renderedHtml" v-html="renderedHtml"></section>
-        <section class="markdown-body font-body-lg text-body-lg text-on-surface" v-else>
-          <p class="text-on-surface-variant">暂无内容</p>
-        </section>
+        <div class="h-px bg-border my-5"></div>
+
+        <!-- 正文：第一视觉重心 -->
+        <section v-if="renderedHtml" class="markdown-body md-body" v-html="renderedHtml"></section>
+        <section v-else class="text-on-surface-variant">暂无内容</section>
       </div>
+
+      <!-- 互动条：克制地放在正文之后，不抢正文 -->
+      <footer class="px-6 md:px-9 py-2.5 border-t border-border bg-surface-container-lowest/70 flex items-center gap-1.5 flex-wrap">
+        <button class="int-btn" :class="{ 'is-on': interaction.liked }" @click="toggleLike">
+          <span class="material-symbols-outlined">{{ interaction.liked ? 'thumb_up' : 'thumb_up_off_alt' }}</span>
+          <span>点赞</span><span class="tabnum">{{ interaction.likes || 0 }}</span>
+        </button>
+        <button class="int-btn" :class="{ 'is-fav': interaction.favorited }" @click="toggleFavorite">
+          <span class="material-symbols-outlined">{{ interaction.favorited ? 'bookmark' : 'bookmark_border' }}</span>
+          <span>收藏</span><span class="tabnum">{{ interaction.favorites || 0 }}</span>
+        </button>
+        <button class="int-btn" @click="shareArticle">
+          <span class="material-symbols-outlined">share</span>
+          <span>分享</span><span class="tabnum">{{ interaction.shares || 0 }}</span>
+        </button>
+        <span v-if="article.lastReplyTime" class="ml-auto text-[11px] text-outline">最后回复 {{ formatTime(article.lastReplyTime) }}</span>
+      </footer>
     </article>
 
     <!-- Attachments Section -->
@@ -98,38 +121,44 @@
     </section>
 
     <!-- Comment Section -->
-    <section v-if="articleState === 'normal'" class="bg-container rounded-lg border border-border shadow-sm overflow-hidden" :class="{ 'pb-16': showStickyBar }">
-      <div class="p-card-padding">
-        <div class="flex items-center justify-between mb-6">
-          <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
-            评论 <span class="px-2 py-0.5 bg-surface-container-high rounded-full text-label-md">{{ totalCommentCount }}</span>
-          </h3>
+    <section v-if="articleState === 'normal'" class="bg-container rounded-2xl border border-border shadow-sm overflow-hidden" :class="{ 'pb-16': showStickyBar }">
+      <div class="px-6 md:px-9 py-6">
+        <div class="flex items-center gap-2 mb-4">
+          <h3 class="text-[16px] font-semibold text-on-surface">评论</h3>
+          <span class="px-2 py-0.5 bg-surface-container-high rounded-full text-[11px] text-on-surface-variant">{{ totalCommentCount }}</span>
         </div>
 
-        <!-- Comment Input -->
-        <div class="flex items-center gap-4 mb-10">
-          <div class="w-10 h-10 rounded-full overflow-hidden bg-surface-variant border border-outline-variant flex-shrink-0">
-            <img :src="currentUserAvatar || require('@/assets/portrait.png')" class="w-full h-full object-cover">
+        <!-- 评论输入：卡片式，按钮不再与输入框争抢视线 -->
+        <div class="rounded-xl border border-border bg-surface-container-lowest p-3">
+          <div class="flex gap-3">
+            <BBSAvatar :src="currentUserAvatar" :size="34" :show-level="false" />
+            <div class="flex-1 min-w-0">
+              <textarea
+                ref="commentInput"
+                v-model="newComment"
+                class="w-full bg-transparent border-0 outline-none text-[13px] leading-relaxed resize-none placeholder:text-outline"
+                :placeholder="commentPlaceholder"
+                rows="2"
+                @keydown.enter.exact.prevent="submitComment"
+                @input="autoResizeCommentInput"
+              ></textarea>
+              <div class="flex items-center justify-between gap-2 mt-1">
+                <label v-if="allowAnonymousComment" class="flex items-center gap-1.5 text-[11px] text-on-surface-variant cursor-pointer select-none">
+                  <input v-model="newCommentAnonymous" type="checkbox" class="w-3 h-3 text-primary border-outline-variant rounded">
+                  匿名发表
+                </label>
+                <span v-else class="text-[11px] text-outline">Enter 发送 · Shift+Enter 换行</span>
+                <button
+                  class="px-3.5 py-1.5 rounded-lg bg-primary text-white text-[12px] font-medium hover:opacity-90 active:scale-[0.98] transition"
+                  @click="submitComment"
+                >发表评论</button>
+              </div>
+            </div>
           </div>
-          <textarea
-            ref="commentInput"
-            v-model="newComment"
-            class="flex-grow min-w-0 py-2 px-4 rounded-lg border border-border focus:border-primary-container focus:ring-1 focus:ring-primary-container bg-surface font-body-md text-body-md transition-primary outline-none resize-none"
-            :placeholder="commentPlaceholder"
-            rows="1"
-            @keydown.enter.exact="submitComment"
-            @input="autoResizeCommentInput"
-          ></textarea>
-          <button
-            class="bg-primary-container text-white px-6 py-2 rounded-lg font-label-md text-label-md hover:shadow-md hover:bg-primary transition-primary active:scale-95 flex-shrink-0"
-            @click="submitComment"
-          >
-            发表评论
-          </button>
         </div>
 
         <!-- Comments List -->
-        <div class="space-y-6">
+        <div class="mt-3">
           <BBSCommentItem
             v-for="comment in comments"
             :key="comment.id"
@@ -139,25 +168,27 @@
             @reply="handleReply"
             @adopt="handleAdopt"
             @report="handleCommentReport"
+            @like="handleLikeComment"
           />
 
           <!-- 空状态：全无评论 -->
           <div
             v-if="showCommentEmptyState && totalCommentCount === 0"
-            class="flex flex-col items-center justify-center py-16 text-on-surface-variant"
+            class="flex flex-col items-center justify-center py-14 text-on-surface-variant"
           >
-            <span class="material-symbols-outlined text-7xl mb-4 opacity-10">chat_bubble_outline</span>
-            <p class="font-headline-sm text-headline-sm mb-2">暂无评论</p>
-            <p class="font-body-md text-body-md">快来发表第一条评论吧～</p>
+            <span class="material-symbols-outlined text-[44px] mb-2 opacity-15">chat_bubble_outline</span>
+            <p class="text-[14px] text-on-surface mb-1">还没有评论</p>
+            <p class="text-[12px]">来说点什么吧～</p>
           </div>
 
-          <!-- 空状态：仅有零散评论 -->
+          <!-- 空状态：评论稀少 -->
           <div
             v-if="showCommentEmptyState && totalCommentCount > 0"
-            class="flex flex-col items-center justify-center py-8 text-on-surface-variant border-t border-border mt-6"
+            class="mt-2 py-6 flex items-center justify-center gap-2 text-[12px] text-on-surface-variant"
           >
-            <span class="material-symbols-outlined text-4xl mb-2 opacity-20">chat_bubble_outline</span>
-            <p class="font-body-md text-body-md">评论不多，来说点什么吧～</p>
+            <span class="h-px w-10 bg-border"></span>
+            评论不多，来说点什么吧～
+            <span class="h-px w-10 bg-border"></span>
           </div>
         </div>
       </div>
@@ -218,6 +249,8 @@
 <script>
 import BBSCommentItem from '@/components/BBSCommentItem.vue'
 import BBSReportDialog from '@/components/BBSReportDialog.vue'
+import BBSAvatar from '@/components/BBSAvatar.vue'
+import BBSUserBadge from '@/components/BBSUserBadge.vue'
 import { getArticleById, getArticleStatus, getUserinfoById, getArticleFileByArticleId } from '@/api/article'
 import { getCommentReply } from '@/api/comment'
 import { normalizeFileUrl, normalizeUrls } from '@/utils/utils'
@@ -234,7 +267,7 @@ const MIN_COMMENT_FILLER = 3
 
 export default {
   name: 'BBSArticleDetails',
-  components: { BBSCommentItem, BBSReportDialog },
+  components: { BBSCommentItem, BBSReportDialog, BBSAvatar, BBSUserBadge },
   provide() {
     return {
       replyState: this.replyState,
@@ -246,6 +279,8 @@ export default {
   data() {
     return {
       newComment: '',
+      newCommentAnonymous: false,
+      interaction: { liked: false, favorited: false, likes: 0, favorites: 0, shares: 0 },
       articleId: this.$route.params.articleId,
       loading: true,
       // 帖子对外展示状态：loading | normal | deleted | not_exist（#5）
@@ -258,6 +293,8 @@ export default {
       article: {
         title: '',
         publishTime: '',
+        lastReplyTime: '',
+        views: 0,
         tag: '',
         tagId: '',
         userId: null,
@@ -266,6 +303,9 @@ export default {
         authorAvatar: '',
         authorOrgName: '',
         authorOrgNameFull: '',
+        authorLevelIndex: null,
+        isAnonymous: false,
+        labelAllowAnonymous: 0,
         contentHtml: '',
         articleImage: '',
         contentParagraphs: [],
@@ -331,6 +371,9 @@ export default {
     canReportArticle() {
       return this.currentUserId != null && this.article.userId != null
         && String(this.currentUserId) !== String(this.article.userId)
+    },
+    allowAnonymousComment() {
+      return this.article.labelAllowAnonymous === 1
     },
   },
   mounted() {
@@ -423,23 +466,73 @@ export default {
         if (resp) {
           this.article.title = resp.articleTitle || ''
           this.article.publishTime = resp.createTime || ''
+          this.article.lastReplyTime = resp.lastReplyTime || ''
+          this.article.views = resp.articleViewNum || 0
           this.article.tagId = resp.articleLabelId
           this.article.userId = resp.userId
           this.article.author = resp.articleAuthor || ''
+          this.article.authorLevelIndex = resp.authorLevelIndex || null
+          this.article.authorOrgName = resp.authorOrgName || ''
+          this.article.authorOrgNameFull = resp.authorOrgNameFull || ''
           const rawContent = resp.articleContentHtml || resp.articleContent || ''
           const normalized = normalizeUrls(rawContent)
           this.article.contentHtml = normalized
           this.rawContent = normalized
           this.article.articleImage = normalizeFileUrl(resp.articleImage || '')
+          this.article.isAnonymous = resp.isAnonymous === 1 || resp.isAnonymous === '1'
+          this.article.labelAllowAnonymous = resp.labelAllowAnonymous
           // Fetch author info
           if (resp.userId) {
             this.loadAuthorInfo(resp.userId)
           }
+          this.loadInteraction(id)
         }
       }).catch(err => {
         console.warn('[BBSArticleDetails] loadArticle', err)
         this.loading = false
       })
+    },
+    loadInteraction(articleId) {
+      this.getRequest(`/common/article/interaction?articleId=${articleId}`).then(resp => {
+        if (resp && resp.obj) this.interaction = resp.obj
+      }).catch(() => {})
+    },
+    toggleLike() {
+      if (!this.currentUser) {
+        this.$router.push({ path: '/login', query: { redirect: this.$route.fullPath } })
+        return
+      }
+      this.postRequest('/article/like', { articleId: Number(this.articleId) }).then(resp => {
+        if (resp && resp.obj) this.interaction = resp.obj
+        if (resp && resp.message) this.$message.success(resp.message)
+      }).catch(() => {})
+    },
+    toggleFavorite() {
+      if (!this.currentUser) {
+        this.$router.push({ path: '/login', query: { redirect: this.$route.fullPath } })
+        return
+      }
+      this.postRequest('/article/favorite', { articleId: Number(this.articleId) }).then(resp => {
+        if (resp && resp.obj) this.interaction = resp.obj
+        if (resp && resp.message) this.$message.success(resp.message)
+      }).catch(() => {})
+    },
+    async shareArticle() {
+      const url = window.location.href
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: this.article.title, url })
+        } else {
+          await navigator.clipboard.writeText(url)
+          this.$message.success('链接已复制')
+        }
+        this.postRequest('/article/share', { articleId: Number(this.articleId) }).then(resp => {
+          if (resp && resp.obj) this.interaction = resp.obj
+          else this.interaction.shares = (this.interaction.shares || 0) + 1
+        }).catch(() => {})
+      } catch (e) {
+        // 用户取消分享不提示
+      }
     },
     loadAuthorInfo(userId) {
       getUserinfoById(userId).then(resp => {
@@ -484,6 +577,10 @@ export default {
         replyKey: 'c-' + commentId,
         commentRootId: commentId,
         userId: c.userId,
+        levelIndex: c.levelIndex || null,
+        isAnonymous: c.isAnonymous === 1 || c.isAnonymous === '1',
+        goodNum: c.goodNum || 0,
+        liked: !!c.liked,
         articleAuthorId,
         author: c.nickname || '',
         avatar: normalizeFileUrl(c.portrait || ''),
@@ -500,6 +597,10 @@ export default {
             replyKey: 'r-' + replyId,
             commentRootId: commentId,
             userId: r.replyUserId || r.userId,
+            levelIndex: r.levelIndex || null,
+            isAnonymous: r.isAnonymous === 1 || r.isAnonymous === '1',
+            goodNum: r.goodNum || 0,
+            liked: !!r.liked,
             replyTargetUserId: r.replyToUserId,
             articleAuthorId,
             author: r.nickname || '',
@@ -550,20 +651,24 @@ export default {
         commentContent: this.newComment,
         commentUserId: this.currentUser.id,
         commentArticleId: this.articleId,
+        isAnonymous: this.newCommentAnonymous ? 1 : 0,
       }
       this.putRequest('/comment/userComment', tempData).then(resp => {
         if (resp) {
           this.newComment = ''
+          this.newCommentAnonymous = false
           this.loadComments(this.articleId)
+          this.loadInteraction(this.articleId)
         }
       }).catch(err => { console.warn('[BBSArticleDetails] submitComment', err) })
     },
-    handleReply({ commentId, replyContent, replyToUserId }) {
+    handleReply({ commentId, replyContent, replyToUserId, isAnonymous }) {
       if (!this.currentUser) return
       const params = {
         replyUserId: this.currentUser.id,
         replyContent,
         commentId,
+        isAnonymous: isAnonymous ? 1 : 0,
       }
       if (replyToUserId != null) {
         params.replyToUserId = replyToUserId
@@ -576,8 +681,39 @@ export default {
         }
       }).catch(err => { console.warn('[BBSArticleDetails] handleReply', err) })
     },
-    handleAdopt({ id, adoptType }) {
-      if (!this.currentUser || !id) return
+    /** 评论 / 楼中楼回复点赞（同一张互动表，targetType 区分） */
+    handleLikeComment(comment) {
+      if (!this.currentUser) {
+        this.$router.push({ path: '/login', query: { redirect: this.$route.fullPath } })
+        return
+      }
+      if (!comment || comment.id == null) return
+      const isReply = String(comment.id) !== String(comment.commentRootId)
+      this.postRequest('/common/thumb', {
+        targetType: isReply ? 'reply' : 'comment',
+        targetId: Number(comment.id),
+      }).then(resp => {
+        const data = resp && resp.obj
+        if (!data) return
+        const target = this.findCommentNode(comment.id)
+        if (target) {
+          target.goodNum = data.likes || 0
+          target.liked = !!data.liked
+        }
+      }).catch(err => { console.warn('[BBSArticleDetails] likeComment', err) })
+    },
+    findCommentNode(id) {
+      for (let i = 0; i < this.comments.length; i++) {
+        const c = this.comments[i]
+        if (String(c.id) === String(id)) return c
+        const children = c.children || []
+        for (let j = 0; j < children.length; j++) {
+          if (String(children[j].id) === String(id)) return children[j]
+        }
+      }
+      return null
+    },
+    handleAdopt({ id, adoptType }) {      if (!this.currentUser || !id) return
       this.$confirm('确定采纳该内容为最佳解答？提交后等待管理员审核。若该文章已有待审批的采纳，将替换之前的采纳。', '采纳确认', {
         confirmButtonText: '确定提交',
         cancelButtonText: '取消',
@@ -791,5 +927,115 @@ export default {
 .reply-bar-slide-enter,
 .reply-bar-slide-leave-to {
   transform: translateY(100%);
+}
+
+/* 正文：以可读性为第一目标，标题/段落/引用都有明确层级 */
+.md-body {
+  font-size: 15px;
+  line-height: 1.9;
+  color: #1f2937;
+  word-break: break-word;
+}
+.md-body ::v-deep p {
+  margin: 0 0 0.9em;
+}
+.md-body ::v-deep p:last-child {
+  margin-bottom: 0;
+}
+.md-body ::v-deep h1,
+.md-body ::v-deep h2,
+.md-body ::v-deep h3,
+.md-body ::v-deep h4 {
+  margin: 1.4em 0 0.6em;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #111827;
+}
+.md-body ::v-deep h1 { font-size: 20px; }
+.md-body ::v-deep h2 { font-size: 18px; }
+.md-body ::v-deep h3 { font-size: 16px; }
+.md-body ::v-deep ul,
+.md-body ::v-deep ol {
+  margin: 0.6em 0 1em;
+  padding-left: 1.4em;
+}
+.md-body ::v-deep li {
+  margin: 0.3em 0;
+}
+.md-body ::v-deep blockquote {
+  margin: 1em 0;
+  padding: 0.5em 0 0.5em 1em;
+  border-left: 3px solid #dbeafe;
+  color: #4b5563;
+  background: #f8fafc;
+}
+.md-body ::v-deep img {
+  border-radius: 10px;
+  max-width: 100%;
+}
+.md-body ::v-deep code {
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.92em;
+}
+.md-body ::v-deep pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+.md-body ::v-deep pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+.md-body ::v-deep table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 13px;
+}
+.md-body ::v-deep th,
+.md-body ::v-deep td {
+  border: 1px solid #e5e7eb;
+  padding: 6px 10px;
+  text-align: left;
+}
+.md-body ::v-deep th {
+  background: #f8fafc;
+}
+
+/* 互动条按钮：默认低对比度，只在悬停/激活时强调 */
+.int-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #64748b;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.int-btn .material-symbols-outlined {
+  font-size: 17px;
+}
+.int-btn:hover {
+  background: rgba(148, 163, 184, 0.14);
+  color: #334155;
+}
+.int-btn.is-on {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+}
+.int-btn.is-fav {
+  color: #b45309;
+  background: rgba(180, 83, 9, 0.08);
+}
+.tabnum {
+  font-variant-numeric: tabular-nums;
 }
 </style>

@@ -86,12 +86,19 @@
               class="w-10 h-10 rounded-full border border-outline-variant object-cover"
               :src="portrait"
             >
-            <!-- 用户等级徽章 -->
+            <!-- 用户等级徽章：图标 + 等级号 -->
             <span
               v-if="userLevel != null"
-              class="absolute -bottom-1 -right-1 min-w-[20px] h-4 px-1 bg-amber-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none border-2 border-container"
-              :title="'等级 ' + userLevel"
-            >Lv.{{ userLevel }}</span>
+              class="absolute -bottom-1 -right-1 h-[18px] pl-1 pr-1.5 bg-amber-500 rounded-full text-white text-[10px] font-bold flex items-center gap-0.5 leading-none border-2 border-container"
+              :title="levelTitle"
+            >
+              <span
+                class="bbs-level-svg inline-flex items-center"
+                style="height:11px;filter:brightness(0) invert(1)"
+                v-html="levelEmblem"
+              ></span>
+              <span>Lv.{{ userLevel }}</span>
+            </span>
             <!-- 未读通知角标（全部未读 = 各分类之和） -->
             <span
               v-if="unreadTotal > 0"
@@ -135,6 +142,13 @@
                 >
                   <span class="material-symbols-outlined text-[20px]">edit_square</span>
                   我的发布
+                </router-link>
+                <router-link
+                  to="/my-favorites"
+                  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
+                >
+                  <span class="material-symbols-outlined text-[20px]">bookmark</span>
+                  我的收藏
                 </router-link>
                 <router-link
                   to="/my-replies?tab=myReplies"
@@ -271,6 +285,7 @@ import { getToken, getUser, removeToken, removeUser } from '@/utils/auth'
 import { Notification } from 'element-ui'
 import notificationStore from '@/utils/notificationStore'
 import userStore from '@/utils/userStore'
+import { levelEmblemSvg, levelSpec, normalizeLevel } from '../../../shared/level-icons'
 
 export default {
   name: 'BBSHeader',
@@ -290,9 +305,18 @@ export default {
       dailyLoginCalled: false,
       pointsAlreadyAwarded: false,
       userLevel: null,
+      userLevelName: '',
     }
   },
   computed: {
+    /** 头像角标：等级徽记（星/月/日/冠） */
+    levelEmblem() {
+      return levelEmblemSvg(this.userLevel || 1, 12)
+    },
+    levelTitle() {
+      const name = this.userLevelName || levelSpec(this.userLevel || 1).name
+      return `${name} · Lv.${normalizeLevel(this.userLevel || 1)}`
+    },
     /** 是否显示发帖入口：未登录仍显示（点击去登录），登录后按权限点判断 */
     canPost() {
       if (!userStore.isLoggedIn()) return true
@@ -402,7 +426,8 @@ export default {
       if (!user || !user.id) return
       this.getRequest(`/user/level?userId=${user.id}`).then(res => {
         if (res && res.code == 200 && res.obj) {
-          this.userLevel = res.obj.level
+          this.userLevel = res.obj.levelIndex || res.obj.level
+          this.userLevelName = res.obj.levelName || ''
         }
       }).catch(() => {})
     },

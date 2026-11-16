@@ -125,50 +125,210 @@
             </div>
           </div>
 
-          <!-- Regular Article List -->
+          <!-- 精华展示卡（多帖轮播） -->
           <article
-            v-for="(article, index) in filteredArticles"
-            :key="index"
-            class="bg-container border border-border rounded-lg p-card-padding hover:shadow-sm transition-shadow cursor-pointer"
-            @click="goToArticle(article)"
+            v-if="featuredShowcase.length"
+            class="bg-container border border-border rounded-xl overflow-hidden"
+            @mouseenter="pauseShowcase"
+            @mouseleave="resumeShowcase"
           >
-            <div class="flex flex-col md:flex-row gap-6">
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-2">
-                  <!-- 精华帖标识 -->
-                  <span v-if="article.isFeatured" class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-rank-gold/10 text-rank-gold rounded-full">
-                    <span class="material-symbols-outlined text-[12px]">stars</span>
-                    精华
-                  </span>
-                  <!-- 标签标识 -->
-                  <span v-if="getLabelName(article.labelId)" class="inline-flex items-center px-2 py-0.5 text-[11px] font-medium bg-primary/10 text-primary rounded-full">
-                    {{ getLabelName(article.labelId) }}
-                  </span>
-                </div>
-                <h3 class="font-headline-sm text-on-surface mb-2 hover:text-primary-container transition-colors">{{ article.title }}</h3>
-                <p class="text-body-md text-secondary mb-4 line-clamp-2" style="white-space: pre-line">{{ article.summary }}</p>
-                <div class="flex items-center justify-between text-label-md text-outline">
-                  <div class="flex items-center gap-2">
-                    <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" :org-name-full="article.authorOrgNameFull" size="sm" layout="inline" />
-                    <span class="mx-1">•</span>
-                    <span>{{ formatTime(article.time) }}</span>
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">visibility</span> {{ article.views }}</span>
-                    <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">chat_bubble</span> {{ article.comments }}</span>
-                  </div>
+            <div class="md:flex cursor-pointer" @click="goToArticle(currentShowcase)">
+              <div class="md:w-[42%] h-44 md:h-auto bg-surface-container overflow-hidden shrink-0">
+                <img
+                  v-if="currentShowcase && currentShowcase.cover"
+                  :src="currentShowcase.cover"
+                  class="w-full h-full object-cover"
+                  alt=""
+                >
+                <div v-else class="w-full h-full flex items-center justify-center">
+                  <span class="material-symbols-outlined text-[40px] text-outline/30">stars</span>
                 </div>
               </div>
-              <div v-if="article.cover" class="w-full md:w-32 h-24 rounded-lg bg-surface-container overflow-hidden shrink-0 border border-outline-variant">
+              <div class="flex-1 p-5 min-w-0">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-rank-gold/10 text-rank-gold rounded-full">
+                    <span class="material-symbols-outlined text-[12px]">stars</span>精华展示
+                  </span>
+                  <span class="text-[11px] text-outline ml-auto">{{ showcaseIndex + 1 }} / {{ featuredShowcase.length }}</span>
+                </div>
+                <h2 class="font-headline-sm text-headline-sm text-on-surface hover:text-primary transition-colors line-clamp-2 leading-snug">
+                  {{ currentShowcase && currentShowcase.title }}
+                </h2>
+                <p class="text-[13px] text-on-surface-variant mt-2 line-clamp-2 leading-relaxed">
+                  {{ currentShowcase && currentShowcase.summary }}
+                </p>
+                <div class="flex items-center gap-3 mt-3 text-[12px] text-outline">
+                  <span class="truncate max-w-[120px]">{{ currentShowcase && currentShowcase.author }}</span>
+                  <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">visibility</span>{{ (currentShowcase && currentShowcase.views) || 0 }}</span>
+                  <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">thumb_up</span>{{ (currentShowcase && currentShowcase.likes) || 0 }}</span>
+                  <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">bookmark</span>{{ (currentShowcase && currentShowcase.favorites) || 0 }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between px-5 pb-3 pt-1">
+              <div class="flex items-center gap-1.5">
+                <button
+                  v-for="(n, i) in featuredShowcase"
+                  :key="'sc-' + i"
+                  class="h-1.5 rounded-full transition-all"
+                  :class="i === showcaseIndex ? 'w-6 bg-primary' : 'w-1.5 bg-outline-variant hover:bg-outline'"
+                  :aria-label="'第 ' + (i + 1) + ' 张'"
+                  @click.stop="showcaseIndex = i"
+                ></button>
+              </div>
+              <div class="flex items-center gap-1">
+                <button class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant" @click.stop="prevShowcase">
+                  <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+                </button>
+                <button class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant" @click.stop="nextShowcase">
+                  <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <!-- 精华公示卡 -->
+          <div v-if="featuredNotices.length" class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="material-symbols-outlined text-amber-700 text-[18px]">campaign</span>
+              <h3 class="font-headline-sm text-headline-sm text-amber-900">精华公示</h3>
+              <span class="text-[11px] text-amber-700 ml-auto">公示期接受监督</span>
+            </div>
+            <div class="space-y-2">
+              <div v-for="n in featuredNotices.slice(0, 3)" :key="n.recommendationId" class="flex items-center gap-2 text-[12px] cursor-pointer hover:text-primary" @click="goToHotTopic({ articleId: n.articleId })">
+                <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 shrink-0">公示中</span>
+                <span class="truncate flex-1">{{ n.title }}</span>
+                <span class="text-amber-700 shrink-0">至 {{ (n.publicEndTime || '').slice(0, 10) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter / Sort Bar -->
+          <div class="bg-container border border-border rounded-lg px-4 py-2.5 flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2">
+              <span class="text-[12px] text-on-surface-variant">排序</span>
+              <BBSSelect
+                v-model="filters.sortBy"
+                :options="sortOptions"
+                size="sm"
+                @change="reloadArticles"
+              />
+            </div>
+            <label class="inline-flex items-center gap-1.5 text-[12px] text-on-surface-variant cursor-pointer select-none">
+              <input v-model="filters.featured" type="checkbox" class="w-3.5 h-3.5 text-primary border-outline-variant rounded" @change="reloadArticles">
+              只看精华
+            </label>
+            <label class="inline-flex items-center gap-1.5 text-[12px] text-on-surface-variant cursor-pointer select-none">
+              <input v-model="filters.hasAttachment" type="checkbox" class="w-3.5 h-3.5 text-primary border-outline-variant rounded" @change="reloadArticles">
+              只看有附件
+            </label>
+            <span class="text-[12px] text-on-surface-variant ml-auto">共 {{ articleTotal }} 条</span>
+          </div>
+
+          <!-- Regular Article List -->
+          <article
+            v-for="(article, index) in articles"
+            :key="article.articleId || index"
+            class="bg-container border border-border rounded-xl px-5 py-4 hover:border-primary/40 hover:shadow-[0_2px_10px_rgba(15,23,42,0.06)] transition-all cursor-pointer"
+            @click="goToArticle(article)"
+          >
+            <div class="flex gap-4">
+              <div class="flex-1 min-w-0">
+                <!-- 标题永远在最上方 -->
+                <h3 class="post-title text-[16px] font-semibold leading-snug text-on-surface hover:text-primary transition-colors line-clamp-2">
+                  {{ article.title }}
+                </h3>
+
+                <p v-if="article.summary" class="post-summary text-[13px] text-on-surface-variant mt-2 line-clamp-2 leading-relaxed">
+                  {{ article.summary }}
+                </p>
+
+                <!-- 元信息 + 统计 -->
+                <div class="flex items-center justify-between gap-3 mt-3">
+                  <div class="flex items-center gap-1.5 min-w-0 text-[12px] text-outline">
+                    <BBSUserBadge
+                      :avatar="article.authorAvatar"
+                      :nickname="article.author"
+                      :org-name="article.authorOrgName"
+                      :org-name-full="article.authorOrgNameFull"
+                      :level-index="article.authorLevelIndex"
+                      :user-id="article.userId"
+                      size="xs"
+                      layout="inline"
+                    />
+                    <span class="text-outline-variant shrink-0">·</span>
+                    <span class="shrink-0">{{ formatTime(article.time) }}</span>
+                  </div>
+                  <div class="flex items-center gap-3 text-[12px] text-outline shrink-0">
+                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">visibility</span>{{ article.views }}</span>
+                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">chat_bubble</span>{{ article.comments }}</span>
+                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">thumb_up</span>{{ article.likes }}</span>
+                  </div>
+                </div>
+
+                <!-- 标签统一放在卡片底部 -->
+                <div
+                  v-if="articleLabelName(article) || article.isFeatured || article.isAnonymous"
+                  class="flex items-center flex-wrap gap-1.5 mt-2.5"
+                >
+                  <span
+                    v-if="article.isFeatured"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] bg-rank-gold/10 text-rank-gold rounded"
+                  >
+                    <span class="material-symbols-outlined text-[12px]">stars</span>精华
+                  </span>
+                  <span
+                    v-if="articleLabelName(article)"
+                    class="inline-flex items-center px-2 py-0.5 text-[11px] bg-primary/8 text-primary rounded"
+                  >{{ articleLabelName(article) }}</span>
+                  <span v-if="article.isAnonymous" class="inline-flex items-center px-2 py-0.5 text-[11px] bg-surface-variant text-on-surface-variant rounded">匿名</span>
+                </div>
+              </div>
+
+              <div v-if="article.cover" class="w-28 h-20 rounded-lg bg-surface-container overflow-hidden shrink-0 border border-outline-variant">
                 <img alt="Article Cover" class="w-full h-full object-cover" :src="article.cover">
               </div>
             </div>
           </article>
 
-          <!-- End of feed indicator -->
-          <div class="flex flex-col items-center justify-center py-12 border-2 border-dashed border-outline-variant rounded-lg bg-surface-container-low opacity-60">
-            <span class="material-symbols-outlined text-outline text-[48px] mb-2">inbox</span>
-            <p class="font-label-md text-outline">已经到底啦，没有更多帖子了</p>
+          <!-- 分页 -->
+          <div v-if="articles.length && articlePages > 1" class="flex items-center justify-center gap-2 pt-1">
+            <button
+              class="px-3 py-1.5 text-[12px] rounded-lg border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary disabled:opacity-40 disabled:hover:border-outline-variant transition-colors"
+              :disabled="articlePage <= 1"
+              @click="changePage(articlePage - 1)"
+            >上一页</button>
+            <span class="text-[12px] text-on-surface-variant px-1">{{ articlePage }} / {{ articlePages }}</span>
+            <button
+              class="px-3 py-1.5 text-[12px] rounded-lg border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary disabled:opacity-40 disabled:hover:border-outline-variant transition-colors"
+              :disabled="articlePage >= articlePages"
+              @click="changePage(articlePage + 1)"
+            >下一页</button>
+          </div>
+
+          <!-- 列表到底：细分割线，不再用大卡片 -->
+          <div
+            v-if="!loading && articles.length && articlePage >= articlePages && articlePages > 0"
+            class="flex items-center gap-3 py-2 select-none"
+          >
+            <span class="h-px flex-1 bg-border"></span>
+            <span class="text-[11px] text-outline tracking-wide">已经到底了</span>
+            <span class="h-px flex-1 bg-border"></span>
+          </div>
+
+          <!-- 空态 -->
+          <div
+            v-if="!loading && !articles.length"
+            class="bg-container border border-dashed border-outline-variant rounded-xl py-16 flex flex-col items-center text-on-surface-variant"
+          >
+            <span class="material-symbols-outlined text-[44px] mb-3 opacity-20">forum</span>
+            <p class="text-[14px] font-medium text-on-surface mb-1">这个条件下还没有帖子</p>
+            <p class="text-[12px] mb-4">试着换个排序、标签或搜索词</p>
+            <button
+              v-if="hasActiveFilter"
+              class="px-4 py-1.5 text-[12px] rounded-full bg-primary/8 text-primary hover:bg-primary/12 transition-colors"
+              @click="clearFilters"
+            >清除筛选条件</button>
           </div>
         </section>
 
@@ -176,29 +336,46 @@
         <aside class="md:col-span-3 space-y-4 sticky top-20 self-start">
           <!-- Hot Topics -->
           <div class="bg-container border border-border rounded-lg p-card-padding">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="font-headline-sm flex items-center gap-2">
+            <div class="flex items-center justify-between mb-1 gap-2">
+              <h2 class="font-headline-sm flex items-center gap-2 min-w-0">
                 <span class="material-symbols-outlined text-error filled-icon">local_fire_department</span>
-                热榜
+                <span class="truncate">{{ hotTitle }}</span>
               </h2>
+              <span class="text-[11px] text-outline shrink-0">累计</span>
             </div>
-            <ul class="space-y-4">
+            <p class="text-[11px] text-outline mb-2">按全部时间累计数据排序，不按时间截断</p>
+            <div class="flex flex-wrap gap-1 mb-3">
+              <button
+                v-for="metric in hotMetrics"
+                :key="metric.key"
+                class="px-2 py-1 text-[11px] rounded transition-colors"
+                :class="hotMetric === metric.key ? 'bg-primary text-white' : 'bg-surface-variant text-on-surface-variant hover:text-primary'"
+                @click="hotMetric = metric.key; fetchHotTopics()"
+              >
+                {{ metric.label }}
+              </button>
+            </div>
+            <ul class="space-y-3">
               <li
                 v-for="(topic, index) in visibleHotTopics"
                 :key="topic.articleId || index"
-                class="flex items-start gap-3 group cursor-pointer"
+                class="flex items-start gap-2.5 group cursor-pointer"
                 @click="goToHotTopic(topic)"
               >
                 <span
-                  class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full font-bold text-[12px]"
+                  class="flex-shrink-0 w-5 h-5 mt-0.5 flex items-center justify-center rounded-md font-bold text-[11px]"
                   :class="getRankClass(index + 1)"
                 >{{ index + 1 }}</span>
-                <span class="font-body-md text-on-surface group-hover:text-primary-container transition-colors line-clamp-1">{{ topic.articleTitle }}</span>
+                <div class="flex-1 min-w-0">
+                  <span class="text-[13px] leading-snug text-on-surface group-hover:text-primary transition-colors line-clamp-1 block">{{ topic.articleTitle }}</span>
+                  <span class="text-[11px] text-outline">{{ hotMetricLabel }} {{ topic.metricValue }}</span>
+                </div>
               </li>
             </ul>
+            <p v-if="!hotTopics.length" class="text-[12px] text-outline py-4 text-center">暂无热榜数据</p>
             <button
               v-if="hotTopics.length > 10"
-              class="mt-2 w-full text-center text-label-md text-primary hover:text-primary-container transition-colors py-1"
+              class="mt-2 w-full text-center text-[12px] text-primary hover:text-primary-container transition-colors py-1"
               @click="hotTopicsExpand = !hotTopicsExpand"
             >
               {{ hotTopicsExpand ? '收起' : '展开更多' }}
@@ -216,6 +393,7 @@
 import { normalizeFileUrl } from '@/utils/utils'
 import { dateStr } from '@/utils/time'
 import BBSUserBadge from '@/components/BBSUserBadge'
+import BBSSelect from '@/components/BBSSelect.vue'
 import heroTuojiang from '@/assets/hero/neijiang-tuojiang.jpg'
 import heroShengshui from '@/assets/hero/neijiang-shengshui.jpg'
 import heroPaifang from '@/assets/hero/neijiang-paifang.jpg'
@@ -223,7 +401,7 @@ import heroBuilding from '@/assets/hero/neijiang-power-building.jpg'
 
 export default {
   name: 'BBSForum',
-  components: { BBSUserBadge },
+  components: { BBSUserBadge, BBSSelect },
   data() {
     return {
       // 首页 Hero 地标图（顺序：左 → 右）
@@ -238,23 +416,61 @@ export default {
       articles: [],
       hotTopics: [],
       hotTopicsExpand: false,
+      hotMetric: 'views',
+      hotMetrics: [
+        { key: 'views', label: '浏览' },
+        { key: 'comments', label: '回复' },
+        { key: 'favorites', label: '收藏' },
+        { key: 'likes', label: '点赞' },
+        { key: 'shares', label: '分享' },
+      ],
+      sortOptions: [
+        { value: 'publishTime', label: '最新发布' },
+        { value: 'lastReplyTime', label: '最新回复' },
+        { value: 'lastActivityTime', label: '最后活跃' },
+        { value: 'views', label: '最多浏览' },
+        { value: 'comments', label: '最多评论' },
+        { value: 'likes', label: '最多点赞' },
+        { value: 'favorites', label: '最多收藏' },
+        { value: 'shares', label: '最多分享' },
+      ],
+      articleTotal: 0,
+      articlePages: 0,
+      articlePage: 1,
+      pageSize: 10,
+      keywords: '',
+      filters: {
+        sortBy: 'publishTime',
+        labelId: null,
+        featured: false,
+        hasAttachment: false,
+      },
       featuredSidebar: [],
       featuredSidebarExpand: false,
       featuredTop: [],
+      featuredNotices: [],
+      featuredShowcase: [],
+      showcaseIndex: 0,
+      showcaseTimer: null,
       filteredLabelId: null,
     }
   },
   mounted() {
     const kw = this.$route.query.keywords
+    this.keywords = kw || ''
     this.fetchArticles(kw || '')
     this.fetchHotTopics()
     this.fetchFeaturedTop()
     this.fetchFeaturedSidebar()
+    this.fetchFeaturedNotices()
+    this.fetchFeaturedShowcase()
     this.loadLabels()
+    this.startShowcaseTimer()
     this.$bus && this.$bus.$on('forumSearch', this.handleForumSearch)
   },
   beforeDestroy() {
     this.$bus && this.$bus.$off('forumSearch', this.handleForumSearch)
+    this.stopShowcaseTimer()
   },
   watch: {
     '$route.query.keywords': function (kw) {
@@ -264,12 +480,23 @@ export default {
     },
   },
   computed: {
-    filteredArticles() {
-      if (!this.filteredLabelId) return this.articles
-      return this.articles.filter(a => String(a.labelId) === String(this.filteredLabelId))
+    hotTitle() {
+      const cat = this.categories.find(c => String(c.labelId) === String(this.filters.labelId))
+      return cat && cat.labelId != null ? cat.name + '热榜' : '全部热榜'
     },
     visibleHotTopics() {
       return this.hotTopicsExpand ? this.hotTopics : this.hotTopics.slice(0, 10)
+    },
+    currentShowcase() {
+      if (!this.featuredShowcase.length) return null
+      return this.featuredShowcase[this.showcaseIndex % this.featuredShowcase.length] || null
+    },
+    hotMetricLabel() {
+      const hit = this.hotMetrics.find(m => m.key === this.hotMetric)
+      return hit ? hit.label : ''
+    },
+    hasActiveFilter() {
+      return !!(this.keywords || this.filters.labelId || this.filters.featured || this.filters.hasAttachment)
     },
     visibleFeaturedSidebar() {
       return this.featuredSidebarExpand ? this.featuredSidebar : this.featuredSidebar.slice(0, 3)
@@ -279,11 +506,23 @@ export default {
     formatTime(val) {
       return dateStr(val)
     },
-    fetchArticles(keywords = '') {
+    fetchArticles(keywords = this.keywords) {
       this.loading = true
-      this.getRequest(`/common/article/getArticle?keywords=${encodeURIComponent(keywords)}`).then(resp => {
+      this.keywords = keywords || ''
+      const body = {
+        keywords: this.keywords,
+        labelId: this.filters.labelId,
+        featured: this.filters.featured ? 1 : null,
+        hasAttachment: this.filters.hasAttachment ? 1 : null,
+        sortBy: this.filters.sortBy,
+        sortOrder: 'desc',
+        page: this.articlePage,
+        size: this.pageSize,
+      }
+      this.postRequest('/common/article/list', body).then(resp => {
         this.loading = false
-        const list = Array.isArray(resp) ? resp : (resp && resp.data && Array.isArray(resp.data) ? resp.data : [])
+        const data = (resp && resp.obj) || {}
+        const list = Array.isArray(data.list) ? data.list : []
         this.articles = list.map(a => ({
           articleId: a.articleId,
           title: a.articleTitle || '',
@@ -294,30 +533,110 @@ export default {
           authorOrgName: a.authorOrgName || '',
           authorOrgNameFull: a.authorOrgNameFull || '',
           isFeatured: a.isFeatured === 1 || a.isFeatured === '1',
+          isAnonymous: a.isAnonymous === 1 || a.isAnonymous === '1',
           labelId: a.articleLabelId || null,
+          labelName: a.articleLabelName || '',
           time: a.createTime || a.articleCreateTime || '',
+          lastReplyTime: a.lastReplyTime || '',
           views: a.articleViewNum || 0,
-          comments: a.commentNum ?? a.comment_num ?? 0,
+          comments: a.commentNum ?? a.commentNumCount ?? a.comment_num ?? 0,
           likes: a.articleGoodNum || 0,
+          favorites: a.favoriteNum || 0,
+          authorLevelIndex: a.authorLevelIndex || null,
           cover: normalizeFileUrl(a.articleImage || null),
         }))
+        this.articleTotal = Number(data.total || 0)
+        this.articlePages = Number(data.pages || 0)
       }).catch(err => {
         console.warn('[BBSForum] fetchArticles', err)
         this.loading = false
         this.articles = []
+        this.articleTotal = 0
+        this.articlePages = 0
       })
     },
+    reloadArticles() {
+      this.articlePage = 1
+      this.fetchArticles()
+    },
+    changePage(page) {
+      if (page < 1 || (this.articlePages && page > this.articlePages)) return
+      this.articlePage = page
+      this.fetchArticles()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    },
     fetchHotTopics() {
-      this.getRequest('/common/article/getHot').then(resp => {
-        const list = Array.isArray(resp) ? resp : (resp && resp.data && Array.isArray(resp.data) ? resp.data : [])
-        this.hotTopics = list.map(h => ({
-          articleId: h.articleId,
-          articleTitle: h.articleTitle || '',
-        })).filter(h => h.articleId)
+      // 热榜按全部时间累计数据排序（不做时间窗筛选）
+      this.postRequest('/common/article/hot', {
+        labelId: this.filters.labelId,
+        metric: this.hotMetric,
+        limit: 10,
+      }).then(resp => {
+        const list = (resp && Array.isArray(resp.obj)) ? resp.obj : []
+        const valueOf = (h) => {
+          switch (this.hotMetric) {
+            case 'comments': return h.commentNumCount || h.commentNum || 0
+            case 'favorites': return h.favoriteNum || 0
+            case 'likes': return h.articleGoodNum || 0
+            case 'shares': return h.shareNum || 0
+            default: return h.articleViewNum || 0
+          }
+        }
+        this.hotTopics = list
+          .filter(h => h && h.articleId)
+          .map(h => ({
+            articleId: h.articleId,
+            articleTitle: h.articleTitle || '',
+            metricValue: valueOf(h),
+          }))
       }).catch(err => {
         console.warn('[BBSForum] fetchHotTopics', err)
         this.hotTopics = []
       })
+    },
+    startShowcaseTimer() {
+      this.stopShowcaseTimer()
+      this.showcaseTimer = setInterval(() => {
+        if (this.featuredShowcase.length > 1) {
+          this.showcaseIndex = (this.showcaseIndex + 1) % this.featuredShowcase.length
+        }
+      }, 5000)
+    },
+    stopShowcaseTimer() {
+      if (this.showcaseTimer) {
+        clearInterval(this.showcaseTimer)
+        this.showcaseTimer = null
+      }
+    },
+    pauseShowcase() {
+      this.stopShowcaseTimer()
+    },
+    resumeShowcase() {
+      this.startShowcaseTimer()
+    },
+    prevShowcase() {
+      if (!this.featuredShowcase.length) return
+      const n = this.featuredShowcase.length
+      this.showcaseIndex = (this.showcaseIndex - 1 + n) % n
+      this.startShowcaseTimer()
+    },
+    nextShowcase() {
+      if (!this.featuredShowcase.length) return
+      this.showcaseIndex = (this.showcaseIndex + 1) % this.featuredShowcase.length
+      this.startShowcaseTimer()
+    },
+    articleLabelName(article) {
+      return article.labelName || this.getLabelName(article.labelId)
+    },
+    clearFilters() {
+      this.keywords = ''
+      this.filters.labelId = null
+      this.filters.featured = false
+      this.filters.hasAttachment = false
+      this.categories.forEach(c => { c.active = c.labelId === null })
+      this.articlePage = 1
+      this.fetchArticles('')
+      this.fetchHotTopics()
     },
     fetchFeaturedTop() {
       this.getRequest('/common/article/getFeaturedTop').then(resp => {
@@ -336,6 +655,17 @@ export default {
         console.warn('[BBSForum] fetchFeaturedTop', err)
         this.featuredTop = []
       })
+    },
+    fetchFeaturedNotices() {
+      this.getRequest('/common/featured/notices').then(resp => {
+        this.featuredNotices = (resp && Array.isArray(resp.obj)) ? resp.obj : []
+      }).catch(() => { this.featuredNotices = [] })
+    },
+    fetchFeaturedShowcase() {
+      this.getRequest('/common/featured/showcase?limit=5').then(resp => {
+        this.featuredShowcase = (resp && Array.isArray(resp.obj)) ? resp.obj : []
+        if (this.showcaseIndex >= this.featuredShowcase.length) this.showcaseIndex = 0
+      }).catch(() => { this.featuredShowcase = [] })
     },
     fetchFeaturedSidebar() {
       this.getRequest('/common/article/getFeatured?page=1&size=10').then(resp => {
@@ -369,8 +699,8 @@ export default {
             }))
           ]
           // 如果已有选中的标签，激活对应分类
-          if (this.filteredLabelId !== null) {
-            const match = this.categories.find(c => String(c.labelId) === String(this.filteredLabelId))
+          if (this.filters.labelId !== null) {
+            const match = this.categories.find(c => String(c.labelId) === String(this.filters.labelId))
             if (match) match.active = true
           }
         }
@@ -380,25 +710,16 @@ export default {
       })
     },
     selectCategory(cat) {
-      if (cat.labelId === null) {
-        // 点击"全部"：取消所有分类选中，显示全部文章
-        this.categories.forEach(c => { c.active = false })
-        cat.active = true
-        this.filteredLabelId = null
-        return
+      if (cat.labelId === null || cat.active) {
+        this.categories.forEach(c => { c.active = c.labelId === null })
+        this.filters.labelId = null
+      } else {
+        this.categories.forEach(c => { c.active = c === cat })
+        this.filters.labelId = cat.labelId
       }
-      // 点击具体分类
-      if (cat.active) {
-        // 取消选中，回到"全部"
-        cat.active = false
-        this.filteredLabelId = null
-        const allCat = this.categories.find(c => c.labelId === null)
-        if (allCat) allCat.active = true
-        return
-      }
-      this.categories.forEach(c => { c.active = false })
-      cat.active = true
-      this.filteredLabelId = cat.labelId || null
+      this.articlePage = 1
+      this.fetchArticles()
+      this.fetchHotTopics()
     },
     goToArticle(article) {
       if (article.articleId) {
@@ -419,6 +740,7 @@ export default {
       return cat ? cat.name : ''
     },
     handleForumSearch(keywords) {
+      this.articlePage = 1
       this.fetchArticles(keywords || '')
     },
     getRankClass(rank) {
@@ -485,13 +807,20 @@ export default {
   filter: brightness(0.9) saturate(0.95);
 }
 
-/* 压暗层：中间略深，保证白色标题与正文的对比度不受图片颜色影响 */
+/* 压暗层：中间略深保证标题对比度，左右两侧更亮（领导反馈两侧看不清），过渡平滑 */
 .hero-photo__scrim {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(7, 18, 36, 0.52) 0%, rgba(7, 18, 36, 0.46) 45%, rgba(7, 18, 36, 0.62) 100%),
-    radial-gradient(ellipse at 50% 45%, rgba(5, 13, 26, 0.55) 0%, rgba(5, 13, 26, 0.18) 62%, rgba(5, 13, 26, 0.4) 100%);
+    linear-gradient(90deg,
+      rgba(7, 18, 36, 0.10) 0%,
+      rgba(7, 18, 36, 0.20) 16%,
+      rgba(7, 18, 36, 0.48) 38%,
+      rgba(7, 18, 36, 0.58) 50%,
+      rgba(7, 18, 36, 0.48) 62%,
+      rgba(7, 18, 36, 0.20) 84%,
+      rgba(7, 18, 36, 0.10) 100%),
+    linear-gradient(180deg, rgba(7, 18, 36, 0.16) 0%, rgba(7, 18, 36, 0.28) 100%);
 }
 
 .hero-photo__credits {

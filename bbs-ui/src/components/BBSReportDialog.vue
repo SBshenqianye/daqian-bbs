@@ -7,7 +7,7 @@
       <div class="bg-container rounded-lg border border-border shadow-xl w-full max-w-md p-6">
         <header class="flex items-center justify-between mb-4">
           <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
-            <span class="material-symbols-outlined text-[20px] text-error">flag</span> 实名举报
+            <span class="material-symbols-outlined text-[20px] text-error">flag</span> 举报
           </h3>
           <button class="text-on-surface-variant hover:text-on-surface transition-primary" @click="handleClose">
             <span class="material-symbols-outlined text-[20px]">close</span>
@@ -35,8 +35,12 @@
             placeholder="补充说明违规具体情况（选填，200字以内）"
             class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none resize-none font-body-md text-body-md"
           ></textarea>
+          <label class="flex items-center gap-2 text-body-sm text-on-surface cursor-pointer select-none">
+            <input v-model="isAnonymous" type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded">
+            匿名举报（管理员仍可核查，举报人信息不对其他用户展示）
+          </label>
           <p class="font-label-sm text-label-sm text-on-surface-variant">
-            举报将实名提交给管理员核查；核实属实可获得 +2 积分，恶意虚假举报将被扣分。
+            举报提交给管理员核查；核实属实可获得 +2 积分，恶意虚假举报将被扣分。
           </p>
         </div>
 
@@ -88,6 +92,7 @@ export default {
     return {
       violationType: '',
       description: '',
+      isAnonymous: false,
       submitting: false,
       violationTypes: VIOLATION_TYPES,
     }
@@ -97,6 +102,7 @@ export default {
       if (val) {
         this.violationType = ''
         this.description = ''
+        this.isAnonymous = false
         this.submitting = false
       }
     },
@@ -134,6 +140,7 @@ export default {
         targetId,
         violationType: this.violationType,
         reason,
+        isAnonymous: this.isAnonymous,
       }).then(resp => {
         this.submitting = false
         if (resp && resp.code === 200) {

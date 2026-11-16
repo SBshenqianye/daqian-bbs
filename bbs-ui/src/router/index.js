@@ -49,6 +49,12 @@ const router = new VueRouter({
             component: () => import('@/views/BBSUserinfo.vue'),
         },
         {
+            name: 'BBSPublicProfile',
+            path: '/user/:userId',
+            component: () => import('@/views/BBSPublicProfile.vue'),
+            meta: { auth: false }
+        },
+        {
             name: 'BBSStat',
             path: '/stat',
             component: () => import('@/views/BBSStat.vue'),
@@ -75,6 +81,12 @@ const router = new VueRouter({
             name: 'BBSMyReplies',
             path: '/my-replies',
             component: () => import('@/views/BBSMyReplies.vue'),
+            meta: { auth: true }
+        },
+        {
+            name: 'BBSFavorites',
+            path: '/my-favorites',
+            component: () => import('@/views/BBSFavorites.vue'),
             meta: { auth: true }
         },
         {

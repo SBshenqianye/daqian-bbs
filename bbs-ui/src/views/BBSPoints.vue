@@ -89,8 +89,9 @@
               <h3 class="font-bold text-center line-clamp-2 min-h-[56px] flex items-center justify-center" :class="podium.rank === 1 ? 'text-xl' : 'text-lg'">{{ podium.name }}</h3>
               <div class="w-full flex justify-between items-end pt-4">
                 <div class="flex flex-col">
-                  <span class="text-on-surface-variant uppercase font-bold" :class="podium.rank === 1 ? 'text-[12px]' : 'text-[10px]'">活跃度积分</span>
+                  <span class="text-on-surface-variant uppercase font-bold" :class="podium.rank === 1 ? 'text-[12px]' : 'text-[10px]'">人均得分</span>
                   <span class="font-bold text-primary" :class="podium.rank === 1 ? 'text-4xl font-black' : 'text-2xl'">{{ podium.score }}</span>
+                  <span class="text-[10px] text-on-surface-variant mt-1">总分 {{ podium.totalPoints }} · {{ podium.memberCount }} 人</span>
                 </div>
                 <div class="text-right text-on-surface-variant" :class="podium.rank === 1 ? 'text-sm' : 'text-[11px]'">
                   <p>发帖: {{ podium.posts }}</p>
@@ -114,14 +115,16 @@
               <div class="flex-grow min-w-0">
                 <h4 class="text-lg font-bold text-on-surface truncate">{{ item.name }}</h4>
                 <div class="flex items-center gap-4 text-xs text-on-surface-variant mt-1">
+                  <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">group</span>{{ item.memberCount }} 人</span>
                   <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">edit_note</span>发帖: {{ item.posts }}</span>
                   <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">chat_bubble</span>回帖: {{ item.replies }}</span>
                 </div>
               </div>
               <div class="flex items-center gap-6 shrink-0">
                 <div class="text-right">
-                  <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-tight">活跃度积分</p>
+                  <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-tight">人均得分</p>
                   <p class="text-2xl font-bold text-on-surface">{{ item.score }}</p>
+                  <p class="text-[10px] text-on-surface-variant">总分 {{ item.totalPoints }}</p>
                 </div>
               </div>
             </div>
@@ -286,7 +289,7 @@ export default {
       tabs: [],
       activeTabKey: '',
       activeMode: 'org',   // 'org' | 'personal'
-      activeOrgNo: '',     // 当前选中 Tab 的 orgNo（仅 org 模式）
+      activeCategoryId: null, // 当前选中的排行榜分类；初始化后取第一个分类
       // 时间
       activeTimeKey: 'month',
       customStartDate: '',
@@ -351,32 +354,29 @@ export default {
     normalizeFileUrl,
 
     /**
-     * 初始化 Tab：获取组织树 → 构造 Tab 列表
+     * 初始化 Tab：获取排行榜分类 → 构造 Tab 列表
      */
     async initTabs() {
       this.loading = true
       try {
-        // 获取组织树
-        const tree = await this.getRequest('/common/saOrgTree')
-        const rootNode = (tree && tree.obj && tree.obj[0]) || null
-        const orgTabs = []
-        if (rootNode && rootNode.children) {
-          // 该二级组织及其全部下级均未参与排名时，不生成 Tab
-          rootNode.children.forEach(child => {
-            if (!this.hasRankingOrg(child)) return
-            orgTabs.push({
-              key: 'org_' + child.id,
-              label: child.label,
-              orgNo: child.id,
-              mode: 'org',
-            })
-          })
-        }
+        const resp = await this.getRequest('/common/ranking/categories')
+        const categories = (resp && resp.code == 200 && Array.isArray(resp.obj)) ? resp.obj : []
+        const orgTabs = categories.map(cat => ({
+          key: 'category_' + cat.id,
+          label: cat.categoryName,
+          categoryId: cat.id,
+          legacy: !!cat.legacy,
+          mode: 'org',
+        }))
         // 构建完整 Tab 列表
         this.tabs = [
           ...orgTabs,
           { key: 'personal', label: '个人排名', mode: 'personal' },
         ]
+        // 默认选中第一个组织分类（不再依赖历史虚拟分类 id=0）
+        if (this.activeCategoryId == null && orgTabs.length && orgTabs[0].categoryId != null) {
+          this.activeCategoryId = orgTabs[0].categoryId
+        }
 
         // 默认选中第一个 Tab
         if (this.tabs.length > 0) {
@@ -392,23 +392,12 @@ export default {
     },
 
     /**
-     * 判断组织节点自身或任一子级是否参与排名
-     */
-    hasRankingOrg(node) {
-      if (node.isRankingSelected === 1 || node.isRankingSelected === true) return true
-      if (node.children && node.children.length) {
-        return node.children.some(child => this.hasRankingOrg(child))
-      }
-      return false
-    },
-
-    /**
      * 切换 Tab
      */
     switchTab(tab) {
       this.activeTabKey = tab.key
       this.activeMode = tab.mode
-      this.activeOrgNo = tab.orgNo || ''
+      this.activeCategoryId = tab.categoryId != null ? tab.categoryId : null
       this.currentPage = 1
       this.personalRankList = []
       this.currentUserInfo = null
@@ -453,16 +442,11 @@ export default {
      * 获取组织排名
      */
     async fetchOrgRank() {
-      if (!this.activeOrgNo) {
-        this.orgRankList = []
-        return
-      }
       this.loading = true
       try {
         const range = this.activeTimeRange
-        const resp = await this.postRequest('/common/pointsRank', {
-          rankType: '01',
-          orgNo: this.activeOrgNo,
+        const resp = await this.postRequest('/common/ranking/org', {
+          categoryId: this.activeCategoryId,
           startTime: range.start,
           endTime: range.end,
         })
@@ -473,11 +457,13 @@ export default {
             this.orgRankList = list.map(item => ({
               rank: item.rankNum || 0,
               name: item.orgName || '',
-              score: item.points || 0,
+              score: Number(item.avgPoints || 0),
+              totalPoints: item.points || 0,
+              memberCount: item.memberCount || 0,
               posts: item.posts || 0,
               replies: item.replies || 0,
               orgNo: item.orgNo || '',
-            })).filter(item => item.orgNo !== this.activeOrgNo) // 点4：只展示第三级，排除本级单位
+            }))
           },
           onError: () => { this.orgRankList = [] },
         })
