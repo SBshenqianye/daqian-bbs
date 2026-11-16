@@ -66,9 +66,13 @@
                 <td class="p-4 font-body-md text-on-surface font-medium max-w-[200px] truncate" :title="label.labelName">{{ label.labelName }}</td>
                 <td class="p-4 font-body-md text-on-surface-variant truncate max-w-0" :title="label.description || ''">{{ label.description || '--' }}</td>
                 <td class="p-4">
-                  <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="labelTypeBadgeClass(label.labelType)">
-                    {{ labelTypeText(label.labelType) }}
-                  </span>
+                  <div class="flex flex-col gap-1">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="labelTypeBadgeClass(label.labelType)">
+                      {{ labelTypeText(label.labelType) }}
+                    </span>
+                    <span v-if="label.allowAnonymous === 1" class="inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[11px] bg-purple-50 text-purple-700">可匿名</span>
+                    <span v-if="label.noPoints === 1" class="inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[11px] bg-amber-50 text-amber-700">不计分</span>
+                  </div>
                 </td>
                 <td class="p-4">
                   <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-medium" :class="label.isDisable === 1 ? 'bg-error-container text-error' : 'bg-green-50 text-green-700'">
@@ -167,6 +171,17 @@
               </select>
               <p class="text-[12px] text-on-surface-variant mt-1">按用途类型识别特殊功能，与标签名称解耦，改名不影响功能</p>
             </div>
+            <div class="rounded-lg border border-outline-variant bg-surface px-3 py-2.5 space-y-2">
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input v-model="addForm.allowAnonymous" type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded">
+                <span class="text-body-md text-on-surface">允许匿名发帖/回帖</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input v-model="addForm.noPoints" type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded">
+                <span class="text-body-md text-on-surface">该标签下互动不计分</span>
+                <span class="text-[11px] text-on-surface-variant">浏览仍计分</span>
+              </label>
+            </div>
             <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">是否禁用</label>
               <button class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors" :class="addForm.isDisable ? 'bg-error' : 'bg-surface-variant'" @click="addForm.isDisable = addForm.isDisable ? 0 : 1">
@@ -224,6 +239,17 @@
               </select>
               <p class="text-[12px] text-on-surface-variant mt-1">按用途类型识别特殊功能，与标签名称解耦，改名不影响功能</p>
             </div>
+            <div class="rounded-lg border border-outline-variant bg-surface px-3 py-2.5 space-y-2">
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input v-model="editForm.allowAnonymous" type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded">
+                <span class="text-body-md text-on-surface">允许匿名发帖/回帖</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input v-model="editForm.noPoints" type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded">
+                <span class="text-body-md text-on-surface">该标签下互动不计分</span>
+                <span class="text-[11px] text-on-surface-variant">浏览仍计分</span>
+              </label>
+            </div>
             <div>
               <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">是否禁用</label>
               <button class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors" :class="editForm.enabled ? 'bg-surface-variant' : 'bg-error'" @click="editForm.enabled = editForm.enabled ? 0 : 1">
@@ -259,8 +285,8 @@ export default {
       multipleSelection: [],
       addVisible: false,
       editVisible: false,
-      addForm: { labelName: '', icon: '', description: '', labelType: 'normal', isDisable: 0 },
-      editForm: { labelId: null, labelName: '', icon: '', description: '', labelType: 'normal', enabled: 0 },
+      addForm: { labelName: '', icon: '', description: '', labelType: 'normal', isDisable: 0, allowAnonymous: false, noPoints: false },
+      editForm: { labelId: null, labelName: '', icon: '', description: '', labelType: 'normal', enabled: 0, allowAnonymous: false, noPoints: false },
       pageParams: { pageIndex: 1, pageSize: 10 },
       total: 0,
       pickerIcon: '',
@@ -324,13 +350,21 @@ export default {
     handleSearch() { this.handleSizeChange() },
     handleSizeChange() { this.pageParams.pageIndex = 1; this.getArticleLabelPage() },
     openAdd() {
-      this.addForm = { labelName: '', icon: '', description: '', labelType: 'normal', isDisable: 0 }
+      this.addForm = { labelName: '', icon: '', description: '', labelType: 'normal', isDisable: 0, allowAnonymous: false, noPoints: false }
       this.addVisible = true
     },
     submitAdd() {
       const labelName = (this.addForm.labelName || '').trim()
       if (!labelName) { this.$message.warning('标签名称不能为空'); return }
-      this.postRequest('/admin/addArticleLabel', { labelName, icon: this.addForm.icon, description: this.addForm.description, labelType: this.addForm.labelType || 'normal', enabled: this.addForm.isDisable === 1 ? 0 : 1 }).then(resp => {
+      this.postRequest('/admin/addArticleLabel', {
+        labelName,
+        icon: this.addForm.icon,
+        description: this.addForm.description,
+        labelType: this.addForm.labelType || 'normal',
+        enabled: this.addForm.isDisable === 1 ? 0 : 1,
+        allowAnonymous: this.addForm.allowAnonymous ? 1 : 0,
+        noPoints: this.addForm.noPoints ? 1 : 0,
+      }).then(resp => {
         handleResponse(resp, {
           successMsg: '添加成功',
           onSuccess: () => {
@@ -348,6 +382,8 @@ export default {
         icon: row.icon || '',
         description: row.description || '',
         labelType: row.labelType || 'normal',
+        allowAnonymous: row.allowAnonymous === 1,
+        noPoints: row.noPoints === 1,
         enabled: Number(typeof row.enabled !== 'undefined' ? row.enabled : 0)
       }
       this.editVisible = true
@@ -357,7 +393,16 @@ export default {
       const labelName = (this.editForm.labelName || '').trim()
       if (!labelId) { this.$message.warning('标签ID不能为空'); return }
       if (!labelName) { this.$message.warning('标签名称不能为空'); return }
-      this.postRequest('/admin/updArticleLabel', { labelId, labelName, icon: this.editForm.icon, description: this.editForm.description, labelType: this.editForm.labelType || 'normal', enabled: this.editForm.enabled }).then(resp => {
+      this.postRequest('/admin/updArticleLabel', {
+        labelId,
+        labelName,
+        icon: this.editForm.icon,
+        description: this.editForm.description,
+        labelType: this.editForm.labelType || 'normal',
+        enabled: this.editForm.enabled,
+        allowAnonymous: this.editForm.allowAnonymous ? 1 : 0,
+        noPoints: this.editForm.noPoints ? 1 : 0,
+      }).then(resp => {
         handleResponse(resp, {
           successMsg: '修改成功',
           onSuccess: () => {
@@ -370,6 +415,8 @@ export default {
               updated.icon = this.editForm.icon
               updated.description = this.editForm.description
               updated.labelType = this.editForm.labelType || 'normal'
+              updated.allowAnonymous = this.editForm.allowAnonymous ? 1 : 0
+              updated.noPoints = this.editForm.noPoints ? 1 : 0
               updated.enabled = this.editForm.enabled
               updated.isDisable = Number(this.editForm.enabled === 0 ? 1 : 0)
               const idx = this.labelsRaw.indexOf(item)

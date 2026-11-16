@@ -68,12 +68,52 @@ export default new Router({
                 },
                 {
                     path: '/points/config',
-                    redirect: '/unitManage'
+                    redirect: '/rankingManage'
                 },
                 {
                     path: '/unitManage',
                     component: () => import('../pages/BBSUnitManage.vue'),
                     meta: { title: '单位管理', permission: 'config:read' }
+                },
+                {
+                    path: '/rankingManage',
+                    component: () => import('../pages/RankingManagePage.vue'),
+                    meta: { title: '排名管理', permission: 'config:read' }
+                },
+                {
+                    path: '/levelManage',
+                    component: () => import('../pages/LevelManagePage.vue'),
+                    meta: { title: '等级管理', permission: 'config:read' }
+                },
+                {
+                    path: '/achievementManage',
+                    component: () => import('../pages/AchievementManagePage.vue'),
+                    meta: { title: '成就管理', permission: 'config:read' }
+                },
+                {
+                    path: '/svgStudio',
+                    component: () => import('../pages/SvgStudioPage.vue'),
+                    meta: { title: 'SVG 工作台', permission: 'config:read' }
+                },
+                {
+                    path: '/operationCycle',
+                    component: () => import('../pages/OperationCyclePage.vue'),
+                    meta: { title: '运营周期', permission: 'config:read' }
+                },
+                {
+                    path: '/orgImport',
+                    component: () => import('../pages/OrgImportPage.vue'),
+                    meta: { title: '组织导入', permission: 'config:read' }
+                },
+                {
+                    path: '/reminderManage',
+                    component: () => import('../pages/ReminderManagePage.vue'),
+                    meta: { title: '提醒配置', permission: 'config:read' }
+                },
+                {
+                    path: '/reminders',
+                    component: () => import('../pages/ReminderCenterPage.vue'),
+                    meta: { title: '提醒中心', permission: 'dashboard:read' }
                 },
                 {
                     path: '/sensitiveWord',

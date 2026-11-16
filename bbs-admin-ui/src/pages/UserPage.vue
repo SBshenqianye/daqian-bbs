@@ -106,6 +106,10 @@
                       <span class="material-symbols-outlined text-[12px]">lock</span>
                       发帖受限
                     </span>
+                    <span v-if="user.isTestAccount === 1" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-50 text-purple-700" title="不参与排行榜和人均统计">
+                      <span class="material-symbols-outlined text-[12px]">science</span>
+                      测试账号
+                    </span>
                   </div>
                 </td>
                 <td class="p-4 font-body-md text-on-surface-variant">{{ user.createTime }}</td>
@@ -223,6 +227,11 @@
                 </div>
               </div>
             </div>
+            <label class="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-outline-variant bg-surface cursor-pointer select-none">
+              <input v-model="editForm.isTestAccount" type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded">
+              <span class="text-body-md text-on-surface">标记为测试账号</span>
+              <span class="text-[11px] text-on-surface-variant ml-auto">测试账号仍可登录使用，但不参与排行榜和人均统计</span>
+            </label>
             <div class="space-y-1">
               <label class="text-label-md text-secondary">密码（留空不修改）</label>
               <div class="grid grid-cols-1 grid-rows-1 max-w-xs">
@@ -582,6 +591,7 @@ export default {
         orgPath: '',
         primaryGroupId: null,
         isAlive: 0,
+        isTestAccount: false,
         personnelId: '',
         idCard: '',
         username: '',
@@ -886,6 +896,7 @@ export default {
         orgPath: user.orgName || '',
         primaryGroupId: user.primaryGroupId || null,
         isAlive: user.isAlive != null ? user.isAlive : 0,
+        isTestAccount: user.isTestAccount === 1,
         personnelId: user.personnelId || '',
         idCard: user.idCard || '',
         username: user.username || '',
@@ -919,6 +930,7 @@ export default {
       if (this.editForm.orgNo !== this.editUser.orgNo) params.orgNo = this.editForm.orgNo
       if (this.editForm.primaryGroupId !== (this.editUser.primaryGroupId || null)) params.primaryGroupId = this.editForm.primaryGroupId
       if (this.editForm.isAlive !== this.editUser.isAlive) params.isAlive = this.editForm.isAlive
+      if (this.editForm.isTestAccount !== (this.editUser.isTestAccount === 1)) params.isTestAccount = this.editForm.isTestAccount ? 1 : 0
       if (this.editForm.personnelId !== (this.editUser.personnelId || '')) params.personnelId = this.editForm.personnelId
       if (this.editForm.idCard !== (this.editUser.idCard || '')) params.idCard = this.editForm.idCard
       if (this.editForm.username !== this.editUser.username) params.username = this.editForm.username

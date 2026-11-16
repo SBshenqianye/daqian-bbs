@@ -27,3 +27,11 @@
   vertical-align: middle;
   font-size: 20px;
 }
+
+/* 等级/成就 SVG：由外层容器控制高度，宽度按比例自适应 */
+.bbs-level-svg > svg {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: none;
+}

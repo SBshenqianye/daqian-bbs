@@ -22,6 +22,8 @@
             class="org-tree-row flex items-center gap-1 w-full"
             :class="rowCls(data, elNode)"
             :data-nid="data.id"
+            :draggable="draggableNodes"
+            @dragstart.stop="emitDragStart(data, $event)"
           >
             <!-- Chevron (expand/collapse) -->
             <button
@@ -150,8 +152,10 @@ export default {
     defaultExpanded: { type: Boolean, default: true },
     /** 渲染模式: 'unit-manage' 内联渲染按钮; 其他值使用 slot */
     mode: { type: String, default: '' },
+    /** 是否允许把节点拖到外部（排名管理等） */
+    draggableNodes: { type: Boolean, default: false },
   },
-  emits: ['node-click', 'toggle-ranking', 'toggle-display', 'cascade-ranking', 'cascade-display', 'add-node', 'delete-node'],
+  emits: ['node-click', 'toggle-ranking', 'toggle-display', 'cascade-ranking', 'cascade-display', 'add-node', 'delete-node', 'node-dragstart'],
   data() {
     return {
       initialized: false,
@@ -192,6 +196,21 @@ export default {
     },
   },
   methods: {
+    emitDragStart(data, event) {
+      if (!this.draggableNodes) return
+      const payload = {
+        orgNo: data.id,
+        orgName: data.label,
+        hasChildren: data._hasChildren,
+      }
+      try {
+        event.dataTransfer.effectAllowed = 'copy'
+        event.dataTransfer.setData('application/x-bbs-org', JSON.stringify(payload))
+        event.dataTransfer.setData('text/plain', data.label || data.id)
+      } catch (e) { /* ignore */ }
+      this.$emit('node-dragstart', payload)
+    },
+
     /* ═══════════ Data Normalization ═══════════ */
 
     _normalizeData(nodes) {

@@ -15,7 +15,7 @@
             <span class="material-symbols-outlined text-[16px] mr-1" style="vertical-align: text-bottom;">download</span>
             导出 Excel
           </el-button>
-          <el-button type="primary" plain size="small" @click="$router.push('/unitManage')">
+          <el-button v-if="canConfigRanking" type="primary" plain size="small" @click="$router.push('/rankingManage')">
             <span class="material-symbols-outlined text-[16px] mr-1" style="vertical-align: text-bottom;">tune</span>
             配置排名单位
           </el-button>
@@ -37,6 +37,23 @@
             个人排名
             <span v-if="activeMode === 'personal'" class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></span>
           </button>
+        </div>
+
+        <!-- 排行榜分类 -->
+        <div v-if="activeMode === 'org'" class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-outline-variant/30 bg-surface-container-lowest">
+          <span class="text-sm text-on-surface-variant font-medium">榜单：</span>
+          <button
+            v-for="cat in categoryTabs"
+            :key="cat.id"
+            class="px-3 py-1.5 text-[12px] rounded-lg border transition-all"
+            :class="activeCategoryId === cat.id
+              ? 'bg-primary text-on-primary border-primary shadow-sm'
+              : 'bg-surface border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'"
+            @click="switchCategory(cat)"
+          >
+            {{ cat.categoryName }}
+          </button>
+          <span v-if="activeCategoryLegacy" class="text-[11px] text-on-surface-variant ml-1">沿用原“参与排名”单位</span>
         </div>
 
         <!-- Time Range Filter -->
@@ -86,7 +103,11 @@
                     :class="{ 'text-primary cursor-pointer hover:underline': item.isSelf === 1 }"
                     @click="onRowClick(item)">{{ item.orgName }}</span>
                 </div>
-                <div class="flex items-center gap-6 text-body-md text-on-surface-variant">
+                <div class="flex items-center gap-4 text-body-md text-on-surface-variant">
+                  <span class="flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px]">group</span>
+                    {{ item.memberCount || 0 }} 人
+                  </span>
                   <span class="flex items-center gap-1">
                     <span class="material-symbols-outlined text-[16px]">edit_note</span>
                     发帖: {{ item.posts }}
@@ -97,8 +118,9 @@
                   </span>
                 </div>
                 <div class="text-right">
-                  <p class="text-[11px] text-on-surface-variant font-medium">活跃度</p>
-                  <p class="text-xl font-bold text-primary">{{ item.points }}</p>
+                  <p class="text-[11px] text-on-surface-variant font-medium">人均得分</p>
+                  <p class="text-xl font-bold text-primary">{{ formatAvg(item.avgPoints) }}</p>
+                  <p class="text-[11px] text-on-surface-variant">总分 {{ item.points || 0 }}</p>
                 </div>
                 <span class="text-label-md text-on-surface-variant bg-surface-variant px-2 py-0.5 rounded-full">#{{ item.rankNum }}</span>
               </div>
@@ -191,6 +213,8 @@
 </template>
 
 <script>
+import adminStore from '@/utils/adminStore'
+
 const TIME_RANGES = {
   month:   () => { const n = new Date(), y = n.getFullYear(), m = n.getMonth(); return { start: `${y}-${p(m+1)}-01`, end: `${y}-${p(m+1)}-${p(new Date(y,m+1,0).getDate())}` } },
   quarter: () => { const n = new Date(), y = n.getFullYear(), m = n.getMonth(), qs = Math.floor(m/3)*3, qe = qs+2; return { start: `${y}-${p(qs+1)}-01`, end: `${y}-${p(qe+1)}-${p(new Date(y,qe+1,0).getDate())}` } },
@@ -204,6 +228,9 @@ export default {
   data() {
     return {
       activeMode: 'org',     // 'org' | 'personal'
+      activeCategoryId: 0,
+      activeCategoryLegacy: true,
+      categoryTabs: [],
       activeTimeKey: 'month',
       customDateRange: null,
       timeRange: TIME_RANGES.month(),
@@ -223,9 +250,14 @@ export default {
       detailLoading: false,
     }
   },
+  computed: {
+    canConfigRanking() {
+      return adminStore.hasPermission('config:read')
+    },
+  },
   mounted() {
     this.currentUserId = this.getCurrentUserId()
-    this.fetchData()
+    this.loadCategories()
   },
   methods: {
     getCurrentUserId() {
@@ -235,6 +267,35 @@ export default {
         if (raw) { const u = JSON.parse(raw); return u.id || null }
       } catch (e) { /* ignore */ }
       return null
+    },
+
+    loadCategories() {
+      this.getRequestUrl('/common/ranking/categories').then(resp => {
+        const list = (resp && resp.code == 200 && Array.isArray(resp.obj)) ? resp.obj : []
+        this.categoryTabs = list
+        if (!this.categoryTabs.some(c => c.id === this.activeCategoryId)) {
+          this.activeCategoryId = this.categoryTabs.length ? this.categoryTabs[0].id : 0
+        }
+        const active = this.categoryTabs.find(c => c.id === this.activeCategoryId)
+        this.activeCategoryLegacy = !!(active && active.legacy)
+        this.fetchData()
+      }).catch(() => {
+        this.categoryTabs = []
+        this.activeCategoryId = 0
+        this.activeCategoryLegacy = true
+        this.fetchData()
+      })
+    },
+
+    switchCategory(cat) {
+      this.activeCategoryId = cat.id
+      this.activeCategoryLegacy = !!cat.legacy
+      this.fetchData()
+    },
+
+    formatAvg(value) {
+      const num = Number(value || 0)
+      return num.toFixed(2).replace(/\.00$/, '')
     },
 
     // ── Mode / Time ──
@@ -272,9 +333,8 @@ export default {
 
     fetchOrgRank() {
       this.loading = true
-      this.postRequest('/common/pointsRank', {
-        rankType: '01',
-        orgNo: '',
+      this.postRequest('/common/ranking/org', {
+        categoryId: this.activeCategoryId,
         startTime: this.timeRange.start,
         endTime: this.timeRange.end,
       }).then(resp => {

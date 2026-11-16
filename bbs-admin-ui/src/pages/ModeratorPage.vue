@@ -21,7 +21,7 @@
       <!-- 自动发放设置 -->
       <div class="bg-container border border-border rounded-xl p-card-padding mb-6">
         <h3 class="font-title-lg text-title-lg mb-4">自动发放设置</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <div>
             <label class="block text-body-sm text-on-surface-variant mb-1">自动发放开关</label>
             <select v-model="autoConfig.enabled" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none">
@@ -32,6 +32,10 @@
           <div>
             <label class="block text-body-sm text-on-surface-variant mb-1">每月发放日（1-28）</label>
             <input v-model="autoConfig.day" type="number" min="1" max="28" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none" placeholder="1">
+          </div>
+          <div>
+            <label class="block text-body-sm text-on-surface-variant mb-1">每人每月奖励积分</label>
+            <input v-model="autoConfig.points" type="number" min="1" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none" placeholder="400">
           </div>
           <div class="flex gap-2">
             <button class="px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 disabled:opacity-60 text-body-sm" :disabled="savingConfig" @click="saveAutoConfig">
@@ -220,7 +224,7 @@ export default {
       currentPage: 1,
       pageSize: 10,
       form: { userId: '', labelId: '' },
-      autoConfig: { enabled: '1', day: '1' },
+      autoConfig: { enabled: '1', day: '1', points: '400' },
       savingConfig: false,
       cancelledList: [],
       cancelDialogVisible: false,
@@ -309,6 +313,8 @@ export default {
           if (autoItem) this.autoConfig.enabled = autoItem.dictValue || '0'
           const dayItem = res.obj.find(r => r.dictKey === 'moderator_reward_day')
           if (dayItem) this.autoConfig.day = dayItem.dictValue || '1'
+          const pointsItem = res.obj.find(r => r.dictKey === 'moderator_reward_points')
+          if (pointsItem && pointsItem.dictValue) this.autoConfig.points = pointsItem.dictValue
         }
       } catch (e) { /* ignore */ }
     },
@@ -321,6 +327,7 @@ export default {
         const dictList = listRes.obj
         const autoItem = dictList.find(r => r.dictKey === 'moderator_reward_auto')
         const dayItem = dictList.find(r => r.dictKey === 'moderator_reward_day')
+        const pointsItem = dictList.find(r => r.dictKey === 'moderator_reward_points')
         // 更新自动发放开关
         if (autoItem) {
           await this.postRequest('/admin/updateDict', {
@@ -333,6 +340,12 @@ export default {
           await this.postRequest('/admin/updateDict', {
             id: dayItem.id, dictType: 'moderator_reward_day', dictValue: this.autoConfig.day,
             dictLabel: '版主奖励发放日', dictKey: 'moderator_reward_day'
+          })
+        }
+        if (pointsItem) {
+          await this.postRequest('/admin/updateDict', {
+            id: pointsItem.id, dictType: 'moderator_reward_points', dictValue: this.autoConfig.points,
+            dictLabel: '版主月度履职奖励积分', dictKey: 'moderator_reward_points'
           })
         }
         handleResponse({ code: 200, message: '设置已保存' })
@@ -431,7 +444,7 @@ export default {
     },
     changePage(page) { this.currentPage = page; this.loadList() },
     handleMonthlyReward() {
-      this.$confirm('确定为所有有效版主发放本月履职奖励（每人15积分）？已发放过的版主将自动跳过。', '发放履职奖励', { type: 'info' })
+      this.$confirm(`确定为所有有效版主发放本月履职奖励（每人${this.autoConfig.points || 400}积分）？已发放过的版主将自动跳过。`, '发放履职奖励', { type: 'info' })
         .then(() => this.doMonthlyReward())
         .catch(() => {})
     },
