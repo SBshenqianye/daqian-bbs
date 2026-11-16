@@ -1,6 +1,6 @@
 <template>
-  <main class="max-w-7xl mx-auto px-page-margin-desktop py-12 bg-background min-h-screen">
-    <header class="mb-8 flex items-center gap-3">
+  <main :class="embedded ? '' : 'max-w-7xl mx-auto px-page-margin-desktop py-12 bg-background min-h-screen'">
+    <header v-if="!embedded" class="mb-8 flex items-center gap-3">
       <button
         class="p-2 -ml-2 rounded-full hover:bg-surface-container-low transition-colors text-on-surface-variant"
         @click="$router.back()"
@@ -148,6 +148,7 @@ import { handleResponse } from '../../../shared/feedback'
 
 export default {
   name: 'BBSModeratorComplaint',
+  props: { embedded: { type: Boolean, default: false } },
   data() {
     return {
       submitting: false,

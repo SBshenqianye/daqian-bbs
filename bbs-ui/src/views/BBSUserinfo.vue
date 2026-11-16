@@ -9,7 +9,7 @@
             <button
               class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 flex items-center gap-2"
               :class="activeTab === 'overview' ? 'sidebar-tab-active' : 'text-on-surface-variant hover:bg-surface-container-low'"
-              @click="activeTab = 'overview'"
+              @click="goTab('overview')"
             >
               <span class="material-symbols-outlined text-[18px]">dashboard</span>
               我的概览
@@ -17,7 +17,7 @@
             <button
               class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 flex items-center gap-2"
               :class="activeTab === 'info' ? 'sidebar-tab-active' : 'text-on-surface-variant hover:bg-surface-container-low'"
-              @click="activeTab = 'info'"
+              @click="goTab('info')"
             >
               <span class="material-symbols-outlined text-[18px]">badge</span>
               信息设置
@@ -25,7 +25,7 @@
             <button
               class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 flex items-center gap-2"
               :class="activeTab === 'password' ? 'sidebar-tab-active' : 'text-on-surface-variant hover:bg-surface-container-low'"
-              @click="activeTab = 'password'"
+              @click="goTab('password')"
             >
               <span class="material-symbols-outlined text-[18px]">lock</span>
               密码修改
@@ -33,48 +33,16 @@
 
             <div class="border-t border-outline-variant my-2 mx-2"></div>
 
-            <router-link
-              to="/my-favorites"
-              class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low flex items-center gap-2"
+            <button
+              v-for="item in panelTabs"
+              :key="item.key"
+              class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 flex items-center gap-2"
+              :class="activeTab === item.key ? 'sidebar-tab-active' : 'text-on-surface-variant hover:bg-surface-container-low'"
+              @click="goTab(item.key)"
             >
-              <span class="material-symbols-outlined text-[18px]">bookmark</span>
-              我的收藏
-            </router-link>
-            <router-link
-              to="/my-replies"
-              class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low flex items-center gap-2"
-            >
-              <span class="material-symbols-outlined text-[18px]">forum</span>
-              我的回复
-            </router-link>
-            <router-link
-              to="/my-points-log"
-              class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low flex items-center gap-2"
-            >
-              <span class="material-symbols-outlined text-[18px]">toll</span>
-              积分明细
-            </router-link>
-            <router-link
-              to="/my-violations"
-              class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low flex items-center gap-2"
-            >
-              <span class="material-symbols-outlined text-[18px]">gavel</span>
-              违规记录
-            </router-link>
-            <router-link
-              to="/my-appeals"
-              class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low flex items-center gap-2"
-            >
-              <span class="material-symbols-outlined text-[18px]">assignment</span>
-              申诉记录
-            </router-link>
-            <router-link
-              to="/moderator-complaint"
-              class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low flex items-center gap-2"
-            >
-              <span class="material-symbols-outlined text-[18px]">feedback</span>
-              版主投诉
-            </router-link>
+              <span class="material-symbols-outlined text-[18px]">{{ item.icon }}</span>
+              {{ item.label }}
+            </button>
           </nav>
         </div>
       </aside>
@@ -296,6 +264,11 @@
             </div>
           </form>
         </div>
+
+        <!-- 子页面 Tab：收藏 / 回复 / 积分 / 违规 / 申诉 / 投诉 -->
+        <div v-if="panelComponent" class="pt-1">
+          <component :is="panelComponent" embedded />
+        </div>
       </section>
     </div>
 
@@ -336,11 +309,26 @@ import { Message } from 'element-ui'
 import { getUser, setUser } from '@/utils/auth'
 import BBSLevelBadge from '@/components/BBSLevelBadge.vue'
 import BBSAvatar from '@/components/BBSAvatar.vue'
+import BBSFavorites from '@/views/BBSFavorites.vue'
+import BBSMyReplies from '@/views/BBSMyReplies.vue'
+import BBSMyPointsLog from '@/views/BBSMyPointsLog.vue'
+import BBSMyViolations from '@/views/BBSMyViolations.vue'
+import BBSMyAppeals from '@/views/BBSMyAppeals.vue'
+import BBSModeratorComplaint from '@/views/BBSModeratorComplaint.vue'
 import { levelSpec, normalizeLevel } from '../../../shared/level-icons'
 
 export default {
   name: 'BBSUserinfo',
-  components: { BBSLevelBadge, BBSAvatar },
+  components: {
+    BBSLevelBadge,
+    BBSAvatar,
+    BBSFavorites,
+    BBSMyReplies,
+    BBSMyPointsLog,
+    BBSMyViolations,
+    BBSMyAppeals,
+    BBSModeratorComplaint,
+  },
   data() {
     return {
       activeTab: 'overview',
@@ -356,6 +344,14 @@ export default {
       profile: {},
       achievements: [],
       recentArticles: [],
+      panelTabs: [
+        { key: 'favorites', label: '我的收藏', icon: 'bookmark', component: 'BBSFavorites' },
+        { key: 'replies', label: '我的回复', icon: 'forum', component: 'BBSMyReplies' },
+        { key: 'points', label: '积分明细', icon: 'toll', component: 'BBSMyPointsLog' },
+        { key: 'violations', label: '违规记录', icon: 'gavel', component: 'BBSMyViolations' },
+        { key: 'appeals', label: '申诉记录', icon: 'assignment', component: 'BBSMyAppeals' },
+        { key: 'complaint', label: '版主投诉', icon: 'feedback', component: 'BBSModeratorComplaint' },
+      ],
       userInfo: {
         nickname: '',
         userId: '',
@@ -396,6 +392,10 @@ export default {
     unlockedCount() {
       return this.achievements.filter(a => a.unlocked === 1).length
     },
+    panelComponent() {
+      const hit = this.panelTabs.find(t => t.key === this.activeTab)
+      return hit ? hit.component : null
+    },
     statCards() {
       const p = this.profile || {}
       return [
@@ -408,10 +408,31 @@ export default {
       ]
     },
   },
+  watch: {
+    '$route.query.tab'() {
+      this.applyRouteTab()
+    },
+  },
   mounted() {
+    this.applyRouteTab()
     this.loadUserInfo()
   },
   methods: {
+    /** 侧栏 Tab 切换（子页面内嵌，不再跳转） */
+    goTab(tab) {
+      this.activeTab = tab
+      const keys = this.panelTabs.map(x => x.key)
+      const query = keys.indexOf(tab) >= 0 ? { tab } : {}
+      if (String(this.$route.path).indexOf('/userinfo') === 0) {
+        this.$router.replace({ path: '/userinfo', query }).catch(() => {})
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    },
+    applyRouteTab() {
+      const t = this.$route.query.tab
+      const keys = this.panelTabs.map(x => x.key)
+      if (t && keys.indexOf(t) >= 0) this.activeTab = t
+    },
     loadUserInfo() {
       // First try from sessionStorage
       const cached = window.sessionStorage.getItem('user')

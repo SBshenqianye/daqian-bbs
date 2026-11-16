@@ -1,6 +1,6 @@
 <template>
-  <main class="max-w-7xl mx-auto px-page-margin-desktop py-12 bg-background min-h-screen">
-    <header class="mb-8">
+  <main :class="embedded ? '' : 'max-w-7xl mx-auto px-page-margin-desktop py-12 bg-background min-h-screen'">
+    <header v-if="!embedded" class="mb-8">
       <h1 class="font-headline-lg text-headline-lg text-on-surface">我的积分记录</h1>
     </header>
 
@@ -60,6 +60,7 @@ import { getUser } from '@/utils/auth'
 
 export default {
   name: 'BBSMyPointsLog',
+  props: { embedded: { type: Boolean, default: false } },
   data() {
     return { loading: false, list: [], total: 0, currentPage: 1, pageSize: 20, levelInfo: null, highlighted: '', pendingPairTime: null }
   },

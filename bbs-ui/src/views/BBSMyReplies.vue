@@ -1,7 +1,7 @@
 <template>
-  <main class="max-w-7xl mx-auto px-page-margin-desktop py-12 bg-background min-h-screen">
+  <main :class="embedded ? '' : 'max-w-7xl mx-auto px-page-margin-desktop py-12 bg-background min-h-screen'">
     <!-- Page Title -->
-    <header class="mb-8">
+    <header v-if="!embedded" class="mb-8">
       <h1 class="font-headline-lg text-headline-lg text-on-surface">我的互动</h1>
     </header>
 
@@ -168,6 +168,7 @@ import notificationStore from '@/utils/notificationStore'
 
 export default {
   name: 'BBSMyReplies',
+  props: { embedded: { type: Boolean, default: false } },
   data() {
     return {
       loading: false,

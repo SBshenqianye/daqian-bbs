@@ -1,6 +1,6 @@
 <template>
-  <main class="max-w-4xl mx-auto py-8 px-page-margin-mobile md:px-page-margin-desktop min-h-screen">
-    <div class="flex items-center justify-between mb-5">
+  <main :class="embedded ? '' : 'max-w-4xl mx-auto py-8 px-page-margin-mobile md:px-page-margin-desktop min-h-screen'">
+    <div v-if="!embedded" class="flex items-center justify-between mb-5">
       <div>
         <h1 class="text-[22px] font-bold text-on-surface flex items-center gap-2">
           <span class="material-symbols-outlined text-primary">bookmark</span>
@@ -93,6 +93,7 @@ import { normalizeFileUrl } from '@/utils/utils'
 export default {
   name: 'BBSFavorites',
   components: { BBSUserBadge },
+  props: { embedded: { type: Boolean, default: false } },
   data() {
     return { loading: true, list: [], total: 0, page: 1, pages: 1, size: 10 }
   },
