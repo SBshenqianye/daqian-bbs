@@ -109,7 +109,7 @@
             <span
               v-if="unreadTotal > 0"
               class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-error rounded-full text-white text-[11px] font-bold flex items-center justify-center leading-none border-2 border-container"
-              @click.stop="goToNotifications"
+              @click.stop="jumpToUnread"
             >
               {{ formatBadge(unreadTotal) }}
             </span>
@@ -484,12 +484,43 @@ export default {
       return n > 99 ? '99+' : String(n)
     },
     handleAvatarClick() {
-      this.userMenuOpen = !this.userMenuOpen
+      // 头像点击落点：有未读 → 对应消息页；没有未读 → 个人中心
+      // 首次点击时若还没拉过未读数，先同步拉一次，避免把"尚未加载"误判成"没有消息"
+      this.userMenuOpen = false
+      if (notificationStore.state.loaded) {
+        this.jumpToUnread()
+        return
+      }
+      notificationStore.refresh().then(() => this.jumpToUnread()).catch(() => this.goToProfile())
+    },
+    /** 未读入口统一跳转：互动消息优先，其次系统通知，都没有则回个人中心 */
+    jumpToUnread() {
+      if (this.unreadInteraction > 0) {
+        this.goToReplies()
+      } else if (this.unreadSystem > 0) {
+        this.goToNotifications()
+      } else if (this.unreadTotal > 0) {
+        // 兜底：出现新的通知分类时仍能进到消息页
+        this.goToNotifications()
+      } else {
+        this.goToProfile()
+      }
+    },
+    goToProfile() {
+      this.userMenuOpen = false
+      if (this.$route.path === '/userinfo' && !this.$route.query.tab) return
+      this.$router.push({ path: '/userinfo' }).catch(() => {})
+    },
+    goToReplies() {
+      this.userMenuOpen = false
+      const q = this.$route.query
+      if (this.$route.path === '/userinfo' && q.tab === 'replies' && q.sub === 'repliedToMe') return
+      this.$router.push({ path: '/userinfo', query: { tab: 'replies', sub: 'repliedToMe' } }).catch(() => {})
     },
     goToNotifications() {
       this.userMenuOpen = false
       if (this.$route.path === '/userinfo' && this.$route.query.tab === 'notifications') return
-      this.$router.push({ path: '/userinfo', query: { tab: 'notifications' } })
+      this.$router.push({ path: '/userinfo', query: { tab: 'notifications' } }).catch(() => {})
     },
     // ---- 浏览心跳（只在内容浏览页运行） ----
     /** 判断当前路由是否为"浏览页面"（帖子详情页） */
