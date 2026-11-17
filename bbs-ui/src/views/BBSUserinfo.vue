@@ -65,6 +65,7 @@ import BBSMyViolations from '@/views/BBSMyViolations.vue'
 import BBSMyAppeals from '@/views/BBSMyAppeals.vue'
 import BBSModeratorComplaint from '@/views/BBSModeratorComplaint.vue'
 import BBSMyReports from '@/views/BBSMyReports.vue'
+import BBSNotifications from '@/views/BBSNotifications.vue'
 
 /**
  * 账户设置：只负责「侧栏 + Tab 路由 + 红点」，
@@ -85,6 +86,7 @@ export default {
     BBSMyAppeals,
     BBSModeratorComplaint,
     BBSMyReports,
+    BBSNotifications,
   },
   data() {
     return {
@@ -98,6 +100,7 @@ export default {
         { key: 'posts', label: '我的发布', icon: 'edit_square', component: 'BBSStat', panel: true },
         { key: 'favorites', label: '我的收藏', icon: 'bookmark', component: 'BBSFavorites', panel: true },
         { key: 'replies', label: '我的回复', icon: 'forum', component: 'BBSMyReplies', panel: true },
+        { key: 'notifications', label: '消息通知', icon: 'notifications', component: 'BBSNotifications', panel: true },
         { key: 'points', label: '积分明细', icon: 'toll', component: 'BBSMyPointsLog', panel: true },
         { key: 'violations', label: '违规记录', icon: 'gavel', component: 'BBSMyViolations', panel: true },
         { key: 'appeals', label: '申诉记录', icon: 'assignment', component: 'BBSMyAppeals', panel: true },
@@ -105,7 +108,7 @@ export default {
         { key: 'reports', label: '我的举报', icon: 'flag', component: 'BBSMyReports', panel: true },
       ],
       // Tab 红点：有“上次查看之后的新内容”时亮起
-      badges: { posts: false, favorites: false, replies: false, points: false, violations: false, appeals: false, complaint: false, reports: false },
+      badges: { posts: false, favorites: false, replies: false, notifications: false, points: false, violations: false, appeals: false, complaint: false, reports: false },
     }
   },
   computed: {

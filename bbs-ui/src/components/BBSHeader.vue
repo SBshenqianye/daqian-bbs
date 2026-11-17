@@ -171,7 +171,7 @@
                   我的举报
                 </router-link>
                 <router-link
-                  to="/notifications"
+                  to="/userinfo?tab=notifications"
                   class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
                 >
                   <span class="material-symbols-outlined text-[20px]">notifications</span>
@@ -488,8 +488,8 @@ export default {
     },
     goToNotifications() {
       this.userMenuOpen = false
-      if (this.$route.path === '/notifications') return
-      this.$router.push('/notifications')
+      if (this.$route.path === '/userinfo' && this.$route.query.tab === 'notifications') return
+      this.$router.push({ path: '/userinfo', query: { tab: 'notifications' } })
     },
     // ---- 浏览心跳（只在内容浏览页运行） ----
     /** 判断当前路由是否为"浏览页面"（帖子详情页） */

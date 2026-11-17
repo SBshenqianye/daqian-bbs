@@ -107,10 +107,9 @@ const router = new VueRouter({
             redirect: { path: '/userinfo', query: { tab: 'complaint' } }
         },
         {
-            name: 'BBSNotifications',
+            // 消息通知已并入个人中心，旧地址保留 302
             path: '/notifications',
-            component: () => import('@/views/BBSNotifications.vue'),
-            meta: { auth: true }
+            redirect: { path: '/userinfo', query: { tab: 'notifications' } }
         },
 
     ]

@@ -1,8 +1,26 @@
 <template>
-  <main class="ui-page max-w-4xl">
+  <main :class="embedded ? '' : 'ui-page max-w-4xl'">
+    <!-- 内嵌到个人中心：轻量区块头，不重复整页标题 -->
+    <div v-if="embedded" class="flex items-end justify-between gap-3 mb-3">
+      <div class="min-w-0">
+        <h3 class="ui-section-title">
+          <span class="material-symbols-outlined text-[16px] text-primary">notifications</span>消息通知
+        </h3>
+        <p class="ui-subtitle mt-1">{{ headerSubtitle }}</p>
+      </div>
+      <button
+        v-if="unreadSystem > 0"
+        class="ui-btn ui-btn-sm ui-btn-secondary shrink-0"
+        @click="markAllRead"
+      >
+        <span class="material-symbols-outlined text-[16px]">done_all</span>全部已读
+      </button>
+    </div>
+
     <PageHeader
+      v-else
       title="消息通知"
-      :subtitle="unreadSystem > 0 ? '你有 ' + unreadSystem + ' 条未读消息' : '帖子被采纳、举报核实等系统事件会汇总到这里'"
+      :subtitle="headerSubtitle"
       icon="notifications"
     >
       <button
@@ -85,6 +103,9 @@ import PageHeader from '@/components/PageHeader.vue'
 export default {
   name: 'BBSNotifications',
   components: { PageHeader },
+  props: {
+    embedded: { type: Boolean, default: false },
+  },
   data() {
     return {
       loading: false,
@@ -98,6 +119,11 @@ export default {
     /** 系统通知未读数（全局通知 store；互动消息的未读在"回复我的"，与本页互不影响） */
     unreadSystem() {
       return notificationStore.count('system')
+    },
+    headerSubtitle() {
+      return this.unreadSystem > 0
+        ? `你有 ${this.unreadSystem} 条未读消息`
+        : '帖子被采纳、举报核实等系统事件会汇总到这里'
     },
     totalPages() {
       return Math.max(1, Math.ceil(this.total / this.pageSize))
