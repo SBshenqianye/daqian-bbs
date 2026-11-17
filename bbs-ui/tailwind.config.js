@@ -98,13 +98,17 @@ module.exports = {
         'sans': ['Manrope', 'sans-serif'],
       },
       fontSize: {
-        'headline-sm': ['18px', { lineHeight: '24px', fontWeight: '600' }],
-        'headline-lg': ['24px', { lineHeight: '32px', fontWeight: '600' }],
-        'headline-lg-mobile': ['20px', { lineHeight: '28px', fontWeight: '600' }],
-        'label-md': ['12px', { lineHeight: '16px', fontWeight: '500' }],
-        'headline-md': ['20px', { lineHeight: '28px', fontWeight: '600' }],
-        'body-lg': ['16px', { lineHeight: '1.6', fontWeight: '400' }],
+        // 页面/区块标题：克制在 16~22px，避免正文被标题压住
+        'headline-sm': ['16px', { lineHeight: '22px', fontWeight: '600' }],
+        'headline-md': ['19px', { lineHeight: '26px', fontWeight: '600' }],
+        'headline-lg': ['22px', { lineHeight: '30px', fontWeight: '600' }],
+        'headline-lg-mobile': ['19px', { lineHeight: '26px', fontWeight: '600' }],
+        // 正文与元信息：补齐此前缺失的 body-sm / label-sm
+        'body-lg': ['15px', { lineHeight: '1.7', fontWeight: '400' }],
         'body-md': ['14px', { lineHeight: '1.6', fontWeight: '400' }],
+        'body-sm': ['12.5px', { lineHeight: '1.55', fontWeight: '400' }],
+        'label-md': ['12px', { lineHeight: '16px', fontWeight: '500' }],
+        'label-sm': ['11px', { lineHeight: '14px', fontWeight: '500' }],
       },
     },
   },

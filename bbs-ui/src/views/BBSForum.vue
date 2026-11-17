@@ -15,10 +15,15 @@
       <!-- 压暗层：保证标题/正文在任何图片底色上都清晰（图片颜色不干扰文字） -->
       <div class="hero-photo__scrim"></div>
 
-      <div class="hero-photo__content relative z-10 max-w-7xl mx-auto px-page-margin-desktop py-16 md:py-20">
+      <div class="hero-photo__content relative z-10 max-w-7xl mx-auto px-page-margin-desktop py-10 md:py-14">
         <div class="max-w-3xl mx-auto text-center">
-          <h1 class="font-headline-lg text-[32px] md:text-[40px] leading-tight mb-4 tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">欢迎来到大千智荟创新创意交流论坛</h1>
-          <p class="font-body-lg text-white/90 max-w-2xl mx-auto drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]">汇聚国网智慧，激发创新灵感，共同打造卓越的企业级知识共享平台。</p>
+          <h1 class="text-[27px] md:text-[34px] font-semibold leading-tight mb-3 tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">欢迎来到大千智荟创新创意交流论坛</h1>
+          <p class="text-[14px] md:text-[15px] text-white/85 max-w-2xl mx-auto drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]">汇聚国网智慧，激发创新灵感，共同打造卓越的企业级知识共享平台。</p>
+          <div class="mt-5 flex items-center justify-center gap-2 flex-wrap">
+            <span class="hero-pill"><span class="material-symbols-outlined text-[15px]">forum</span>{{ articleTotal }} 篇讨论</span>
+            <span class="hero-pill"><span class="material-symbols-outlined text-[15px]">category</span>{{ Math.max(0, categories.length - 1) }} 个板块</span>
+            <span class="hero-pill"><span class="material-symbols-outlined text-[15px]">local_fire_department</span>热榜持续更新</span>
+          </div>
         </div>
       </div>
 
@@ -26,12 +31,12 @@
     </section>
 
     <!-- Main Layout Container -->
-    <div class="max-w-7xl mx-auto px-page-margin-desktop py-8">
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+    <div class="max-w-7xl mx-auto px-page-margin-mobile md:px-page-margin-desktop py-5 md:py-7">
+      <div class="grid grid-cols-1 lg:grid-cols-[190px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)_296px] gap-4 lg:gap-5 items-start">
         <!-- Left Sidebar: Categories + Featured Posts -->
-        <aside class="md:col-span-2 space-y-4">
-          <div class="bg-container border border-border rounded-lg p-2">
-            <nav class="flex flex-col gap-1">
+        <aside class="space-y-3 min-w-0">
+          <div class="bg-container border border-border rounded-xl p-2">
+            <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible custom-scrollbar">
               <el-tooltip
                 v-for="cat in categories"
                 :key="cat.name"
@@ -41,26 +46,31 @@
                 :disabled="!cat.description"
               >
                 <button
-                  class="flex items-center gap-3 w-full p-3 rounded-lg transition-colors font-label-md"
-                  :class="cat.active ? 'bg-surface-container-low text-primary-container' : 'text-on-surface-variant hover:bg-surface-container-low'"
+                  class="category-item group shrink-0 lg:w-full flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors text-[13px] font-medium whitespace-nowrap"
+                  :class="cat.active ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary'"
                   @click="selectCategory(cat)"
                 >
-                  <span class="material-symbols-outlined" :class="{ 'filled-icon': cat.active }">{{ cat.icon }}</span>
-                  <span>{{ cat.name }}</span>
+                  <span
+                    class="w-6 h-6 rounded-md grid place-items-center shrink-0 transition-colors"
+                    :class="cat.active ? 'bg-primary/10 text-primary' : 'bg-surface-container-low text-outline group-hover:text-primary'"
+                  >
+                    <span class="material-symbols-outlined text-[16px]" :class="{ 'filled-icon': cat.active }">{{ cat.icon }}</span>
+                  </span>
+                  <span class="truncate">{{ cat.name }}</span>
                 </button>
               </el-tooltip>
             </nav>
           </div>
 
           <!-- Featured Posts Sidebar (below labels) -->
-          <div v-if="featuredSidebar.length > 0" class="bg-container border border-border rounded-lg p-3">
-            <div class="flex items-center justify-between mb-2">
-              <h2 class="font-headline-sm flex items-center gap-1 text-[15px]">
-                <span class="material-symbols-outlined text-rank-gold text-[18px]">stars</span>
+          <div v-if="featuredSidebar.length > 0" class="hidden xl:block bg-container border border-border rounded-xl p-3">
+            <div class="flex items-center justify-between mb-2 gap-2">
+              <h2 class="ui-section-title">
+                <span class="material-symbols-outlined text-amber-500 text-[17px] filled-icon">stars</span>
                 精华帖
               </h2>
               <button
-                class="text-[12px] text-primary hover:text-primary-container transition-colors flex items-center gap-0.5"
+                class="text-[11.5px] text-primary hover:opacity-80 transition-opacity flex items-center gap-0.5 whitespace-nowrap"
                 @click="goToFeaturedArticles"
               >
                 全部
@@ -74,17 +84,18 @@
                 class="flex items-start gap-1.5 cursor-pointer group"
                 @click="goToArticle(item)"
               >
-                <span class="material-symbols-outlined text-rank-gold text-[13px] shrink-0">stars</span>
+                <span class="material-symbols-outlined text-amber-500 text-[13px] shrink-0 mt-0.5">stars</span>
                 <div class="flex-1 min-w-0">
-                  <span class="text-[13px] text-on-surface group-hover:text-primary-container transition-colors line-clamp-1 block">{{ item.articleTitle }}</span>
-                  <span v-if="item.labelName" class="text-[11px] text-outline truncate block">{{ item.labelName }}</span>
-                  <span class="text-[11px] text-outline block">{{ formatTime(item.time) }}</span>
+                  <span class="text-[12.5px] leading-snug text-on-surface group-hover:text-primary transition-colors line-clamp-1 block">{{ item.articleTitle }}</span>
+                  <span class="text-[10.5px] text-outline block mt-0.5">
+                    <template v-if="item.labelName">{{ item.labelName }} · </template>{{ formatTime(item.time) }}
+                  </span>
                 </div>
               </li>
             </ul>
             <button
               v-if="featuredSidebar.length > 3"
-              class="mt-1.5 w-full text-center text-[12px] text-primary hover:text-primary-container transition-colors py-0.5"
+              class="mt-1.5 w-full text-center text-[11.5px] text-primary hover:opacity-80 transition-opacity py-0.5"
               @click="featuredSidebarExpand = !featuredSidebarExpand"
             >
               {{ featuredSidebarExpand ? '收起' : '展开更多' }}
@@ -94,29 +105,29 @@
         </aside>
 
         <!-- Center Feed: Articles -->
-        <section class="md:col-span-7 space-y-4">
+        <section class="space-y-3 min-w-0">
           <!-- Featured Top: 置顶精华帖（最新3条） -->
-          <div v-if="featuredTop.length > 0" class="bg-surface-container-low border border-outline-variant rounded-lg overflow-hidden">
-            <div class="flex items-center gap-1.5 px-4 py-1.5 bg-primary-fixed-dim/20 border-b border-outline-variant">
-              <span class="material-symbols-outlined text-rank-gold text-[15px]">stars</span>
-              <span class="text-[13px] font-semibold text-on-surface">精华置顶</span>
-              <span class="text-[10px] text-on-surface-variant ml-auto">最新 3 条</span>
+          <div v-if="featuredTop.length > 0" class="ui-card overflow-hidden">
+            <div class="flex items-center gap-1.5 px-3.5 py-2 bg-amber-50/70 border-b border-amber-100">
+              <span class="material-symbols-outlined text-amber-600 text-[15px] filled-icon">stars</span>
+              <span class="text-[12.5px] font-semibold text-amber-900">精华置顶</span>
+              <span class="text-[10.5px] text-amber-700/70 ml-auto">最新 3 条</span>
             </div>
             <div class="divide-y divide-outline-variant/40">
               <article
                 v-for="(article, index) in featuredTop"
                 :key="'ft-' + (article.articleId || index)"
-                class="px-4 py-1.5 hover:bg-primary-fixed-dim/10 transition-colors cursor-pointer"
+                class="px-3.5 py-2 hover:bg-amber-50/40 transition-colors cursor-pointer"
                 @click="goToArticle(article)"
               >
                 <div class="flex items-center gap-2">
-                  <span class="flex-shrink-0 w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold"
+                  <span class="flex-shrink-0 w-[18px] h-[18px] flex items-center justify-center rounded-md text-[10px] font-bold"
                     :class="index === 0 ? 'bg-rank-gold text-white' : index === 1 ? 'bg-rank-silver text-white' : 'bg-rank-bronze text-white'">
                     {{ index + 1 }}
                   </span>
-                  <h3 class="flex-1 text-[13px] font-medium text-on-surface hover:text-primary transition-colors truncate">{{ article.title }}</h3>
-                  <span class="flex items-center gap-1.5 shrink-0 text-[10px] text-on-surface-variant">
-                    <span class="truncate max-w-[70px]">{{ article.author }}</span>
+                  <h3 class="flex-1 text-[12.5px] font-medium text-on-surface hover:text-primary transition-colors truncate">{{ article.title }}</h3>
+                  <span class="ui-meta shrink-0">
+                    <span class="truncate max-w-[72px]">{{ article.author }}</span>
                     <span class="text-outline-variant">·</span>
                     <span>{{ formatTime(article.time) }}</span>
                   </span>
@@ -128,74 +139,76 @@
           <!-- 精华展示卡（多帖轮播） -->
           <article
             v-if="featuredShowcase.length"
-            class="bg-container border border-border rounded-xl overflow-hidden"
+            class="ui-card overflow-hidden"
             @mouseenter="pauseShowcase"
             @mouseleave="resumeShowcase"
           >
             <div class="md:flex cursor-pointer" @click="goToArticle(currentShowcase)">
-              <div class="md:w-[42%] h-44 md:h-auto bg-surface-container overflow-hidden shrink-0">
+              <div class="md:w-[38%] h-40 md:h-[196px] bg-surface-container overflow-hidden shrink-0">
                 <img
-                  v-if="currentShowcase && currentShowcase.cover"
-                  :src="currentShowcase.cover"
+                  v-if="currentShowcase && (currentShowcase.cover || currentShowcase.generatedCover)"
+                  :src="currentShowcase.cover || currentShowcase.generatedCover"
                   class="w-full h-full object-cover"
                   alt=""
+                  @error="onShowcaseCoverError"
                 >
                 <div v-else class="w-full h-full flex items-center justify-center">
-                  <span class="material-symbols-outlined text-[40px] text-outline/30">stars</span>
+                  <span class="material-symbols-outlined text-[38px] text-outline/30">stars</span>
                 </div>
               </div>
-              <div class="flex-1 p-5 min-w-0">
+              <div class="flex-1 p-4 md:p-5 min-w-0">
                 <div class="flex items-center gap-2 mb-2">
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-rank-gold/10 text-rank-gold rounded-full">
-                    <span class="material-symbols-outlined text-[12px]">stars</span>精华展示
+                  <span class="ui-chip ui-chip-gold">
+                    <span class="material-symbols-outlined filled-icon">stars</span>精华展示
                   </span>
-                  <span class="text-[11px] text-outline ml-auto">{{ showcaseIndex + 1 }} / {{ featuredShowcase.length }}</span>
+                  <span class="text-[10.5px] text-outline ml-auto tabnum">{{ showcaseIndex + 1 }} / {{ featuredShowcase.length }}</span>
                 </div>
-                <h2 class="font-headline-sm text-headline-sm text-on-surface hover:text-primary transition-colors line-clamp-2 leading-snug">
+                <h2 class="text-[17px] font-semibold text-on-surface hover:text-primary transition-colors line-clamp-2 leading-snug">
                   {{ currentShowcase && currentShowcase.title }}
                 </h2>
-                <p class="text-[13px] text-on-surface-variant mt-2 line-clamp-2 leading-relaxed">
+                <p class="ui-post-summary">
                   {{ currentShowcase && currentShowcase.summary }}
                 </p>
-                <div class="flex items-center gap-3 mt-3 text-[12px] text-outline">
-                  <span class="truncate max-w-[120px]">{{ currentShowcase && currentShowcase.author }}</span>
-                  <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">visibility</span>{{ (currentShowcase && currentShowcase.views) || 0 }}</span>
-                  <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">thumb_up</span>{{ (currentShowcase && currentShowcase.likes) || 0 }}</span>
-                  <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">bookmark</span>{{ (currentShowcase && currentShowcase.favorites) || 0 }}</span>
-                </div>
               </div>
             </div>
-            <div class="flex items-center justify-between px-5 pb-3 pt-1">
-              <div class="flex items-center gap-1.5">
+            <!-- 元信息贴近卡片底边，字号降低一档；轮播控制与它共用同一行 -->
+            <div class="flex items-center justify-between gap-2 px-3 py-1.5 border-t border-outline-variant/40">
+              <div class="ui-meta text-[10.5px] min-w-0">
+                <span class="ui-meta-item truncate max-w-[110px]">{{ currentShowcase && currentShowcase.author }}</span>
+                <span class="text-outline-variant">·</span>
+                <span class="ui-meta-item"><span class="material-symbols-outlined text-[12px]">visibility</span>{{ (currentShowcase && currentShowcase.views) || 0 }}</span>
+                <span class="ui-meta-item"><span class="material-symbols-outlined text-[12px]">thumb_up</span>{{ (currentShowcase && currentShowcase.likes) || 0 }}</span>
+                <span class="ui-meta-item"><span class="material-symbols-outlined text-[12px]">bookmark</span>{{ (currentShowcase && currentShowcase.favorites) || 0 }}</span>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
                 <button
                   v-for="(n, i) in featuredShowcase"
                   :key="'sc-' + i"
                   class="h-1.5 rounded-full transition-all"
-                  :class="i === showcaseIndex ? 'w-6 bg-primary' : 'w-1.5 bg-outline-variant hover:bg-outline'"
+                  :class="i === showcaseIndex ? 'w-5 bg-primary' : 'w-1.5 bg-outline-variant hover:bg-outline'"
                   :aria-label="'第 ' + (i + 1) + ' 张'"
                   @click.stop="showcaseIndex = i"
                 ></button>
-              </div>
-              <div class="flex items-center gap-1">
-                <button class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant" @click.stop="prevShowcase">
-                  <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+                <span class="w-px h-3 bg-outline-variant/50 mx-0.5"></span>
+                <button class="ui-icon-btn" @click.stop="prevShowcase">
+                  <span class="material-symbols-outlined">chevron_left</span>
                 </button>
-                <button class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant" @click.stop="nextShowcase">
-                  <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+                <button class="ui-icon-btn" @click.stop="nextShowcase">
+                  <span class="material-symbols-outlined">chevron_right</span>
                 </button>
               </div>
             </div>
           </article>
 
           <!-- 精华公示卡 -->
-          <div v-if="featuredNotices.length" class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div v-if="featuredNotices.length" class="bg-amber-50/70 border border-amber-200/70 rounded-xl p-3.5">
             <div class="flex items-center gap-2 mb-2">
-              <span class="material-symbols-outlined text-amber-700 text-[18px]">campaign</span>
-              <h3 class="font-headline-sm text-headline-sm text-amber-900">精华公示</h3>
-              <span class="text-[11px] text-amber-700 ml-auto">公示期接受监督</span>
+              <span class="material-symbols-outlined text-amber-700 text-[17px]">campaign</span>
+              <h3 class="text-[13.5px] font-semibold text-amber-900">精华公示</h3>
+              <span class="text-[10.5px] text-amber-700/80 ml-auto">公示期接受监督</span>
             </div>
-            <div class="space-y-2">
-              <div v-for="n in featuredNotices.slice(0, 3)" :key="n.recommendationId" class="flex items-center gap-2 text-[12px] cursor-pointer hover:text-primary" @click="goToHotTopic({ articleId: n.articleId })">
+            <div class="space-y-1.5">
+              <div v-for="n in featuredNotices.slice(0, 3)" :key="n.recommendationId" class="flex items-center gap-2 text-[11.5px] cursor-pointer hover:text-primary" @click="goToHotTopic({ articleId: n.articleId })">
                 <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 shrink-0">公示中</span>
                 <span class="truncate flex-1">{{ n.title }}</span>
                 <span class="text-amber-700 shrink-0">至 {{ (n.publicEndTime || '').slice(0, 10) }}</span>
@@ -204,9 +217,9 @@
           </div>
 
           <!-- Filter / Sort Bar -->
-          <div class="bg-container border border-border rounded-lg px-4 py-2.5 flex flex-wrap items-center gap-3">
+          <div class="ui-toolbar">
             <div class="flex items-center gap-2">
-              <span class="text-[12px] text-on-surface-variant">排序</span>
+              <span class="ui-meta-item text-[11.5px] text-on-surface-variant"><span class="material-symbols-outlined">sort</span>排序</span>
               <BBSSelect
                 v-model="filters.sortBy"
                 :options="sortOptions"
@@ -214,168 +227,103 @@
                 @change="reloadArticles"
               />
             </div>
-            <label class="inline-flex items-center gap-1.5 text-[12px] text-on-surface-variant cursor-pointer select-none">
-              <input v-model="filters.featured" type="checkbox" class="w-3.5 h-3.5 text-primary border-outline-variant rounded" @change="reloadArticles">
+            <label class="ui-check">
+              <input v-model="filters.featured" type="checkbox" @change="reloadArticles">
+              <span class="material-symbols-outlined text-[14px] text-amber-500">stars</span>
               只看精华
             </label>
-            <label class="inline-flex items-center gap-1.5 text-[12px] text-on-surface-variant cursor-pointer select-none">
-              <input v-model="filters.hasAttachment" type="checkbox" class="w-3.5 h-3.5 text-primary border-outline-variant rounded" @change="reloadArticles">
+            <label class="ui-check">
+              <input v-model="filters.hasAttachment" type="checkbox" @change="reloadArticles">
+              <span class="material-symbols-outlined text-[14px] text-outline">attach_file</span>
               只看有附件
             </label>
-            <span class="text-[12px] text-on-surface-variant ml-auto">共 {{ articleTotal }} 条</span>
+            <span class="ui-meta-item text-[11.5px] text-outline ml-auto"><span class="material-symbols-outlined">library_books</span>共 {{ articleTotal }} 条</span>
           </div>
 
-          <!-- Regular Article List -->
-          <article
+          <!-- Regular Article List：与精华/收藏/我的发布共用同一张卡片 -->
+          <PostListItem
             v-for="(article, index) in articles"
             :key="article.articleId || index"
-            class="bg-container border border-border rounded-xl px-5 py-4 hover:border-primary/40 hover:shadow-[0_2px_10px_rgba(15,23,42,0.06)] transition-all cursor-pointer"
-            @click="goToArticle(article)"
-          >
-            <div class="flex gap-4">
-              <div class="flex-1 min-w-0">
-                <!-- 标题永远在最上方 -->
-                <h3 class="post-title text-[16px] font-semibold leading-snug text-on-surface hover:text-primary transition-colors line-clamp-2">
-                  {{ article.title }}
-                </h3>
-
-                <p v-if="article.summary" class="post-summary text-[13px] text-on-surface-variant mt-2 line-clamp-2 leading-relaxed">
-                  {{ article.summary }}
-                </p>
-
-                <!-- 元信息 + 统计 -->
-                <div class="flex items-center justify-between gap-3 mt-3">
-                  <div class="flex items-center gap-1.5 min-w-0 text-[12px] text-outline">
-                    <BBSUserBadge
-                      :avatar="article.authorAvatar"
-                      :nickname="article.author"
-                      :org-name="article.authorOrgName"
-                      :org-name-full="article.authorOrgNameFull"
-                      :level-index="article.authorLevelIndex"
-                      :user-id="article.userId"
-                      size="xs"
-                      layout="inline"
-                    />
-                    <span class="text-outline-variant shrink-0">·</span>
-                    <span class="shrink-0">{{ formatTime(article.time) }}</span>
-                  </div>
-                  <div class="flex items-center gap-3 text-[12px] text-outline shrink-0">
-                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">visibility</span>{{ article.views }}</span>
-                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">chat_bubble</span>{{ article.comments }}</span>
-                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">thumb_up</span>{{ article.likes }}</span>
-                  </div>
-                </div>
-
-                <!-- 标签统一放在卡片底部 -->
-                <div
-                  v-if="articleLabelName(article) || article.isFeatured || article.isAnonymous"
-                  class="flex items-center flex-wrap gap-1.5 mt-2.5"
-                >
-                  <span
-                    v-if="article.isFeatured"
-                    class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] bg-rank-gold/10 text-rank-gold rounded"
-                  >
-                    <span class="material-symbols-outlined text-[12px]">stars</span>精华
-                  </span>
-                  <span
-                    v-if="articleLabelName(article)"
-                    class="inline-flex items-center px-2 py-0.5 text-[11px] bg-primary/8 text-primary rounded"
-                  >{{ articleLabelName(article) }}</span>
-                  <span v-if="article.isAnonymous" class="inline-flex items-center px-2 py-0.5 text-[11px] bg-surface-variant text-on-surface-variant rounded">匿名</span>
-                </div>
-              </div>
-
-              <div v-if="article.cover" class="w-28 h-20 rounded-lg bg-surface-container overflow-hidden shrink-0 border border-outline-variant">
-                <img alt="Article Cover" class="w-full h-full object-cover" :src="article.cover">
-              </div>
-            </div>
-          </article>
+            :article="postItem(article)"
+            @click="goToArticle"
+          />
 
           <!-- 分页 -->
-          <div v-if="articles.length && articlePages > 1" class="flex items-center justify-center gap-2 pt-1">
-            <button
-              class="px-3 py-1.5 text-[12px] rounded-lg border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary disabled:opacity-40 disabled:hover:border-outline-variant transition-colors"
-              :disabled="articlePage <= 1"
-              @click="changePage(articlePage - 1)"
-            >上一页</button>
-            <span class="text-[12px] text-on-surface-variant px-1">{{ articlePage }} / {{ articlePages }}</span>
-            <button
-              class="px-3 py-1.5 text-[12px] rounded-lg border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary disabled:opacity-40 disabled:hover:border-outline-variant transition-colors"
-              :disabled="articlePage >= articlePages"
-              @click="changePage(articlePage + 1)"
-            >下一页</button>
+          <div v-if="articles.length && articlePages > 1" class="ui-pager">
+            <button class="ui-pager-btn" :disabled="articlePage <= 1" @click="changePage(articlePage - 1)">
+              <span class="material-symbols-outlined text-[16px]">chevron_left</span>上一页
+            </button>
+            <span class="text-[12px] text-on-surface-variant px-1 tabnum">{{ articlePage }} / {{ articlePages }}</span>
+            <button class="ui-pager-btn" :disabled="articlePage >= articlePages" @click="changePage(articlePage + 1)">
+              下一页<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+            </button>
           </div>
 
           <!-- 列表到底：细分割线，不再用大卡片 -->
           <div
             v-if="!loading && articles.length && articlePage >= articlePages && articlePages > 0"
-            class="flex items-center gap-3 py-2 select-none"
+            class="ui-list-end"
           >
-            <span class="h-px flex-1 bg-border"></span>
             <span class="text-[11px] text-outline tracking-wide">已经到底了</span>
-            <span class="h-px flex-1 bg-border"></span>
           </div>
 
           <!-- 空态 -->
-          <div
-            v-if="!loading && !articles.length"
-            class="bg-container border border-dashed border-outline-variant rounded-xl py-16 flex flex-col items-center text-on-surface-variant"
-          >
-            <span class="material-symbols-outlined text-[44px] mb-3 opacity-20">forum</span>
-            <p class="text-[14px] font-medium text-on-surface mb-1">这个条件下还没有帖子</p>
-            <p class="text-[12px] mb-4">试着换个排序、标签或搜索词</p>
+          <div v-if="!loading && !articles.length" class="ui-empty ui-card border-dashed">
+            <span class="material-symbols-outlined">forum</span>
+            <p class="ui-empty-title">这个条件下还没有帖子</p>
+            <p class="ui-empty-desc">试着换个排序、标签或搜索词</p>
             <button
               v-if="hasActiveFilter"
-              class="px-4 py-1.5 text-[12px] rounded-full bg-primary/8 text-primary hover:bg-primary/12 transition-colors"
+              class="mt-3 px-3.5 py-1.5 text-[12px] rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
               @click="clearFilters"
             >清除筛选条件</button>
           </div>
         </section>
 
         <!-- Right Sidebar: Hot Topics + Featured -->
-        <aside class="md:col-span-3 space-y-4 sticky top-20 self-start">
+        <aside class="space-y-3 min-w-0 lg:col-span-2 xl:col-span-1 xl:sticky xl:top-20 self-start">
           <!-- Hot Topics -->
-          <div class="bg-container border border-border rounded-lg p-card-padding">
-            <div class="flex items-center justify-between mb-1 gap-2">
-              <h2 class="font-headline-sm flex items-center gap-2 min-w-0">
-                <span class="material-symbols-outlined text-error filled-icon">local_fire_department</span>
+          <div class="ui-card p-4">
+            <div class="flex items-center justify-between mb-0.5 gap-2">
+              <h2 class="ui-section-title min-w-0">
+                <span class="material-symbols-outlined text-error filled-icon text-[18px]">local_fire_department</span>
                 <span class="truncate">{{ hotTitle }}</span>
               </h2>
-              <span class="text-[11px] text-outline shrink-0">累计</span>
+              <span class="text-[10.5px] text-outline shrink-0">累计</span>
             </div>
-            <p class="text-[11px] text-outline mb-2">按全部时间累计数据排序，不按时间截断</p>
+            <p class="ui-subtitle mb-2.5">按全部时间累计数据排序，不按时间截断</p>
             <div class="flex flex-wrap gap-1 mb-3">
               <button
                 v-for="metric in hotMetrics"
                 :key="metric.key"
-                class="px-2 py-1 text-[11px] rounded transition-colors"
-                :class="hotMetric === metric.key ? 'bg-primary text-white' : 'bg-surface-variant text-on-surface-variant hover:text-primary'"
+                class="px-2 py-1 text-[11px] rounded-md transition-colors"
+                :class="hotMetric === metric.key ? 'bg-primary/10 text-primary font-semibold' : 'bg-surface-container text-on-surface-variant hover:text-primary'"
                 @click="hotMetric = metric.key; fetchHotTopics()"
               >
                 {{ metric.label }}
               </button>
             </div>
-            <ul class="space-y-3">
+            <ul class="space-y-2.5 lg:grid lg:grid-cols-2 lg:gap-x-6 lg:gap-y-2.5 lg:space-y-0 xl:block xl:space-y-2.5">
               <li
                 v-for="(topic, index) in visibleHotTopics"
                 :key="topic.articleId || index"
-                class="flex items-start gap-2.5 group cursor-pointer"
+                class="flex items-start gap-2 group cursor-pointer min-w-0"
                 @click="goToHotTopic(topic)"
               >
                 <span
-                  class="flex-shrink-0 w-5 h-5 mt-0.5 flex items-center justify-center rounded-md font-bold text-[11px]"
+                  class="flex-shrink-0 w-[18px] h-[18px] mt-px flex items-center justify-center rounded-md font-bold text-[10px]"
                   :class="getRankClass(index + 1)"
                 >{{ index + 1 }}</span>
                 <div class="flex-1 min-w-0">
-                  <span class="text-[13px] leading-snug text-on-surface group-hover:text-primary transition-colors line-clamp-1 block">{{ topic.articleTitle }}</span>
-                  <span class="text-[11px] text-outline">{{ hotMetricLabel }} {{ topic.metricValue }}</span>
+                  <span class="text-[12.5px] leading-snug text-on-surface group-hover:text-primary transition-colors line-clamp-1 block">{{ topic.articleTitle }}</span>
+                  <span class="text-[10.5px] text-outline block mt-0.5">{{ hotMetricLabel }} {{ topic.metricValue }}</span>
                 </div>
               </li>
             </ul>
             <p v-if="!hotTopics.length" class="text-[12px] text-outline py-4 text-center">暂无热榜数据</p>
             <button
               v-if="hotTopics.length > 10"
-              class="mt-2 w-full text-center text-[12px] text-primary hover:text-primary-container transition-colors py-1"
+              class="mt-2 w-full text-center text-[11.5px] text-primary hover:opacity-80 transition-opacity py-1"
               @click="hotTopicsExpand = !hotTopicsExpand"
             >
               {{ hotTopicsExpand ? '收起' : '展开更多' }}
@@ -392,8 +340,9 @@
 <script>
 import { normalizeFileUrl } from '@/utils/utils'
 import { dateStr } from '@/utils/time'
-import BBSUserBadge from '@/components/BBSUserBadge'
 import BBSSelect from '@/components/BBSSelect.vue'
+import PostListItem from '@/components/PostListItem.vue'
+import { generateFeaturedCover } from '@/utils/featured-cover'
 import heroTuojiang from '@/assets/hero/neijiang-tuojiang.jpg'
 import heroShengshui from '@/assets/hero/neijiang-shengshui.jpg'
 import heroPaifang from '@/assets/hero/neijiang-paifang.jpg'
@@ -401,7 +350,7 @@ import heroBuilding from '@/assets/hero/neijiang-power-building.jpg'
 
 export default {
   name: 'BBSForum',
-  components: { BBSUserBadge, BBSSelect },
+  components: { BBSSelect, PostListItem },
   data() {
     return {
       // 首页 Hero 地标图（顺序：左 → 右）
@@ -628,6 +577,14 @@ export default {
     articleLabelName(article) {
       return article.labelName || this.getLabelName(article.labelId)
     },
+    /** 统一卡片数据：时间格式与标签名在这里一次性补齐 */
+    postItem(article) {
+      return {
+        ...article,
+        time: this.formatTime(article.time),
+        labelName: this.articleLabelName(article),
+      }
+    },
     clearFilters() {
       this.keywords = ''
       this.filters.labelId = null
@@ -663,9 +620,38 @@ export default {
     },
     fetchFeaturedShowcase() {
       this.getRequest('/common/featured/showcase?limit=5').then(resp => {
-        this.featuredShowcase = (resp && Array.isArray(resp.obj)) ? resp.obj : []
+        const list = (resp && Array.isArray(resp.obj)) ? resp.obj : []
+        this.featuredShowcase = list.map(item => {
+          const cover = normalizeFileUrl(item.cover || '')
+          // 没有上传封面时，用标题/正文/作者现场生成内容卡，避免跑马灯左侧空白
+          const generatedCover = cover ? '' : generateFeaturedCover({
+            articleId: item.articleId,
+            title: item.title,
+            summary: item.summary,
+            content: item.content,
+            author: item.author,
+            views: item.views,
+          })
+          return { ...item, cover, generatedCover }
+        })
         if (this.showcaseIndex >= this.featuredShowcase.length) this.showcaseIndex = 0
       }).catch(() => { this.featuredShowcase = [] })
+    },
+    /** 封面地址失效时，退回到现场生成的内容卡 */
+    onShowcaseCoverError() {
+      const item = this.currentShowcase
+      if (!item || !item.cover) return
+      if (!item.generatedCover) {
+        item.generatedCover = generateFeaturedCover({
+          articleId: item.articleId,
+          title: item.title,
+          summary: item.summary,
+          content: item.content,
+          author: item.author,
+          views: item.views,
+        })
+      }
+      item.cover = ''
     },
     fetchFeaturedSidebar() {
       this.getRequest('/common/article/getFeatured?page=1&size=10').then(resp => {
@@ -821,6 +807,21 @@ export default {
       rgba(7, 18, 36, 0.20) 84%,
       rgba(7, 18, 36, 0.10) 100%),
     linear-gradient(180deg, rgba(7, 18, 36, 0.16) 0%, rgba(7, 18, 36, 0.28) 100%);
+}
+
+/* Hero 数据胶囊：轻量白描边，增加论坛氛围但不抢标题 */
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(4px);
 }
 
 .hero-photo__credits {

@@ -1,43 +1,45 @@
 <template>
-  <main class="min-h-screen flex items-center justify-center p-4 bg-background">
-    <div class="bg-container rounded-lg border border-outline-variant shadow-sm overflow-hidden form-transition max-w-md w-full">
-      <div class="px-8 pt-8 pb-10">
-        <div class="pb-6 text-center">
-          <span class="material-symbols-outlined text-primary text-[48px]">lock_reset</span>
-          <h1 class="font-headline-lg text-headline-lg text-on-surface mt-2">修改密码</h1>
-          <p class="text-body-md text-on-surface-variant mt-1">首次登录，请设置新密码</p>
+  <main class="login-shell min-h-[calc(100vh-64px)] flex items-center justify-center p-4 bg-surface">
+    <div class="bg-container rounded-2xl border border-border shadow-[0_12px_40px_-18px_rgba(15,23,42,0.25)] overflow-hidden max-w-[400px] w-full">
+      <div class="px-7 pt-7 pb-8">
+        <div class="pb-5 text-center">
+          <span class="w-11 h-11 rounded-2xl bg-primary/10 text-primary grid place-items-center mx-auto mb-3">
+            <span class="material-symbols-outlined text-[24px]">lock_reset</span>
+          </span>
+          <h1 class="text-[20px] font-semibold text-on-surface">修改密码</h1>
+          <p class="text-[11.5px] text-outline mt-1">首次登录，请设置新密码</p>
         </div>
 
-        <form class="space-y-5" @submit.prevent="handleChangePassword">
-          <div class="space-y-1.5">
-            <label class="font-label-md text-label-md text-secondary ml-0.5">当前密码</label>
+        <form class="space-y-4" @submit.prevent="handleChangePassword">
+          <div>
+            <label class="ui-form-label">当前密码</label>
             <div class="grid grid-cols-1 grid-rows-1">
               <input
                 v-model="form.currentPassword"
-                class="w-full col-start-1 row-start-1 pl-10 pr-4 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
+                class="ui-input col-start-1 row-start-1 pl-9 pr-10"
                 placeholder="请输入当前密码"
                 :type="showCurrent ? 'text' : 'password'"
               >
-              <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline text-[20px] pointer-events-none">lock</span>
-              <button class="col-start-1 row-start-1 self-center justify-self-end mr-3 text-outline hover:text-primary" type="button" @click="showCurrent = !showCurrent">
-                <span class="material-symbols-outlined text-[20px]">{{ showCurrent ? 'visibility_off' : 'visibility' }}</span>
+              <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-2.5 text-outline text-[18px] pointer-events-none">lock</span>
+              <button class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline hover:text-primary transition-colors" type="button" @click="showCurrent = !showCurrent">
+                <span class="material-symbols-outlined text-[18px]">{{ showCurrent ? 'visibility_off' : 'visibility' }}</span>
               </button>
             </div>
           </div>
 
-          <div class="space-y-1.5">
-            <label class="font-label-md text-label-md text-secondary ml-0.5">新密码</label>
+          <div>
+            <label class="ui-form-label">新密码</label>
             <div class="grid grid-cols-1 grid-rows-1">
               <input
                 v-model="form.newPassword"
-                class="w-full col-start-1 row-start-1 pl-10 pr-10 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
+                class="ui-input col-start-1 row-start-1 pl-9 pr-10"
                 placeholder="请输入新密码"
                 :type="showNew ? 'text' : 'password'"
                 @input="checkStrength"
               >
-              <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline text-[20px] pointer-events-none">lock_open</span>
-              <button class="col-start-1 row-start-1 self-center justify-self-end mr-3 text-outline hover:text-primary" type="button" @click="showNew = !showNew">
-                <span class="material-symbols-outlined text-[20px]">{{ showNew ? 'visibility_off' : 'visibility' }}</span>
+              <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-2.5 text-outline text-[18px] pointer-events-none">lock_open</span>
+              <button class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline hover:text-primary transition-colors" type="button" @click="showNew = !showNew">
+                <span class="material-symbols-outlined text-[18px]">{{ showNew ? 'visibility_off' : 'visibility' }}</span>
               </button>
             </div>
             <!-- 密码强度指示器 -->
@@ -60,34 +62,34 @@
             </div>
           </div>
 
-          <div class="space-y-1.5">
-            <label class="font-label-md text-label-md text-secondary ml-0.5">确认新密码</label>
+          <div>
+            <label class="ui-form-label">确认新密码</label>
             <div class="grid grid-cols-1 grid-rows-1">
               <input
                 v-model="form.confirmPassword"
-                class="w-full col-start-1 row-start-1 pl-10 pr-10 py-2.5 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
+                class="ui-input col-start-1 row-start-1 pl-9 pr-10"
                 placeholder="请再次输入新密码"
                 :type="showConfirm ? 'text' : 'password'"
               >
-              <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline text-[20px] pointer-events-none">lock_open</span>
-              <button class="col-start-1 row-start-1 self-center justify-self-end mr-3 text-outline hover:text-primary" type="button" @click="showConfirm = !showConfirm">
-                <span class="material-symbols-outlined text-[20px]">{{ showConfirm ? 'visibility_off' : 'visibility' }}</span>
+              <span class="material-symbols-outlined col-start-1 row-start-1 self-center ml-2.5 text-outline text-[18px] pointer-events-none">lock_open</span>
+              <button class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline hover:text-primary transition-colors" type="button" @click="showConfirm = !showConfirm">
+                <span class="material-symbols-outlined text-[18px]">{{ showConfirm ? 'visibility_off' : 'visibility' }}</span>
               </button>
             </div>
-            <p v-if="form.confirmPassword && form.confirmPassword !== form.newPassword" class="text-error text-[12px] mt-0.5">
+            <p v-if="form.confirmPassword && form.confirmPassword !== form.newPassword" class="text-error text-[11px] mt-1">
               两次输入的密码不一致
             </p>
           </div>
 
           <button
-            class="w-full py-3 bg-primary text-on-primary font-headline-sm text-headline-sm rounded hover:opacity-90 transition-all active:scale-[0.98] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            class="ui-btn ui-btn-sm ui-btn-primary w-full"
             type="submit"
             :disabled="submitting || !isFormValid"
           >
             {{ submitting ? '提交中...' : '确认修改' }}
           </button>
 
-          <p class="text-center font-body-md text-body-md text-on-surface-variant pt-2">
+          <p class="text-center text-[11px] text-outline pt-1">
             <button class="text-primary font-semibold hover:opacity-80" type="button" @click="handleLogout">返回登录</button>
           </p>
         </form>
@@ -244,3 +246,11 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.login-shell {
+  background-image:
+    radial-gradient(720px 360px at 50% -10%, rgba(0, 82, 217, 0.07), transparent 70%),
+    radial-gradient(520px 300px at 90% 100%, rgba(0, 82, 217, 0.04), transparent 70%);
+}
+</style>

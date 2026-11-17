@@ -1,41 +1,47 @@
 <template>
-  <main class="max-w-6xl mx-auto py-12 px-page-margin-desktop bg-surface min-h-screen">
-    <div class="flex flex-col md:flex-row bg-container rounded-lg shadow-sm overflow-hidden border border-border min-h-[600px]">
+  <main class="max-w-6xl mx-auto px-page-margin-mobile md:px-page-margin-desktop py-6 md:py-8 bg-surface min-h-screen">
+    <div class="flex flex-col md:flex-row bg-container rounded-2xl border border-border overflow-hidden min-h-[560px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <!-- Side Navigation -->
-      <aside class="w-full md:w-64 border-r border-outline-variant bg-surface-container-lowest">
-        <div class="p-6">
-          <h2 class="font-headline-sm text-headline-sm text-primary mb-6">账户设置</h2>
-          <nav class="space-y-1">
+      <aside class="w-full md:w-[208px] border-b md:border-b-0 md:border-r border-outline-variant bg-surface-container-lowest/70">
+        <div class="p-4 md:p-5">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary grid place-items-center">
+              <span class="material-symbols-outlined text-[16px]">manage_accounts</span>
+            </span>
+            <h2 class="text-[15px] font-semibold text-on-surface">账户设置</h2>
+          </div>
+          <p class="text-[11px] text-outline mb-4 md:ml-9">管理资料、内容与互动记录</p>
+          <nav class="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible custom-scrollbar">
             <button
               v-for="item in primaryTabs"
               :key="item.key"
-              class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 flex items-center gap-2"
-              :class="activeTab === item.key ? 'sidebar-tab-active' : 'text-on-surface-variant hover:bg-surface-container-low'"
+              class="shrink-0 md:w-full text-left px-3 py-2 rounded-lg text-[12.5px] font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
+              :class="activeTab === item.key ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary'"
               @click="goTab(item.key)"
             >
-              <span class="material-symbols-outlined text-[18px]">{{ item.icon }}</span>
+              <span class="material-symbols-outlined text-[17px]">{{ item.icon }}</span>
               {{ item.label }}
             </button>
 
-            <div class="border-t border-outline-variant my-2 mx-2"></div>
+            <div class="hidden md:block border-t border-outline-variant my-2 mx-1"></div>
 
             <button
               v-for="item in panelTabs"
               :key="item.key"
-              class="w-full text-left px-4 py-3 font-label-md text-label-md rounded-l-lg transition-all duration-200 flex items-center gap-2"
-              :class="activeTab === item.key ? 'sidebar-tab-active' : 'text-on-surface-variant hover:bg-surface-container-low'"
+              class="shrink-0 md:w-full text-left px-3 py-2 rounded-lg text-[12.5px] font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
+              :class="activeTab === item.key ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-primary'"
               @click="goTab(item.key)"
             >
-              <span class="material-symbols-outlined text-[18px]">{{ item.icon }}</span>
+              <span class="material-symbols-outlined text-[17px]">{{ item.icon }}</span>
               {{ item.label }}
-              <span v-if="badges[item.key]" class="ml-auto w-2 h-2 rounded-full bg-error shrink-0" title="有新内容"></span>
+              <span v-if="badges[item.key]" class="ml-auto w-1.5 h-1.5 rounded-full bg-error shrink-0" title="有新内容"></span>
             </button>
           </nav>
         </div>
       </aside>
 
       <!-- Content Area：所有 Tab 统一由组件渲染 -->
-      <section class="flex-1 p-8 md:p-12">
+      <section class="flex-1 min-w-0 p-5 md:p-7">
         <component
           v-if="currentTab"
           :key="currentTab.key"

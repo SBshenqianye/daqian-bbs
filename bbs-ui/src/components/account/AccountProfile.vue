@@ -1,64 +1,67 @@
 <template>
-  <div class="space-y-8">
+  <div class="space-y-5">
     <!-- 头像 + 昵称 -->
-    <div class="flex items-center gap-6 pb-8 border-b border-outline-variant">
-      <div class="relative group tooltip cursor-pointer" data-tooltip="点击上传头像" @click="showAvatarDialog = true">
+    <div class="flex items-center gap-4 pb-5 border-b border-outline-variant">
+      <div class="relative group tooltip cursor-pointer shrink-0" data-tooltip="点击上传头像" @click="showAvatarDialog = true">
         <img
           alt="用户头像"
-          class="w-24 h-24 rounded-full border-4 border-surface-container-high object-cover transition-opacity group-hover:opacity-80"
+          class="w-[72px] h-[72px] rounded-full border-4 border-surface-container-high object-cover transition-opacity group-hover:opacity-80"
           :src="avatarSrc || require('@/assets/portrait.png')"
         >
         <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <span class="material-symbols-outlined text-white text-3xl">upload</span>
+          <span class="material-symbols-outlined text-white text-2xl">upload</span>
         </div>
       </div>
-      <div>
-        <h1 class="font-headline-lg text-headline-lg text-on-surface">{{ userInfo.nickname || '未设置昵称' }}</h1>
-        <p v-if="userInfo.orgNameFull || userInfo.orgName" class="font-body-md text-body-md text-on-surface-variant mt-1">
-          {{ userInfo.orgNameFull || userInfo.orgName }}
+      <div class="min-w-0">
+        <h1 class="text-[19px] font-semibold text-on-surface truncate">{{ userInfo.nickname || '未设置昵称' }}</h1>
+        <p v-if="userInfo.orgNameFull || userInfo.orgName" class="text-[11.5px] text-on-surface-variant mt-0.5 truncate">
+          <span class="material-symbols-outlined text-[13px] align-[-2px] mr-0.5 text-outline">apartment</span>{{ userInfo.orgNameFull || userInfo.orgName }}
         </p>
-        <p v-else-if="userInfo.username" class="font-body-md text-body-md text-on-surface-variant mt-1">{{ userInfo.username }}</p>
+        <p v-else-if="userInfo.username" class="text-[11.5px] text-on-surface-variant mt-0.5 truncate">{{ userInfo.username }}</p>
+        <p class="text-[11px] text-outline mt-1">点击头像可更换</p>
       </div>
     </div>
 
     <!-- 保存提示 -->
-    <div v-if="showSaveNotification" class="flex items-center justify-between p-4 bg-primary-fixed/30 border border-primary/20 rounded-lg">
-      <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-primary">info</span>
-        <span class="font-body-md text-on-surface">我的资料更新</span>
+    <div v-if="showSaveNotification" class="flex items-center justify-between gap-3 p-3.5 bg-primary/5 border border-primary/20 rounded-xl">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="material-symbols-outlined text-primary text-[18px]">info</span>
+        <span class="text-[12.5px] text-on-surface truncate">资料有更新，记得保存</span>
       </div>
-      <div class="flex gap-2">
-        <button class="px-4 py-1.5 bg-primary text-white text-label-md rounded-lg hover:bg-primary-container transition-colors" :disabled="saving" @click="saveChanges">{{ saving ? '保存中...' : '保存' }}</button>
-        <button class="px-4 py-1.5 bg-error text-white text-label-md rounded-lg hover:bg-red-700 transition-colors" @click="cancelChanges">取消</button>
+      <div class="flex gap-2 shrink-0">
+        <button class="ui-btn ui-btn-xs ui-btn-primary" :disabled="saving" @click="saveChanges">{{ saving ? '保存中...' : '保存' }}</button>
+        <button class="ui-btn ui-btn-xs text-error hover:bg-error/10" @click="cancelChanges">取消</button>
       </div>
     </div>
 
     <!-- 基本信息 -->
-    <div class="space-y-6">
-      <h3 class="font-headline-sm text-headline-sm text-on-surface">基本信息</h3>
-      <div class="grid grid-cols-1 gap-y-6 max-w-2xl">
-        <div class="flex items-center py-4 border-b border-outline-variant">
-          <label class="w-32 font-label-md text-label-md text-on-surface-variant">用户昵称</label>
-          <div class="font-body-lg text-body-lg text-on-surface">{{ userInfo.nickname }}</div>
+    <div>
+      <h3 class="ui-section-title mb-2">
+        <span class="material-symbols-outlined text-[16px] text-primary">badge</span>基本信息
+      </h3>
+      <div class="grid grid-cols-1 max-w-2xl">
+        <div class="flex items-center py-3 border-b border-outline-variant/70">
+          <label class="w-24 shrink-0 text-[11.5px] text-on-surface-variant">用户昵称</label>
+          <div class="text-[13px] text-on-surface truncate">{{ userInfo.nickname }}</div>
         </div>
-        <div class="flex items-center py-4 border-b border-outline-variant">
-          <label class="w-32 font-label-md text-label-md text-on-surface-variant">人员编号</label>
-          <div class="font-body-lg text-body-lg text-on-surface">{{ userInfo.personnelId }}</div>
+        <div class="flex items-center py-3 border-b border-outline-variant/70">
+          <label class="w-24 shrink-0 text-[11.5px] text-on-surface-variant">人员编号</label>
+          <div class="text-[13px] text-on-surface tabnum">{{ userInfo.personnelId }}</div>
         </div>
-        <div class="flex items-center py-4 border-b border-outline-variant group cursor-default relative">
-          <label class="w-32 font-label-md text-label-md text-on-surface-variant">手机号码</label>
-          <div class="flex-1 flex items-center justify-between">
-            <div v-show="!editingPhone" class="font-body-lg text-body-lg text-on-surface">{{ userInfo.phone }}</div>
+        <div class="flex items-center py-3 border-b border-outline-variant/70 group cursor-default relative">
+          <label class="w-24 shrink-0 text-[11.5px] text-on-surface-variant">手机号码</label>
+          <div class="flex-1 flex items-center justify-between gap-2 min-w-0">
+            <div v-show="!editingPhone" class="text-[13px] text-on-surface tabnum">{{ userInfo.phone }}</div>
             <input
               v-show="editingPhone"
               ref="phoneInput"
               v-model="userInfo.phone"
-              class="flex-1 px-3 py-1 border border-outline-variant rounded focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+              class="flex-1 px-2.5 py-1 border border-outline-variant rounded-lg text-[13px] focus:ring-1 focus:ring-primary focus:border-primary outline-none"
               type="text"
               @input="showSaveNotification = true"
             >
-            <button class="p-1 text-on-surface-variant hover:text-primary transition-colors" @click="togglePhoneEdit">
-              <span class="material-symbols-outlined text-sm">edit</span>
+            <button class="ui-icon-btn" title="修改手机号" @click="togglePhoneEdit">
+              <span class="material-symbols-outlined">edit</span>
             </button>
           </div>
         </div>
@@ -67,30 +70,30 @@
 
     <!-- 头像上传弹窗 -->
     <div v-if="showAvatarDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4 dialog-overlay" @click.self="showAvatarDialog = false">
-      <div class="bg-container w-full max-w-md rounded-lg shadow-xl overflow-hidden">
-        <div class="px-6 py-4 border-b border-outline-variant flex items-center justify-between">
-          <h3 class="font-headline-sm text-headline-sm">修改头像</h3>
-          <button class="p-1 hover:bg-surface-container-low rounded-full transition-colors" @click="showAvatarDialog = false">
+      <div class="bg-container w-full max-w-md rounded-xl shadow-xl overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-outline-variant flex items-center justify-between">
+          <h3 class="text-[15px] font-semibold">修改头像</h3>
+          <button class="ui-icon-btn" @click="showAvatarDialog = false">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
-        <div class="p-8">
-          <div class="border-2 border-dashed border-outline-variant rounded-lg p-12 text-center flex flex-col items-center justify-center gap-4 hover:border-primary transition-colors cursor-pointer bg-surface-container-lowest group" @click="triggerAvatarUpload">
-            <span class="material-symbols-outlined text-4xl text-outline group-hover:text-primary">add</span>
-            <p class="font-body-md text-on-surface-variant">点击或拖拽图片到此处上传</p>
-            <p class="text-xs text-outline">支持 JPG、PNG 格式，大小不超过 2MB</p>
+        <div class="p-5">
+          <div class="border-2 border-dashed border-outline-variant rounded-xl p-8 text-center flex flex-col items-center justify-center gap-3 hover:border-primary transition-colors cursor-pointer bg-surface-container-lowest group" @click="triggerAvatarUpload">
+            <span class="material-symbols-outlined text-[32px] text-outline group-hover:text-primary">add_photo_alternate</span>
+            <p class="text-[12.5px] text-on-surface-variant">点击或拖拽图片到此处上传</p>
+            <p class="text-[11px] text-outline">支持 JPG、PNG 格式，大小不超过 2MB</p>
           </div>
           <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="handleAvatarChange">
-          <div v-if="avatarPreview" class="mt-6 p-4 border border-outline-variant rounded-lg">
-            <p class="text-xs text-on-surface-variant mb-3">预览：</p>
-            <div class="w-20 h-20 rounded-full bg-surface-container overflow-hidden mx-auto">
+          <div v-if="avatarPreview" class="mt-4 p-3 border border-outline-variant rounded-xl">
+            <p class="text-[11px] text-on-surface-variant mb-2">预览：</p>
+            <div class="w-16 h-16 rounded-full bg-surface-container overflow-hidden mx-auto">
               <img :src="avatarPreview" class="w-full h-full object-cover">
             </div>
           </div>
         </div>
-        <div class="px-6 py-4 bg-surface-container-low flex justify-end gap-3">
-          <button class="px-4 py-2 text-label-md font-medium text-on-surface-variant hover:bg-surface-container rounded-lg" @click="showAvatarDialog = false">取消</button>
-          <button class="px-6 py-2 text-label-md font-medium bg-primary text-white rounded-lg hover:bg-primary-container shadow-sm" :disabled="uploading" @click="uploadAvatar">{{ uploading ? '上传中...' : '开始上传' }}</button>
+        <div class="px-5 py-3 bg-surface-container-low flex justify-end gap-2">
+          <button class="ui-btn ui-btn-sm ui-btn-secondary" @click="showAvatarDialog = false">取消</button>
+          <button class="ui-btn ui-btn-sm ui-btn-primary" :disabled="uploading" @click="uploadAvatar">{{ uploading ? '上传中...' : '开始上传' }}</button>
         </div>
       </div>
     </div>

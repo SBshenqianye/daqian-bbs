@@ -1,106 +1,106 @@
 <template>
   <div class="min-h-screen flex flex-col bg-surface">
     <!-- Main Content Area -->
-    <main class="flex-grow flex flex-col pt-10 pb-28 px-4 sm:px-10 max-w-7xl mx-auto w-full">
+    <main class="flex-grow flex flex-col pt-6 pb-24 px-4 sm:px-8 max-w-5xl mx-auto w-full">
       <!-- Title Input Section -->
-      <div class="mb-8 relative flex items-center group">
+      <div class="mb-5 relative flex items-center group">
         <textarea
           ref="titleInput"
           v-model="articleTitle"
-          class="title-textarea w-full bg-transparent border-b border-transparent hover:border-gray-200 focus:border-transparent focus:ring-0 text-4xl font-bold text-gray-800 placeholder-gray-300 p-0 pb-2 resize-none overflow-hidden transition-all duration-200"
+          class="title-textarea w-full bg-transparent border-b border-transparent hover:border-outline-variant focus:border-transparent focus:ring-0 text-[24px] md:text-[28px] font-bold text-on-surface placeholder:text-outline/60 p-0 pb-2 resize-none overflow-hidden transition-all duration-200"
           placeholder="请输入文章标题"
           rows="1"
           maxlength="30"
           @input="autoResizeTitle"
         ></textarea>
-        <span class="material-symbols-outlined absolute right-0 text-gray-300 pointer-events-none group-hover:text-gray-400">edit</span>
+        <span class="material-symbols-outlined absolute right-0 text-outline/60 pointer-events-none group-hover:text-outline">edit</span>
       </div>
 
       <!-- Markdown 格式操作栏 -->
-      <div class="flex items-center gap-0.5 px-3 py-2 border border-gray-200 rounded-t-lg bg-gray-50/50 flex-wrap">
+      <div class="flex items-center gap-0.5 px-2.5 py-1.5 border border-outline-variant rounded-t-xl bg-surface-container-low/60 flex-wrap">
         <!-- 格式按钮 -->
         <button
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="加粗 (Ctrl+B)"
           @click="insertMdFormat('bold')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
         </button>
         <button
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="斜体 (Ctrl+I)"
           @click="insertMdFormat('italic')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 4h4m-2 0v16m-4 0h8"/></svg>
         </button>
         <button
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="删除线"
           @click="insertMdFormat('strikethrough')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 12H7m10-4H9m8 8H5"/></svg>
         </button>
-        <span class="w-px h-5 bg-gray-200 mx-1"></span>
+        <span class="w-px h-5 bg-outline-variant mx-1"></span>
         <button
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="标题"
           @click="insertMdFormat('heading')"
         >
           <span class="text-sm font-bold">H</span>
         </button>
         <button
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="引用块"
           @click="insertMdFormat('quote')"
         >
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
         </button>
         <button
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="行内代码"
           @click="insertMdFormat('code')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
         </button>
         <button
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="代码块"
           @click="insertMdFormat('codeblock')"
         >
           <span class="text-xs font-mono font-bold">{ }</span>
         </button>
-        <span class="w-px h-5 bg-gray-200 mx-1"></span>
+        <span class="w-px h-5 bg-outline-variant mx-1"></span>
         <button
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="无序列表"
           @click="insertMdFormat('ul')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"/><circle cx="2" cy="6" r="1" fill="currentColor"/><circle cx="2" cy="12" r="1" fill="currentColor"/><circle cx="2" cy="18" r="1" fill="currentColor"/></svg>
         </button>
         <button
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="有序列表"
           @click="insertMdFormat('ol')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 6h13M7 12h13M7 18h13"/><text x="2" y="7.5" font-size="7" fill="currentColor" font-weight="bold">1</text><text x="2" y="13.5" font-size="7" fill="currentColor" font-weight="bold">2</text><text x="2" y="19.5" font-size="7" fill="currentColor" font-weight="bold">3</text></svg>
         </button>
         <button
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="分割线"
           @click="insertMdFormat('hr')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14"/></svg>
         </button>
-        <span class="w-px h-5 bg-gray-200 mx-1"></span>
+        <span class="w-px h-5 bg-outline-variant mx-1"></span>
         <button
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="插入链接"
           @click="openLinkDialog"
         >
           <span class="material-symbols-outlined text-[18px]">link</span>
         </button>
         <button
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+          class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="插入图片"
           @mousedown="saveSelection"
           @click="triggerImgUpload"
@@ -111,8 +111,8 @@
         <!-- 右侧：预览切换 -->
         <div class="flex-1"></div>
         <button
-          class="inline-flex items-center gap-1 px-3 py-1 text-sm rounded transition-colors"
-          :class="showPreview ? 'bg-blue-100 text-primary' : 'text-gray-600 hover:text-primary hover:bg-blue-50'"
+          class="inline-flex items-center gap-1 px-2.5 py-1 text-[11.5px] rounded-md transition-colors"
+          :class="showPreview ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:text-primary hover:bg-primary/10'"
           title="预览 Markdown"
           @click="togglePreview"
         >
@@ -122,29 +122,29 @@
       </div>
 
       <!-- 链接弹窗（点击周围不会关闭，避免误触丢失编辑） -->
-      <div v-if="showLinkDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
-        <div class="bg-white rounded-lg shadow-xl p-5 w-80">
-          <h4 class="text-sm font-semibold text-gray-700 mb-4">{{ editingLink ? '编辑链接' : '插入链接' }}</h4>
-          <div class="space-y-3">
+      <div v-if="showLinkDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
+        <div class="bg-container rounded-xl border border-border shadow-xl p-5 w-80">
+          <h4 class="text-[14px] font-semibold text-on-surface mb-4">{{ editingLink ? '编辑链接' : '插入链接' }}</h4>
+          <div class="space-y-2.5">
             <input
               v-model="linkText"
-              class="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none"
+              class="ui-input"
               placeholder="链接文本"
               @keyup.enter="$refs.linkUrlInput.focus()"
             >
             <input
               ref="linkUrlInput"
               v-model="linkUrl"
-              class="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none"
+              class="ui-input"
               placeholder="链接地址"
               @keyup.enter="confirmLink"
             >
           </div>
           <div class="flex justify-end gap-2 mt-4">
-            <button class="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700" @click="closeLinkDialog">取消</button>
+            <button class="px-3 py-1.5 text-[12px] text-on-surface-variant hover:text-on-surface" @click="closeLinkDialog">取消</button>
             <button
-              class="px-4 py-1.5 text-sm rounded transition-all"
-              :class="editingLink ? 'bg-orange-500 text-white hover:opacity-90' : 'bg-primary text-white hover:opacity-90'"
+              class="px-4 py-1.5 text-[12px] rounded-lg transition-all text-white"
+              :class="editingLink ? 'bg-amber-600 hover:opacity-90' : 'bg-primary hover:opacity-90'"
               @click="confirmLink"
             >{{ editingLink ? '保存修改' : '确定' }}</button>
           </div>
@@ -152,77 +152,82 @@
       </div>
 
       <!-- 编辑器 + 预览面板 -->
-      <div class="flex border border-t-0 border-gray-200 rounded-b-lg min-h-[500px]">
+      <div class="flex border border-t-0 border-outline-variant rounded-b-xl min-h-[500px] overflow-hidden bg-container">
         <!-- 可视化编辑器 (contenteditable) -->
         <div
           ref="editorDiv"
           contenteditable="true"
           data-placeholder="请输入正文内容"
-          class="editor-content p-4 text-sm text-gray-800 leading-normal outline-none transition-colors focus:border-gray-300"
-          :class="showPreview ? 'border-r border-gray-200 w-1/2' : 'w-full'"
+          class="editor-content p-4 text-[13.5px] text-on-surface leading-relaxed outline-none transition-colors"
+          :class="showPreview ? 'border-r border-outline-variant w-1/2' : 'w-full'"
           @blur="syncContent"
           @input="onEditorInput"
           @paste="handlePaste"
           @click="handleEditorClick"
         ></div>
         <!-- Markdown 预览面板（复用正文渲染方式） -->
-        <div v-if="showPreview" class="w-1/2 p-4 overflow-y-auto bg-white border-l border-gray-200">
+        <div v-if="showPreview" class="w-1/2 p-4 overflow-y-auto bg-container border-l border-outline-variant">
           <section class="markdown-body" v-if="renderedHtml" v-html="renderedHtml"></section>
-          <section v-else class="text-gray-300 text-sm text-center mt-20">暂无内容可预览</section>
+          <section v-else class="text-outline text-[12px] text-center mt-20">暂无内容可预览</section>
         </div>
       </div>
 
       <!-- Tags Section -->
-      <div class="mt-8">
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-sm font-semibold text-gray-700 mr-1">标签：</span>
+      <div class="mt-6">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-[12px] font-semibold text-on-surface mr-1 flex items-center gap-1">
+            <span class="material-symbols-outlined text-[15px] text-primary">sell</span>标签
+          </span>
           <button
             v-for="label in labelList"
             :key="label.labelId"
-            class="px-3 py-1 rounded-full border text-sm transition-colors"
-            :class="String(selectedLabelId) === String(label.labelId) ? 'border-primary bg-blue-50 text-primary' : 'border-gray-200 text-gray-500 hover:border-primary hover:text-primary'"
+            class="px-2.5 py-1 rounded-full border text-[11.5px] transition-colors"
+            :class="String(selectedLabelId) === String(label.labelId) ? 'border-primary/40 bg-primary/10 text-primary' : 'border-outline-variant text-on-surface-variant hover:border-primary/40 hover:text-primary'"
             @click="selectedLabelId = label.labelId; isAnonymous = false"
           >
             {{ label.labelName }}
           </button>
         </div>
-        <label v-if="selectedLabelAllowsAnonymous" class="flex items-center gap-2 mt-3 text-sm text-gray-600 cursor-pointer select-none">
-          <input v-model="isAnonymous" type="checkbox" class="w-4 h-4 text-primary border-gray-300 rounded">
+        <label v-if="selectedLabelAllowsAnonymous" class="flex items-center gap-2 mt-2.5 text-[11.5px] text-on-surface-variant cursor-pointer select-none">
+          <input v-model="isAnonymous" type="checkbox" class="w-3.5 h-3.5 text-primary border-outline-variant rounded">
           匿名发布（该标签允许匿名；互动是否计分由标签策略决定）
         </label>
       </div>
 
       <!-- Attachment Section -->
-      <div class="mt-8">
-        <div class="flex items-center justify-between mb-4">
-          <h4 class="text-sm font-semibold text-gray-700">附件上传 (最多5个)</h4>
-          <span class="text-xs text-gray-400">不允许上传 .exe, .bat, .sh 格式，单文件不超过 50MB</span>
+      <div class="mt-6">
+        <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <h4 class="text-[12.5px] font-semibold text-on-surface flex items-center gap-1">
+            <span class="material-symbols-outlined text-[15px] text-primary">attach_file</span>附件上传
+            <span class="font-normal text-outline">（最多 5 个）</span>
+          </h4>
+          <span class="text-[10.5px] text-outline">不支持 .exe / .bat / .sh，单文件不超过 50MB</span>
         </div>
         <button
-          class="inline-flex items-center px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:opacity-90 transition-colors shadow-sm"
+          class="ui-btn ui-btn-xs bg-primary/10 text-primary hover:bg-primary/20"
           @click="triggerAttachment"
         >
-          <span class="material-symbols-outlined text-lg mr-2">add</span>
+          <span class="material-symbols-outlined text-[16px] mr-1">add</span>
           添加附件
         </button>
         <input ref="attachmentInput" class="hidden" multiple type="file" @change="handleAttachmentAdd">
 
         <!-- Attachment List -->
-        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div class="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           <div
             v-for="(file, index) in attachments"
             :key="index"
-            class="flex items-center p-3 bg-white border border-gray-200 rounded-lg group hover:border-blue-200 transition-colors"
+            class="flex items-center p-2.5 bg-container border border-outline-variant rounded-lg group hover:border-primary/40 transition-colors"
           >
-            <div class="w-10 h-10 bg-blue-50 flex items-center justify-center rounded text-blue-500 mr-3">
-              <span class="material-symbols-outlined">description</span>
+            <div class="w-8 h-8 bg-primary/10 flex items-center justify-center rounded-md text-primary mr-2.5 shrink-0">
+              <span class="material-symbols-outlined text-[17px]">description</span>
             </div>
             <div class="flex-grow min-w-0">
-              <p class="text-sm font-medium text-gray-700 truncate">{{ file.fileName || file.name }}</p>
-              <p class="text-xs text-gray-400">{{ file.size }}</p>
+              <p class="text-[11.5px] font-medium text-on-surface truncate">{{ file.fileName || file.name }}</p>
+              <p class="text-[10.5px] text-outline">{{ file.size }}</p>
             </div>
-            <button class="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" @click="removeAttachment(index)">
-              <span class="material-symbols-outlined text-lg">delete</span>
+            <button class="ui-icon-btn is-danger opacity-0 group-hover:opacity-100" @click="removeAttachment(index)">
+              <span class="material-symbols-outlined">delete</span>
             </button>
           </div>
         </div>
@@ -230,11 +235,11 @@
     </main>
 
     <!-- Bottom Action Bar -->
-    <div class="bottom-bar fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-4 px-10 flex justify-center space-x-4 z-40">
-      <button class="px-10 py-2.5 bg-primary text-white font-medium rounded-full hover:opacity-90 transition-all shadow-md active:scale-95 disabled:opacity-50" @click="handlePublish" :disabled="publishing || !canPublish">
+    <div class="bottom-bar fixed bottom-0 left-0 right-0 bg-container border-t border-border py-3 px-4 sm:px-8 flex justify-center gap-2.5 z-40">
+      <button class="ui-btn ui-btn-sm ui-btn-primary px-5" @click="handlePublish" :disabled="publishing || !canPublish">
         {{ publishing ? '发布中...' : (canPublish ? '发布' : '无发帖权限') }}
       </button>
-      <button class="px-10 py-2.5 font-medium rounded-full hover:bg-gray-200 transition-all active:scale-95 bg-red-500 text-white" @click="$router.back()">
+      <button class="ui-btn ui-btn-sm ui-btn-secondary px-5" @click="$router.back()">
         取消
       </button>
     </div>

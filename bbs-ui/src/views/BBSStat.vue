@@ -1,65 +1,45 @@
 <template>
-  <main class="max-w-7xl mx-auto px-page-margin-desktop py-12 bg-background min-h-screen">
-    <!-- Page Title -->
-    <header class="mb-10">
-      <h1 class="font-headline-lg text-headline-lg text-on-surface">我的发布</h1>
-    </header>
+  <main class="ui-page max-w-5xl">
+    <PageHeader
+      title="我的发布"
+      :subtitle="articles.length ? '共 ' + articles.length + ' 篇内容，按发布时间倒序' : '你发布的帖子会集中在这里'"
+      icon="edit_square"
+    >
+      <router-link to="/write" class="ui-btn ui-btn-sm ui-btn-primary no-underline">
+        <span class="material-symbols-outlined text-[16px]">add</span>写新帖
+      </router-link>
+    </PageHeader>
 
-    <!-- Article List Container -->
-    <div v-if="articles.length > 0" class="space-y-gutter">
-      <div
+    <div v-if="loading" class="flex items-center justify-center py-16">
+      <span class="inline-block w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
+    </div>
+
+    <!-- Article List：与论坛/收藏共用同一张卡片 -->
+    <div v-else-if="articles.length > 0" class="space-y-2.5">
+      <PostListItem
         v-for="(article, index) in articles"
-        :key="index"
-        class="bg-container border border-outline-variant rounded-lg p-card-padding flex flex-col md:flex-row gap-6 relative group card-shadow hover:border-primary-container transition-colors cursor-pointer card-clickable"
-        :style="{ transition: 'all 0.3s ease' }"
-        @click="goToArticle(article)"
+        :key="article.articleId || index"
+        :article="postItem(article)"
+        :show-likes="false"
+        @click="goToArticle"
       >
-        <div class="flex-grow flex flex-col justify-between min-w-0">
-          <div>
-            <h2 class="font-headline-sm text-headline-sm text-on-surface mb-2 truncate">{{ article.title }}</h2>
-            <p class="font-body-md text-body-md text-on-surface-variant mb-6 line-clamp-2" style="white-space: pre-line">{{ article.summary }}</p>
-          </div>
-          <!-- Metadata Bar -->
-          <div class="flex items-center flex-wrap gap-4 font-label-md text-label-md text-on-surface-variant">
-            <div class="flex items-center gap-2">
-              <bbs-user-badge :avatar="article.authorAvatar" :nickname="article.author" :org-name="article.authorOrgName" :org-name-full="article.authorOrgNameFull" size="sm" layout="inline" />
-            </div>
-            <span class="text-outline">•</span>
-            <span>{{ article.time }}</span>
-            <div class="flex items-center gap-6 ml-auto">
-              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">visibility</span> {{ article.views }}</span>
-              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">chat_bubble</span> {{ article.comments }}</span>
-            </div>
-          </div>
-        </div>
-        <!-- Optional Cover Image -->
-        <div v-if="article.cover" class="w-full md:w-48 h-32 flex-shrink-0 rounded overflow-hidden">
-          <img alt="Article Cover" class="w-full h-full object-cover" :src="article.cover">
-        </div>
-        <!-- Action Controls -->
-        <div class="flex md:flex-col gap-2 md:justify-center border-l md:border-l-0 md:pl-0 pl-4 border-outline-variant">
-          <button
-            class="flex items-center justify-center gap-1 px-4 py-2 rounded font-label-md text-label-md border border-on-tertiary-fixed-variant text-on-tertiary-fixed-variant bg-tertiary-fixed hover:bg-tertiary-container hover:text-white transition-all active:scale-95"
-            @click.stop="handleDelete(index)"
-          >
-            <span class="material-symbols-outlined text-[18px]">delete</span>
-            <span>删除</span>
+        <template #actions>
+          <button class="ui-icon-btn" title="修改" @click.stop="handleEdit(article)">
+            <span class="material-symbols-outlined">edit</span>
           </button>
-          <button
-            class="flex items-center justify-center gap-1 px-4 py-2 rounded font-label-md text-label-md border border-outline text-secondary hover:bg-secondary-container hover:border-secondary transition-all active:scale-95"
-            @click.stop="handleEdit(article)"
-          >
-            <span class="material-symbols-outlined text-[18px]">edit_note</span>
-            <span>修改</span>
+          <button class="ui-icon-btn is-danger" title="删除" @click.stop="handleDelete(article)">
+            <span class="material-symbols-outlined">delete</span>
           </button>
-        </div>
-      </div>
+        </template>
+      </PostListItem>
     </div>
 
     <!-- Empty State -->
-    <div v-else class="flex flex-col items-center justify-center py-24 text-on-surface-variant">
-      <span class="material-symbols-outlined text-6xl mb-4 opacity-20">inventory_2</span>
-      <p class="font-body-lg text-body-lg">暂无发布内容</p>
+    <div v-else class="ui-empty">
+      <span class="material-symbols-outlined">inventory_2</span>
+      <p class="ui-empty-title">暂无发布内容</p>
+      <p class="ui-empty-desc">写下第一篇帖子，和同事聊聊你的想法</p>
+      <router-link to="/write" class="mt-3 px-3.5 py-1.5 text-[12px] rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors no-underline">去发帖</router-link>
     </div>
   </main>
 </template>
@@ -67,12 +47,13 @@
 <script>
 import { getUser } from '@/utils/auth'
 import { normalizeFileUrl, friendlyTime } from '@/utils/utils'
-import BBSUserBadge from '@/components/BBSUserBadge'
+import PageHeader from '@/components/PageHeader.vue'
+import PostListItem from '@/components/PostListItem.vue'
 import { handleResponse } from '../../../shared/feedback'
 
 export default {
   name: 'BBSStat',
-  components: { BBSUserBadge },
+  components: { PageHeader, PostListItem },
   data() {
     return {
       loading: false,
@@ -83,6 +64,13 @@ export default {
     this.fetchMyArticles()
   },
   methods: {
+    postItem(article) {
+      return {
+        ...article,
+        labelName: article.labelName || '',
+        isFeatured: article.isFeatured === true,
+      }
+    },
     fetchMyArticles() {
       const user = getUser()
       if (!user) {
@@ -104,10 +92,13 @@ export default {
           authorAvatar: userAvatar,
           authorOrgName: user.orgName || '',
           authorOrgNameFull: user.orgNameFull || '',
+          authorLevelIndex: user.levelIndex || null,
           time: friendlyTime(a.createTime || a.articleCreateTime || ''),
           views: a.articleViewNum || 0,
           comments: a.commentNum ?? a.comment_num ?? a.articleCommentNum ?? 0,
           likes: a.articleGoodNum || 0,
+          labelName: a.articleLabelName || '',
+          isFeatured: a.isFeatured === 1 || a.isFeatured === '1',
           cover: normalizeFileUrl(a.articleImage || null),
         }))
       }).catch(err => {
@@ -121,8 +112,7 @@ export default {
         this.$router.push({ name: 'BBSArticleDetails', params: { articleId: article.articleId } })
       }
     },
-    handleDelete(index) {
-      const article = this.articles[index]
+    handleDelete(article) {
       if (!article || !article.articleId) return
       this.$confirm('确定删除该文章？', '提示', {
         confirmButtonText: '确定',

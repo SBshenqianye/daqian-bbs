@@ -4,50 +4,52 @@
       <h1 class="font-headline-lg text-headline-lg text-on-surface">我的举报</h1>
     </header>
 
-    <div v-if="loading" class="flex items-center justify-center py-20">
+    <div v-if="loading" class="flex items-center justify-center py-16">
       <span class="inline-block w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
     </div>
 
     <template v-if="!loading">
-      <div v-if="groupedList.length > 0" class="space-y-gutter">
-        <div v-for="group in groupedList" :key="group.key" class="bg-container border border-outline-variant rounded-lg p-card-padding">
+      <div v-if="groupedList.length > 0" class="space-y-2">
+        <div v-for="group in groupedList" :key="group.key" class="ui-card p-3.5">
           <!-- 主记录（该内容最新一条举报） -->
-          <div class="flex items-start justify-between">
+          <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <div class="flex items-center gap-2 mb-2 flex-wrap">
+              <div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
                 <span :class="statusBadgeClass(group.main.status)">{{ getStatusLabel(group.main.status) }}</span>
-                <span class="font-body-sm text-on-surface-variant">{{ getTargetTypeLabel(group.main.targetType) }} #{{ group.main.targetId }}</span>
+                <span class="ui-meta">{{ getTargetTypeLabel(group.main.targetType) }} #{{ group.main.targetId }}</span>
                 <!-- 同一内容的历史举报折叠入口（驳回后重报会产生多条） -->
                 <button
                   v-if="group.history.length > 0"
-                  class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[11px] font-medium hover:bg-blue-100"
+                  class="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[10.5px] font-medium hover:bg-primary/20"
                   @click="toggleGroup(group.key)"
                 >
-                  {{ isExpanded(group.key) ? '▲ 收起历史' : '历史举报 ' + group.history.length + ' 条 ▼' }}
+                  {{ isExpanded(group.key) ? '收起历史' : '历史 ' + group.history.length + ' 条' }}
+                  <span class="material-symbols-outlined text-[12px] align-[-2px]">{{ isExpanded(group.key) ? 'expand_less' : 'expand_more' }}</span>
                 </button>
               </div>
-              <p class="font-body-md text-body-md text-on-surface">{{ group.main.reason || '无原因说明' }}</p>
-              <p v-if="group.main.reviewRemark" class="font-body-sm text-body-sm text-on-surface-variant mt-2">审核意见: {{ group.main.reviewRemark }}</p>
-              <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">{{ group.main.createTime }}</p>
+              <p class="text-[12.5px] text-on-surface leading-relaxed">{{ group.main.reason || '无原因说明' }}</p>
+              <p v-if="group.main.reviewRemark" class="text-[11.5px] text-on-surface-variant mt-1">审核意见：{{ group.main.reviewRemark }}</p>
+              <p class="ui-meta mt-1"><span class="material-symbols-outlined">schedule</span>{{ group.main.createTime }}</p>
             </div>
-            <span v-if="group.main.status === 'confirmed' && group.main.pointsAwarded" class="font-body-sm text-green-600 flex-shrink-0">+2 积分</span>
+            <span v-if="group.main.status === 'confirmed' && group.main.pointsAwarded" class="ui-chip bg-green-50 text-green-700 flex-shrink-0">+2 积分</span>
           </div>
 
           <!-- 折叠的历史举报记录（同内容更早的记录） -->
-          <div v-if="isExpanded(group.key)" class="mt-3 pt-3 border-t border-outline-variant space-y-2">
-            <div v-for="item in group.history" :key="item.id" class="flex items-center gap-2 text-[13px]">
+          <div v-if="isExpanded(group.key)" class="mt-2.5 pt-2.5 border-t border-outline-variant/50 space-y-1.5">
+            <div v-for="item in group.history" :key="item.id" class="flex items-center gap-2 text-[11.5px]">
               <span :class="statusBadgeClass(item.status)" class="flex-shrink-0">{{ getStatusLabel(item.status) }}</span>
               <span class="text-on-surface-variant flex-1 truncate" :title="item.reason">
                 {{ item.reason || '无原因说明' }}<template v-if="item.reviewRemark">（{{ item.reviewRemark }}）</template>
               </span>
-              <span class="text-on-surface-variant whitespace-nowrap">{{ item.createTime }}</span>
+              <span class="text-outline whitespace-nowrap">{{ item.createTime }}</span>
             </div>
           </div>
         </div>
       </div>
-      <div v-else class="flex flex-col items-center justify-center py-24 text-on-surface-variant">
-        <span class="material-symbols-outlined text-6xl mb-4 opacity-20">flag</span>
-        <p class="font-body-lg text-body-lg">暂无举报记录</p>
+      <div v-else class="ui-empty">
+        <span class="material-symbols-outlined">flag</span>
+        <p class="ui-empty-title">暂无举报记录</p>
+        <p class="ui-empty-desc">发现违规内容时，可在帖子或评论上点击举报</p>
       </div>
     </template>
   </main>
@@ -88,10 +90,10 @@ export default {
     getTargetTypeLabel(t) { return { article: '文章', comment: '评论', reply: '回复' }[t] || t },
     statusBadgeClass(s) {
       return {
-        'px-2 py-0.5 rounded text-[12px] font-medium': true,
-        'bg-yellow-100 text-yellow-800': s === 'pending',
-        'bg-green-100 text-green-800': s === 'confirmed',
-        'bg-red-100 text-red-800': s === 'rejected'
+        'px-1.5 py-0.5 rounded-md text-[10.5px] font-medium': true,
+        'bg-amber-50 text-amber-700': s === 'pending',
+        'bg-green-50 text-green-700': s === 'confirmed',
+        'bg-red-50 text-red-700': s === 'rejected'
       }
     },
     isExpanded(key) { return !!this.expandedKeys[key] },

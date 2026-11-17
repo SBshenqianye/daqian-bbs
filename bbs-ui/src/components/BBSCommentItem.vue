@@ -9,7 +9,7 @@
             :show-org="false"
             :user-id="comment.userId"
             :level-index="comment.levelIndex"
-            :size="isReply ? 'xs' : 'md'"
+            :size="isReply ? 'xs' : 'sm'"
           />
           <span
             v-if="comment.isAnonymous"
@@ -18,7 +18,7 @@
           <span v-if="isArticleAuthor" class="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px]">楼主</span>
           <span v-if="adoptBadge" class="px-1.5 py-0.5 rounded text-[10px] border" :class="adoptBadge.cls">{{ adoptBadge.text }}</span>
         </div>
-        <div class="flex items-center gap-2 mt-0.5 text-[11px] text-outline" :class="isReply ? '' : 'ml-11'">
+        <div class="flex items-center gap-2 mt-0.5 text-[11px] text-outline" :class="isReply ? '' : 'ml-9'">
           <span>{{ comment.time }}</span>
           <span v-if="comment.replyTo" class="truncate">回复 <span class="text-primary">@{{ comment.replyTo }}</span></span>
         </div>
@@ -55,7 +55,7 @@
       </div>
     </div>
 
-    <div class="mt-1.5 text-[13px] leading-relaxed text-on-surface whitespace-pre-line break-words" :class="isReply ? '' : 'ml-11'">
+    <div class="mt-1.5 text-[12.5px] leading-relaxed text-on-surface whitespace-pre-line break-words" :class="isReply ? '' : 'ml-9'">
       {{ comment.content }}
     </div>
 
@@ -86,7 +86,7 @@
     </div>
 
     <!-- 楼中楼 -->
-    <div v-if="comment.children && comment.children.length > 0" class="mt-2.5 space-y-1.5" :class="isReply ? '' : 'ml-11'">
+    <div v-if="comment.children && comment.children.length > 0" class="mt-2.5 space-y-1.5" :class="isReply ? '' : 'ml-9'">
       <BBSCommentItem
         v-for="child in displayChildren"
         :key="child.id"

@@ -12,14 +12,24 @@
         :size="avatarBox"
         :level-index="levelIndex"
       />
-      <span class="flex flex-col min-w-0 leading-tight">
+      <!-- inline：作者与单位压成一行，避免列表卡片被单位名撑高；stacked：仍分两行 -->
+      <span v-if="layout === 'inline'" class="inline-flex items-baseline gap-1 min-w-0">
+        <span class="font-semibold text-on-surface truncate" :class="nameClass">{{ displayName }}</span>
+        <span
+          v-if="showOrg && orgName"
+          class="text-outline truncate max-w-[9em]"
+          :class="orgClass"
+          :title="orgNameFull || orgName"
+        >· {{ orgName }}</span>
+      </span>
+      <span v-else class="flex flex-col min-w-0 leading-tight">
         <span class="font-semibold text-on-surface truncate" :class="nameClass">{{ displayName }}</span>
         <span
           v-if="showOrg && orgName"
           class="text-outline truncate"
           :class="orgClass"
           :title="orgNameFull || orgName"
-        >{{ layout === 'inline' ? '· ' + orgName : orgName }}</span>
+        >{{ orgName }}</span>
       </span>
     </span>
 

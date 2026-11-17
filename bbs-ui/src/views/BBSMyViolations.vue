@@ -10,44 +10,44 @@
       <h1 class="font-headline-lg text-headline-lg text-on-surface">我的违规记录</h1>
     </header>
 
-    <div v-if="loading" class="flex items-center justify-center py-20">
+    <div v-if="loading" class="flex items-center justify-center py-16">
       <span class="inline-block w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
     </div>
 
     <template v-if="!loading">
-      <div v-if="list.length > 0" class="space-y-gutter">
-        <div v-for="item in list" :key="item.id" class="bg-container border border-outline-variant rounded-lg p-card-padding">
-          <div class="flex items-start justify-between">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-2">
-                <span class="material-symbols-outlined text-error text-[20px]">gavel</span>
-                <span class="font-body-md font-semibold text-on-surface">{{ getViolationLabel(item.violationType) }}</span>
-                <!-- 申诉状态标签 -->
-                <span v-if="item.appealStatus === 'pending'" class="px-2 py-0.5 rounded text-[11px] font-medium bg-yellow-100 text-yellow-800">申诉中</span>
-                <span v-else-if="item.appealStatus === 'accepted'" class="px-2 py-0.5 rounded text-[11px] font-medium bg-green-100 text-green-800">申诉通过</span>
-                <span v-else-if="item.appealStatus === 'rejected'" class="px-2 py-0.5 rounded text-[11px] font-medium bg-red-100 text-red-800">申诉驳回</span>
-              </div>
-              <p class="font-body-sm text-body-sm text-on-surface-variant">{{ item.remark || '无备注' }}</p>
-              <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">{{ item.createTime }}</p>
+      <div v-if="list.length > 0" class="space-y-2">
+        <div v-for="item in list" :key="item.id" class="ui-card p-3.5 flex items-start gap-3">
+          <span class="w-8 h-8 rounded-lg bg-error/10 grid place-items-center shrink-0 mt-0.5">
+            <span class="material-symbols-outlined text-[17px] text-error">gavel</span>
+          </span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-[13px] font-semibold text-on-surface">{{ getViolationLabel(item.violationType) }}</span>
+              <!-- 申诉状态标签 -->
+              <span v-if="item.appealStatus === 'pending'" class="ui-chip bg-amber-50 text-amber-700">申诉中</span>
+              <span v-else-if="item.appealStatus === 'accepted'" class="ui-chip bg-green-50 text-green-700">申诉通过</span>
+              <span v-else-if="item.appealStatus === 'rejected'" class="ui-chip bg-red-50 text-red-700">申诉驳回</span>
             </div>
-            <div class="flex items-center gap-3 flex-shrink-0 ml-4">
-              <span class="font-headline-sm text-headline-sm text-red-600">-{{ item.pointsDeducted }}分</span>
-              <!-- 申诉按钮 -->
-              <button
-                v-if="!item.appealStatus || item.appealStatus === 'rejected'"
-                class="px-3 py-1.5 text-[13px] font-medium border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors"
-                @click="goAppeal(item.id)"
-              >
-                申诉
-              </button>
-            </div>
+            <p class="text-[12px] text-on-surface-variant mt-1 line-clamp-2">{{ item.remark || '无备注' }}</p>
+            <p class="ui-meta mt-1"><span class="material-symbols-outlined">schedule</span>{{ item.createTime }}</p>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <span class="text-[14px] font-bold text-red-600 tabnum">-{{ item.pointsDeducted }}分</span>
+            <!-- 申诉按钮 -->
+            <button
+              v-if="!item.appealStatus || item.appealStatus === 'rejected'"
+              class="ui-chip ui-chip-primary px-2 py-1 hover:bg-primary/20"
+              @click="goAppeal(item.id)"
+            >
+              申诉
+            </button>
           </div>
         </div>
       </div>
-      <div v-else class="flex flex-col items-center justify-center py-24 text-on-surface-variant">
-        <span class="material-symbols-outlined text-6xl mb-4 opacity-20">verified</span>
-        <p class="font-body-lg text-body-lg">暂无违规记录</p>
-        <p class="font-body-md text-body-md text-outline mt-1">继续保持良好表现</p>
+      <div v-else class="ui-empty">
+        <span class="material-symbols-outlined">verified</span>
+        <p class="ui-empty-title">暂无违规记录</p>
+        <p class="ui-empty-desc">继续保持良好表现</p>
       </div>
     </template>
   </main>

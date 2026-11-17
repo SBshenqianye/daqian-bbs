@@ -23,24 +23,29 @@
     </div>
 
     <!-- 无违规记录 -->
-    <div v-if="!violationsLoading && violations.length === 0" class="mb-8 p-6 bg-container border border-outline-variant rounded-lg text-center">
-      <span class="material-symbols-outlined text-5xl text-outline mb-3 block">verified</span>
-      <p class="font-body-md text-on-surface-variant">暂无违规记录，无需申诉</p>
-      <router-link to="/userinfo?tab=violations" class="inline-block mt-3 text-primary text-body-sm hover:underline">查看我的违规记录</router-link>
+    <div v-if="!violationsLoading && violations.length === 0" class="ui-card p-6 text-center">
+      <span class="material-symbols-outlined text-[36px] text-outline opacity-30 mb-2 block">verified</span>
+      <p class="text-[13px] text-on-surface-variant">暂无违规记录，无需申诉</p>
+      <router-link to="/userinfo?tab=violations" class="inline-flex items-center gap-1 mt-2 text-primary text-[12px] hover:underline">
+        <span class="material-symbols-outlined text-[14px]">arrow_forward</span>查看我的违规记录
+      </router-link>
     </div>
 
     <!-- 申诉表单 -->
     <template v-if="violations.length > 0">
       <!-- 步骤1：选择要申诉的违规记录 -->
-      <div class="bg-container border border-outline-variant rounded-lg p-card-padding mb-6">
-        <h3 class="font-headline-sm text-headline-sm mb-1">① 选择要申诉的违规记录</h3>
-        <p class="font-body-sm text-on-surface-variant mb-4">点击选择一条违规记录进行申诉，已有待审核申诉的记录不可选</p>
+      <div class="ui-card p-4 mb-3">
+        <h3 class="flex items-center gap-2 text-[14px] font-semibold text-on-surface mb-1">
+          <span class="w-5 h-5 rounded-full bg-primary/10 text-primary text-[11px] font-bold grid place-items-center">1</span>
+          选择要申诉的违规记录
+        </h3>
+        <p class="text-[11.5px] text-outline mb-3 ml-7">点击选择一条违规记录，已有待审核申诉的记录不可选</p>
 
         <div v-if="violationsLoading" class="flex items-center justify-center py-8">
           <span class="inline-block w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
         </div>
 
-        <div v-else class="space-y-2 max-h-[360px] overflow-y-auto">
+        <div v-else class="space-y-2 max-h-[360px] overflow-y-auto custom-scrollbar">
           <div
             v-for="item in violations"
             :key="item.id"
@@ -52,38 +57,41 @@
           >
             <!-- 选中指示 -->
             <div class="mt-0.5 flex-shrink-0">
-              <span v-if="selectedViolation && selectedViolation.id === item.id" class="material-symbols-outlined text-primary text-[20px]">radio_button_checked</span>
-              <span v-else class="material-symbols-outlined text-outline text-[20px]">radio_button_unchecked</span>
+              <span v-if="selectedViolation && selectedViolation.id === item.id" class="material-symbols-outlined text-primary text-[18px]">radio_button_checked</span>
+              <span v-else class="material-symbols-outlined text-outline text-[18px]">radio_button_unchecked</span>
             </div>
             <!-- 违规信息 -->
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
-                <span class="font-body-md font-semibold text-on-surface">{{ getViolationLabel(item.violationType) }}</span>
-                <span class="font-body-sm text-red-600">-{{ item.pointsDeducted }}分</span>
-                <span v-if="isAppealed(item.id)" class="px-1.5 py-0.5 rounded text-[11px] bg-yellow-100 text-yellow-700">已申诉</span>
+                <span class="text-[12.5px] font-semibold text-on-surface">{{ getViolationLabel(item.violationType) }}</span>
+                <span class="text-[11.5px] text-red-600 tabnum">-{{ item.pointsDeducted }}分</span>
+                <span v-if="isAppealed(item.id)" class="ui-chip bg-amber-50 text-amber-700">已申诉</span>
               </div>
-              <p v-if="item.remark" class="font-body-sm text-on-surface-variant truncate">{{ item.remark }}</p>
-              <p class="font-body-sm text-outline mt-0.5">{{ item.createTime }}</p>
+              <p v-if="item.remark" class="text-[11.5px] text-on-surface-variant truncate">{{ item.remark }}</p>
+              <p class="ui-meta mt-0.5">{{ item.createTime }}</p>
             </div>
           </div>
         </div>
       </div>
 
       <!-- 步骤2：填写申诉理由 -->
-      <div class="bg-container border border-outline-variant rounded-lg p-card-padding mb-6">
-        <h3 class="font-headline-sm text-headline-sm mb-1">② 填写申诉理由</h3>
-        <p class="font-body-sm text-on-surface-variant mb-4">请详细说明申诉原因，有助于管理员快速处理</p>
+      <div class="ui-card p-4 mb-3">
+        <h3 class="flex items-center gap-2 text-[14px] font-semibold text-on-surface mb-1">
+          <span class="w-5 h-5 rounded-full bg-primary/10 text-primary text-[11px] font-bold grid place-items-center">2</span>
+          填写申诉理由
+        </h3>
+        <p class="text-[11.5px] text-outline mb-3 ml-7">请详细说明申诉原因，有助于管理员快速处理</p>
         <textarea
           v-model="appealContent"
-          class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none resize-none"
+          class="ui-textarea"
           rows="4"
           placeholder="请描述您的申诉理由..."
           :disabled="!selectedViolation"
         ></textarea>
-        <div class="flex justify-between items-center mt-4">
-          <span class="font-body-sm text-outline">{{ appealContent.length }}/500</span>
+        <div class="flex justify-between items-center mt-3">
+          <span class="text-[11px] text-outline tabnum">{{ appealContent.length }}/500</span>
           <button
-            class="px-6 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed font-label-md"
+            class="ui-btn ui-btn-sm ui-btn-primary"
             :disabled="!selectedViolation || !appealContent.trim() || submitting"
             @click="handleSubmit"
           >
@@ -94,26 +102,22 @@
     </template>
 
     <!-- 我的申诉记录 -->
-    <div v-if="!loading && list.length > 0" class="mt-10">
-      <h3 class="font-headline-sm text-headline-sm mb-4">我的申诉记录</h3>
-      <div class="space-y-3">
-        <div v-for="item in list" :key="item.id" class="bg-container border border-outline-variant rounded-lg p-card-padding">
-          <div class="flex items-start justify-between">
-            <div>
-              <div class="flex items-center gap-2 mb-2">
-                <span :class="{
-                  'px-2 py-0.5 rounded text-[12px] font-medium': true,
-                  'bg-yellow-100 text-yellow-800': item.status === 'pending',
-                  'bg-green-100 text-green-800': item.status === 'accepted',
-                  'bg-red-100 text-red-800': item.status === 'rejected'
-                }">{{ getStatusLabel(item.status) }}</span>
-                <span class="font-body-sm text-on-surface-variant">{{ getAppealLabel(item.appealType) }}</span>
-              </div>
-              <p class="font-body-md text-body-md text-on-surface">{{ item.content }}</p>
-              <p v-if="item.reviewRemark" class="font-body-sm text-body-sm text-on-surface-variant mt-2">审核意见: {{ item.reviewRemark }}</p>
-              <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">{{ item.createTime }}</p>
-            </div>
+    <div v-if="!loading && list.length > 0" class="mt-5">
+      <h3 class="ui-section-title mb-3">我的申诉记录</h3>
+      <div class="space-y-2">
+        <div v-for="item in list" :key="item.id" class="ui-card p-3.5">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="ui-chip"
+              :class="{
+                'bg-amber-50 text-amber-700': item.status === 'pending',
+                'bg-green-50 text-green-700': item.status === 'accepted',
+                'bg-red-50 text-red-700': item.status === 'rejected'
+              }">{{ getStatusLabel(item.status) }}</span>
+            <span class="text-[11px] text-on-surface-variant">{{ getAppealLabel(item.appealType) }}</span>
+            <span class="ui-meta ml-auto">{{ item.createTime }}</span>
           </div>
+          <p class="text-[12.5px] leading-relaxed text-on-surface">{{ item.content }}</p>
+          <p v-if="item.reviewRemark" class="mt-1.5 text-[11.5px] text-on-surface-variant">审核意见：{{ item.reviewRemark }}</p>
         </div>
       </div>
     </div>

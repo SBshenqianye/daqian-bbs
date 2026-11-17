@@ -1,57 +1,59 @@
 <template>
-  <div class="bg-surface font-body-md text-on-surface antialiased min-h-screen">
-    <!-- Fixed Header -->
-    <header class="sticky top-0 z-40 bg-surface/95 backdrop-blur-sm border-b border-outline-variant/30">
-      <div class="max-w-7xl mx-auto px-page-margin-desktop py-4">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <h2 class="text-2xl font-bold text-on-surface">排名统计</h2>
-        </div>
+  <div class="bg-surface text-on-surface antialiased min-h-screen">
+    <main class="ui-page-wide">
+      <PageHeader
+        title="排行榜"
+        subtitle="按积分看组织与个人的阶段表现"
+        icon="emoji_events"
+        tone="gold"
+      >
+        <span class="ui-chip ui-chip-muted">
+          <span class="material-symbols-outlined">calendar_month</span>
+          {{ activeTimeLabel }}
+        </span>
+      </PageHeader>
 
-        <!-- Tab 栏 -->
-        <div class="flex items-center gap-1 mt-3 overflow-x-auto -mb-4 pb-4">
-          <button
-            v-for="tab in tabs"
-            :key="tab.key"
-            class="px-5 py-2 text-sm font-semibold rounded-lg transition-all whitespace-nowrap shrink-0"
-            :class="activeTabKey === tab.key
-              ? 'bg-primary text-on-primary shadow-sm'
-              : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'"
-            @click="switchTab(tab)"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
+      <!-- Tab 栏：与论坛/账户一致的轻量胶囊 -->
+      <div class="inline-flex items-center gap-1 mb-3 p-1 rounded-xl border border-border bg-container overflow-x-auto max-w-full">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          class="ui-tab shrink-0"
+          :class="{ 'is-active': activeTabKey === tab.key }"
+          @click="switchTab(tab)"
+        >
+          <span class="material-symbols-outlined text-[16px]">{{ tab.mode === 'personal' ? 'person' : 'apartment' }}</span>
+          {{ tab.label }}
+        </button>
       </div>
-    </header>
 
-    <main class="max-w-7xl mx-auto px-page-margin-desktop py-6">
       <!-- 时间筛选行（所有 Tab 共用） -->
-      <div class="flex flex-wrap items-center gap-3 mb-6 p-4 bg-surface-container-low rounded-xl border border-outline-variant/50">
-        <span class="text-sm font-medium text-on-surface-variant mr-1">时间：</span>
+      <div class="ui-toolbar mb-4">
+        <span class="ui-meta-item text-[11.5px] text-on-surface-variant"><span class="material-symbols-outlined">date_range</span>时间</span>
         <button
           v-for="btn in timeQuickBtns"
           :key="btn.key"
-          class="px-4 py-1.5 text-sm font-medium rounded-lg transition-all"
+          class="px-2.5 py-1 text-[11.5px] rounded-md transition-colors"
           :class="activeTimeKey === btn.key
-            ? 'bg-primary text-on-primary shadow-sm'
-            : 'bg-surface border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'"
+            ? 'bg-primary/10 text-primary font-semibold'
+            : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'"
           @click="selectQuickTime(btn)"
         >
           {{ btn.label }}
         </button>
         <span class="text-outline-variant mx-1 hidden sm:inline">|</span>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5">
           <input
             type="date"
             v-model="customStartDate"
-            class="px-3 py-1.5 bg-surface border border-outline-variant rounded-lg text-sm text-on-surface outline-none focus:border-primary"
+            class="px-2 py-1 bg-surface border border-outline-variant rounded-md text-[11.5px] text-on-surface outline-none focus:border-primary"
             @change="applyCustomRange"
           />
-          <span class="text-on-surface-variant text-sm">~</span>
+          <span class="text-on-surface-variant text-[11px]">~</span>
           <input
             type="date"
             v-model="customEndDate"
-            class="px-3 py-1.5 bg-surface border border-outline-variant rounded-lg text-sm text-on-surface outline-none focus:border-primary"
+            class="px-2 py-1 bg-surface border border-outline-variant rounded-md text-[11.5px] text-on-surface outline-none focus:border-primary"
             @change="applyCustomRange"
           />
         </div>
@@ -65,37 +67,37 @@
       <!-- 组织排名列表 -->
       <template v-if="!loading && activeMode === 'org'">
         <!-- Top 3 领奖台 -->
-        <div v-if="topThree.length" class="flex flex-col md:flex-row items-stretch md:items-end gap-6 mb-4">
+        <div v-if="topThree.length" class="flex flex-col md:flex-row items-stretch md:items-end gap-3 mb-3">
           <div
             v-for="podium in topThree"
             :key="'podium-'+podium.rank"
-            class="flex-1 flex flex-col rounded-lg overflow-hidden transition-all duration-300 hover:shadow-md"
+            class="flex-1 flex flex-col rounded-xl overflow-hidden transition-all duration-300 hover:shadow-md"
             :class="[
               podium.orderClass,
-              podium.rank === 1 ? 'border-2 border-rank-gold shadow-sm h-[300px]'
-                : podium.rank === 2 ? 'border border-outline-variant h-[270px]'
-                : 'border border-outline-variant h-[250px]'
+              podium.rank === 1 ? 'border-2 border-rank-gold shadow-sm h-[240px]'
+                : podium.rank === 2 ? 'border border-outline-variant h-[218px]'
+                : 'border border-outline-variant h-[204px]'
             ]"
           >
-            <div class="flex flex-col items-center relative p-6 flex-1" :class="podium.cardClass">
+            <div class="flex flex-col items-center relative p-4 flex-1" :class="podium.cardClass">
               <div class="flex-1"></div>
               <div
-                class="rounded-full flex items-center justify-center font-bold border-2 border-white shadow-sm mb-4"
-                :class="[podium.rankBg, podium.rank === 1 ? 'w-16 h-16 text-3xl border-4 relative' : 'w-12 h-12 text-xl']"
+                class="rounded-full flex items-center justify-center font-bold border-2 border-white shadow-sm mb-2.5"
+                :class="[podium.rankBg, podium.rank === 1 ? 'w-12 h-12 text-xl border-4 relative' : 'w-9 h-9 text-sm']"
               >
                 {{ podium.rank }}
-                <span v-if="podium.rank === 1" class="material-symbols-outlined absolute -top-4 -right-2 text-rank-gold rotate-12" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+                <span v-if="podium.rank === 1" class="material-symbols-outlined absolute -top-4 -right-2 text-amber-500 rotate-12 text-[20px]" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
               </div>
-              <h3 class="font-bold text-center line-clamp-2 min-h-[56px] flex items-center justify-center" :class="podium.rank === 1 ? 'text-xl' : 'text-lg'">{{ podium.name }}</h3>
-              <div class="w-full flex justify-between items-end pt-4">
-                <div class="flex flex-col">
-                  <span class="text-on-surface-variant uppercase font-bold" :class="podium.rank === 1 ? 'text-[12px]' : 'text-[10px]'">人均得分</span>
-                  <span class="font-bold text-primary" :class="podium.rank === 1 ? 'text-4xl font-black' : 'text-2xl'">{{ podium.score }}</span>
-                  <span class="text-[10px] text-on-surface-variant mt-1">总分 {{ podium.totalPoints }} · {{ podium.memberCount }} 人</span>
+              <h3 class="font-semibold text-center line-clamp-2 min-h-[44px] flex items-center justify-center px-1" :class="podium.rank === 1 ? 'text-[15px]' : 'text-[13.5px]'">{{ podium.name }}</h3>
+              <div class="w-full flex justify-between items-end pt-3">
+                <div class="flex flex-col min-w-0">
+                  <span class="text-on-surface-variant text-[10px]">人均得分</span>
+                  <span class="font-bold text-primary tabnum" :class="podium.rank === 1 ? 'text-[26px] leading-8' : 'text-[19px]'">{{ podium.score }}</span>
+                  <span class="text-[10px] text-outline mt-0.5 truncate">总分 {{ podium.totalPoints }} · {{ podium.memberCount }} 人</span>
                 </div>
-                <div class="text-right text-on-surface-variant" :class="podium.rank === 1 ? 'text-sm' : 'text-[11px]'">
-                  <p>发帖: {{ podium.posts }}</p>
-                  <p>回帖: {{ podium.replies }}</p>
+                <div class="text-right text-on-surface-variant text-[10.5px] shrink-0">
+                  <p>发帖 {{ podium.posts }}</p>
+                  <p>回帖 {{ podium.replies }}</p>
                 </div>
               </div>
               <div class="flex-1"></div>
@@ -104,59 +106,54 @@
         </div>
 
         <!-- 排名列表 (4+) -->
-        <div v-if="restRanks.length" class="space-y-3 mt-4">
+        <div v-if="restRanks.length" class="space-y-2">
           <div
             v-for="item in restRanks"
             :key="item.orgNo"
-            class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all"
+            class="ui-card ui-card-hover overflow-hidden"
           >
-            <div class="p-5 flex items-center gap-6">
-              <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-surface-container rounded-full text-on-surface-variant font-bold text-sm">{{ item.rank }}</div>
+            <div class="p-3.5 flex items-center gap-3">
+              <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-surface-container rounded-lg text-on-surface-variant font-bold text-[12px] tabnum">{{ item.rank }}</div>
               <div class="flex-grow min-w-0">
-                <h4 class="text-lg font-bold text-on-surface truncate">{{ item.name }}</h4>
-                <div class="flex items-center gap-4 text-xs text-on-surface-variant mt-1">
-                  <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">group</span>{{ item.memberCount }} 人</span>
-                  <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">edit_note</span>发帖: {{ item.posts }}</span>
-                  <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">chat_bubble</span>回帖: {{ item.replies }}</span>
+                <h4 class="text-[14px] font-semibold text-on-surface truncate">{{ item.name }}</h4>
+                <div class="ui-meta mt-1">
+                  <span class="ui-meta-item"><span class="material-symbols-outlined">group</span>{{ item.memberCount }} 人</span>
+                  <span class="ui-meta-item"><span class="material-symbols-outlined">edit_note</span>发帖 {{ item.posts }}</span>
+                  <span class="ui-meta-item"><span class="material-symbols-outlined">chat_bubble</span>回帖 {{ item.replies }}</span>
                 </div>
               </div>
-              <div class="flex items-center gap-6 shrink-0">
-                <div class="text-right">
-                  <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-tight">人均得分</p>
-                  <p class="text-2xl font-bold text-on-surface">{{ item.score }}</p>
-                  <p class="text-[10px] text-on-surface-variant">总分 {{ item.totalPoints }}</p>
-                </div>
+              <div class="text-right shrink-0">
+                <p class="text-[10px] text-on-surface-variant">人均得分</p>
+                <p class="text-[19px] font-bold text-on-surface tabnum leading-6">{{ item.score }}</p>
+                <p class="text-[10px] text-outline">总分 {{ item.totalPoints }}</p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- 空状态 -->
-        <div v-if="!topThree.length && !restRanks.length" class="py-16 text-center flex flex-col items-center gap-3 text-on-surface-variant">
-          <span class="material-symbols-outlined text-5xl opacity-20">leaderboard</span>
-          <p class="text-body-md">暂无排名数据</p>
+        <div v-if="!topThree.length && !restRanks.length" class="ui-empty">
+          <span class="material-symbols-outlined">leaderboard</span>
+          <p class="ui-empty-title">暂无排名数据</p>
+          <p class="ui-empty-desc">换个时间范围再看看</p>
         </div>
 
         <!-- 分页 -->
-        <div v-if="totalPages > 1" class="mt-6 p-6 bg-surface-container-low rounded-lg flex justify-between items-center">
-          <span class="text-sm text-on-surface-variant font-medium">共 {{ totalCount }} 条记录</span>
-          <div class="flex gap-2">
-            <button class="w-9 h-9 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all disabled:opacity-30" :disabled="currentPage <= 1" @click="currentPage--">
-              <span class="material-symbols-outlined text-[20px]">chevron_left</span>
-            </button>
-            <button
-              v-for="page in totalPages"
-              :key="page"
-              class="w-9 h-9 flex items-center justify-center rounded-md font-bold text-sm transition-all"
-              :class="page === currentPage ? 'bg-primary text-white shadow-sm' : 'border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'"
-              @click="currentPage = page"
-            >
-              {{ page }}
-            </button>
-            <button class="w-9 h-9 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all disabled:opacity-30" :disabled="currentPage >= totalPages" @click="currentPage++">
-              <span class="material-symbols-outlined text-[20px]">chevron_right</span>
-            </button>
-          </div>
+        <div v-if="totalPages > 1" class="ui-pager mt-4">
+          <span class="text-[11.5px] text-outline mr-auto">共 {{ totalCount }} 条记录</span>
+          <button class="ui-pager-btn" :disabled="currentPage <= 1" @click="currentPage--">
+            <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+          </button>
+          <button
+            v-for="page in totalPages"
+            :key="page"
+            class="ui-pager-btn"
+            :class="{ 'is-active': page === currentPage }"
+            @click="currentPage = page"
+          >{{ page }}</button>
+          <button class="ui-pager-btn" :disabled="currentPage >= totalPages" @click="currentPage++">
+            <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+          </button>
         </div>
       </template>
 
@@ -166,33 +163,34 @@
           <div
             v-for="(item, i) in personalRankList"
             :key="item.userId"
-            class="flex items-center gap-4 p-4 bg-surface-container-lowest border border-outline-variant rounded-lg hover:shadow-sm transition-all"
-            :class="item.userId === currentUserId ? 'border-l-4 border-l-primary bg-primary/[0.04]' : ''"
+            class="ui-card flex items-center gap-3 p-3"
+            :class="item.userId === currentUserId ? 'border-l-[3px] border-l-primary bg-primary/5' : ''"
           >
-            <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm" :class="getRankClass(i + 1)">
+            <div class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md font-bold text-[11px]" :class="getRankClass(i + 1)">
               {{ i + 1 }}
             </div>
             <img
               :src="normalizeFileUrl(item.portrait) || require('@/assets/portrait.png')"
-              class="w-10 h-10 rounded-full object-cover border border-outline-variant shrink-0"
+              class="w-9 h-9 rounded-full object-cover border border-outline-variant shrink-0"
               alt="头像"
               @error="$event.target.src = require('@/assets/portrait.png')"
             />
             <div class="flex-1 min-w-0">
-              <p class="font-bold text-on-surface truncate">{{ item.nickName }}</p>
-              <p class="text-xs text-on-surface-variant truncate">{{ item.orgName }}</p>
+              <p class="text-[13px] font-semibold text-on-surface truncate">{{ item.nickName }}</p>
+              <p class="text-[10.5px] text-on-surface-variant truncate">{{ item.orgName }}</p>
             </div>
             <div class="text-right shrink-0">
-              <p class="text-xs text-on-surface-variant">发帖 {{ item.posts }} / 回帖 {{ item.replies }}</p>
-              <p class="text-xl font-bold text-primary">{{ item.points }} 分</p>
+              <p class="text-[10.5px] text-outline">发帖 {{ item.posts }} · 回帖 {{ item.replies }}</p>
+              <p class="text-[16px] font-bold text-primary tabnum leading-6">{{ item.points }} 分</p>
             </div>
           </div>
         </div>
 
         <!-- 空状态 -->
-        <div v-if="!personalRankList.length" class="py-16 text-center flex flex-col items-center gap-3 text-on-surface-variant">
-          <span class="material-symbols-outlined text-5xl opacity-20">person_off</span>
-          <p class="text-body-md">暂无个人排名数据</p>
+        <div v-if="!personalRankList.length" class="ui-empty">
+          <span class="material-symbols-outlined">person_off</span>
+          <p class="ui-empty-title">暂无个人排名数据</p>
+          <p class="ui-empty-desc">换个时间范围再看看</p>
         </div>
 
         <!-- 底部留白，避免固定栏遮挡内容 -->
@@ -206,24 +204,24 @@
       v-if="showStickyBar"
       class="bottom-bar fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-sm border-t border-outline-variant/30 z-40"
     >
-      <div class="max-w-7xl mx-auto px-page-margin-desktop py-3 flex items-center gap-4">
+      <div class="max-w-7xl mx-auto px-page-margin-mobile md:px-page-margin-desktop py-2.5 flex items-center gap-3">
         <img
           :src="normalizeFileUrl(currentUserInfo.portrait) || require('@/assets/portrait.png')"
-          class="w-11 h-11 rounded-full object-cover border-2 border-primary shrink-0"
+          class="w-9 h-9 rounded-full object-cover border-2 border-primary shrink-0"
           alt="头像"
           @error="$event.target.src = require('@/assets/portrait.png')"
         />
         <div class="flex-1 min-w-0">
-          <p class="font-bold text-on-surface text-sm truncate">{{ currentUserInfo.nickName }}</p>
-          <p class="text-xs text-on-surface-variant truncate">{{ currentUserInfo.orgName }}</p>
+          <p class="font-semibold text-on-surface text-[12.5px] truncate">{{ currentUserInfo.nickName }}</p>
+          <p class="text-[10.5px] text-on-surface-variant truncate">{{ currentUserInfo.orgName }}</p>
         </div>
         <div class="text-right shrink-0">
-          <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-tight">我的积分</p>
-          <p class="text-xl font-bold text-primary">{{ currentUserInfo.points }}</p>
+          <p class="text-[10px] text-outline">我的积分</p>
+          <p class="text-[16px] font-bold text-primary tabnum leading-5">{{ currentUserInfo.points }}</p>
         </div>
-        <div class="text-right shrink-0 pl-4 border-l border-outline-variant/50">
-          <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-tight">排名</p>
-          <p class="text-xl font-bold text-on-surface">#{{ currentUserInfo.rankNum }}</p>
+        <div class="text-right shrink-0 pl-3 border-l border-outline-variant/50">
+          <p class="text-[10px] text-outline">排名</p>
+          <p class="text-[16px] font-bold text-on-surface tabnum leading-5">#{{ currentUserInfo.rankNum }}</p>
         </div>
       </div>
     </div>
@@ -234,6 +232,7 @@
 <script>
 import { getUser } from '@/utils/auth'
 import { normalizeFileUrl } from '@/utils/utils'
+import PageHeader from '@/components/PageHeader.vue'
 import { handleResponse } from '../../../shared/feedback'
 
 const RANK_COLORS = [
@@ -282,6 +281,7 @@ function calcTimeRange(key) {
 
 export default {
   name: 'BBSPoints',
+  components: { PageHeader },
   data() {
     return {
       loading: false,
@@ -338,6 +338,10 @@ export default {
     },
     timeQuickBtns() {
       return TIME_BTNS
+    },
+    activeTimeLabel() {
+      const hit = TIME_BTNS.find(b => b.key === this.activeTimeKey)
+      return hit ? hit.label : '自定义'
     },
     currentUserId() {
       const user = getUser()

@@ -5,23 +5,21 @@
       <h1 class="font-headline-lg text-headline-lg text-on-surface">我的互动</h1>
     </header>
 
-    <!-- Tab 栏 -->
-    <div class="flex items-center gap-1 mb-8 overflow-x-auto">
+    <!-- Tab 栏：与论坛筛选/排行榜同一套轻量胶囊 -->
+    <div class="inline-flex items-center gap-1 mb-4 p-1 rounded-xl border border-border bg-container overflow-x-auto max-w-full">
       <button
         v-for="tab in tabs"
         :key="tab.key"
-        class="px-5 py-2.5 text-sm font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 flex items-center gap-2"
-        :class="activeTab === tab.key
-          ? 'bg-primary text-on-primary shadow-sm'
-          : 'text-on-surface-variant hover:text-primary hover:bg-primary/5 bg-surface-container-low'"
+        class="ui-tab shrink-0"
+        :class="{ 'is-active': activeTab === tab.key }"
         @click="switchTab(tab.key)"
       >
-        <span class="material-symbols-outlined text-[18px]">{{ tab.icon }}</span>
+        <span class="material-symbols-outlined text-[16px]">{{ tab.icon }}</span>
         {{ tab.label }}
         <!-- 未读角标（互动消息分类：回复/评论我，独立于"消息通知"计数） -->
         <span
           v-if="tab.key === 'repliedToMe' && unreadInteraction > 0"
-          class="min-w-[18px] h-[18px] px-1 bg-error rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none flex-shrink-0"
+          class="min-w-[16px] h-4 px-1 bg-error rounded-full text-white text-[9.5px] font-bold flex items-center justify-center leading-none flex-shrink-0"
         >
           {{ unreadInteraction > 99 ? '99+' : unreadInteraction }}
         </span>
@@ -29,134 +27,111 @@
     </div>
 
     <!-- 加载状态 -->
-    <div v-if="loading" class="flex items-center justify-center py-20">
+    <div v-if="loading" class="flex items-center justify-center py-16">
       <span class="inline-block w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
     </div>
 
     <!-- 我回复的列表 -->
     <template v-if="!loading && activeTab === 'myReplies'">
-      <div v-if="myReplies.length > 0" class="space-y-gutter">
+      <div v-if="myReplies.length > 0" class="space-y-2.5">
         <div
           v-for="(item, index) in myReplies"
           :key="'my-' + index"
-          class="bg-container border border-outline-variant rounded-lg p-card-padding flex flex-col gap-3 relative group card-shadow hover:border-primary-container transition-colors cursor-pointer card-clickable"
+          class="ui-card ui-card-hover p-4 flex flex-col gap-2 cursor-pointer"
           @click="goToArticle(item)"
         >
-          <div class="flex items-start justify-between gap-4">
+          <div class="flex items-start justify-between gap-3">
             <div class="flex-grow min-w-0">
-              <h3 class="font-headline-sm text-headline-sm text-on-surface mb-1 truncate">
+              <h3 class="text-[14px] font-semibold text-on-surface leading-snug truncate">
                 {{ item.articleTitle || '未知帖子' }}
               </h3>
-              <p class="font-body-md text-body-md text-on-surface-variant line-clamp-2" style="white-space: pre-line">
+              <p class="mt-1 text-[12.5px] leading-relaxed text-on-surface-variant line-clamp-2 whitespace-pre-line">
                 {{ item.content }}
               </p>
             </div>
-            <div v-if="item.articleImage" class="w-16 h-16 flex-shrink-0 rounded overflow-hidden">
+            <div v-if="item.articleImage" class="w-[64px] h-[56px] flex-shrink-0 rounded-lg overflow-hidden border border-outline-variant">
               <img alt="Cover" class="w-full h-full object-cover" :src="normalizeFileUrl(item.articleImage)">
             </div>
           </div>
-          <div class="flex items-center gap-4 font-label-md text-label-md text-on-surface-variant">
-            <span class="flex items-center gap-1">
-              <span class="material-symbols-outlined text-[16px]">schedule</span>
-              {{ friendlyTime(item.time) }}
-            </span>
-            <span class="flex items-center gap-1">
-              <span class="material-symbols-outlined text-[16px]">article</span>
-              我的回复
-            </span>
+          <div class="ui-meta">
+            <span class="ui-meta-item"><span class="material-symbols-outlined">schedule</span>{{ friendlyTime(item.time) }}</span>
+            <span class="text-outline-variant">·</span>
+            <span class="ui-meta-item"><span class="material-symbols-outlined">reply</span>我的回复</span>
           </div>
         </div>
       </div>
 
       <!-- 空状态 -->
-      <div v-else class="flex flex-col items-center justify-center py-24 text-on-surface-variant">
-        <span class="material-symbols-outlined text-6xl mb-4 opacity-20">reply</span>
-        <p class="font-body-lg text-body-lg">暂无回复记录</p>
-        <p class="font-body-md text-body-md text-outline mt-1">去论坛参与讨论吧</p>
+      <div v-else class="ui-empty">
+        <span class="material-symbols-outlined">reply</span>
+        <p class="ui-empty-title">暂无回复记录</p>
+        <p class="ui-empty-desc">去论坛参与讨论吧</p>
       </div>
     </template>
 
     <!-- 回复我的列表 -->
     <template v-if="!loading && activeTab === 'repliedToMe'">
-      <div v-if="repliedToMe.length > 0" class="space-y-gutter">
+      <div v-if="repliedToMe.length > 0" class="space-y-2.5">
         <div
           v-for="(item, index) in repliedToMe"
           :key="'to-' + index"
-          class="bg-container border border-outline-variant rounded-lg p-card-padding flex gap-4 relative group card-shadow hover:border-primary-container transition-colors cursor-pointer card-clickable"
+          class="ui-card ui-card-hover p-4 flex gap-3 cursor-pointer"
           @click="goToArticle(item)"
         >
           <!-- 对方头像 -->
           <img
             v-if="item.fromPortrait"
             alt="Avatar"
-            class="w-10 h-10 rounded-full border border-outline-variant object-cover flex-shrink-0"
+            class="w-9 h-9 rounded-full border border-outline-variant object-cover flex-shrink-0"
             :src="normalizeFileUrl(item.fromPortrait)"
             @error="$event.target.src = require('@/assets/portrait.png')"
           >
-          <div v-else class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center flex-shrink-0">
-            <span class="material-symbols-outlined text-outline text-xl">person</span>
+          <div v-else class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-outline text-[18px]">person</span>
           </div>
 
           <div class="flex-grow min-w-0">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="font-label-md text-label-md font-semibold text-on-surface truncate">
-                {{ item.fromNickname || '匿名用户' }}
-              </span>
-              <span v-if="item.fromOrgName" class="font-body-sm text-body-sm text-outline truncate">
-                {{ item.fromOrgName }}
-              </span>
-              <span class="text-outline ml-auto flex-shrink-0 font-body-sm text-body-sm">
-                {{ friendlyTime(item.time) }}
-              </span>
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="text-[12.5px] font-semibold text-on-surface truncate">{{ item.fromNickname || '匿名用户' }}</span>
+              <span v-if="item.fromOrgName" class="text-[11px] text-outline truncate">· {{ item.fromOrgName }}</span>
+              <span class="ui-meta ml-auto flex-shrink-0">{{ friendlyTime(item.time) }}</span>
             </div>
-            <p class="font-body-md text-body-md text-on-surface-variant mb-2">
-              {{ item.replyRelation || '回复了你' }}
+            <p class="text-[11.5px] text-on-surface-variant mt-1">
+              <span class="material-symbols-outlined text-[13px] align-[-2px] mr-0.5 text-primary">quickreply</span>{{ item.replyRelation || '回复了你' }}
             </p>
-            <p class="font-body-md text-body-md text-on-surface line-clamp-2" style="white-space: pre-line">
-              {{ item.content }}
-            </p>
-            <p v-if="item.articleTitle" class="font-body-sm text-body-sm text-outline mt-2 truncate">
-              帖子：{{ item.articleTitle }}
+            <p class="text-[12.5px] leading-relaxed text-on-surface mt-1.5 line-clamp-2 whitespace-pre-line">{{ item.content }}</p>
+            <p v-if="item.articleTitle" class="ui-meta mt-1.5">
+              <span class="material-symbols-outlined">article</span>
+              <span class="truncate">{{ item.articleTitle }}</span>
             </p>
           </div>
         </div>
       </div>
 
       <!-- 空状态 -->
-      <div v-else class="flex flex-col items-center justify-center py-24 text-on-surface-variant">
-        <span class="material-symbols-outlined text-6xl mb-4 opacity-20">quickreply</span>
-        <p class="font-body-lg text-body-lg">暂无回复消息</p>
-        <p class="font-body-md text-body-md text-outline mt-1">发布的帖子还没有收到回复</p>
+      <div v-else class="ui-empty">
+        <span class="material-symbols-outlined">quickreply</span>
+        <p class="ui-empty-title">暂无回复消息</p>
+        <p class="ui-empty-desc">发布的帖子还没有收到回复</p>
       </div>
     </template>
 
     <!-- 分页 -->
-    <div v-if="totalPages > 1" class="mt-8 flex justify-center">
-      <div class="flex gap-2">
-        <button
-          class="w-9 h-9 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all disabled:opacity-30"
-          :disabled="currentPage <= 1"
-          @click="currentPage--; fetchData()"
-        >
-          <span class="material-symbols-outlined text-[20px]">chevron_left</span>
-        </button>
-        <button
-          v-for="page in displayPages"
-          :key="page"
-          class="w-9 h-9 flex items-center justify-center rounded-md font-bold text-sm transition-all"
-          :class="page === currentPage ? 'bg-primary text-white shadow-sm' : 'border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'"
-          @click="currentPage = page; fetchData()"
-        >
-          {{ page }}
-        </button>
-        <button
-          class="w-9 h-9 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all disabled:opacity-30"
-          :disabled="currentPage >= totalPages"
-          @click="currentPage++; fetchData()"
-        >
-          <span class="material-symbols-outlined text-[20px]">chevron_right</span>
-        </button>
-      </div>
+    <div v-if="totalPages > 1" class="ui-pager mt-4">
+      <button class="ui-pager-btn" :disabled="currentPage <= 1" @click="currentPage--; fetchData()">
+        <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+      </button>
+      <button
+        v-for="page in displayPages"
+        :key="page"
+        class="ui-pager-btn"
+        :class="{ 'is-active': page === currentPage }"
+        @click="currentPage = page; fetchData()"
+      >{{ page }}</button>
+      <button class="ui-pager-btn" :disabled="currentPage >= totalPages" @click="currentPage++; fetchData()">
+        <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+      </button>
+      <span class="text-[11.5px] text-outline ml-1 tabnum">{{ currentPage }} / {{ totalPages }}</span>
     </div>
   </main>
 </template>

@@ -1,51 +1,53 @@
 <template>
-  <div class="space-y-8">
+  <div class="space-y-5">
     <div>
-      <h3 class="font-headline-sm text-headline-sm text-on-surface">安全设置</h3>
-      <p class="font-body-md text-body-md text-on-surface-variant mt-2">定期更换密码可以提高您的账户安全性。</p>
+      <h3 class="ui-section-title">
+        <span class="material-symbols-outlined text-[16px] text-primary">shield</span>安全设置
+      </h3>
+      <p class="text-[12px] text-on-surface-variant mt-1.5">定期更换密码可以提高您的账户安全性。</p>
     </div>
-    <form class="max-w-md space-y-6" @submit.prevent="handlePasswordChange">
-      <div class="space-y-2">
-        <label class="font-label-md text-label-md text-on-surface-variant">用户名</label>
+    <form class="max-w-md space-y-4" @submit.prevent="handlePasswordChange">
+      <div>
+        <label class="ui-form-label">用户名</label>
         <input
-          class="w-full px-4 py-3 rounded-lg border border-outline-variant bg-surface-container-low text-on-surface-variant font-body-md"
+          class="ui-input bg-surface-container-low text-on-surface-variant"
           disabled
           type="text"
           :value="userInfo.username || userInfo.phone"
         >
       </div>
-      <div class="space-y-2">
-        <label class="font-label-md text-label-md text-on-surface-variant">当前密码</label>
+      <div>
+        <label class="ui-form-label">当前密码</label>
         <input
           v-model="form.currentPassword"
-          class="w-full px-4 py-3 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
+          class="ui-input"
           placeholder="请输入原密码"
           type="password"
         >
       </div>
-      <div class="space-y-2">
-        <label class="font-label-md text-label-md text-on-surface-variant">新密码</label>
+      <div>
+        <label class="ui-form-label">新密码</label>
         <input
           v-model="form.newPassword"
-          class="w-full px-4 py-3 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
-          placeholder="6-20位字符，包含字母及数字"
+          class="ui-input"
+          placeholder="6-20 位字符，包含字母及数字"
           type="password"
         >
       </div>
-      <div class="space-y-2">
-        <label class="font-label-md text-label-md text-on-surface-variant">确认新密码</label>
+      <div>
+        <label class="ui-form-label">确认新密码</label>
         <input
           v-model="form.confirmPassword"
-          class="w-full px-4 py-3 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md"
+          class="ui-input"
           placeholder="请再次输入新密码"
           type="password"
         >
       </div>
-      <div class="flex gap-4 pt-4">
-        <button class="px-8 py-2.5 bg-primary text-white font-label-md text-label-md rounded-lg hover:bg-primary-container transition-colors shadow-md" type="submit" :disabled="submitting">
+      <div class="flex gap-2 pt-2">
+        <button class="ui-btn ui-btn-sm ui-btn-primary" type="submit" :disabled="submitting">
           {{ submitting ? '提交中...' : '提交修改' }}
         </button>
-        <button class="px-8 py-2.5 bg-white text-on-surface-variant border border-outline-variant font-label-md text-label-md rounded-lg hover:bg-surface-container-low transition-colors" type="button" @click="resetForm">
+        <button class="ui-btn ui-btn-sm ui-btn-secondary" type="button" @click="resetForm">
           重置
         </button>
       </div>

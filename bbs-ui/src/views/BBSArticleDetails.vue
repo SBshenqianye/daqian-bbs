@@ -1,5 +1,5 @@
 <template>
-  <main class="max-w-5xl mx-auto px-page-margin-mobile md:px-page-margin-desktop py-8 bg-surface min-h-screen">
+  <main class="max-w-5xl mx-auto px-page-margin-mobile md:px-page-margin-desktop py-6 md:py-8 bg-surface min-h-screen">
     <!-- 空态：帖子已被删除或不可见 -->
     <div v-if="articleState === 'deleted'" class="flex flex-col items-center justify-center py-24 text-on-surface-variant">
       <span class="material-symbols-outlined text-7xl mb-4 opacity-15">delete_outline</span>
@@ -22,12 +22,12 @@
 
     <!-- 帖子主体：标题 → 作者/元信息 → 正文 → 互动 -->
     <article v-if="articleState === 'normal'" class="bg-container rounded-2xl border border-border shadow-sm overflow-hidden mb-gutter">
-      <div class="px-6 md:px-9 pt-7 pb-6">
+      <div class="px-5 md:px-8 pt-6 pb-5">
         <header>
-          <h1 class="text-[22px] md:text-[27px] font-bold leading-snug tracking-tight text-on-surface">{{ article.title }}</h1>
+          <h1 class="text-[21px] md:text-[25px] font-bold leading-snug tracking-tight text-on-surface">{{ article.title }}</h1>
 
-          <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
-            <div class="flex items-center gap-3 min-w-0">
+          <div class="flex flex-wrap items-center justify-between gap-2.5 mt-3">
+            <div class="flex items-center gap-2.5 min-w-0">
               <BBSUserBadge
                 :avatar="article.authorAvatar"
                 :nickname="article.author"
@@ -37,49 +37,43 @@
                 :user-id="article.userId"
                 size="md"
               />
-              <span class="w-px h-8 bg-border shrink-0"></span>
-              <div class="text-[12px] text-outline leading-relaxed shrink-0">
-                <div>{{ formatTime(article.publishTime) }}</div>
-                <div class="mt-0.5 flex items-center gap-2">
-                  <span class="inline-flex items-center gap-0.5">
-                    <span class="material-symbols-outlined text-[13px]">visibility</span>{{ article.views }}
-                  </span>
-                  <span class="inline-flex items-center gap-0.5">
-                    <span class="material-symbols-outlined text-[13px]">chat_bubble</span>{{ totalCommentCount }}
-                  </span>
-                </div>
+              <span class="w-px h-7 bg-border shrink-0"></span>
+              <div class="ui-meta text-[11.5px] leading-relaxed shrink-0">
+                <span class="ui-meta-item"><span class="material-symbols-outlined">schedule</span>{{ formatTime(article.publishTime) }}</span>
+                <span class="ui-meta-item"><span class="material-symbols-outlined">visibility</span>{{ article.views }}</span>
+                <span class="ui-meta-item"><span class="material-symbols-outlined">chat_bubble</span>{{ totalCommentCount }}</span>
               </div>
             </div>
 
-            <div class="flex items-center gap-2">
-              <span v-if="article.isFeatured" class="inline-flex items-center gap-1 px-2 py-1 text-[11px] bg-rank-gold/10 text-rank-gold rounded-md">
-                <span class="material-symbols-outlined text-[13px]">stars</span>精华
+            <div class="flex items-center gap-1.5">
+              <span v-if="article.isFeatured" class="ui-chip ui-chip-gold">
+                <span class="material-symbols-outlined filled-icon">stars</span>精华
               </span>
               <el-tooltip :content="articleTagDescription" placement="top" effect="dark" :disabled="!articleTagDescription">
-                <span v-if="articleTagName" class="px-2 py-1 bg-primary/8 text-primary text-[11px] rounded-md">{{ articleTagName }}</span>
+                <span v-if="articleTagName" class="ui-chip ui-chip-primary">{{ articleTagName }}</span>
               </el-tooltip>
-              <span v-if="article.isAnonymous" class="px-2 py-1 bg-surface-variant text-on-surface-variant text-[11px] rounded-md">匿名</span>
+              <span v-if="article.isAnonymous" class="ui-chip ui-chip-muted">匿名</span>
               <button
                 v-if="canReportArticle"
-                class="w-7 h-7 rounded-md flex items-center justify-center text-outline hover:text-error hover:bg-error/5 transition-colors"
+                class="ui-icon-btn is-danger"
                 title="举报该帖"
                 @click="openArticleReport"
               >
-                <span class="material-symbols-outlined text-[17px]">flag</span>
+                <span class="material-symbols-outlined">flag</span>
               </button>
             </div>
           </div>
         </header>
 
-        <div class="h-px bg-border my-5"></div>
+        <div class="h-px bg-border my-4"></div>
 
         <!-- 正文：第一视觉重心 -->
-        <section v-if="renderedHtml" class="markdown-body md-body" v-html="renderedHtml"></section>
-        <section v-else class="text-on-surface-variant">暂无内容</section>
+        <section v-if="renderedHtml" class="markdown-body md-body article-body" v-html="renderedHtml"></section>
+        <section v-else class="article-body text-on-surface-variant">暂无内容</section>
       </div>
 
       <!-- 互动条：克制地放在正文之后，不抢正文 -->
-      <footer class="px-6 md:px-9 py-2.5 border-t border-border bg-surface-container-lowest/70 flex items-center gap-1.5 flex-wrap">
+      <footer class="px-5 md:px-8 py-2 border-t border-border bg-surface-container-lowest/70 flex items-center gap-1.5 flex-wrap">
         <button class="int-btn" :class="{ 'is-on': interaction.liked }" @click="toggleLike">
           <span class="material-symbols-outlined">{{ interaction.liked ? 'thumb_up' : 'thumb_up_off_alt' }}</span>
           <span>点赞</span><span class="tabnum">{{ interaction.likes || 0 }}</span>
@@ -97,23 +91,25 @@
     </article>
 
     <!-- Attachments Section -->
-    <section v-if="articleState === 'normal' && article.attachments && article.attachments.length > 0" class="bg-container rounded-lg border border-border shadow-sm p-card-padding mb-gutter">
-      <div class="flex items-center gap-2 mb-4">
-        <span class="material-symbols-outlined text-primary-container">attachment</span>
-        <h3 class="font-headline-sm text-headline-sm text-on-surface">附件 ({{ article.attachments.length }})</h3>
+    <section v-if="articleState === 'normal' && article.attachments && article.attachments.length > 0" class="ui-card p-4 mb-3">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-6 h-6 rounded-md bg-primary/10 text-primary grid place-items-center">
+          <span class="material-symbols-outlined text-[15px]">attachment</span>
+        </span>
+        <h3 class="text-[14px] font-semibold text-on-surface">附件 <span class="text-[11px] text-outline font-normal">{{ article.attachments.length }}</span></h3>
       </div>
-      <div class="space-y-3">
+      <div class="space-y-2">
         <div
           v-for="(att, i) in article.attachments"
           :key="i"
-          class="flex items-center justify-between p-3 bg-surface rounded-lg border border-outline-variant hover:border-primary-container transition-primary group"
+          class="flex items-center justify-between p-2.5 bg-surface rounded-lg border border-outline-variant hover:border-primary/40 transition-colors group"
         >
-          <div class="flex items-center gap-3">
-            <span class="material-symbols-outlined text-outline group-hover:text-primary-container">description</span>
-            <span class="font-body-md text-body-md text-on-surface">{{ att.name }}</span>
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="material-symbols-outlined text-outline group-hover:text-primary text-[18px]">description</span>
+            <span class="text-[12.5px] text-on-surface truncate">{{ att.name }}</span>
           </div>
-          <button class="flex items-center gap-2 bg-primary-container text-white px-4 py-1.5 rounded text-label-md font-label-md hover:bg-primary transition-primary" @click="downloadFile(att.filePath, att.name)">
-            <span class="material-symbols-outlined text-[18px]">download</span>
+          <button class="flex items-center gap-1.5 bg-primary text-white px-3 py-1.5 rounded-lg text-[11.5px] font-medium hover:opacity-90 transition-opacity shrink-0" @click="downloadFile(att.filePath, att.name)">
+            <span class="material-symbols-outlined text-[16px]">download</span>
             下载
           </button>
         </div>
@@ -122,16 +118,18 @@
 
     <!-- Comment Section -->
     <section v-if="articleState === 'normal'" class="bg-container rounded-2xl border border-border shadow-sm overflow-hidden" :class="{ 'pb-16': showStickyBar }">
-      <div class="px-6 md:px-9 py-6">
-        <div class="flex items-center gap-2 mb-4">
-          <h3 class="text-[16px] font-semibold text-on-surface">评论</h3>
-          <span class="px-2 py-0.5 bg-surface-container-high rounded-full text-[11px] text-on-surface-variant">{{ totalCommentCount }}</span>
+      <div class="px-5 md:px-8 py-5">
+        <div class="flex items-center gap-2 mb-3">
+          <h3 class="ui-section-title">
+            <span class="material-symbols-outlined text-[16px] text-primary">forum</span>评论
+          </h3>
+          <span class="ui-chip ui-chip-muted tabnum">{{ totalCommentCount }}</span>
         </div>
 
         <!-- 评论输入：卡片式，按钮不再与输入框争抢视线 -->
         <div class="rounded-xl border border-border bg-surface-container-lowest p-3">
-          <div class="flex gap-3">
-            <BBSAvatar :src="currentUserAvatar" :size="34" :show-level="false" />
+          <div class="flex gap-2.5">
+            <BBSAvatar :src="currentUserAvatar" :size="32" :show-level="false" />
             <div class="flex-1 min-w-0">
               <textarea
                 ref="commentInput"
@@ -149,7 +147,7 @@
                 </label>
                 <span v-else class="text-[11px] text-outline">Enter 发送 · Shift+Enter 换行</span>
                 <button
-                  class="px-3.5 py-1.5 rounded-lg bg-primary text-white text-[12px] font-medium hover:opacity-90 active:scale-[0.98] transition"
+                  class="ui-btn ui-btn-xs ui-btn-primary"
                   @click="submitComment"
                 >发表评论</button>
               </div>
@@ -174,17 +172,17 @@
           <!-- 空状态：全无评论 -->
           <div
             v-if="showCommentEmptyState && totalCommentCount === 0"
-            class="flex flex-col items-center justify-center py-14 text-on-surface-variant"
+            class="ui-empty"
           >
-            <span class="material-symbols-outlined text-[44px] mb-2 opacity-15">chat_bubble_outline</span>
-            <p class="text-[14px] text-on-surface mb-1">还没有评论</p>
-            <p class="text-[12px]">来说点什么吧～</p>
+            <span class="material-symbols-outlined">chat_bubble_outline</span>
+            <p class="ui-empty-title">还没有评论</p>
+            <p class="ui-empty-desc">来说点什么吧～</p>
           </div>
 
           <!-- 空状态：评论稀少 -->
           <div
             v-if="showCommentEmptyState && totalCommentCount > 0"
-            class="mt-2 py-6 flex items-center justify-center gap-2 text-[12px] text-on-surface-variant"
+            class="mt-1 py-5 flex items-center justify-center gap-2 text-[11.5px] text-on-surface-variant"
           >
             <span class="h-px w-10 bg-border"></span>
             评论不多，来说点什么吧～
@@ -216,7 +214,7 @@
               @input="autoResizeCommentInput"
             ></textarea>
             <button
-              class="bg-primary-container text-white px-6 py-2 rounded-lg font-label-md text-label-md hover:shadow-md hover:bg-primary transition-primary active:scale-95 flex-shrink-0"
+              class="ui-btn ui-btn-sm ui-btn-primary flex-shrink-0"
               @click="submitComment"
             >
               发表评论
@@ -935,6 +933,16 @@ export default {
   line-height: 1.9;
   color: #1f2937;
   word-break: break-word;
+}
+
+/* 短帖也保留足够的呼吸空间，避免正文被标题和互动条上下夹住 */
+.article-body {
+  min-height: 220px;
+}
+@media (min-width: 768px) {
+  .article-body {
+    min-height: 280px;
+  }
 }
 .md-body ::v-deep p {
   margin: 0 0 0.9em;

@@ -10,22 +10,26 @@
       <h1 class="font-headline-lg text-headline-lg text-on-surface">版主投诉</h1>
     </header>
 
-    <p class="text-body-md text-on-surface-variant mb-6">如发现版主存在徇私评定精华、随意删帖、履职不作为等问题，可在此提交投诉。科技数字化工作部将在5个工作日内核查反馈。</p>
+    <p class="text-[12px] leading-relaxed text-on-surface-variant mb-4 flex items-start gap-1.5">
+      <span class="material-symbols-outlined text-[15px] text-primary mt-px">info</span>
+      <span>如发现版主存在徇私评定精华、随意删帖、履职不作为等问题，可在此提交投诉。科技数字化工作部将在 5 个工作日内核查反馈。</span>
+    </p>
 
     <!-- 提交投诉 -->
-    <div class="bg-container border border-outline-variant rounded-lg p-card-padding mb-8">
-      <h2 class="font-headline-sm text-headline-sm mb-4">提交投诉</h2>
+    <div class="ui-card p-4 mb-3">
+      <h2 class="ui-section-title mb-3">
+        <span class="w-6 h-6 rounded-md bg-primary/10 text-primary grid place-items-center">
+          <span class="material-symbols-outlined text-[15px]">campaign</span>
+        </span>
+        提交投诉
+      </h2>
 
       <!-- 板块（选填） -->
-      <div class="mb-4">
-        <label class="block text-body-sm font-medium text-on-surface mb-1">
-          板块 <span class="text-on-surface-variant font-normal">（选填，选择后可缩小版主范围）</span>
+      <div class="mb-3">
+        <label class="ui-form-label">
+          板块 <span class="font-normal text-outline">（选填，选择后可缩小版主范围）</span>
         </label>
-        <select
-          v-model="selectedLabelId"
-          class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none text-body-md"
-          @change="onLabelChange"
-        >
+        <select v-model="selectedLabelId" class="ui-input" @change="onLabelChange">
           <option :value="null">全部板块</option>
           <option v-for="label in labels" :key="label.labelId" :value="label.labelId">
             {{ label.labelName }}
@@ -34,35 +38,35 @@
       </div>
 
       <!-- 版主（选填） -->
-      <div class="mb-4">
-        <label class="block text-body-sm font-medium text-on-surface mb-1">
-          被投诉版主 <span class="text-on-surface-variant font-normal">（选填，可按姓名搜索）</span>
+      <div class="mb-3">
+        <label class="ui-form-label">
+          被投诉版主 <span class="font-normal text-outline">（选填，可按姓名搜索）</span>
         </label>
         <input
           v-model="moderatorSearch"
           type="text"
-          class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none text-body-md mb-2"
+          class="ui-input mb-2"
           placeholder="输入版主姓名搜索..."
         >
         <div v-if="moderatorsLoading" class="flex items-center justify-center py-4">
           <span class="inline-block w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
         </div>
-        <div v-else-if="filteredModerators.length === 0 && (selectedLabelId || moderatorSearch.trim())" class="py-3 text-center text-on-surface-variant text-body-sm">
+        <div v-else-if="filteredModerators.length === 0 && (selectedLabelId || moderatorSearch.trim())" class="py-3 text-center text-on-surface-variant text-[11.5px]">
           未找到匹配的版主
         </div>
-        <div v-else-if="filteredModerators.length > 0" class="space-y-2 max-h-[240px] overflow-y-auto border border-outline-variant/50 rounded-lg p-2">
+        <div v-else-if="filteredModerators.length > 0" class="space-y-1 max-h-[220px] overflow-y-auto border border-outline-variant/60 rounded-lg p-1.5 custom-scrollbar">
           <div
             v-for="mod in filteredModerators"
             :key="mod.userId + '-' + mod.labelId"
-            class="flex items-center gap-3 p-2 rounded-lg border transition-all cursor-pointer"
+            class="flex items-center gap-2.5 p-2 rounded-lg border transition-all cursor-pointer"
             :class="selectedModerator && selectedModerator.userId === mod.userId && selectedModerator.labelId === mod.labelId
               ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
               : 'border-transparent hover:bg-surface-container-low'"
             @click="selectModerator(mod)"
           >
             <div class="flex-shrink-0">
-              <span v-if="selectedModerator && selectedModerator.userId === mod.userId && selectedModerator.labelId === mod.labelId" class="material-symbols-outlined text-primary text-[20px]">radio_button_checked</span>
-              <span v-else class="material-symbols-outlined text-outline text-[20px]">radio_button_unchecked</span>
+              <span v-if="selectedModerator && selectedModerator.userId === mod.userId && selectedModerator.labelId === mod.labelId" class="material-symbols-outlined text-primary text-[18px]">radio_button_checked</span>
+              <span v-else class="material-symbols-outlined text-outline text-[18px]">radio_button_unchecked</span>
             </div>
             <img
               v-if="mod.avatar"
@@ -72,34 +76,34 @@
             <span v-else class="w-7 h-7 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant text-[12px] flex-shrink-0">
               {{ (mod.nickname || '').charAt(0) }}
             </span>
-            <span class="font-body-md text-on-surface">{{ mod.nickname }}</span>
-            <span v-if="!selectedLabelId && mod.labelName" class="text-body-sm text-on-surface-variant">· {{ mod.labelName }}</span>
+            <span class="text-[12.5px] text-on-surface">{{ mod.nickname }}</span>
+            <span v-if="!selectedLabelId && mod.labelName" class="text-[11px] text-on-surface-variant">· {{ mod.labelName }}</span>
           </div>
         </div>
-        <p v-if="selectedModerator" class="mt-1 text-body-sm text-primary">
+        <p v-if="selectedModerator" class="mt-1 text-[11.5px] text-primary">
           已选择：{{ selectedModerator.nickname }}
           <button class="ml-2 text-on-surface-variant hover:text-error" @click="selectedModerator = null">清除</button>
         </p>
       </div>
 
       <!-- 投诉内容（必填） -->
-      <div class="mb-4">
-        <label class="block text-body-sm font-medium text-on-surface mb-1">
+      <div class="mb-3">
+        <label class="ui-form-label">
           投诉内容 <span class="text-error">*</span>
         </label>
         <textarea
           v-model="form.content"
           rows="5"
-          class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none resize-none text-body-md"
+          class="ui-textarea"
           :placeholder="'请详细描述投诉事项，包括具体行为、时间等信息...\n如未选择板块和版主，请在内容中尽量说明以便管理员核查。'"
           maxlength="500"
         ></textarea>
-        <span class="text-body-sm text-on-surface-variant">{{ (form.content || '').length }}/500</span>
+        <span class="text-[11px] text-outline tabnum">{{ (form.content || '').length }}/500</span>
       </div>
 
       <div class="flex justify-end">
         <button
-          class="px-6 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed font-label-md"
+          class="ui-btn ui-btn-sm ui-btn-primary"
           :disabled="submitting || !form.content.trim()"
           @click="handleSubmit"
         >
@@ -109,31 +113,32 @@
     </div>
 
     <!-- 我的投诉记录 -->
-    <div class="bg-container border border-outline-variant rounded-lg p-card-padding">
-      <h2 class="font-headline-sm text-headline-sm mb-4">我的投诉记录</h2>
+    <div class="ui-card p-4">
+      <h2 class="ui-section-title mb-3">我的投诉记录</h2>
       <div v-if="loading" class="flex items-center justify-center py-8">
         <span class="inline-block w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
       </div>
-      <div v-else-if="complaints.length === 0" class="py-8 text-center text-on-surface-variant">
-        暂无投诉记录
+      <div v-else-if="complaints.length === 0" class="ui-empty py-8">
+        <span class="material-symbols-outlined">feedback</span>
+        <p class="ui-empty-title">暂无投诉记录</p>
       </div>
-      <div v-else class="space-y-3">
-        <div v-for="item in complaints" :key="item.id" class="border border-outline-variant/50 rounded-lg p-4">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-body-sm text-on-surface-variant">
+      <div v-else class="space-y-2">
+        <div v-for="item in complaints" :key="item.id" class="border border-outline-variant/60 rounded-lg p-3">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="ui-meta">
               投诉 #{{ item.id }}
               <template v-if="item.moderatorName"> · 版主：{{ item.moderatorName }}</template>
               <template v-else> · 未指定版主</template>
             </span>
-            <span class="px-2 py-0.5 rounded text-[11px] font-medium"
+            <span class="ui-chip"
               :class="{
-                'bg-yellow-100 text-yellow-800': item.status === 'pending',
-                'bg-green-100 text-green-800': item.status === 'accepted',
-                'bg-red-100 text-red-800': item.status === 'rejected'
+                'bg-amber-50 text-amber-700': item.status === 'pending',
+                'bg-green-50 text-green-700': item.status === 'accepted',
+                'bg-red-50 text-red-700': item.status === 'rejected'
               }">{{ statusLabel(item.status) }}</span>
           </div>
-          <p class="text-body-md text-on-surface mb-2">{{ item.content }}</p>
-          <div class="text-body-sm text-on-surface-variant space-y-1">
+          <p class="text-[12.5px] text-on-surface leading-relaxed">{{ item.content }}</p>
+          <div class="text-[11px] text-on-surface-variant space-y-0.5 mt-1.5">
             <p>提交时间：{{ item.createTime }}</p>
             <p v-if="item.reviewRemark">审核结果：{{ item.reviewRemark }}</p>
           </div>

@@ -3,30 +3,33 @@
     class="fixed top-0 left-0 right-0 h-16 bg-container z-50 transition-shadow duration-300"
     :class="{ 'shadow-md border-b-0': scrolled, 'border-b border-outline-variant': !scrolled }"
   >
-    <div class="max-w-7xl mx-auto h-full px-page-margin-desktop flex items-center justify-between gap-8">
+    <div class="max-w-7xl mx-auto h-full px-page-margin-mobile md:px-page-margin-desktop flex items-center justify-between gap-5">
       <!-- Left: Brand & Main Nav -->
-      <div class="flex items-center gap-8 flex-shrink-0">
+      <div class="flex items-center gap-6 flex-shrink-0">
         <router-link
           to="/forum"
-          class="text-headline-lg font-semibold text-brand-blue tracking-tight no-underline"
+          class="header-brand text-brand-blue tracking-tight no-underline whitespace-nowrap"
         >
           大千智荟交流论坛
         </router-link>
-        <nav class="hidden md:flex items-center gap-8">
+        <nav class="hidden md:flex items-center gap-4">
           <router-link
             to="/forum"
             class="nav-main-link pb-1 border-b-2 transition-colors"
             :class="isActive('/forum') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
           >
-            论坛
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined text-[17px]">forum</span>
+              论坛
+            </span>
           </router-link>
           <router-link
             to="/featured"
             class="nav-main-link pb-1 border-b-2 transition-colors"
             :class="isActive('/featured') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
           >
-            <span class="flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-[20px]">stars</span>
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined text-[17px]">stars</span>
               精华帖
             </span>
           </router-link>
@@ -35,21 +38,24 @@
             class="nav-main-link pb-1 border-b-2 transition-colors"
             :class="isActive('/points') ? 'text-brand-blue border-brand-blue' : 'text-on-surface-variant border-transparent hover:text-brand-blue'"
           >
-            排行榜
+            <span class="flex items-center gap-1">
+              <span class="material-symbols-outlined text-[17px]">emoji_events</span>
+              排行榜
+            </span>
           </router-link>
         </nav>
       </div>
 
       <!-- Middle: Search Bar (show on all pages, redirects to forum) -->
-      <div class="flex-grow max-w-2xl hidden md:block">
+      <div class="flex-1 hidden lg:block max-w-xl min-w-[180px]">
         <div class="grid grid-cols-1 grid-rows-1 group">
           <span
-            class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline transition-colors pointer-events-none"
+            class="material-symbols-outlined col-start-1 row-start-1 self-center ml-3 text-outline transition-colors pointer-events-none text-[18px]"
             :class="{ 'text-brand-blue': searchFocused }"
           >search</span>
           <input
             v-model="keywords"
-            class="w-full col-start-1 row-start-1 h-10 pl-10 pr-4 bg-surface-container-low rounded-lg border border-transparent focus:border-brand-blue focus:bg-container focus:ring-0 transition-all font-body-md text-body-md outline-none"
+            class="w-full col-start-1 row-start-1 h-8 pl-9 pr-4 bg-surface-container-low rounded-lg border border-transparent focus:border-brand-blue focus:bg-container focus:ring-0 transition-all text-[12.5px] outline-none placeholder:text-outline"
             placeholder="搜索标题、内容或人员..."
             type="text"
             @focus="searchFocused = true"
@@ -61,13 +67,13 @@
       </div>
 
       <!-- Right: Actions & Profile -->
-      <div class="flex items-center gap-6 flex-shrink-0">
+      <div class="flex items-center gap-3 flex-shrink-0">
         <router-link
           v-if="canPost"
           to="/write"
-          class="flex items-center gap-2 bg-brand-blue text-on-primary px-5 py-2 rounded-lg font-label-md text-label-md hover:bg-primary-container transition-all active:scale-95 no-underline"
+          class="ui-btn ui-btn-sm ui-btn-primary no-underline"
         >
-          <span class="material-symbols-outlined text-[20px]">add</span>
+          <span class="material-symbols-outlined text-[18px]">edit_square</span>
           发布
         </router-link>
 
@@ -196,8 +202,9 @@
         <router-link
           v-else
           to="/login"
-          class="flex items-center gap-2 bg-surface-container-low text-on-surface-variant px-5 py-2 rounded-lg font-label-md text-label-md hover:bg-outline-variant transition-all active:scale-95 no-underline"
+          class="ui-btn ui-btn-sm bg-surface-container-low text-on-surface-variant hover:bg-outline-variant no-underline"
         >
+          <span class="material-symbols-outlined text-[17px]">login</span>
           登录
         </router-link>
       </div>
@@ -543,11 +550,22 @@ export default {
 </script>
 
 <style scoped>
-/* 顶部主导航：比正文标签更醒目，突出“论坛 / 精华帖 / 排行榜” */
+/* 品牌：20px 足够识别，不再用 24px 抢正文视线 */
+.header-brand {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+@media (max-width: 767px) {
+  .header-brand {
+    font-size: 17px;
+  }
+}
+/* 顶部主导航：比正文略强，但低于帖子标题 */
 .nav-main-link {
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 14px;
+  line-height: 22px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 </style>

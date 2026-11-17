@@ -4,52 +4,61 @@
       <h1 class="font-headline-lg text-headline-lg text-on-surface">我的积分记录</h1>
     </header>
 
-    <div v-if="levelInfo" class="bg-container border border-outline-variant rounded-lg p-card-padding mb-8 flex items-center gap-6">
-      <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-[40px] text-primary">emoji_events</span>
-        <div>
-          <p class="font-headline-sm text-headline-sm text-on-surface">等级 {{ levelInfo.level }}</p>
-          <p class="font-body-md text-body-md text-on-surface-variant">累计 {{ levelInfo.totalPoints }} 积分</p>
+    <div v-if="levelInfo" class="ui-card p-4 mb-4 flex items-center gap-4 flex-wrap">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="w-9 h-9 rounded-lg bg-amber-50 grid place-items-center shrink-0">
+          <span class="material-symbols-outlined text-[19px] text-amber-600 filled-icon">emoji_events</span>
+        </span>
+        <div class="min-w-0">
+          <p class="text-[14px] font-semibold text-on-surface">Lv.{{ levelInfo.level }}</p>
+          <p class="text-[11.5px] text-outline">累计 {{ levelInfo.totalPoints }} 积分</p>
         </div>
       </div>
-      <div class="flex-1 h-3 bg-surface-container-low rounded-full overflow-hidden">
-        <div class="h-full bg-primary rounded-full transition-all" :style="{ width: (levelInfo.totalPoints % 100) + '%' }"></div>
+      <div class="flex-1 min-w-[140px]">
+        <div class="h-1.5 bg-surface-container rounded-full overflow-hidden">
+          <div class="h-full bg-primary rounded-full transition-all" :style="{ width: (levelInfo.totalPoints % 100) + '%' }"></div>
+        </div>
+        <p class="text-[10.5px] text-outline mt-1">距下一级还需 {{ 100 - (levelInfo.totalPoints % 100) }} 分</p>
       </div>
-      <span class="font-body-sm text-body-sm text-on-surface-variant">距下一级还需 {{ 100 - (levelInfo.totalPoints % 100) }} 分</span>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-20">
+    <div v-if="loading" class="flex items-center justify-center py-16">
       <span class="inline-block w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
     </div>
 
     <template v-if="!loading">
-      <div v-if="list.length > 0" class="space-y-gutter">
+      <div v-if="list.length > 0" class="space-y-2">
         <div v-for="(item, idx) in list" :id="'log-'+idx" :key="idx"
-             class="bg-container border border-outline-variant rounded-lg p-card-padding"
+             class="ui-card p-3.5 flex items-center gap-3"
              :class="[(item.isReversed === 1 ? 'opacity-50' : ''), highlighted === 'log-'+idx ? 'ring-2 ring-primary bg-primary/10' : '']">
-          <div class="flex items-center justify-between">
-            <div>
-              <a v-if="hasPair(item)" href="javascript:;" class="font-body-md text-body-md text-primary hover:underline"
-                 @click="jumpToPair(item)">
-                {{ item.reason || '积分变动' }} {{ pairArrow(item) }}
-              </a>
-              <p v-else class="font-body-md text-body-md text-on-surface">{{ item.reason || '积分变动' }}</p>
-              <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">{{ item.createTime }}</p>
-            </div>
-            <span class="font-headline-sm text-headline-sm" :class="item.pointsChange > 0 ? 'text-green-600' : 'text-red-600'">
-              {{ item.pointsChange > 0 ? '+' : '' }}{{ item.pointsChange }}
-            </span>
+          <span
+            class="w-8 h-8 rounded-lg grid place-items-center shrink-0"
+            :class="item.pointsChange > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'"
+          >
+            <span class="material-symbols-outlined text-[17px]">{{ item.pointsChange > 0 ? 'add_circle' : 'remove_circle' }}</span>
+          </span>
+          <div class="flex-1 min-w-0">
+            <a v-if="hasPair(item)" href="javascript:;" class="text-[13px] text-primary hover:underline truncate block"
+               @click="jumpToPair(item)">
+              {{ item.reason || '积分变动' }} {{ pairArrow(item) }}
+            </a>
+            <p v-else class="text-[13px] text-on-surface truncate">{{ item.reason || '积分变动' }}</p>
+            <p class="ui-meta mt-1"><span class="material-symbols-outlined">schedule</span>{{ item.createTime }}</p>
           </div>
+          <span class="text-[15px] font-bold shrink-0 tabnum" :class="item.pointsChange > 0 ? 'text-green-600' : 'text-red-600'">
+            {{ item.pointsChange > 0 ? '+' : '' }}{{ item.pointsChange }}
+          </span>
         </div>
       </div>
-      <div v-else class="flex flex-col items-center justify-center py-24 text-on-surface-variant">
-        <span class="material-symbols-outlined text-6xl mb-4 opacity-20">receipt_long</span>
-        <p class="font-body-lg text-body-lg">暂无积分记录</p>
+      <div v-else class="ui-empty">
+        <span class="material-symbols-outlined">receipt_long</span>
+        <p class="ui-empty-title">暂无积分记录</p>
+        <p class="ui-empty-desc">发帖、回复和被采纳都会获得积分</p>
       </div>
-      <div v-if="total > pageSize" class="flex justify-center mt-8 gap-2">
-        <button class="px-4 py-2 border rounded-lg text-body-sm" :disabled="currentPage <= 1" @click="changePage(currentPage - 1)">上一页</button>
-        <span class="px-4 py-2 text-body-sm text-on-surface-variant">{{ currentPage }}/{{ Math.ceil(total / pageSize) }}</span>
-        <button class="px-4 py-2 border rounded-lg text-body-sm" :disabled="currentPage >= Math.ceil(total / pageSize)" @click="changePage(currentPage + 1)">下一页</button>
+      <div v-if="total > pageSize" class="ui-pager mt-4">
+        <button class="ui-pager-btn" :disabled="currentPage <= 1" @click="changePage(currentPage - 1)">上一页</button>
+        <span class="text-[12px] text-on-surface-variant px-1 tabnum">{{ currentPage }} / {{ Math.ceil(total / pageSize) }}</span>
+        <button class="ui-pager-btn" :disabled="currentPage >= Math.ceil(total / pageSize)" @click="changePage(currentPage + 1)">下一页</button>
       </div>
     </template>
   </main>

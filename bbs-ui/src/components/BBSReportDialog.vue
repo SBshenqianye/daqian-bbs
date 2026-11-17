@@ -4,10 +4,10 @@
     <div class="absolute inset-0 bg-black/30" @click="handleClose"></div>
     <!-- 弹窗主体 -->
     <div class="relative h-full flex items-center justify-center p-4">
-      <div class="bg-container rounded-lg border border-border shadow-xl w-full max-w-md p-6">
+      <div class="bg-container rounded-xl border border-border shadow-xl w-full max-w-md p-5">
         <header class="flex items-center justify-between mb-4">
-          <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
-            <span class="material-symbols-outlined text-[20px] text-error">flag</span> 举报
+          <h3 class="text-[15px] font-semibold text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px] text-error">flag</span> 举报
           </h3>
           <button class="text-on-surface-variant hover:text-on-surface transition-primary" @click="handleClose">
             <span class="material-symbols-outlined text-[20px]">close</span>
@@ -20,10 +20,10 @@
           <p class="font-body-sm text-body-sm text-on-surface break-all">{{ targetPreview }}</p>
         </div>
 
-        <div class="space-y-3">
+        <div class="space-y-2.5">
           <select
             v-model="violationType"
-            class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none font-body-md text-body-md"
+            class="ui-input"
           >
             <option value="">请选择违规类型</option>
             <option v-for="t in violationTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
@@ -32,8 +32,8 @@
             v-model="description"
             rows="3"
             maxlength="200"
-            placeholder="补充说明违规具体情况（选填，200字以内）"
-            class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none resize-none font-body-md text-body-md"
+            placeholder="补充说明违规具体情况（选填，200 字以内）"
+            class="ui-textarea"
           ></textarea>
           <label class="flex items-center gap-2 text-body-sm text-on-surface cursor-pointer select-none">
             <input v-model="isAnonymous" type="checkbox" class="w-4 h-4 text-primary border-outline-variant rounded">
@@ -44,16 +44,16 @@
           </p>
         </div>
 
-        <div class="flex justify-end gap-3 mt-5">
+        <div class="flex justify-end gap-2 mt-4">
           <button
-            class="px-5 py-2 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-primary disabled:opacity-60"
+            class="ui-btn ui-btn-sm ui-btn-secondary"
             :disabled="submitting"
             @click="handleClose"
           >
             取消
           </button>
           <button
-            class="px-5 py-2 rounded-lg bg-primary-container text-white hover:bg-primary transition-primary active:scale-95 disabled:opacity-60"
+            class="ui-btn ui-btn-sm ui-btn-primary"
             :disabled="submitting || !violationType"
             @click="handleSubmit"
           >

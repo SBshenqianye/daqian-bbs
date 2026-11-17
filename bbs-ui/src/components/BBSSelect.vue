@@ -21,7 +21,7 @@
           :key="String(opt.value)"
           type="button"
           class="w-full flex items-center justify-between gap-3 px-3 py-1.5 text-left text-[12px] whitespace-nowrap transition-colors"
-          :class="String(opt.value) === String(value) ? 'bg-primary/8 text-primary' : 'text-on-surface hover:bg-surface-variant'"
+          :class="String(opt.value) === String(value) ? 'bg-primary/10 text-primary' : 'text-on-surface hover:bg-surface-variant'"
           @click="pick(opt)"
         >
           <span>{{ opt.label }}</span>

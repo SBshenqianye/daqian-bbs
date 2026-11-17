@@ -1,92 +1,77 @@
 <template>
-  <main class="max-w-4xl mx-auto px-page-margin-mobile md:px-page-margin-desktop py-12 bg-surface min-h-screen">
-    <!-- Page Header -->
-    <header class="mb-8 flex items-center justify-between">
-      <div>
-        <h1 class="font-headline-lg text-headline-lg text-on-surface flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary">notifications</span>
-          消息通知
-        </h1>
-        <p v-if="unreadSystem > 0" class="text-body-md text-on-surface-variant mt-1">你有 {{ unreadSystem }} 条未读消息</p>
-      </div>
+  <main class="ui-page max-w-4xl">
+    <PageHeader
+      title="消息通知"
+      :subtitle="unreadSystem > 0 ? '你有 ' + unreadSystem + ' 条未读消息' : '帖子被采纳、举报核实等系统事件会汇总到这里'"
+      icon="notifications"
+    >
       <button
         v-if="unreadSystem > 0"
-        class="px-4 py-2 text-sm text-primary hover:bg-primary/5 rounded-lg transition-colors"
+        class="ui-btn ui-btn-sm ui-btn-secondary"
         @click="markAllRead"
       >
-        全部已读
+        <span class="material-symbols-outlined text-[16px]">done_all</span>全部已读
       </button>
-    </header>
+    </PageHeader>
 
     <!-- Loading -->
-    <div v-if="loading" class="flex items-center justify-center py-20">
+    <div v-if="loading" class="flex items-center justify-center py-16">
       <span class="inline-block w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></span>
     </div>
 
     <!-- Notification List -->
     <template v-else>
-      <div v-if="notifications.length > 0" class="space-y-3">
+      <div v-if="notifications.length > 0" class="space-y-2">
         <div
           v-for="item in notifications"
           :key="item.id"
-          class="bg-container border rounded-lg p-4 flex items-start gap-4 transition-colors cursor-pointer hover:shadow-sm"
-          :class="item.isRead === 0 ? 'border-primary/30 bg-primary/5' : 'border-outline-variant'"
+          class="ui-card p-3.5 flex items-start gap-3 transition-colors cursor-pointer"
+          :class="item.isRead === 0 ? 'border-primary/25 bg-primary/5 hover:bg-primary/10' : 'hover:bg-surface-container-low'"
           @click="handleNotificationClick(item)"
         >
           <!-- Icon -->
-          <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" :class="getIconBg(item.type)">
-            <span class="material-symbols-outlined text-[20px]" :class="getIconColor(item.type)">{{ getIcon(item.type) }}</span>
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" :class="getIconBg(item.type)">
+            <span class="material-symbols-outlined text-[18px]" :class="getIconColor(item.type)">{{ getIcon(item.type) }}</span>
           </div>
           <!-- Content -->
           <div class="flex-grow min-w-0">
-            <p class="font-body-md text-body-md" :class="item.isRead === 0 ? 'text-on-surface font-medium' : 'text-on-surface-variant'">
+            <p class="text-[13px] leading-snug" :class="item.isRead === 0 ? 'text-on-surface font-medium' : 'text-on-surface-variant'">
               {{ item.title }}
             </p>
-            <div class="flex items-center gap-3 mt-1.5">
-              <span class="font-label-sm text-label-sm text-outline">{{ getTypeLabel(item.type) }}</span>
-              <span class="font-label-sm text-label-sm text-outline">{{ friendlyTime(item.createTime) }}</span>
+            <div class="ui-meta mt-1.5">
+              <span class="ui-chip ui-chip-muted">{{ getTypeLabel(item.type) }}</span>
+              <span class="ui-meta-item"><span class="material-symbols-outlined">schedule</span>{{ friendlyTime(item.createTime) }}</span>
             </div>
           </div>
           <!-- Unread dot -->
-          <div v-if="item.isRead === 0" class="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0 mt-2"></div>
+          <div v-if="item.isRead === 0" class="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2"></div>
         </div>
       </div>
 
       <!-- Empty State -->
-      <div v-else class="flex flex-col items-center justify-center py-24 text-on-surface-variant">
-        <span class="material-symbols-outlined text-7xl mb-4 opacity-15">notifications_none</span>
-        <p class="font-headline-sm text-headline-sm mb-2">暂无系统通知</p>
-        <p class="font-body-md text-body-md">帖子被采纳、举报核实或产生违规记录等系统事件时，你会在这里收到通知；回复/评论提醒请前往"回复我的"</p>
+      <div v-else class="ui-empty">
+        <span class="material-symbols-outlined">notifications_none</span>
+        <p class="ui-empty-title">暂无系统通知</p>
+        <p class="ui-empty-desc max-w-md">帖子被采纳、举报核实或产生违规记录等系统事件时，你会在这里收到通知；回复/评论提醒请前往「回复我的」</p>
       </div>
     </template>
 
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="mt-8 flex justify-center">
-      <div class="flex gap-2">
-        <button
-          class="w-9 h-9 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all disabled:opacity-30"
-          :disabled="currentPage <= 1"
-          @click="currentPage--; fetchList()"
-        >
-          <span class="material-symbols-outlined text-[20px]">chevron_left</span>
-        </button>
-        <button
-          v-for="page in displayPages"
-          :key="page"
-          class="w-9 h-9 flex items-center justify-center rounded-md font-bold text-sm transition-all"
-          :class="page === currentPage ? 'bg-primary text-white shadow-sm' : 'border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'"
-          @click="currentPage = page; fetchList()"
-        >
-          {{ page }}
-        </button>
-        <button
-          class="w-9 h-9 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all disabled:opacity-30"
-          :disabled="currentPage >= totalPages"
-          @click="currentPage++; fetchList()"
-        >
-          <span class="material-symbols-outlined text-[20px]">chevron_right</span>
-        </button>
-      </div>
+    <div v-if="totalPages > 1" class="ui-pager mt-4">
+      <button class="ui-pager-btn" :disabled="currentPage <= 1" @click="currentPage--; fetchList()">
+        <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+      </button>
+      <button
+        v-for="page in displayPages"
+        :key="page"
+        class="ui-pager-btn"
+        :class="{ 'is-active': page === currentPage }"
+        @click="currentPage = page; fetchList()"
+      >{{ page }}</button>
+      <button class="ui-pager-btn" :disabled="currentPage >= totalPages" @click="currentPage++; fetchList()">
+        <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+      </button>
+      <span class="text-[11.5px] text-outline ml-1 tabnum">{{ currentPage }} / {{ totalPages }}</span>
     </div>
   </main>
 </template>
@@ -95,9 +80,11 @@
 import { getUser } from '@/utils/auth'
 import { friendlyTime } from '@/utils/utils'
 import notificationStore from '@/utils/notificationStore'
+import PageHeader from '@/components/PageHeader.vue'
 
 export default {
   name: 'BBSNotifications',
+  components: { PageHeader },
   data() {
     return {
       loading: false,
