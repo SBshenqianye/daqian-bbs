@@ -12,8 +12,12 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,14 +62,21 @@ public class Main {
     private static String detailUrl;
     private static String runStamp;
 
+    private static boolean selfCheckMode;
+
     public static void main(String[] args) {
+        selfCheckMode = args.length > 0 && "--selfcheck".equalsIgnoreCase(args[0]);
         runStamp = TS.format(new Date());
         try {
             baseDir = Paths.get("").toAbsolutePath();
             loadConfig();
             prepareDirs();
             startDriver();
-            runAll();
+            if (selfCheckMode) {
+                runSelfCheck();
+            } else {
+                runAll();
+            }
         } catch (Throwable t) {
             System.out.println("[FATAL] " + t.getMessage());
             t.printStackTrace();
@@ -278,6 +289,101 @@ public class Main {
         if (!writeMode) throw new SkipException("只读模式：写操作已跳过（config.properties mode=write 可开启）");
     }
 
+    /* ==================== 负向自检（只读） ==================== */
+
+    private static void runSelfCheck() {
+        step("[负向] 基线：登录页可渲染", new Step() {
+            public void run() {
+                open("#/login");
+                waitText("登录");
+            }
+        });
+
+        step("[负向] 错误 baseUrl 必须失败", new Step() {
+            public void run() {
+                try {
+                    driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(5));
+                    boolean failed = false;
+                    try {
+                        driver.get("http://127.0.0.1:1/bbs-user/#/login");
+                    } catch (Exception e) {
+                        failed = true;
+                    }
+                    if (!failed) {
+                        String text = "";
+                        try { text = bodyText(); } catch (Exception ignore) { }
+                        if (text.contains("欢迎回来")) {
+                            throw new IllegalStateException("错误地址竟然渲染出业务页面，判据不可靠");
+                        }
+                    }
+                } finally {
+                    driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
+                }
+            }
+        });
+
+        step("[负向] 错误断言必须被捕获", new Step() {
+            public void run() {
+                boolean caught = false;
+                try {
+                    assertContains("__MUST_NOT_EXIST__", "错误断言");
+                } catch (Exception e) {
+                    caught = true;
+                }
+                if (!caught) throw new IllegalStateException("断言没有报错，判据可能是装饰品");
+            }
+        });
+
+        step("[负向] 未登录访问业务接口被拒绝", new Step() {
+            public void run() {
+                String url = apiBase() + "/notification/unreadSummary?userId=1";
+                String body = httpGet(url);
+                if (body == null || body.indexOf("\"code\":401") < 0) {
+                    throw new IllegalStateException("未登录竟然可以访问：" + clip(body));
+                }
+            }
+        });
+    }
+
+    private static void assertContains(String expected, String label) {
+        String body = bodyText();
+        if (!body.contains(expected)) {
+            throw new IllegalStateException(label + " 未命中预期文本：" + expected);
+        }
+    }
+
+    private static String apiBase() {
+        String cfg = trim(get("apiBase", ""));
+        if (cfg.length() > 0) return cfg.replaceAll("/+$", "");
+        try {
+            java.net.URI u = java.net.URI.create(baseUrl);
+            String port = u.getPort() > 0 ? ":" + u.getPort() : "";
+            return u.getScheme() + "://" + u.getHost() + port + "/bbs-server";
+        } catch (Exception e) {
+            return baseUrl + "bbs-server";
+        }
+    }
+
+    private static String httpGet(String url) {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(8000);
+            conn.setRequestMethod("GET");
+            InputStream in = conn.getResponseCode() >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while (in != null && (n = in.read(buf)) > 0) out.write(buf, 0, n);
+            return new String(out.toByteArray(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
     /* ==================== 步骤执行器 ==================== */
 
     private interface Step {
@@ -369,7 +475,7 @@ public class Main {
         html.append("<h1>大千智荟论坛 · 界面级 E2E 报告</h1>");
         html.append("<div class='meta'>时间：").append(new Date()).append("<br>")
                 .append("地址：").append(esc(baseUrl)).append("<br>")
-                .append("模式：").append(writeMode ? "write（含写操作）" : "readonly（只读）").append("<br>")
+                .append("模式：").append(selfCheckMode ? "负向自检（selfcheck，不计入业务失败）" : (writeMode ? "write（含写操作）" : "readonly（只读）")).append("<br>")
                 .append("账号：").append(username.length() > 0 ? esc(username) : "(未配置)").append("<br>")
                 .append("汇总：通过 ").append(count("PASS")).append(" / 失败 ").append(count("FAIL"))
                 .append(" / 跳过 ").append(count("SKIP")).append("</div>");
@@ -415,6 +521,11 @@ public class Main {
 
     private static String trim(String s) {
         return s == null ? "" : s.trim();
+    }
+
+    private static String clip(String s) {
+        if (s == null) return "";
+        return s.length() > 160 ? s.substring(0, 160) + " ..." : s;
     }
 
     private static boolean isWindows() {

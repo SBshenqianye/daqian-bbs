@@ -993,6 +993,46 @@ addTest('[互动] 举报查重接口', function () {
     return '查重返回：' + clip(JSON.stringify(json.obj), 80);
 });
 
+/* ===== 负向自检（只读，不写库；用于验证判据能变红） ===== */
+
+addTest('[负向] 错误 baseUrl 必须失败', function () {
+    var failed = false;
+    try {
+        var xhr = new ActiveXObject('WinHttp.WinHttpRequest.5.1');
+        xhr.Open('GET', 'http://127.0.0.1:1/bbs-server/common/featured/notices', false);
+        xhr.SetTimeouts(3000, 3000, 3000, 3000);
+        xhr.Send();
+        failed = (xhr.Status !== 200);
+    } catch (e) {
+        failed = true;
+    }
+    if (!failed) throw new Error('错误地址竟然返回 200，判据不可靠');
+    return '错误地址被识别为失败';
+});
+
+addTest('[负向] 错误断言必须被捕获', function () {
+    var res = httpCall('GET', '/common/featured/notices', null, false);
+    var json = parseJson(res.text);
+    var caught = false;
+    try {
+        must(json && json.message === '__MUST_NOT_EXIST__', '断言不一致');
+    } catch (e) {
+        caught = true;
+    }
+    if (!caught) throw new Error('断言没有报错，判据可能是装饰品');
+    return '错误断言已被判据捕获';
+});
+
+addTest('[负向] 未登录访问业务接口被拒绝', function () {
+    // 显式不携带 token，验证鉴权判据
+    var res = httpCall('GET', '/notification/unreadSummary?userId=1', null, false);
+    var json = parseJson(res.text);
+    if (!(json && json.code === 401)) {
+        throw new Error('未登录竟然可以访问：' + clip(res.text, 80));
+    }
+    return '未登录返回 401';
+});
+
 /* ===== 写入（默认关闭） ===== */
 
 addTest('[写入] 发帖→详情→删除', function () {
@@ -1154,19 +1194,40 @@ function renderTable() {
     byId('resultBody').innerHTML = html.join('');
 }
 
+function isMutationTest(i) {
+    return TESTS[i].name.indexOf('[负向]') === 0;
+}
+
+function mutationStats() {
+    var pass = 0, fail = 0, total = 0;
+    for (var i = 0; i < TESTS.length; i++) {
+        if (!isMutationTest(i)) continue;
+        total++;
+        var r = state.results[i];
+        if (!r) continue;
+        if (r.state === 'ok') pass++;
+        else if (r.state === 'fail') fail++;
+    }
+    return { pass: pass, fail: fail, total: total };
+}
+
 function updateSummary() {
-    var ok = 0, fail = 0, skipCount = 0, done = 0;
-    for (var i = 0; i < state.results.length; i++) {
-        var s = state.results[i].state;
-        if (!s || s === 'pending') continue;
+    var ok = 0, fail = 0, skipCount = 0, done = 0, total = 0;
+    for (var i = 0; i < TESTS.length; i++) {
+        if (isMutationTest(i)) continue;
+        total++;
+        var r = state.results[i];
+        if (!r || !r.state || r.state === 'pending') continue;
         done++;
-        if (s === 'ok') ok++;
-        else if (s === 'fail') fail++;
+        if (r.state === 'ok') ok++;
+        else if (r.state === 'fail') fail++;
         else skipCount++;
     }
-    var total = TESTS.length;
+    var mut = mutationStats();
     var text = '通过 ' + ok + ' · 失败 ' + fail + ' · 跳过 ' + skipCount + ' · 共 ' + total;
-    byId('summaryText').innerHTML = fail > 0 ? '<span class="fail">' + text + '</span>' : text;
+    text += '　｜　负向自检 ' + mut.pass + '/' + mut.total + '（不计入业务失败）';
+    byId('summaryText').innerHTML = (fail > 0 || mut.fail > 0)
+        ? '<span class="fail">' + text + '</span>' : text;
     var sub = '';
     if (state.startedAt) sub = '开始时间 ' + state.startedAt + (state.running ? ' · 运行中…' : ' · 已结束');
     byId('summarySub').innerHTML = sub ? '&nbsp;&nbsp;' + escapeHtml(sub) : '';
@@ -1282,12 +1343,16 @@ function finishRun() {
     state.stopRequested = false;
     updateSummary();
     var ok = 0, fail = 0;
-    for (var i = 0; i < state.results.length; i++) {
-        if (state.results[i].state === 'ok') ok++;
-        if (state.results[i].state === 'fail') fail++;
+    for (var i = 0; i < TESTS.length; i++) {
+        if (isMutationTest(i)) continue;
+        if (state.results[i] && state.results[i].state === 'ok') ok++;
+        if (state.results[i] && state.results[i].state === 'fail') fail++;
     }
-    if (fail > 0) {
-        alert('验收结束：通过 ' + ok + ' 个，失败 ' + fail + ' 个。\n请查看失败用例的说明与响应明细。');
+    var mut = mutationStats();
+    if (fail > 0 || mut.fail > 0) {
+        var msg = '验收结束：业务通过 ' + ok + ' 个，失败 ' + fail + ' 个。';
+        if (mut.fail > 0) msg += '\n负向自检未通过：' + mut.pass + '/' + mut.total + '，判据本身需要先修。';
+        alert(msg + '\n请查看失败用例的说明与响应明细。');
     }
 }
 
@@ -1304,18 +1369,27 @@ function buildReport() {
     var ok = 0, fail = 0, skipCount = 0;
     for (var i = 0; i < TESTS.length; i++) {
         var r = state.results[i] || { state: 'pending', note: '未执行', cost: '', http: '' };
-        var label = r.state === 'ok' ? 'PASS' : (r.state === 'fail' ? 'FAIL' : (r.state === 'skip' ? 'SKIP' : 'TODO'));
-        if (r.state === 'ok') ok++;
-        if (r.state === 'fail') fail++;
-        if (r.state === 'skip') skipCount++;
+        var mutation = isMutationTest(i);
+        var label;
+        if (mutation) {
+            label = r.state === 'ok' ? 'MUT-PASS' : (r.state === 'fail' ? 'MUT-FAIL' : 'MUT-SKIP');
+        } else {
+            label = r.state === 'ok' ? 'PASS' : (r.state === 'fail' ? 'FAIL' : (r.state === 'skip' ? 'SKIP' : 'TODO'));
+            if (r.state === 'ok') ok++;
+            if (r.state === 'fail') fail++;
+            if (r.state === 'skip') skipCount++;
+        }
         lines.push('[' + label + '] ' + (i + 1) + '. ' + TESTS[i].name + '  (' + (r.cost || '-') + ')');
         if (r.note) lines.push('      说明：' + r.note);
         if (r.method) lines.push('      请求：' + r.method + ' ' + r.requestUrl);
         if (r.responseText) lines.push('      响应：' + clip(String(r.responseText).replace(/\s+/g, ' '), 400));
         if (r.state === 'fail') lines.push('');
     }
+    var mut = mutationStats();
     lines.push('');
-    lines.push('汇总：通过 ' + ok + ' / 失败 ' + fail + ' / 跳过 ' + skipCount + ' / 共 ' + TESTS.length);
+    lines.push('汇总：通过 ' + ok + ' / 失败 ' + fail + ' / 跳过 ' + skipCount + ' / 共 ' +
+        (ok + fail + skipCount));
+    lines.push('负向自检：' + mut.pass + '/' + mut.total + ' 通过（不计入业务失败；失败 ' + mut.fail + ' 项）');
     return lines.join('\r\n');
 }
 
