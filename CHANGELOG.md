@@ -23,6 +23,7 @@
 - **精华跑马灯**：元信息从正文区移到卡片底部通栏，字号降到 10.5px，与轮播圆点/箭头同处一行，更贴近边缘且不再抢标题
 - **头像点击落点**：右上角头像按未读状态分流——有互动消息进「回复我的」、仅有系统通知进「消息通知」、都没有则进个人中心；头像角标点击走同一规则
 - **无封面自动生成内容卡**：新增 Canvas 封面生成插件 `utils/featured-cover.js`，精华帖没有上传封面时，用标题、正文摘要、作者、阅读数现场生成小红书风格内容卡（700×500，仅用于跑马灯，不落库）；`/common/featured/showcase` 同步返回正文纯文本摘要
+- **内联回复框统一**：点「回复」展开的输入框从裸 `textarea` 改为浅底卡片（头像、输入区、提示与按钮同处一张卡），左边缘对齐正文列，按钮改用 `ui-btn-xs`，展开/收起补 120ms 过渡
 
 ### 开发环境
 - **开发态启动日志噪音**：Windows 下 enhanced-resolve 会把盘符根目录（如 `D:\`）写进 `fileDependencies`，watchpack 扫描根目录时 `lstat` 到 `pagefile.sys` / `DumpStack.log.tmp` 会抛 `Watchpack Error (initial scan): EINVAL`；开发态关闭 `resolve.symlinks`，生产构建行为不变

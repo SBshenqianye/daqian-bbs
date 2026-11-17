@@ -59,31 +59,37 @@
       {{ comment.content }}
     </div>
 
-    <!-- 回复输入框 -->
-    <div v-if="showReplyInput" class="mt-2.5 flex items-start gap-2">
-      <BBSAvatar :src="currentUserAvatar" :size="26" :show-level="false" />
-      <div class="flex-grow min-w-0">
-        <textarea
-          v-model="replyText"
-          class="w-full p-2 rounded-lg border border-border text-[12px] bg-surface focus:border-primary outline-none resize-none"
-          :placeholder="'回复 ' + (comment.author || '楼主')"
-          rows="2"
-          @keydown.enter.exact.prevent="submitReply"
-          @input="autoResizeReplyInput"
-        ></textarea>
-        <div class="flex items-center justify-between mt-1.5">
-          <label v-if="allowAnonymous" class="flex items-center gap-1 text-[11px] text-on-surface-variant cursor-pointer select-none">
-            <input v-model="replyAnonymous" type="checkbox" class="w-3 h-3 text-primary border-outline-variant rounded">
-            匿名回复
-          </label>
-          <span v-else class="text-[11px] text-outline">Enter 发送 · Shift+Enter 换行</span>
-          <div class="flex items-center gap-1.5">
-            <button class="px-2.5 py-1 rounded text-[11px] text-on-surface-variant hover:bg-surface-variant" @click="cancelReply">取消</button>
-            <button class="px-3 py-1 rounded bg-primary text-white text-[11px] hover:opacity-90" @click="submitReply">发送</button>
+    <!-- 回复输入框：与楼中楼同一套浅底卡片语言，左边缘对齐正文列 -->
+    <transition name="reply-box">
+      <div v-if="showReplyInput" :class="isReply ? 'mt-1.5' : 'mt-2.5 ml-9'">
+        <div class="reply-editor" :class="{ 'is-nested': isReply }">
+          <div class="flex items-start gap-2">
+            <BBSAvatar :src="currentUserAvatar" :size="24" :show-level="false" />
+            <div class="flex-grow min-w-0">
+              <textarea
+                v-model="replyText"
+                class="reply-editor-input"
+                :placeholder="'回复 ' + (comment.author || '楼主')"
+                rows="2"
+                @keydown.enter.exact.prevent="submitReply"
+                @input="autoResizeReplyInput"
+              ></textarea>
+              <div class="flex items-center justify-between gap-2 mt-1.5">
+                <label v-if="allowAnonymous" class="flex items-center gap-1 text-[11px] text-on-surface-variant cursor-pointer select-none">
+                  <input v-model="replyAnonymous" type="checkbox" class="w-3 h-3 text-primary border-outline-variant rounded">
+                  匿名回复
+                </label>
+                <span v-else class="text-[11px] text-outline">Enter 发送 · Shift+Enter 换行</span>
+                <div class="flex items-center gap-1.5">
+                  <button class="ui-btn ui-btn-xs ui-btn-ghost" @click="cancelReply">取消</button>
+                  <button class="ui-btn ui-btn-xs ui-btn-primary" @click="submitReply">发送</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </transition>
 
     <!-- 楼中楼 -->
     <div v-if="comment.children && comment.children.length > 0" class="mt-2.5 space-y-1.5" :class="isReply ? '' : 'ml-9'">
@@ -233,6 +239,50 @@ export default {
   border-radius: 10px;
   background: #f7f9fc;
   border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+/* 内联回复编辑器：与楼中楼同一套浅底卡片语言，替代原先裸 textarea 的硬方框 */
+.reply-editor {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f7f9fc;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* 楼中楼内部的编辑器：父块已是浅底，改白底避免同色叠加 */
+.reply-editor.is-nested {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+.reply-editor-input {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #181c23;
+}
+
+.reply-editor-input::placeholder {
+  color: #94a3b8;
+}
+
+/* 展开/收起：避免输入框突然插入把下面的楼层顶开 */
+.reply-box-enter-active,
+.reply-box-leave-active {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.reply-box-enter,
+.reply-box-leave-to {
+  opacity: 0;
+  transform: translateY(-2px);
 }
 
 .comment-action {
