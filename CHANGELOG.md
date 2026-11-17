@@ -27,7 +27,8 @@
 
 ### 开发环境
 - **开发态启动日志噪音**：Windows 下 enhanced-resolve 会把盘符根目录（如 `D:\`）写进 `fileDependencies`，watchpack 扫描根目录时 `lstat` 到 `pagefile.sys` / `DumpStack.log.tmp` 会抛 `Watchpack Error (initial scan): EINVAL`；开发态关闭 `resolve.symlinks`，生产构建行为不变
-- **Win7 部署验收 E2E**：新增单文件 `scripts/e2e/daqian-bbs-e2e.hta`（mshta + WinHttp，无需安装运行库），51 个用例覆盖公共/账号/消息/互动/写入五组，支持逐用例明细与报告导出，写入用例默认关闭
+- **Win7 部署验收 E2E**：新增单文件 `scripts/e2e/daqian-bbs-e2e.hta`（mshta + WinHttp，无需安装运行库），56 个用例覆盖公共/账号/消息/互动/写入/UI 冒烟六组，支持逐用例明细、页面截图与报告导出，写入用例默认关闭
+- **浏览器自动探测**：自动识别 Chrome / Edge / 360 极速浏览器 / 360 安全浏览器（注册表 App Paths + 常见安装目录），支持手动填写路径与「探测」按钮；UI 冒烟通过临时批处理调用 `--headless`（失败回退 `--headless=new`），兼容含空格路径
 - **生产安全模式**：E2E 新增「生产安全模式」（默认开启），不执行写入用例；帖子详情可指定验收专用帖并使用 `countView=false`，避免真实帖子浏览量自增；公开资料/徽章等会触发成就计算的接口仅对专用测试账号执行
 - **帖子详情不再强制计数**：`/common/article/getArticleById` 新增 `countView` 参数（默认 `true`），验收/预览可传 `false` 只读查询
 

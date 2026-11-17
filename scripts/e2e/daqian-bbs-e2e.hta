@@ -97,6 +97,17 @@
                     <span class="hint" style="margin-left:6px">生产环境建议填一篇专用测试帖，避免浏览量自增</span>
                 </td>
             </tr>
+            <tr>
+                <td class="label" style="padding-top:6px">前端地址</td>
+                <td colspan="4" style="padding-top:6px">
+                    <input type="text" id="frontUrl" style="width:290px" value="http://127.0.0.1:9081/bbs-user/">
+                    &nbsp;<span class="label">Chrome</span>&nbsp;
+                    <input type="text" id="chromePath" style="width:240px" value="">
+                    <button class="btn" style="height:24px;padding:2px 8px" onclick="detectBrowserNow()">探测</button>
+                    &nbsp;<input type="checkbox" id="shotEnabled" checked> <span class="hint">保存页面截图</span>
+                    <div class="hint" id="browserHint">支持 Chrome / Edge / 360 安全浏览器 / 360 极速浏览器（自动探测）</div>
+                </td>
+            </tr>
         </table>
         <div class="hint">生产安全模式：不执行写入用例，帖子详情用 countView=false 读取（不增加浏览量），并跳过会给真实用户计算成就的接口；建议登录 <b>is_test_account=1</b> 的专用验收账号。完整模式：用于测试/预发环境，写入用例可选择执行并自动清理。</div>
     </div>
@@ -317,6 +328,245 @@ function writeBlockedReason() {
     if (state.ctx.prodSafe) return '生产安全模式：不执行写入用例';
     if (!byId('writeMode').checked) return '未开启写入用例';
     return '';
+}
+
+/* ---------- UI 冒烟（无头浏览器；支持 Chrome / Edge / 360 极速 / 360 安全） ---------- */
+
+function fileExists(path) {
+    if (!path) return false;
+    try { return new ActiveXObject('Scripting.FileSystemObject').FileExists(path); } catch (e) { return false; }
+}
+
+function expandEnv(path) {
+    try { return new ActiveXObject('WScript.Shell').ExpandEnvironmentStrings(path); } catch (e) { return path; }
+}
+
+function regGetValue(key) {
+    try {
+        var v = new ActiveXObject('WScript.Shell').RegRead(key);
+        if (!v) return '';
+        return String(v).replace(/^"+|"+$/g, '');
+    } catch (e) { return ''; }
+}
+
+/** 浏览器候选：注册表 App Paths 优先，其次常见安装目录（含 360 两种内核外壳） */
+function browserCandidates() {
+    return [
+        {
+            name: 'Chrome',
+            exes: ['chrome.exe'],
+            paths: [
+                '%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe',
+                '%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe',
+                '%LOCALAPPDATA%\\Google\\Chrome\\Application\\chrome.exe'
+            ]
+        },
+        {
+            name: 'Edge',
+            exes: ['msedge.exe'],
+            paths: [
+                '%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe',
+                '%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe'
+            ]
+        },
+        {
+            name: '360极速浏览器',
+            exes: ['360chrome.exe', '360chromeX.exe'],
+            paths: [
+                '%APPDATA%\\360Chrome\\Chrome\\Application\\360chrome.exe',
+                '%APPDATA%\\360ChromeX\\Chrome\\Application\\360chrome.exe',
+                '%ProgramFiles(x86)%\\360\\360Chrome\\Chrome\\Application\\360chrome.exe',
+                '%ProgramFiles%\\360\\360Chrome\\Chrome\\Application\\360chrome.exe',
+                '%ProgramFiles(x86)%\\360\\360ChromeX\\Chrome\\Application\\360chrome.exe',
+                '%ProgramFiles%\\360\\360ChromeX\\Chrome\\Application\\360chrome.exe'
+            ]
+        },
+        {
+            name: '360安全浏览器',
+            exes: ['360se.exe', '360se6.exe'],
+            paths: [
+                '%APPDATA%\\360se6\\Application\\360se.exe',
+                '%ProgramFiles(x86)%\\360\\360se6\\Application\\360se.exe',
+                '%ProgramFiles%\\360\\360se6\\Application\\360se.exe',
+                '%LOCALAPPDATA%\\360se6\\Application\\360se.exe'
+            ]
+        }
+    ];
+}
+
+/** 探测本机可用浏览器；返回 {name, path}，找不到返回 null */
+function detectBrowser() {
+    var hives = ['HKLM\\', 'HKCU\\'];
+    var appPathRoots = [
+        'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\',
+        'SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\App Paths\\'
+    ];
+    var list = browserCandidates();
+    var i, j, k, exe, key, value;
+    // 1) 注册表 App Paths
+    for (i = 0; i < list.length; i++) {
+        for (j = 0; j < list[i].exes.length; j++) {
+            exe = list[i].exes[j];
+            for (k = 0; k < hives.length; k++) {
+                for (var r = 0; r < appPathRoots.length; r++) {
+                    key = hives[k] + appPathRoots[r] + exe;
+                    value = regGetValue(key);
+                    if (value && fileExists(expandEnv(value))) {
+                        return { name: list[i].name, path: expandEnv(value) };
+                    }
+                }
+            }
+        }
+    }
+    // 2) 常见安装目录
+    for (i = 0; i < list.length; i++) {
+        for (j = 0; j < list[i].paths.length; j++) {
+            var p = expandEnv(list[i].paths[j]);
+            if (fileExists(p)) return { name: list[i].name, path: p };
+        }
+    }
+    return null;
+}
+
+/** 「探测」按钮：自动识别 Chrome / Edge / 360 并回填路径 */
+function detectBrowserNow() {
+    var found = detectBrowser();
+    if (!found) {
+        byId('browserHint').innerHTML = '<span class="fail">未探测到浏览器，请手动填写 chrome.exe / msedge.exe / 360chrome.exe 路径</span>';
+        alert('未探测到 Chrome / Edge / 360 浏览器。\n可手动填写浏览器 exe 路径。');
+        return;
+    }
+    byId('chromePath').value = found.path;
+    byId('browserHint').innerHTML = '已探测到：<b>' + found.name + '</b>（' + found.path + '）';
+}
+
+function detectedBrowserName() {
+    var p = trimStr(byId('chromePath').value);
+    if (!p) return '未指定';
+    var list = browserCandidates();
+    for (var i = 0; i < list.length; i++) {
+        for (var j = 0; j < list[i].paths.length; j++) {
+            if (expandEnv(list[i].paths[j]).toLowerCase() === p.toLowerCase()) return list[i].name;
+        }
+        for (var k = 0; k < list[i].exes.length; k++) {
+            if (p.toLowerCase().indexOf(list[i].exes[k].toLowerCase()) >= 0) return list[i].name;
+        }
+    }
+    return '自定义浏览器';
+}
+
+function chromeExe() {
+    var p = trimStr(byId('chromePath').value);
+    if (p) return p;
+    var found = detectBrowser();
+    return found ? found.path : '';
+}
+
+function tempPath(name) {
+    var sh = new ActiveXObject('WScript.Shell');
+    return sh.ExpandEnvironmentStrings('%TEMP%') + '\\' + name;
+}
+
+function readUtf8File(path) {
+    var s = new ActiveXObject('ADODB.Stream');
+    s.Type = 2;
+    s.Charset = 'utf-8';
+    s.Open();
+    s.LoadFromFile(path);
+    var text = s.ReadText();
+    s.Close();
+    return text;
+}
+
+function deleteFile(path) {
+    try {
+        var fso = new ActiveXObject('Scripting.FileSystemObject');
+        if (fso.FileExists(path)) fso.DeleteFile(path, true);
+    } catch (e) { }
+}
+
+/** 用临时 .bat 执行命令，绕开 cmd /c 对含空格路径的引号解析问题 */
+function runBatch(lines) {
+    var bat = tempPath('bbs_e2e_cmd_' + (new Date().getTime()) + '.bat');
+    var fso = new ActiveXObject('Scripting.FileSystemObject');
+    var f = fso.CreateTextFile(bat, true, false);
+    for (var i = 0; i < lines.length; i++) f.WriteLine(lines[i]);
+    f.Close();
+    var code = 1;
+    try {
+        var sh = new ActiveXObject('WScript.Shell');
+        code = sh.Run('"' + bat + '"', 0, true);
+    } finally {
+        deleteFile(bat);
+    }
+    return code;
+}
+
+function frontUrl() {
+    var u = trimStr(byId('frontUrl').value);
+    return u.replace(/\/+$/, '');
+}
+
+/** 用无头浏览器 dump 指定 hash 路由的 DOM（--headless 失败时回退 --headless=new） */
+function uiDump(hashPath) {
+    var chrome = chromeExe();
+    if (!chrome) skip('未探测到 Chrome / Edge / 360 浏览器，可手动填写 exe 路径');
+    var url = frontUrl() + hashPath;
+    var profile = tempPath('bbs_e2e_chrome_profile');
+    var flags = ['--headless', '--headless=new'];
+    for (var i = 0; i < flags.length; i++) {
+        var out = tempPath('bbs_e2e_dom_' + (new Date().getTime()) + '_' + i + '.html');
+        var line = '"' + chrome + '" ' + flags[i] + ' --disable-gpu --hide-scrollbars --no-first-run '
+            + '--no-default-browser-check --user-data-dir="' + profile + '" '
+            + '--virtual-time-budget=9000 --dump-dom "' + url + '" > "' + out + '" 2>nul';
+        runBatch(['@echo off', line]);
+        var html = '';
+        try { html = readUtf8File(out); } catch (e) { html = ''; }
+        deleteFile(out);
+        if (html && html.length >= 200) return html;
+    }
+    throw new Error('页面未渲染出内容（' + url + '）；当前浏览器：' + detectedBrowserName()
+        + '。请确认前端地址可访问；若为 360/IE 内核外壳，可改用 Chrome 109 或 Edge，并手动填写 exe 路径');
+}
+
+function uiCheck(hashPath, markers, label) {
+    var html = uiDump(hashPath);
+    var missing = [];
+    for (var i = 0; i < markers.length; i++) {
+        if (html.indexOf(markers[i]) < 0) missing.push(markers[i]);
+    }
+    if (missing.length > 0) {
+        throw new Error(label + ' 缺少标记：' + missing.join('、'));
+    }
+    return label + ' 渲染正常（DOM ' + Math.round(html.length / 1024) + 'KB）';
+}
+
+function shotsDir() {
+    var dir = scriptDir() + '\\e2e-shots';
+    var fso = new ActiveXObject('Scripting.FileSystemObject');
+    if (!fso.FolderExists(dir)) fso.CreateFolder(dir);
+    return dir;
+}
+
+function uiShot(hashPath, name) {
+    var chrome = chromeExe();
+    if (!chrome) skip('未探测到 Chrome / Edge / 360 浏览器');
+    var url = frontUrl() + hashPath;
+    var file = shotsDir() + '\\' + fileStamp() + '-' + name + '.png';
+    var profile = tempPath('bbs_e2e_chrome_profile');
+    var flags = ['--headless', '--headless=new'];
+    var fso = new ActiveXObject('Scripting.FileSystemObject');
+    for (var i = 0; i < flags.length; i++) {
+        var line = '"' + chrome + '" ' + flags[i] + ' --disable-gpu --hide-scrollbars --no-first-run '
+            + '--no-default-browser-check --user-data-dir="' + profile + '" '
+            + '--window-size=1440,1600 --virtual-time-budget=9000 --screenshot="' + file + '" "' + url + '" >nul 2>nul';
+        runBatch(['@echo off', line]);
+        if (fso.FileExists(file)) break;
+    }
+    if (!fso.FileExists(file)) throw new Error('截图未生成：' + name + '（当前浏览器：' + detectedBrowserName() + '）');
+    var size = fso.GetFile(file).Size;
+    if (size < 10000) throw new Error('截图疑似空白：' + name + '（' + size + ' 字节）');
+    return name + ' 截图已保存（' + Math.round(size / 1024) + 'KB）';
 }
 
 /* ---------- 用例定义 ---------- */
@@ -819,6 +1069,34 @@ addTest('[写入] 评论→删除', function () {
     return '已创建并删除 commentId=' + commentId;
 });
 
+/* ===== UI 冒烟（无头浏览器，只读公共页面） ===== */
+
+addTest('[UI] 登录页渲染', function () {
+    return uiCheck('/#/login', ['登录'], '登录页');
+});
+
+addTest('[UI] 论坛首页渲染', function () {
+    return uiCheck('/#/forum', ['论坛', '精华帖'], '论坛首页');
+});
+
+addTest('[UI] 精华页渲染', function () {
+    return uiCheck('/#/featured', ['精华'], '精华页');
+});
+
+addTest('[UI] 排行榜渲染', function () {
+    return uiCheck('/#/points', ['排行榜'], '排行榜');
+});
+
+addTest('[UI] 页面截图', function () {
+    if (!byId('shotEnabled').checked) skip('未开启截图');
+    var notes = [];
+    notes.push(uiShot('/#/forum', 'forum'));
+    notes.push(uiShot('/#/featured', 'featured'));
+    notes.push(uiShot('/#/points', 'points'));
+    notes.push(uiShot('/#/login', 'login'));
+    return notes.join('；');
+});
+
 /* ---------- 写入用例辅助：短轮询查找 ---------- */
 
 function sleepBrief(ms) {
@@ -1071,8 +1349,17 @@ function saveReport() {
 /* ---------- 初始化 ---------- */
 
 function init() {
-    try { window.resizeTo(1140, 800); } catch (e) { }
+    try { window.resizeTo(1140, 830); } catch (e) { }
     try { window.moveTo(60, 40); } catch (e) { }
+    try {
+        if (!trimStr(byId('chromePath').value)) {
+            var found = detectBrowser();
+            if (found) {
+                byId('chromePath').value = found.path;
+                byId('browserHint').innerHTML = '已探测到：<b>' + found.name + '</b>（' + found.path + '）';
+            }
+        }
+    } catch (e2) { }
     renderTable();
     updateSummary();
     document.title = '大千智荟论坛 · 部署验收 E2E';
