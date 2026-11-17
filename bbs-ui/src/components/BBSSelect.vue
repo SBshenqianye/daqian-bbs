@@ -2,7 +2,7 @@
   <div ref="root" class="relative inline-block">
     <button
       type="button"
-      class="inline-flex items-center justify-between gap-2 rounded-lg border border-outline-variant bg-surface text-on-surface hover:border-primary transition-colors outline-none focus:ring-1 focus:ring-primary"
+      class="inline-flex items-center justify-between gap-2 rounded-lg border border-outline-variant bg-surface text-on-surface hover:border-primary/40 transition-colors outline-none focus:border-primary/40"
       :class="triggerClass"
       :aria-expanded="open ? 'true' : 'false'"
       @click="toggle"

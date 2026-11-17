@@ -255,6 +255,11 @@ export default {
   border-color: rgba(148, 163, 184, 0.24);
 }
 
+/* 焦点提示只做在卡片边框上，避免输入区自己再画一圈蓝框 */
+.reply-editor:focus-within {
+  border-color: rgba(0, 82, 217, 0.4);
+}
+
 .reply-editor-input {
   display: block;
   width: 100%;

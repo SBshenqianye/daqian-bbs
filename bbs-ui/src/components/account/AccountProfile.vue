@@ -56,7 +56,7 @@
               v-show="editingPhone"
               ref="phoneInput"
               v-model="userInfo.phone"
-              class="flex-1 px-2.5 py-1 border border-outline-variant rounded-lg text-[13px] focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+              class="flex-1 px-2.5 py-1 border border-outline-variant rounded-lg text-[13px] focus:border-primary/40 outline-none"
               type="text"
               @input="showSaveNotification = true"
             >

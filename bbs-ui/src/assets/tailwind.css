@@ -364,12 +364,22 @@ body {
     @apply block text-[12px] font-medium text-on-surface-variant mb-1.5;
   }
   /* 输入框固定 32px 高：约为 12.5px 字号的 2.5 倍，避免又粗又厚 */
+  /* 焦点态统一：只把边框提亮到主色 40%，不再叠加 ring（避免出现"蓝色矩形框"） */
   .ui-input {
-    @apply w-full h-8 px-2.5 rounded-lg border border-outline-variant bg-surface text-[12.5px] leading-none text-on-surface outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20;
+    @apply w-full h-8 px-2.5 rounded-lg border border-outline-variant bg-surface text-[12.5px] leading-none text-on-surface outline-none transition-colors focus:border-primary/40;
   }
   .ui-textarea {
-    @apply w-full px-2.5 py-2 rounded-lg border border-outline-variant bg-surface text-[12.5px] leading-relaxed text-on-surface outline-none resize-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20;
+    @apply w-full px-2.5 py-2 rounded-lg border border-outline-variant bg-surface text-[12.5px] leading-relaxed text-on-surface outline-none resize-none transition-colors focus:border-primary/40;
   }
+}
+
+/* 去掉 @tailwindcss/forms 默认的蓝色焦点环（#2563eb）：
+   文本类输入/文本域只用边框色提示焦点，不再画出整圈蓝色矩形；
+   checkbox / radio 保留默认焦点环，方便键盘识别。 */
+input:not([type='checkbox']):not([type='radio']):focus,
+textarea:focus,
+select:focus {
+  box-shadow: none;
 }
 
 /* Tooltip */

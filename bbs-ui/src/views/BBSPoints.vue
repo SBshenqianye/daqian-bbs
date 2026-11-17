@@ -46,14 +46,14 @@
           <input
             type="date"
             v-model="customStartDate"
-            class="px-2 py-1 bg-surface border border-outline-variant rounded-md text-[11.5px] text-on-surface outline-none focus:border-primary"
+            class="px-2 py-1 bg-surface border border-outline-variant rounded-md text-[11.5px] text-on-surface outline-none focus:border-primary/40"
             @change="applyCustomRange"
           />
           <span class="text-on-surface-variant text-[11px]">~</span>
           <input
             type="date"
             v-model="customEndDate"
-            class="px-2 py-1 bg-surface border border-outline-variant rounded-md text-[11.5px] text-on-surface outline-none focus:border-primary"
+            class="px-2 py-1 bg-surface border border-outline-variant rounded-md text-[11.5px] text-on-surface outline-none focus:border-primary/40"
             @change="applyCustomRange"
           />
         </div>

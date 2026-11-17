@@ -127,7 +127,7 @@
         </div>
 
         <!-- 评论输入：卡片式，按钮不再与输入框争抢视线 -->
-        <div class="rounded-xl border border-border bg-surface-container-lowest p-3">
+        <div class="rounded-xl border border-border bg-surface-container-lowest p-3 transition-colors focus-within:border-primary/40">
           <div class="flex gap-2.5">
             <BBSAvatar :src="currentUserAvatar" :size="32" :show-level="false" />
             <div class="flex-1 min-w-0">
@@ -207,7 +207,7 @@
           <template v-if="currentUser">
             <textarea
               v-model="newComment"
-              class="flex-grow min-w-0 py-2 px-4 rounded-lg border border-border focus:border-primary-container focus:ring-1 focus:ring-primary-container bg-surface font-body-md text-body-md transition-primary outline-none resize-none"
+              class="flex-grow min-w-0 py-2 px-4 rounded-lg border border-border focus:border-primary/40 bg-surface font-body-md text-body-md transition-primary outline-none resize-none"
               :placeholder="commentPlaceholder"
               rows="1"
               @keydown.enter.exact="submitComment"

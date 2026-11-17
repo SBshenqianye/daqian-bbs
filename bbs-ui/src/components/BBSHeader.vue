@@ -55,7 +55,7 @@
           >search</span>
           <input
             v-model="keywords"
-            class="w-full col-start-1 row-start-1 h-8 pl-9 pr-4 bg-surface-container-low rounded-lg border border-transparent focus:border-brand-blue focus:bg-container focus:ring-0 transition-all text-[12.5px] outline-none placeholder:text-outline"
+            class="w-full col-start-1 row-start-1 h-8 pl-9 pr-4 bg-surface-container-low rounded-lg border border-transparent focus:border-primary/40 focus:bg-container focus:ring-0 transition-all text-[12.5px] outline-none placeholder:text-outline"
             placeholder="搜索标题、内容或人员..."
             type="text"
             @focus="searchFocused = true"
