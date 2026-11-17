@@ -23,6 +23,9 @@
 - **精华跑马灯**：元信息从正文区移到卡片底部通栏，字号降到 10.5px，与轮播圆点/箭头同处一行，更贴近边缘且不再抢标题
 - **无封面自动生成内容卡**：新增 Canvas 封面生成插件 `utils/featured-cover.js`，精华帖没有上传封面时，用标题、正文摘要、作者、阅读数现场生成小红书风格内容卡（700×500，仅用于跑马灯，不落库）；`/common/featured/showcase` 同步返回正文纯文本摘要
 
+### 开发环境
+- **开发态启动日志噪音**：Windows 下 enhanced-resolve 会把盘符根目录（如 `D:\`）写进 `fileDependencies`，watchpack 扫描根目录时 `lstat` 到 `pagefile.sys` / `DumpStack.log.tmp` 会抛 `Watchpack Error (initial scan): EINVAL`；开发态关闭 `resolve.symlinks`，生产构建行为不变
+
 ### 新增（P0）
 - **排行榜分类**：系统管理新增“排名管理”，支持从组织树拖拽组织、配置“含下级”、分类重叠；用户端排行榜改为分类 Tab
 - **组织人均排名**：按人均得分排序，同时展示总分、人数、发帖、回帖；“内江供电公司本部”沿用原 LEGACY 逻辑

@@ -15,6 +15,17 @@ module.exports = {
     },
     lintOnSave: false, // 关闭语法检查
 
+    // Windows 开发态：enhanced-resolve 的 SymlinkPlugin 会把盘符根目录（如 D:\）
+    // 也写进 fileDependencies，watchpack 初始化扫描根目录时会 lstat 到
+    // pagefile.sys / DumpStack.log.tmp 等系统文件，抛出
+    // "Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat ..."。
+    // 开发环境不解析符号链接即可绕开这次全盘扫描；生产构建保持默认行为。
+    chainWebpack: config => {
+        if (process.env.NODE_ENV === 'development') {
+            config.resolve.symlinks(false)
+        }
+    },
+
     // 开启代理服务器(端口9081)，使用 vue-cli 实现
     devServer: {
         port: 9081,
