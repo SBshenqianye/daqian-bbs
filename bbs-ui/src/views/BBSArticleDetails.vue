@@ -303,6 +303,9 @@ export default {
         authorOrgNameFull: '',
         authorLevelIndex: null,
         isAnonymous: false,
+        isFeatured: false,
+        /** 后端按当前登录用户算出的"是否作者"标记（匿名帖 userId 不可用，只能靠它判断） */
+        selfAuthored: null,
         labelAllowAnonymous: 0,
         contentHtml: '',
         articleImage: '',
@@ -367,7 +370,11 @@ export default {
     },
     /** 是否可举报文章：已登录且不是自己的文章 */
     canReportArticle() {
-      return this.currentUserId != null && this.article.userId != null
+      if (this.currentUserId == null) return false
+      // 匿名帖后端不下发作者 userId，改用后端算好的"是否作者"标记
+      if (this.article.selfAuthored === true) return false
+      if (this.article.selfAuthored === false) return true
+      return this.article.userId != null
         && String(this.currentUserId) !== String(this.article.userId)
     },
     allowAnonymousComment() {
@@ -478,6 +485,8 @@ export default {
           this.rawContent = normalized
           this.article.articleImage = normalizeFileUrl(resp.articleImage || '')
           this.article.isAnonymous = resp.isAnonymous === 1 || resp.isAnonymous === '1'
+          this.article.isFeatured = resp.isFeatured === 1 || resp.isFeatured === '1'
+          this.article.selfAuthored = typeof resp.selfAuthored === 'boolean' ? resp.selfAuthored : null
           this.article.labelAllowAnonymous = resp.labelAllowAnonymous
           // Fetch author info
           if (resp.userId) {

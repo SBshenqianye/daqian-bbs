@@ -268,6 +268,13 @@ public class ArticleController {
     @PostMapping("/common/article/getArticleById/articleId/{articleId}")
     public Article getArticleById(@PathVariable("articleId") Integer articleId) {
         Article article = articleService.queryArticleById(articleId);
+        // 匿名帖会把 userId 置空，前端无法再判断"是不是自己的帖子"；
+        // 在脱敏之前用当前登录用户算一次作者标记，避免匿名帖对所有人（含作者自己）都不可举报。
+        if (article != null) {
+            User currentUser = currentUserService.getCurrentUser();
+            article.setSelfAuthored(currentUser != null && article.getUserId() != null
+                    && currentUser.getId() != null && currentUser.getId().equals(article.getUserId()));
+        }
         if (article != null && article.getArticleLabelId() != null) {
             ArticleLabel label = articleLabelService.getById(article.getArticleLabelId());
             if (label != null) {

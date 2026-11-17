@@ -27,6 +27,10 @@
 ### 开发环境
 - **开发态启动日志噪音**：Windows 下 enhanced-resolve 会把盘符根目录（如 `D:\`）写进 `fileDependencies`，watchpack 扫描根目录时 `lstat` 到 `pagefile.sys` / `DumpStack.log.tmp` 会抛 `Watchpack Error (initial scan): EINVAL`；开发态关闭 `resolve.symlinks`，生产构建行为不变
 
+### 修复
+- **匿名帖没有举报入口**：详情接口脱敏时把 `userId` 置空，前端 `canReportArticle` 对所有人恒为 false；新增 `selfAuthored`（后端按当前登录用户计算），匿名帖对非作者也能显示举报入口
+- **精华帖详情缺「精华」标记**：`loadArticle` 未回填 `isFeatured`，详情页头部只显示标签 Chip，不显示「精华」
+
 ### 新增（P0）
 - **排行榜分类**：系统管理新增“排名管理”，支持从组织树拖拽组织、配置“含下级”、分类重叠；用户端排行榜改为分类 Tab
 - **组织人均排名**：按人均得分排序，同时展示总分、人数、发帖、回帖；“内江供电公司本部”沿用原 LEGACY 逻辑

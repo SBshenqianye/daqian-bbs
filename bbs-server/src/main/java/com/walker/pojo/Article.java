@@ -176,4 +176,8 @@ public class Article implements Serializable {
     @ApiModelProperty("建议反馈是否已被采纳（关联查询，非数据库字段）")
     @TableField(exist = false)
     private Boolean isSuggestionAdopted;
+
+    @ApiModelProperty("当前登录用户是否为作者（非数据库字段；匿名帖前端据此判断能否举报）")
+    @TableField(exist = false)
+    private Boolean selfAuthored;
 }
