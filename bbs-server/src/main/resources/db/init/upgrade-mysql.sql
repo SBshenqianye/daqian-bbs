@@ -9140,6 +9140,12 @@ SET @col_public_status := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE
 SET @sql_public_status := IF(@col_public_status=0, 'ALTER TABLE `bbs_featured_recommendation` ADD COLUMN `public_status` varchar(20) DEFAULT ''NONE'' COMMENT ''公示状态''', 'SELECT 1');
 PREPARE s24 FROM @sql_public_status; EXECUTE s24; DEALLOCATE PREPARE s24;
 
+-- @migration: v050b-seq-sync-placeholder 序列同步占位（MySQL 自增无需处理）
+-- 目标：与 PostgreSQL 的 v050b-pg-sequence-sync 保持版本对齐；
+--       MySQL 的 AUTO_INCREMENT 在显式 id 插入后会自动推进，无需额外同步。
+-- 幂等：纯占位语句。
+SELECT 1;
+
 -- @migration: v051-p2-featured-public P2 精华公示配置
 -- 幂等：WHERE NOT EXISTS。
 INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `create_by`, `create_time`, `remark`, `dict_key`)

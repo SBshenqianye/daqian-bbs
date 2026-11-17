@@ -8885,6 +8885,18 @@ ALTER TABLE bbs_featured_recommendation ADD COLUMN IF NOT EXISTS public_start_ti
 ALTER TABLE bbs_featured_recommendation ADD COLUMN IF NOT EXISTS public_end_time varchar(20);
 ALTER TABLE bbs_featured_recommendation ADD COLUMN IF NOT EXISTS public_status varchar(20) DEFAULT 'NONE';
 
+-- @migration: v050b-pg-sequence-sync 同步等级表自增序列（PostgreSQL）
+-- 目标：v050 用显式 id 写入等级方案与等级项，PostgreSQL 的 SERIAL 不会随显式 id 推进；
+--       v059 会用自增 id 再插入两套等级方案，nextval 仍为 1，直接撞上已有 id=1。
+-- 处理：把两个序列推到「当前序列值 / 当前最大 id」中的较大者，之后 nextval 从最大值 + 1 开始。
+-- 幂等：可重复执行；序列已正确时不会回退。
+SELECT setval('bbs_level_profile_id_seq', GREATEST(
+    (SELECT last_value FROM bbs_level_profile_id_seq),
+    (SELECT COALESCE(MAX(id), 0) FROM bbs_level_profile)));
+SELECT setval('bbs_level_item_id_seq', GREATEST(
+    (SELECT last_value FROM bbs_level_item_id_seq),
+    (SELECT COALESCE(MAX(id), 0) FROM bbs_level_item)));
+
 -- @migration: v051-p2-featured-public P2 精华公示配置
 -- 幂等：WHERE NOT EXISTS。
 INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, create_time, remark, dict_key)

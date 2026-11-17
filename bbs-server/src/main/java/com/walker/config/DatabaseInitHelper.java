@@ -171,8 +171,8 @@ public class DatabaseInitHelper {
         String sql = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
         try (Connection conn = DriverManager.getConnection(url, username, password);
              Statement stmt = conn.createStatement()) {
-            String[] statements = sql.split(";");
-            for (String statement : statements) {
+            // 复用升级器的切分逻辑：忽略字符串字面量内的分号（敏感词/HTML 实体等）
+            for (String statement : DatabaseInitializer.splitSqlStatements(sql)) {
                 String trimmed = statement.trim();
                 if (trimmed.isEmpty()) {
                     continue;

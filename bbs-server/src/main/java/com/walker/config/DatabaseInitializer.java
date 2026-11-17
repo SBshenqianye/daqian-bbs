@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StreamUtils;
@@ -64,6 +65,9 @@ public class DatabaseInitializer {
 
     /** 最多保留的备份 schema 数量（PostgreSQL）/ 备份数量（MySQL） */
     private static final int MAX_BACKUP_COUNT = 3;
+
+    /** 自动备份名的后缀：yyyyMMdd_HHmmss（用于区分手工创建的其它库/schema） */
+    private static final Pattern BACKUP_SUFFIX_PATTERN = Pattern.compile("^\\d{8}_\\d{6}$");
 
     /** SQL 语句中提取表名的正则：匹配 ALTER TABLE / INSERT INTO / UPDATE / DELETE FROM / CREATE TABLE / DROP TABLE */
     private static final Pattern TABLE_NAME_PATTERN = Pattern.compile(
@@ -274,6 +278,7 @@ public class DatabaseInitializer {
 
             String now = LocalDateTime.now().format(FMT);
             int executed = 0;
+            int failedBlocks = 0;
 
             for (MigrationBlock block : blocks) {
                 if (applied.contains(block.version)) {
@@ -283,40 +288,13 @@ public class DatabaseInitializer {
 
                 log.info("Executing migration: {} - {}", block.version, block.description);
                 try {
-                    // 执行该块内所有 SQL 语句
-                    // 注意：不能直接用 split(";") 切分——敏感词等数据词条可能含分号
-                    // （如 HTML 实体 "&#8226;"），字符串字面量内的分号必须忽略
-                    boolean hasDdlError = false;
+                    // 一个迁移块内的所有语句固定走同一条连接执行：
+                    // MySQL 的条件 DDL 依赖会话变量（SET @x / PREPARE / EXECUTE），
+                    // 若语句分散到连接池的不同连接上，@x 会是 NULL，导致列加不上。
                     List<String> statements = splitSqlStatements(block.sql);
-                    for (String statement : statements) {
-                        String trimmed = statement.trim();
-                        if (trimmed.isEmpty()) continue;
-                        try {
-                            jdbcTemplate.execute(trimmed);
-                        } catch (Exception e) {
-                            String upper = trimmed.toUpperCase();
-                            if (upper.startsWith("SET ") || upper.startsWith("SELECT SETVAL")) {
-                                // MySQL 会话变量赋值 / PG 序列操作，JdbcTemplate 不支持，跳过
-                                log.debug("Skip session-variable SQL: {}", preview(trimmed));
-                            } else if (upper.startsWith("DROP ") && e.getMessage() != null && e.getMessage().contains("doesn't exist")) {
-                                // DROP 不存在的对象，正常跳过
-                                log.debug("Skip drop-if-not-exists: {}", preview(trimmed));
-                            } else if (upper.startsWith("SELECT 1") || upper.startsWith("PREPARE ") || upper.startsWith("DEALLOCATE ")) {
-                                // 纯占位语句 / MySQL PREPARE/DEALLOCATE，跳过
-                                log.debug("Skip placeholder/prepared-stmt: {}", preview(trimmed));
-                            } else if (upper.startsWith("ALTER TABLE") && e.getMessage() != null
-                                    && (e.getMessage().contains("Duplicate column") || e.getMessage().contains("already exists")
-                                        || e.getMessage().contains("Unknown column") || e.getMessage().contains("doesn't exist")
-                                        || e.getMessage().contains("does not exist"))) {
-                                // 列已存在 / 列不存在（已改名），视为成功
-                                log.debug("Column already/gone, skip: {}", preview(trimmed));
-                            } else {
-                                log.error("Migration DDL/DML FAILED [{}]: {} — {}", block.version, preview(trimmed), e.getMessage());
-                                hasDdlError = true;
-                            }
-                        }
-                    }
+                    boolean hasDdlError = executeStatementsOnOneConnection(statements, block.version);
                     if (hasDdlError) {
+                        failedBlocks++;
                         log.error("Migration [{}] has errors, NOT recorded. Fix SQL and restart to retry.", block.version);
                         // 不记录版本，下次重启重试
                     } else {
@@ -335,12 +313,103 @@ public class DatabaseInitializer {
 
             if (executed > 0) {
                 log.info("Database migrations complete. {} new migration(s) applied.", executed);
-            } else {
+            } else if (failedBlocks == 0) {
                 log.info("Database is up to date. No pending migrations.");
+            }
+            if (failedBlocks > 0) {
+                log.error("!!! {} migration block(s) FAILED and were NOT recorded. "
+                        + "Schema may be incomplete — fix the SQL and restart before serving traffic.", failedBlocks);
             }
         } catch (Exception e) {
             log.warn("Failed to execute migrations: {}", e.getMessage());
         }
+    }
+
+    /**
+     * 在一个连接内执行迁移块的所有语句。
+     * <p>
+     * MySQL 的条件 DDL 依赖会话变量（SET @x := ...; PREPARE s FROM @x; EXECUTE s;），
+     * 会话变量是连接级的；若逐条走 JdbcTemplate，连接池可能换连接导致 @x 为 NULL。
+     * 这里显式拿一条连接，保证整块语句共享同一会话。
+     * </p>
+     *
+     * @return true 表示块内存在不可容忍的错误，该块不应记录为已执行
+     */
+    private boolean executeStatementsOnOneConnection(List<String> statements, String version) {
+        Boolean failed = jdbcTemplate.execute((ConnectionCallback<Boolean>) connection -> {
+            boolean hasDdlError = false;
+            try (Statement statement = connection.createStatement()) {
+                for (String raw : statements) {
+                    String trimmed = raw.trim();
+                    if (trimmed.isEmpty()) continue;
+                    try {
+                        statement.execute(trimmed);
+                    } catch (Exception e) {
+                        if (isTolerableFailure(trimmed, e)) {
+                            log.info("Migration [{}] statement skipped (idempotent): {} — {}",
+                                    version, preview(trimmed), e.getMessage());
+                        } else {
+                            log.error("Migration DDL/DML FAILED [{}]: {} — {}",
+                                    version, preview(trimmed), e.getMessage());
+                            hasDdlError = true;
+                        }
+                    }
+                }
+            }
+            return hasDdlError;
+        });
+        return Boolean.TRUE.equals(failed);
+    }
+
+    /**
+     * 去掉语句开头的注释（行注释或块注释），用于识别语句类型。
+     */
+    static String stripLeadingComments(String sql) {
+        String s = sql == null ? "" : sql;
+        while (true) {
+            s = s.replaceFirst("^\\s+", "");
+            if (s.startsWith("--")) {
+                int nl = s.indexOf('\n');
+                if (nl < 0) return "";
+                s = s.substring(nl + 1);
+                continue;
+            }
+            if (s.startsWith("/*")) {
+                int end = s.indexOf("*/");
+                if (end < 0) return "";
+                s = s.substring(end + 2);
+                continue;
+            }
+            return s;
+        }
+    }
+
+    /**
+     * 幂等迁移里可以安全忽略的失败：
+     * 重复列/重复索引、DROP 不存在的对象、MySQL 会话变量与 PREPARE 占位语句等。
+     */
+    private boolean isTolerableFailure(String statement, Exception e) {
+        // 迁移块里常用 "-- 说明" 注释打头；startsWith 判断前必须先剥掉前导注释，
+        // 否则 "ALTER TABLE ... Duplicate column" 会被误判为致命错误（v012/v016 就踩过）。
+        String upper = stripLeadingComments(statement).toUpperCase();
+        String message = e.getMessage() == null ? "" : e.getMessage();
+        if (upper.startsWith("SET ") || upper.startsWith("SELECT SETVAL")) {
+            return true;
+        }
+        if (upper.startsWith("SELECT 1") || upper.startsWith("PREPARE ") || upper.startsWith("DEALLOCATE ")) {
+            return true;
+        }
+        if (upper.startsWith("DROP ") && (message.contains("doesn't exist") || message.contains("does not exist"))) {
+            return true;
+        }
+        if (upper.startsWith("ALTER TABLE") && (message.contains("Duplicate column")
+                || message.contains("already exists")
+                || message.contains("Unknown column")
+                || message.contains("doesn't exist")
+                || message.contains("does not exist"))) {
+            return true;
+        }
+        return false;
     }
 
     // ==================== SQL 解析 ====================
@@ -601,20 +670,26 @@ public class DatabaseInitializer {
 
             List<String> backupNames = new ArrayList<>();
             if ("postgresql".equals(dbType)) {
-                // 查询所有 bbs_backup_* schema
+                // 查询所有 bbs_backup_* schema，只保留严格时间戳命名的（避免误删同名前缀的业务 schema）
                 List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                     "SELECT schema_name FROM information_schema.schemata " +
                     "WHERE schema_name LIKE 'bbs_backup_%' ORDER BY schema_name");
                 for (Map<String, Object> row : rows) {
-                    backupNames.add((String) row.get("schema_name"));
+                    String name = (String) row.get("schema_name");
+                    if (isBackupName(name, "bbs_backup_")) {
+                        backupNames.add(name);
+                    }
                 }
             } else {
-                // 查询所有 原库名_* 数据库
+                // 查询所有 原库名_* 数据库，只保留 "<库名>_yyyyMMdd_HHmmss" 这种由本程序创建的备份
                 List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                     "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA " +
                     "WHERE SCHEMA_NAME LIKE '" + dbName + "_%' ORDER BY SCHEMA_NAME");
                 for (Map<String, Object> row : rows) {
-                    backupNames.add((String) row.get("SCHEMA_NAME"));
+                    String name = (String) row.get("SCHEMA_NAME");
+                    if (isBackupName(name, dbName + "_")) {
+                        backupNames.add(name);
+                    }
                 }
             }
 
@@ -651,6 +726,16 @@ public class DatabaseInitializer {
         } catch (Exception e) {
             log.debug("清理旧备份时出错（不影响迁移）: {}", e.getMessage());
         }
+    }
+
+    /**
+     * 是否为程序自动创建的备份名：前缀 + yyyyMMdd_HHmmss。
+     * 例如 bbs_db_20261117_114359 / bbs_backup_20261117_114359。
+     */
+    private boolean isBackupName(String name, String prefix) {
+        if (name == null || prefix == null || !name.startsWith(prefix)) return false;
+        String suffix = name.substring(prefix.length());
+        return BACKUP_SUFFIX_PATTERN.matcher(suffix).matches();
     }
 
     /**

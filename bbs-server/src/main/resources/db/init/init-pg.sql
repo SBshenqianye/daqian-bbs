@@ -723,6 +723,10 @@ SELECT setval('bbs_user_id_seq', GREATEST(nextval('bbs_user_id_seq'), (SELECT CO
 SELECT setval('bbs_article_label_label_id_seq', GREATEST(nextval('bbs_article_label_label_id_seq'), (SELECT COALESCE(max(label_id), 0) FROM bbs_article_label)));
 SELECT setval('bbs_sensitive_word_id_seq', GREATEST(nextval('bbs_sensitive_word_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_sensitive_word)));
 SELECT setval('bbs_dict_id_seq', GREATEST(nextval('bbs_dict_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_dict)));
+-- 等级方案/等级项使用显式 id 写入种子数据，PostgreSQL 的 SERIAL 不会自动推进，
+-- 这里同步一次，避免后续自增插入与种子 id 冲突。
+SELECT setval('bbs_level_profile_id_seq', GREATEST(nextval('bbs_level_profile_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_level_profile)));
+SELECT setval('bbs_level_item_id_seq', GREATEST(nextval('bbs_level_item_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_level_item)));
 
 -- ----------------------------
 -- Table: bbs_audit_log（关键操作审计日志）
