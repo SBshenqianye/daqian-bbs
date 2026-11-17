@@ -84,12 +84,21 @@
                     <span class="label">密码</span>&nbsp;
                     <input type="password" id="password" style="width:140px" value=""></td>
                 <td colspan="2" align="right" style="padding-top:6px">
-                    <input type="checkbox" id="writeMode"> <span class="warn">包含写入用例</span>
+                    <input type="checkbox" id="prodSafe" checked> <span class="warn">生产安全模式</span>&nbsp;&nbsp;
+                    <input type="checkbox" id="writeMode"> <span class="warn">写入用例</span>
                 </td>
                 <td>&nbsp;</td>
             </tr>
+            <tr>
+                <td class="label" style="padding-top:6px">验收专用</td>
+                <td colspan="4" style="padding-top:6px">
+                    帖子 ID <input type="text" id="testArticleId" style="width:76px" value="">&nbsp;
+                    标签 ID <input type="text" id="testLabelId" style="width:66px" value="">
+                    <span class="hint" style="margin-left:6px">生产环境建议填一篇专用测试帖，避免浏览量自增</span>
+                </td>
+            </tr>
         </table>
-        <div class="hint">只读用例不改数据；写入用例默认关闭，开启后会创建临时帖/评论并立即删除，点赞收藏会切回原状态。</div>
+        <div class="hint">生产安全模式：不执行写入用例，帖子详情用 countView=false 读取（不增加浏览量），并跳过会给真实用户计算成就的接口；建议登录 <b>is_test_account=1</b> 的专用验收账号。完整模式：用于测试/预发环境，写入用例可选择执行并自动清理。</div>
     </div>
 
     <div style="margin-top:9px">
@@ -297,6 +306,19 @@ function expectAnyOk(res) {
     return res.json;
 }
 
+/** 只读类用例应使用的帖子 id：生产安全模式优先用验收专用帖 */
+function readArticleId() {
+    if (state.ctx.prodSafe && state.ctx.testArticleId) return state.ctx.testArticleId;
+    return state.ctx.articleId;
+}
+
+/** 写入用例是否被阻止；返回空串表示允许执行 */
+function writeBlockedReason() {
+    if (state.ctx.prodSafe) return '生产安全模式：不执行写入用例';
+    if (!byId('writeMode').checked) return '未开启写入用例';
+    return '';
+}
+
 /* ---------- 用例定义 ---------- */
 
 function addTest(name, fn) { TESTS.push({ name: name, run: fn }); }
@@ -357,43 +379,53 @@ addTest('[公共] 按标签筛选', function () {
 });
 
 addTest('[公共] 帖子详情', function () {
-    if (!state.ctx.articleId) skip('依赖帖子列表用例');
+    var id = readArticleId();
+    if (!id) {
+        if (state.ctx.prodSafe) skip('生产安全模式：请填写验收专用帖 ID（避免真实帖子浏览量自增）');
+        skip('依赖帖子列表用例');
+    }
+    var suffix = state.ctx.prodSafe ? '?countView=false' : '';
     var article = expectRaw(httpCall('POST',
-        '/common/article/getArticleById/articleId/' + state.ctx.articleId, null, false));
+        '/common/article/getArticleById/articleId/' + id + suffix, null, false));
     must(article && article.articleTitle, '详情缺少标题');
     var note = '标题：' + clip(article.articleTitle, 28);
     if (article.isFeatured === 1 || article.isFeatured === '1') note += '；精华帖';
+    if (state.ctx.prodSafe) note += '；未计浏览量';
     if (typeof article.selfAuthored === 'boolean') note += '；selfAuthored=' + article.selfAuthored;
     return note;
 });
 
 addTest('[公共] 帖子状态', function () {
-    if (!state.ctx.articleId) skip('依赖帖子列表用例');
+    var id = readArticleId();
+    if (!id) skip('依赖帖子列表用例');
     var json = expectOk(httpCall('POST',
-        '/common/article/getArticleStatus/articleId/' + state.ctx.articleId, null, false));
+        '/common/article/getArticleStatus/articleId/' + id, null, false));
     var s = String(json.obj || '');
     must(s === 'NORMAL' || s === 'DELETED' || s === 'NOT_EXIST', '未知状态：' + s);
     return '状态：' + s;
 });
 
 addTest('[公共] 帖子附件', function () {
-    if (!state.ctx.articleId) skip('依赖帖子列表用例');
+    var id = readArticleId();
+    if (!id) skip('依赖帖子列表用例');
     var list = expectRaw(httpCall('POST',
-        '/common/getArticleFileByArticleId/' + state.ctx.articleId, null, false));
+        '/common/getArticleFileByArticleId/' + id, null, false));
     must(isArray(list), '返回结构不是数组');
     return '附件 ' + list.length + ' 个';
 });
 
 addTest('[公共] 帖子互动状态', function () {
-    if (!state.ctx.articleId) skip('依赖帖子列表用例');
+    var id = readArticleId();
+    if (!id) skip('依赖帖子列表用例');
     var json = expectAnyOk(httpCall('GET',
-        '/common/article/interaction?articleId=' + state.ctx.articleId, null, false));
+        '/common/article/interaction?articleId=' + id, null, false));
     return '互动状态：' + clip(JSON.stringify(json.obj !== undefined ? json.obj : json), 80);
 });
 
 addTest('[公共] 评论与回复', function () {
-    if (!state.ctx.articleId) skip('依赖帖子列表用例');
-    var list = expectRaw(httpCall('POST', '/common/comment/getCommentReply/' + state.ctx.articleId, null, false));
+    var id = readArticleId();
+    if (!id) skip('依赖帖子列表用例');
+    var list = expectRaw(httpCall('POST', '/common/comment/getCommentReply/' + id, null, false));
     must(isArray(list), '返回结构不是数组');
     var replyCount = 0;
     for (var i = 0; i < list.length; i++) {
@@ -499,10 +531,15 @@ addTest('[公共] 等级方案', function () {
 });
 
 addTest('[公共] 用户公开资料', function () {
-    if (!state.ctx.authorUserId) skip('缺少可验证的用户 id');
-    var json = expectOk(httpCall('GET', '/common/user/publicProfile/' + state.ctx.authorUserId, null, false));
+    // 该接口会触发成就计算（可能写入 bbs_user_achievement），生产安全模式下只对验收账号读取
+    var id = (state.ctx.prodSafe && state.ctx.user) ? state.ctx.user.id : state.ctx.authorUserId;
+    if (state.ctx.prodSafe && !state.ctx.user) {
+        skip('生产安全模式：未登录，跳过公开资料（避免给真实用户计算成就）');
+    }
+    if (!id) skip('缺少可验证的用户 id');
+    var json = expectOk(httpCall('GET', '/common/user/publicProfile/' + id, null, false));
     must(json.obj, 'obj 为空');
-    return '用户 ' + state.ctx.authorUserId + '：' + (json.obj.nickname || json.obj.username || '-');
+    return '用户 ' + id + '：' + (json.obj.nickname || json.obj.username || '-');
 });
 
 addTest('[公共] 版主列表', function () {
@@ -541,7 +578,11 @@ addTest('[账号] 登录获取 Token', function () {
     must(json.obj.user && json.obj.user.id, '登录响应缺少 user.id');
     state.ctx.token = String(json.obj.tokenHead || '') + String(json.obj.token);
     state.ctx.user = json.obj.user;
-    return '登录成功：' + (json.obj.user.nickname || json.obj.user.username || '') + '（id=' + json.obj.user.id + '）';
+    var note = '登录成功：' + (json.obj.user.nickname || json.obj.user.username || '') + '（id=' + json.obj.user.id + '）';
+    if (state.ctx.prodSafe && json.obj.user.isTestAccount !== 1) {
+        note += '；提示：生产环境建议使用 is_test_account=1 的专用验收账号';
+    }
+    return note;
 });
 
 addTest('[账号] 当前用户信息', function () {
@@ -613,6 +654,9 @@ addTest('[账号] 我的等级', function () {
 
 addTest('[账号] 我的徽章', function () {
     if (!state.ctx.user) skip('依赖登录用例');
+    if (state.ctx.prodSafe && state.ctx.user.isTestAccount !== 1) {
+        skip('生产安全模式：非测试账号，跳过徽章计算（会写入成就记录）');
+    }
     var json = expectOk(httpCall('GET', '/user/account/badges', null, true));
     var list = json.obj || [];
     return '徽章数据 ' + (isArray(list) ? list.length : 1) + ' 组';
@@ -689,11 +733,12 @@ addTest('[消息] 通知列表', function () {
 
 addTest('[互动] 举报查重接口', function () {
     if (!state.ctx.user) skip('依赖登录用例');
-    if (!state.ctx.articleId) skip('依赖帖子列表用例');
+    var id = readArticleId();
+    if (!id) skip('依赖帖子列表用例');
     var json = expectOk(httpCall('POST', '/user/report/check', {
         reporterId: state.ctx.user.id,
         targetType: 'article',
-        targetId: state.ctx.articleId
+        targetId: id
     }, true));
     return '查重返回：' + clip(JSON.stringify(json.obj), 80);
 });
@@ -701,13 +746,15 @@ addTest('[互动] 举报查重接口', function () {
 /* ===== 写入（默认关闭） ===== */
 
 addTest('[写入] 发帖→详情→删除', function () {
-    if (!byId('writeMode').checked) skip('未开启写入用例');
+    var blocked = writeBlockedReason();
+    if (blocked) skip(blocked);
     if (!state.ctx.user) skip('依赖登录用例');
     if (!state.ctx.labelId) skip('缺少标签 id');
 
+    var labelId = state.ctx.testLabelId || state.ctx.labelId;
     var title = 'E2E自动验收-' + fileStamp() + '-' + Math.floor(Math.random() * 1000);
     var payload = {
-        articleLabelId: state.ctx.labelId,
+        articleLabelId: labelId,
         articleAuthor: state.ctx.user.nickname || state.ctx.user.username || 'e2e',
         articleTitle: title,
         articleSummary: '自动化验收临时帖，脚本会自动删除',
@@ -731,7 +778,8 @@ addTest('[写入] 发帖→详情→删除', function () {
 });
 
 addTest('[写入] 点赞→取消', function () {
-    if (!byId('writeMode').checked) skip('未开启写入用例');
+    var blocked = writeBlockedReason();
+    if (blocked) skip(blocked);
     if (!state.ctx.user) skip('依赖登录用例');
     if (!state.ctx.articleId) skip('依赖帖子列表用例');
     expectOk(httpCall('POST', '/article/like', { articleId: state.ctx.articleId }, true));
@@ -740,7 +788,8 @@ addTest('[写入] 点赞→取消', function () {
 });
 
 addTest('[写入] 收藏→取消', function () {
-    if (!byId('writeMode').checked) skip('未开启写入用例');
+    var blocked = writeBlockedReason();
+    if (blocked) skip(blocked);
     if (!state.ctx.user) skip('依赖登录用例');
     if (!state.ctx.articleId) skip('依赖帖子列表用例');
     expectOk(httpCall('POST', '/article/favorite', { articleId: state.ctx.articleId }, true));
@@ -749,7 +798,8 @@ addTest('[写入] 收藏→取消', function () {
 });
 
 addTest('[写入] 评论→删除', function () {
-    if (!byId('writeMode').checked) skip('未开启写入用例');
+    var blocked = writeBlockedReason();
+    if (blocked) skip(blocked);
     if (!state.ctx.user) skip('依赖登录用例');
     if (!state.ctx.articleId) skip('依赖帖子列表用例');
 
@@ -883,7 +933,19 @@ function startRun() {
     state.stopRequested = false;
     state.results = [];
     state.startedAt = nowText();
-    state.ctx = { base: base, token: '', user: null, articleId: null, labelId: null, categoryId: null, authorUserId: null, firstTitle: '' };
+    state.ctx = {
+        base: base,
+        token: '',
+        user: null,
+        articleId: null,
+        labelId: null,
+        categoryId: null,
+        authorUserId: null,
+        firstTitle: '',
+        prodSafe: byId('prodSafe').checked,
+        testArticleId: parseInt(trimStr(byId('testArticleId').value), 10) || null,
+        testLabelId: parseInt(trimStr(byId('testLabelId').value), 10) || null
+    };
     byId('detail').innerHTML = '（暂无）';
     renderTable();
     updateSummary();
@@ -959,7 +1021,7 @@ function buildReport() {
     lines.push('生成时间：' + nowText());
     lines.push('服务地址：' + state.ctx.base);
     lines.push('验收账号：' + (state.ctx.user ? (state.ctx.user.nickname || state.ctx.user.username) : trimStr(byId('username').value) || '(未填写)'));
-    lines.push('写入用例：' + (byId('writeMode').checked ? '已开启' : '未开启'));
+    lines.push('运行模式：' + (state.ctx.prodSafe ? '生产安全（只读）' : '完整') + '；写入用例：' + (byId('writeMode').checked && !state.ctx.prodSafe ? '已开启' : '未开启'));
     lines.push('');
     var ok = 0, fail = 0, skipCount = 0;
     for (var i = 0; i < TESTS.length; i++) {
@@ -1020,4 +1082,6 @@ init();
 </script>
 </body>
 </html>
+
+
 

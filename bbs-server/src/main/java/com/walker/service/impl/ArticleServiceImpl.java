@@ -486,6 +486,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      */
     @Override
     public Article queryArticleById(Integer articleId) {
+        return queryArticleById(articleId, true);
+    }
+
+    @Override
+    public Article queryArticleById(Integer articleId, boolean countView) {
         Article article = articleMapper.selectOne(
                 new LambdaQueryWrapper<Article>()
                         .eq(Article::getEnable, 1)
@@ -495,9 +500,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (article == null) {
             return null;
         }
-        // 更新浏览量
-        article.setArticleViewNum(article.getArticleViewNum() + 1);
-        articleMapper.updateById(article);
+        // 更新浏览量（验收/预览可传 countView=false 跳过，避免污染真实数据）
+        if (countView) {
+            article.setArticleViewNum(article.getArticleViewNum() + 1);
+            articleMapper.updateById(article);
+        }
         try {
             if (article.getUserId() != null) {
                 article.setAuthorLevelIndex(levelService.getLevelIndex(article.getUserId()));

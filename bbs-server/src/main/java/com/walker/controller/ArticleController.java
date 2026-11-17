@@ -266,8 +266,9 @@ public class ArticleController {
 
     @ApiOperation(value = "通过文章Id查询文章")
     @PostMapping("/common/article/getArticleById/articleId/{articleId}")
-    public Article getArticleById(@PathVariable("articleId") Integer articleId) {
-        Article article = articleService.queryArticleById(articleId);
+    public Article getArticleById(@PathVariable("articleId") Integer articleId,
+                                  @RequestParam(value = "countView", defaultValue = "true") boolean countView) {
+        Article article = articleService.queryArticleById(articleId, countView);
         // 匿名帖会把 userId 置空，前端无法再判断"是不是自己的帖子"；
         // 在脱敏之前用当前登录用户算一次作者标记，避免匿名帖对所有人（含作者自己）都不可举报。
         if (article != null) {

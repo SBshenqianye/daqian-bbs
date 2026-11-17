@@ -76,6 +76,11 @@ public interface ArticleService extends IService<Article> {
     Article queryArticleById(Integer articleId);
 
     /**
+     * 按 id 查询帖子；countView=false 时不自增浏览量（供验收/预览等只读场景使用）。
+     */
+    Article queryArticleById(Integer articleId, boolean countView);
+
+    /**
      * 查询所有的文章列表
      * @param keywords 关键词
      * @return

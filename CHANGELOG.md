@@ -28,6 +28,8 @@
 ### 开发环境
 - **开发态启动日志噪音**：Windows 下 enhanced-resolve 会把盘符根目录（如 `D:\`）写进 `fileDependencies`，watchpack 扫描根目录时 `lstat` 到 `pagefile.sys` / `DumpStack.log.tmp` 会抛 `Watchpack Error (initial scan): EINVAL`；开发态关闭 `resolve.symlinks`，生产构建行为不变
 - **Win7 部署验收 E2E**：新增单文件 `scripts/e2e/daqian-bbs-e2e.hta`（mshta + WinHttp，无需安装运行库），51 个用例覆盖公共/账号/消息/互动/写入五组，支持逐用例明细与报告导出，写入用例默认关闭
+- **生产安全模式**：E2E 新增「生产安全模式」（默认开启），不执行写入用例；帖子详情可指定验收专用帖并使用 `countView=false`，避免真实帖子浏览量自增；公开资料/徽章等会触发成就计算的接口仅对专用测试账号执行
+- **帖子详情不再强制计数**：`/common/article/getArticleById` 新增 `countView` 参数（默认 `true`），验收/预览可传 `false` 只读查询
 
 ### 修复
 - **匿名帖没有举报入口**：详情接口脱敏时把 `userId` 置空，前端 `canReportArticle` 对所有人恒为 false；新增 `selfAuthored`（后端按当前登录用户计算），匿名帖对非作者也能显示举报入口
