@@ -17,10 +17,10 @@
     html, body { margin: 0; padding: 0; background: #f4f6fa; color: #181c23;
         font-family: "Microsoft YaHei", "微软雅黑", Tahoma, Arial, sans-serif; font-size: 12.5px; }
     a { color: #0052d9; }
-    .wrap { padding: 14px 16px 10px 16px; }
+    .wrap { padding: 12px 16px 8px 16px; }
     .title { font-size: 17px; font-weight: bold; color: #0b2b66; }
     .title span { font-size: 11px; font-weight: normal; color: #7b8194; margin-left: 8px; }
-    .card { background: #fff; border: 1px solid #dbe0ea; border-radius: 6px; padding: 10px 12px; margin-top: 10px; }
+    .card { background: #fff; border: 1px solid #dbe0ea; border-radius: 6px; padding: 9px 12px; margin-top: 9px; }
     .label { color: #5b6475; }
     input[type=text], input[type=password] {
         border: 1px solid #c9cfdb; border-radius: 4px; padding: 3px 6px; height: 20px;
@@ -33,7 +33,7 @@
     .btn-primary { background: #0052d9; border-color: #0052d9; color: #fff; }
     .btn-primary:hover { color: #fff; opacity: .9; }
     .btn[disabled] { color: #9aa2b1; border-color: #dfe3ea; background: #f5f6f8; cursor: default; }
-    .summary { margin-top: 10px; padding: 8px 12px; background: #fff; border: 1px solid #dbe0ea; border-radius: 6px; }
+    .summary { margin-top: 9px; padding: 7px 12px; background: #fff; border: 1px solid #dbe0ea; border-radius: 6px; }
     .summary b { font-size: 13.5px; }
     .ok { color: #0a7d33; }
     .fail { color: #c62828; }
@@ -41,25 +41,26 @@
     .muted { color: #7b8194; }
     .bar { height: 6px; background: #e8ebf2; border-radius: 3px; margin-top: 7px; overflow: hidden; }
     .bar i { display: block; height: 6px; width: 0; background: #0052d9; }
-    table.grid { width: 100%; border-collapse: collapse; margin-top: 10px; background: #fff; }
-    table.grid th, table.grid td { border-bottom: 1px solid #eef1f6; padding: 5px 7px; text-align: left;
-        vertical-align: top; font-size: 12.5px; }
-    table.grid th { background: #f8fafd; color: #5b6475; font-weight: normal; border-bottom: 1px solid #dfe4ee; }
+    .gridWrap { height: 330px; overflow: auto; margin-top: 9px; border: 1px solid #dfe4ee; background: #fff; }
+    table.grid { width: 100%; border-collapse: collapse; }
+    table.grid th, table.grid td { border-bottom: 1px solid #eef1f6; padding: 4px 7px; text-align: left;
+        vertical-align: top; font-size: 12px; }
+    table.grid th { background: #f8fafd; color: #5b6475; font-weight: normal; position: sticky; top: 0; }
     table.grid tr.row { cursor: pointer; }
     table.grid tr.row:hover td { background: #f6f9ff; }
     table.grid tr.sel td { background: #eef4ff; }
-    td.col-no { width: 34px; color: #8a91a1; }
-    td.col-name { width: 190px; }
-    td.col-state { width: 62px; }
-    td.col-cost { width: 70px; color: #7b8194; }
-    td.col-code { width: 56px; color: #7b8194; }
-    .detail { margin-top: 10px; }
-    .detail pre { margin: 6px 0 0 0; padding: 8px; background: #0f172a; color: #d7e2f5; border-radius: 5px;
-        height: 150px; overflow: auto; font-family: Consolas, "Courier New", monospace; font-size: 11.5px;
+    td.col-no { width: 32px; color: #8a91a1; }
+    td.col-name { width: 210px; }
+    td.col-state { width: 56px; }
+    td.col-cost { width: 66px; color: #7b8194; }
+    td.col-code { width: 52px; color: #7b8194; }
+    .detail { margin-top: 9px; }
+    .detail pre { margin: 5px 0 0 0; padding: 8px; background: #0f172a; color: #d7e2f5; border-radius: 5px;
+        height: 132px; overflow: auto; font-family: Consolas, "Courier New", monospace; font-size: 11.5px;
         white-space: pre-wrap; word-wrap: break-word; }
     .hint { color: #7b8194; font-size: 11.5px; margin-top: 4px; }
     .warn { color: #a8620a; }
-    .foot { margin-top: 8px; color: #8a91a1; font-size: 11px; }
+    .foot { margin-top: 6px; color: #8a91a1; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -71,27 +72,27 @@
     <div class="card">
         <table cellspacing="0" cellpadding="0" border="0">
             <tr>
-                <td class="label" width="72">服务地址</td>
+                <td class="label" width="66">服务地址</td>
                 <td><input type="text" id="baseUrl" style="width:330px" value="http://127.0.0.1:9083/bbs-server"></td>
-                <td class="label" width="70" align="right">超时(ms)</td>
-                <td><input type="text" id="timeout" style="width:70px" value="15000"></td>
+                <td class="label" width="64" align="right">超时(ms)</td>
+                <td><input type="text" id="timeout" style="width:66px" value="15000"></td>
                 <td>&nbsp;</td>
             </tr>
             <tr>
                 <td class="label" style="padding-top:6px">验收账号</td>
-                <td style="padding-top:6px"><input type="text" id="username" style="width:150px" value="">&nbsp;
+                <td style="padding-top:6px"><input type="text" id="username" style="width:140px" value="">&nbsp;
                     <span class="label">密码</span>&nbsp;
-                    <input type="password" id="password" style="width:150px" value=""></td>
+                    <input type="password" id="password" style="width:140px" value=""></td>
                 <td colspan="2" align="right" style="padding-top:6px">
-                    <input type="checkbox" id="writeMode"> <span class="warn">包含写入用例（发帖→删除）</span>
+                    <input type="checkbox" id="writeMode"> <span class="warn">包含写入用例</span>
                 </td>
                 <td>&nbsp;</td>
             </tr>
         </table>
-        <div class="hint">只读用例不会修改数据；勾选写入用例会在生产库创建一篇临时帖并立即尝试删除，请谨慎。</div>
+        <div class="hint">只读用例不改数据；写入用例默认关闭，开启后会创建临时帖/评论并立即删除，点赞收藏会切回原状态。</div>
     </div>
 
-    <div style="margin-top:10px">
+    <div style="margin-top:9px">
         <button class="btn btn-primary" id="btnRun" onclick="startRun()">开始验收</button>
         <button class="btn" id="btnStop" onclick="stopRun()" disabled>停止</button>
         <button class="btn" id="btnSave" onclick="saveReport()">保存报告</button>
@@ -104,44 +105,47 @@
         <div class="bar"><i id="progressBar"></i></div>
     </div>
 
-    <table class="grid" id="resultTable" cellspacing="0" cellpadding="0">
-        <thead>
-        <tr>
-            <th class="col-no">#</th>
-            <th>用例</th>
-            <th class="col-state">结果</th>
-            <th class="col-cost">耗时</th>
-            <th class="col-code">HTTP</th>
-            <th>说明</th>
-        </tr>
-        </thead>
-        <tbody id="resultBody"></tbody>
-    </table>
+    <div class="gridWrap">
+        <table class="grid" id="resultTable" cellspacing="0" cellpadding="0">
+            <thead>
+            <tr>
+                <th class="col-no">#</th>
+                <th>用例</th>
+                <th class="col-state">结果</th>
+                <th class="col-cost">耗时</th>
+                <th class="col-code">HTTP</th>
+                <th>说明</th>
+            </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+        </table>
+    </div>
 
-    <div class="detail card" style="padding:8px 12px">
+    <div class="detail card" style="padding:7px 12px">
         <div class="label">明细（点击上面任意一行查看请求与响应）</div>
         <pre id="detail">（暂无）</pre>
     </div>
 
-    <div class="foot">报告保存到本文件所在目录；仅使用系统自带组件（mshta + WinHttp），无需安装运行库。</div>
+    <div class="foot">报告保存到本文件所在目录；仅使用系统自带组件（mshta + WinHttp + ADODB），无需安装运行库。</div>
 </div>
 
 <script type="text/javascript">
 /* ============================================================
  * 大千智荟论坛 · 部署验收 E2E（Windows 7 单文件 HTA）
- * 说明：
- *  - 纯 ES5 + ActiveX（WinHttp / ADODB），不依赖任何外部库；
- *  - 只读用例覆盖：服务可达、登录、用户、帖子、评论、精华、排行、通知、举报查重；
- *  - 写入用例默认关闭，开启后创建临时帖并尝试删除。
+ *  - 纯 ES5 + ActiveX（WinHttp / ADODB），不依赖任何外部库与浏览器驱动；
+ *  - [公共] 只读用例覆盖首页/帖子/评论/精华/排行/等级/组织；
+ *  - [账号]/[消息] 用例需要验收账号；
+ *  - [写入] 用例默认关闭，创建的数据会被立即清理。
  * ============================================================ */
 
 var TESTS = [];
+var LAST_HTTP = null;
 var state = {
     running: false,
     stopRequested: false,
     results: [],
     startedAt: null,
-    ctx: { base: '', token: '', user: null, articleId: null, labelId: null }
+    ctx: {}
 };
 
 /* ---------- 通用工具 ---------- */
@@ -177,6 +181,20 @@ function escapeHtml(s) {
 function clip(s, n) {
     s = (s === null || s === undefined) ? '' : String(s);
     return s.length > n ? s.substring(0, n) + ' ...' : s;
+}
+
+function isArray(v) {
+    return Object.prototype.toString.call(v) === '[object Array]';
+}
+
+/** 统计分页/列表数据结构里的条数：数组直接取长度，{total}/{list} 取 total 或 list 长度 */
+function countOf(data) {
+    if (!data) return 0;
+    if (isArray(data)) return data.length;
+    if (typeof data.total === 'number') return data.total;
+    if (isArray(data.list)) return data.list.length;
+    if (isArray(data.records)) return data.records.length;
+    return 0;
 }
 
 function must(cond, msg) {
@@ -253,8 +271,7 @@ function httpCall(method, path, body, useAuth) {
     return record;
 }
 
-var LAST_HTTP = null;
-
+/** 标准 ResultBean：{code:200,message,obj} */
 function expectOk(res, hint) {
     hint = hint || '';
     must(res.status === 200, 'HTTP ' + res.status + (hint ? '（' + hint + '）' : ''));
@@ -263,10 +280,20 @@ function expectOk(res, hint) {
     return res.json;
 }
 
-/* 部分接口（帖子详情、用户信息、评论树）直接返回裸对象/数组，没有 code 包装 */
+/** 裸对象/数组接口（帖子详情、用户信息、评论树、推荐/最新/热门等） */
 function expectRaw(res) {
     must(res.status === 200, 'HTTP ' + res.status);
     must(res.json !== null && res.json !== undefined, '响应不是 JSON：' + clip(res.text, 120));
+    return res.json;
+}
+
+/** 兼容两种结构：有 code 就校验 code，没有 code（裸 Map）则只看 HTTP */
+function expectAnyOk(res) {
+    must(res.status === 200, 'HTTP ' + res.status);
+    must(res.json !== null && res.json !== undefined, '响应不是 JSON：' + clip(res.text, 120));
+    if (typeof res.json.code !== 'undefined') {
+        must(res.json.code === 200, '业务码 ' + res.json.code + '：' + (res.json.message || '无 message'));
+    }
     return res.json;
 }
 
@@ -274,71 +301,100 @@ function expectRaw(res) {
 
 function addTest(name, fn) { TESTS.push({ name: name, run: fn }); }
 
-addTest('服务可达性', function () {
+/* ===== 公共（免登录） ===== */
+
+addTest('[公共] 服务可达性', function () {
     var res = httpCall('GET', '/common/featured/notices', null, false);
     expectOk(res);
-    must(res.json.obj !== null && res.json.obj !== undefined, 'obj 为空');
     return 'GET /common/featured/notices 正常';
 });
 
-addTest('登录获取 Token', function () {
-    var u = trimStr(byId('username').value);
-    var p = byId('password').value;
-    if (!u || !p) skip('未填写验收账号/密码');
-    var res = httpCall('POST', '/common/login', { username: u, password: p, channel: '01' }, false);
-    var json = expectOk(res);
-    must(json.obj, '登录响应缺少 obj');
-    must(json.obj.token, '登录响应缺少 token');
-    must(json.obj.user && json.obj.user.id, '登录响应缺少 user.id');
-    state.ctx.token = String(json.obj.tokenHead || '') + String(json.obj.token);
-    state.ctx.user = json.obj.user;
-    var nick = json.obj.user.nickname || json.obj.user.username || '';
-    return '登录成功：' + nick + '（id=' + json.obj.user.id + '）';
+addTest('[公共] 轮播图', function () {
+    var list = expectRaw(httpCall('GET', '/common/getSlideshow', null, false));
+    must(isArray(list), '返回结构不是数组');
+    return '轮播 ' + list.length + ' 条';
 });
 
-addTest('用户信息', function () {
-    if (!state.ctx.user) skip('依赖登录用例');
-    var res = httpCall('POST', '/common/user/getUserinfoById/' + state.ctx.user.id, null, false);
-    var user = expectRaw(res);
-    must(user && user.id, '用户信息缺少 id');
-    return '用户：' + (user.nickname || user.username || '-') + '（id=' + user.id + '）';
+addTest('[公共] 标签列表', function () {
+    var list = expectRaw(httpCall('GET', '/common/getArticleLabel', null, false));
+    must(isArray(list) && list.length > 0, '标签列表为空');
+    if (!state.ctx.labelId && list[0].labelId) state.ctx.labelId = list[0].labelId;
+    return list.length + ' 个标签，取 labelId=' + state.ctx.labelId;
 });
 
-addTest('帖子列表', function () {
-    var res = httpCall('POST', '/common/article/list', { page: 1, size: 10 }, false);
-    var json = expectOk(res);
+addTest('[公共] 组织树', function () {
+    var json = expectOk(httpCall('GET', '/common/saOrgTree', null, false));
+    must(isArray(json.obj) && json.obj.length > 0, '组织树为空');
+    return '根节点 ' + json.obj.length + ' 个';
+});
+
+addTest('[公共] 帖子列表', function () {
+    var json = expectOk(httpCall('POST', '/common/article/list', { page: 1, size: 10 }, false));
     var list = (json.obj && json.obj.list) || [];
     must(list.length > 0, '列表为空，无法继续验证帖子相关用例');
     state.ctx.articleId = list[0].articleId;
-    state.ctx.labelId = list[0].articleLabelId;
+    state.ctx.labelId = list[0].articleLabelId || state.ctx.labelId;
+    state.ctx.authorUserId = list[0].userId || null;
+    state.ctx.firstTitle = list[0].articleTitle || '';
     return '共 ' + (json.obj.total || list.length) + ' 条，取 articleId=' + state.ctx.articleId;
 });
 
-addTest('帖子详情', function () {
+addTest('[公共] 帖子搜索', function () {
+    if (!state.ctx.firstTitle) skip('缺少可搜索的标题');
+    var json = expectOk(httpCall('POST', '/common/article/list',
+        { keywords: state.ctx.firstTitle, page: 1, size: 5 }, false));
+    var list = (json.obj && json.obj.list) || [];
+    must(list.length > 0, '按标题搜索无结果：' + clip(state.ctx.firstTitle, 24));
+    return '搜索命中 ' + list.length + ' 条';
+});
+
+addTest('[公共] 按标签筛选', function () {
+    if (!state.ctx.labelId) skip('缺少标签 id');
+    var json = expectOk(httpCall('POST', '/common/article/list',
+        { labelId: state.ctx.labelId, page: 1, size: 5 }, false));
+    var list = (json.obj && json.obj.list) || [];
+    return '标签 ' + state.ctx.labelId + ' 命中 ' + list.length + ' 条';
+});
+
+addTest('[公共] 帖子详情', function () {
     if (!state.ctx.articleId) skip('依赖帖子列表用例');
-    var res = httpCall('POST', '/common/article/getArticleById/articleId/' + state.ctx.articleId, null, false);
-    var article = expectRaw(res);
+    var article = expectRaw(httpCall('POST',
+        '/common/article/getArticleById/articleId/' + state.ctx.articleId, null, false));
     must(article && article.articleTitle, '详情缺少标题');
-    var note = '标题：' + clip(article.articleTitle, 32);
+    var note = '标题：' + clip(article.articleTitle, 28);
     if (article.isFeatured === 1 || article.isFeatured === '1') note += '；精华帖';
     if (typeof article.selfAuthored === 'boolean') note += '；selfAuthored=' + article.selfAuthored;
     return note;
 });
 
-addTest('帖子状态', function () {
+addTest('[公共] 帖子状态', function () {
     if (!state.ctx.articleId) skip('依赖帖子列表用例');
-    var res = httpCall('POST', '/common/article/getArticleStatus/articleId/' + state.ctx.articleId, null, false);
-    var json = expectOk(res);
+    var json = expectOk(httpCall('POST',
+        '/common/article/getArticleStatus/articleId/' + state.ctx.articleId, null, false));
     var s = String(json.obj || '');
     must(s === 'NORMAL' || s === 'DELETED' || s === 'NOT_EXIST', '未知状态：' + s);
     return '状态：' + s;
 });
 
-addTest('评论与回复', function () {
+addTest('[公共] 帖子附件', function () {
     if (!state.ctx.articleId) skip('依赖帖子列表用例');
-    var res = httpCall('POST', '/common/comment/getCommentReply/' + state.ctx.articleId, null, false);
-    var list = expectRaw(res);
-    must(list && typeof list.length === 'number', '返回结构不是数组');
+    var list = expectRaw(httpCall('POST',
+        '/common/getArticleFileByArticleId/' + state.ctx.articleId, null, false));
+    must(isArray(list), '返回结构不是数组');
+    return '附件 ' + list.length + ' 个';
+});
+
+addTest('[公共] 帖子互动状态', function () {
+    if (!state.ctx.articleId) skip('依赖帖子列表用例');
+    var json = expectAnyOk(httpCall('GET',
+        '/common/article/interaction?articleId=' + state.ctx.articleId, null, false));
+    return '互动状态：' + clip(JSON.stringify(json.obj !== undefined ? json.obj : json), 80);
+});
+
+addTest('[公共] 评论与回复', function () {
+    if (!state.ctx.articleId) skip('依赖帖子列表用例');
+    var list = expectRaw(httpCall('POST', '/common/comment/getCommentReply/' + state.ctx.articleId, null, false));
+    must(isArray(list), '返回结构不是数组');
     var replyCount = 0;
     for (var i = 0; i < list.length; i++) {
         replyCount += (list[i].children ? list[i].children.length : 0);
@@ -346,62 +402,265 @@ addTest('评论与回复', function () {
     return '评论 ' + list.length + ' 条，回复 ' + replyCount + ' 条';
 });
 
-addTest('精华展示位', function () {
-    var res = httpCall('GET', '/common/featured/showcase', null, false);
-    var json = expectOk(res);
+addTest('[公共] 精华展示位', function () {
+    var json = expectOk(httpCall('GET', '/common/featured/showcase', null, false));
     var list = json.obj || [];
-    must(typeof list.length === 'number', '返回结构不是数组');
+    must(isArray(list), '返回结构不是数组');
     var hasContent = 0;
     for (var i = 0; i < list.length; i++) {
-        if (!list[i].articleId) throw new Error('第 ' + (i + 1) + ' 条缺少 articleId');
+        must(list[i].articleId, '第 ' + (i + 1) + ' 条缺少 articleId');
         if (list[i].content) hasContent++;
     }
     var note = '展示 ' + list.length + ' 条';
     if (list.length > 0 && hasContent === 0) {
-        note += '（提示：未返回 content 字段，封面兜底将退化为摘要）';
+        note += '（提示：未返回 content 字段，封面兜底会退化为摘要）';
     }
     return note;
 });
 
-addTest('精华公示', function () {
-    var res = httpCall('GET', '/common/featured/notices', null, false);
-    var json = expectOk(res);
-    must(json.obj && typeof json.obj.length === 'number', 'obj 不是数组');
+addTest('[公共] 精华公示', function () {
+    var json = expectOk(httpCall('GET', '/common/featured/notices', null, false));
+    must(isArray(json.obj), 'obj 不是数组');
     return '公示 ' + json.obj.length + ' 条';
 });
 
-addTest('排行榜分类', function () {
-    var res = httpCall('GET', '/common/ranking/categories', null, false);
-    var json = expectOk(res);
+addTest('[公共] 精华置顶', function () {
+    var json = expectOk(httpCall('GET', '/common/article/getFeaturedTop', null, false));
+    must(isArray(json.obj), 'obj 不是数组');
+    return '置顶 ' + json.obj.length + ' 条';
+});
+
+addTest('[公共] 精华分页', function () {
+    var json = expectAnyOk(httpCall('GET', '/common/article/getFeatured?page=1&size=5', null, false));
+    var obj = json.obj !== undefined ? json.obj : json;
+    var list = obj.list || [];
+    must(isArray(list), 'obj.list 不是数组');
+    return '本页 ' + list.length + ' 条，总计 ' + (obj.total || '-');
+});
+
+addTest('[公共] 首页推荐', function () {
+    var list = expectRaw(httpCall('GET', '/common/article/getRecommend', null, false));
+    must(isArray(list), '返回结构不是数组');
+    return '推荐 ' + list.length + ' 条';
+});
+
+addTest('[公共] 最新帖子', function () {
+    var list = expectRaw(httpCall('GET', '/common/article/getNewest', null, false));
+    must(isArray(list), '返回结构不是数组');
+    return '最新 ' + list.length + ' 条';
+});
+
+addTest('[公共] 热门帖子', function () {
+    var list = expectRaw(httpCall('GET', '/common/article/getHot', null, false));
+    must(isArray(list), '返回结构不是数组');
+    return '热门 ' + list.length + ' 条';
+});
+
+addTest('[公共] 标签热榜', function () {
+    if (!state.ctx.labelId) skip('缺少标签 id');
+    var json = expectOk(httpCall('POST', '/common/article/hot',
+        { labelId: state.ctx.labelId, metric: 'views', range: 'all', limit: 5 }, false));
+    var obj = json.obj;
+    var list = isArray(obj) ? obj : (obj && obj.list ? obj.list : []);
+    must(isArray(list), '返回结构不含列表');
+    return '热榜 ' + list.length + ' 条';
+});
+
+addTest('[公共] 排行榜分类', function () {
+    var json = expectOk(httpCall('GET', '/common/ranking/categories', null, false));
     var list = json.obj || [];
-    must(list.length > 0, '分类为空（迁移种子可能未执行）');
+    must(isArray(list) && list.length > 0, '分类为空（迁移种子可能未执行）');
     state.ctx.categoryId = list[0].id;
     var names = [];
     for (var i = 0; i < list.length && i < 5; i++) names.push(list[i].categoryName);
     return list.length + ' 个分类：' + names.join('、');
 });
 
-addTest('组织排行榜', function () {
+addTest('[公共] 组织排行榜', function () {
     if (!state.ctx.categoryId) skip('依赖排行榜分类用例');
-    var res = httpCall('POST', '/common/ranking/org', { categoryId: state.ctx.categoryId }, false);
-    var json = expectOk(res);
-    var list = json.obj || [];
-    must(typeof list.length === 'number', '返回结构不是数组');
-    return '分类 ' + state.ctx.categoryId + ' 共 ' + list.length + ' 个组织上榜';
+    var json = expectOk(httpCall('POST', '/common/ranking/org', { categoryId: state.ctx.categoryId }, false));
+    must(isArray(json.obj), '返回结构不是数组');
+    return '分类 ' + state.ctx.categoryId + ' 共 ' + json.obj.length + ' 个组织上榜';
 });
 
-addTest('积分排行榜', function () {
-    var res = httpCall('POST', '/common/pointsRank', { rankType: '02' }, false);
-    var json = expectOk(res);
-    var list = json.obj || [];
-    must(typeof list.length === 'number', '返回结构不是数组');
-    return '累计榜 ' + list.length + ' 个单位';
+addTest('[公共] 积分排行榜', function () {
+    var json = expectOk(httpCall('POST', '/common/pointsRank', { rankType: '02' }, false));
+    must(isArray(json.obj), '返回结构不是数组');
+    return '累计榜 ' + json.obj.length + ' 个单位';
 });
 
-addTest('未读消息汇总', function () {
+addTest('[公共] 等级方案', function () {
+    var json = expectOk(httpCall('GET', '/common/level/profile', null, false));
+    var profile = json.obj && json.obj.profile;
+    must(profile && profile.id, '缺少当前等级方案');
+    var note = '方案：' + (profile.profileName || '-') + '（id=' + profile.id + '）';
+    if (json.obj.items && json.obj.items.length) note += '，等级 ' + json.obj.items.length + ' 级';
+    return note;
+});
+
+addTest('[公共] 用户公开资料', function () {
+    if (!state.ctx.authorUserId) skip('缺少可验证的用户 id');
+    var json = expectOk(httpCall('GET', '/common/user/publicProfile/' + state.ctx.authorUserId, null, false));
+    must(json.obj, 'obj 为空');
+    return '用户 ' + state.ctx.authorUserId + '：' + (json.obj.nickname || json.obj.username || '-');
+});
+
+addTest('[公共] 版主列表', function () {
+    var json = expectOk(httpCall('GET', '/common/moderator/listAll', null, false));
+    must(isArray(json.obj), 'obj 不是数组');
+    return '版主/管理员 ' + json.obj.length + ' 人';
+});
+
+addTest('[公共] 排行榜候选组织', function () {
+    var json = expectOk(httpCall('GET', '/common/saOrg/rankingOrgs', null, false));
+    must(isArray(json.obj), 'obj 不是数组');
+    return '候选组织 ' + json.obj.length + ' 个';
+});
+
+addTest('[公共] 系统配置接口', function () {
+    var json = expectOk(httpCall('POST', '/common/systemConfig/listByGroup',
+        { configGroup: 'points' }, false));
+    must(isArray(json.obj), 'obj 不是数组');
+    if (json.obj.length > 0) {
+        var key = json.obj[0].configKey;
+        expectOk(httpCall('POST', '/common/systemConfig/getByKey', { configKey: key }, false));
+        return '分组 points ' + json.obj.length + ' 项，读取 ' + key + ' 正常';
+    }
+    return '分组 points 为空（未配置，属正常状态）';
+});
+
+/* ===== 账号（需要登录） ===== */
+
+addTest('[账号] 登录获取 Token', function () {
+    var u = trimStr(byId('username').value);
+    var p = byId('password').value;
+    if (!u || !p) skip('未填写验收账号/密码');
+    var json = expectOk(httpCall('POST', '/common/login', { username: u, password: p, channel: '01' }, false));
+    must(json.obj, '登录响应缺少 obj');
+    must(json.obj.token, '登录响应缺少 token');
+    must(json.obj.user && json.obj.user.id, '登录响应缺少 user.id');
+    state.ctx.token = String(json.obj.tokenHead || '') + String(json.obj.token);
+    state.ctx.user = json.obj.user;
+    return '登录成功：' + (json.obj.user.nickname || json.obj.user.username || '') + '（id=' + json.obj.user.id + '）';
+});
+
+addTest('[账号] 当前用户信息', function () {
     if (!state.ctx.user) skip('依赖登录用例');
-    var res = httpCall('GET', '/notification/unreadSummary?userId=' + state.ctx.user.id, null, true);
-    var json = expectOk(res);
+    var res = httpCall('GET', '/common/user/info', null, true);
+    var info = expectAnyOk(res);
+    var data = info.obj !== undefined ? info.obj : info;
+    must(data, '用户信息为空');
+    var role = data.role || data.userType || '-';
+    return '角色：' + role;
+});
+
+addTest('[账号] 用户详情', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    var user = expectRaw(httpCall('POST', '/common/user/getUserinfoById/' + state.ctx.user.id, null, false));
+    must(user && user.id, '用户信息缺少 id');
+    return '用户：' + (user.nickname || user.username || '-') + '（id=' + user.id + '）';
+});
+
+addTest('[账号] 我的发布', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    var list = expectRaw(httpCall('GET', '/article/getArticleByUserId?userId=' + state.ctx.user.id, null, false));
+    must(isArray(list), '返回结构不是数组');
+    return '我的发布 ' + list.length + ' 条';
+});
+
+addTest('[账号] 我的收藏', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    var json = expectOk(httpCall('GET',
+        '/common/user/favorites?userId=' + state.ctx.user.id + '&page=1&size=5', null, true));
+    var obj = json.obj || {};
+    var total = countOf(obj);
+    return '收藏 ' + total + ' 条';
+});
+
+addTest('[账号] 我的回复', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    var json = expectAnyOk(httpCall('GET',
+        '/reply/myReplies?userId=' + state.ctx.user.id + '&page=1&size=5', null, true));
+    var obj = json.obj !== undefined ? json.obj : json;
+    var total = countOf(obj);
+    return '我的回复 ' + total + ' 条';
+});
+
+addTest('[账号] 回复我的', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    var json = expectAnyOk(httpCall('GET',
+        '/reply/repliedToMe?userId=' + state.ctx.user.id + '&page=1&size=5', null, true));
+    var obj = json.obj !== undefined ? json.obj : json;
+    var total = countOf(obj);
+    return '回复我的 ' + total + ' 条';
+});
+
+addTest('[账号] 积分明细', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    var json = expectAnyOk(httpCall('POST', '/user/points/myLog',
+        { userId: state.ctx.user.id, page: 1, size: 5 }, true));
+    var obj = json.obj !== undefined ? json.obj : json;
+    var total = countOf(obj);
+    return '积分记录 ' + total + ' 条';
+});
+
+addTest('[账号] 我的等级', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    var json = expectOk(httpCall('GET', '/user/level?userId=' + state.ctx.user.id, null, true));
+    var lv = json.obj || {};
+    return '等级：' + (lv.displayName || lv.levelIndex || '-') + '，积分 ' + (lv.points || 0);
+});
+
+addTest('[账号] 我的徽章', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    var json = expectOk(httpCall('GET', '/user/account/badges', null, true));
+    var list = json.obj || [];
+    return '徽章数据 ' + (isArray(list) ? list.length : 1) + ' 组';
+});
+
+addTest('[账号] 我的违规记录', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    expectAnyOk(httpCall('POST', '/user/violation/myList',
+        { userId: state.ctx.user.id, page: 1, size: 5 }, true));
+    return '接口正常';
+});
+
+addTest('[账号] 我的申诉记录', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    expectAnyOk(httpCall('POST', '/user/appeal/myList',
+        { userId: state.ctx.user.id, page: 1, size: 5 }, true));
+    return '接口正常';
+});
+
+addTest('[账号] 我的版主投诉', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    expectAnyOk(httpCall('POST', '/user/moderatorComplaint/myList',
+        { reporterId: state.ctx.user.id }, true));
+    return '接口正常';
+});
+
+addTest('[账号] 我的举报', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    expectAnyOk(httpCall('POST', '/user/report/myList',
+        { reporterId: state.ctx.user.id, page: 1, size: 5 }, true));
+    return '接口正常';
+});
+
+addTest('[账号] 发帖限制查询', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    var res = httpCall('GET', '/common/user/checkPostRestriction?userId=' + state.ctx.user.id, null, true);
+    var data = expectAnyOk(res);
+    var body = data.obj !== undefined ? data.obj : data;
+    must(body && typeof body.restricted !== 'undefined', '缺少 restricted 字段');
+    return 'restricted = ' + body.restricted;
+});
+
+/* ===== 消息 ===== */
+
+addTest('[消息] 未读汇总', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    var json = expectOk(httpCall('GET',
+        '/notification/unreadSummary?userId=' + state.ctx.user.id, null, true));
     must(json.obj, 'obj 为空');
     must(typeof json.obj.total === 'number', 'obj.total 不是数字');
     return '未读总数 ' + json.obj.total + '（互动 ' +
@@ -409,29 +668,49 @@ addTest('未读消息汇总', function () {
         ((json.obj.byCategory && json.obj.byCategory.system) || 0) + '）';
 });
 
-addTest('举报查重接口', function () {
+addTest('[消息] 未读计数', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    var json = expectOk(httpCall('GET',
+        '/notification/unreadCount?userId=' + state.ctx.user.id, null, true));
+    must(typeof json.obj === 'number', 'obj 不是数字');
+    return '未读数 ' + json.obj;
+});
+
+addTest('[消息] 通知列表', function () {
+    if (!state.ctx.user) skip('依赖登录用例');
+    var json = expectOk(httpCall('GET',
+        '/notification/list?userId=' + state.ctx.user.id + '&page=1&size=5', null, true));
+    var obj = json.obj || {};
+    var total = countOf(obj);
+    return '通知 ' + total + ' 条';
+});
+
+/* ===== 互动 ===== */
+
+addTest('[互动] 举报查重接口', function () {
     if (!state.ctx.user) skip('依赖登录用例');
     if (!state.ctx.articleId) skip('依赖帖子列表用例');
-    var res = httpCall('POST', '/user/report/check', {
+    var json = expectOk(httpCall('POST', '/user/report/check', {
         reporterId: state.ctx.user.id,
         targetType: 'article',
         targetId: state.ctx.articleId
-    }, true);
-    var json = expectOk(res);
+    }, true));
     return '查重返回：' + clip(JSON.stringify(json.obj), 80);
 });
 
-addTest('【写入】发帖与删除', function () {
+/* ===== 写入（默认关闭） ===== */
+
+addTest('[写入] 发帖→详情→删除', function () {
     if (!byId('writeMode').checked) skip('未开启写入用例');
     if (!state.ctx.user) skip('依赖登录用例');
-    if (!state.ctx.labelId) skip('依赖帖子列表用例（取标签）');
+    if (!state.ctx.labelId) skip('缺少标签 id');
 
     var title = 'E2E自动验收-' + fileStamp() + '-' + Math.floor(Math.random() * 1000);
     var payload = {
         articleLabelId: state.ctx.labelId,
         articleAuthor: state.ctx.user.nickname || state.ctx.user.username || 'e2e',
         articleTitle: title,
-        articleSummary: '自动化验收临时帖，脚本会自动尝试删除',
+        articleSummary: '自动化验收临时帖，脚本会自动删除',
         articleTypeId: 0,
         articleContent: 'E2E test content',
         articleContentHtml: '<p>E2E test content</p>',
@@ -441,34 +720,90 @@ addTest('【写入】发帖与删除', function () {
         files: [],
         isAnonymous: 0
     };
-    var res = httpCall('POST', '/article/publish', payload, true);
-    expectOk(res);
+    expectOk(httpCall('POST', '/article/publish', payload, true));
 
-    // 通过列表按标题找回 articleId（发布响应不保证返回 id，且可能处于待审状态）
-    var foundId = null;
-    var deadline = new Date().getTime() + 5000;
-    while (new Date().getTime() < deadline && foundId === null) {
-        var listRes = httpCall('POST', '/common/article/list', { keywords: title, page: 1, size: 5 }, true);
-        if (listRes.json && listRes.json.obj && listRes.json.obj.list) {
-            var list = listRes.json.obj.list;
-            for (var i = 0; i < list.length; i++) {
-                if (String(list[i].articleTitle) === title) { foundId = list[i].articleId; break; }
-            }
-        }
-        if (foundId === null) sleepBrief(600);
-    }
+    var foundId = findArticleByTitle(title);
     if (foundId === null) {
         throw new Error('发布成功但列表未查到该帖（可能被审核拦截），请人工确认是否残留：' + title);
     }
-
-    var delRes = httpCall('POST', '/article/deleteArticleByArticleId', { articleId: foundId }, true);
-    expectOk(delRes);
+    expectOk(httpCall('POST', '/article/deleteArticleByArticleId', { articleId: foundId }, true));
     return '已创建并删除 articleId=' + foundId;
 });
+
+addTest('[写入] 点赞→取消', function () {
+    if (!byId('writeMode').checked) skip('未开启写入用例');
+    if (!state.ctx.user) skip('依赖登录用例');
+    if (!state.ctx.articleId) skip('依赖帖子列表用例');
+    expectOk(httpCall('POST', '/article/like', { articleId: state.ctx.articleId }, true));
+    expectOk(httpCall('POST', '/article/like', { articleId: state.ctx.articleId }, true));
+    return '已点赞并取消（articleId=' + state.ctx.articleId + '）';
+});
+
+addTest('[写入] 收藏→取消', function () {
+    if (!byId('writeMode').checked) skip('未开启写入用例');
+    if (!state.ctx.user) skip('依赖登录用例');
+    if (!state.ctx.articleId) skip('依赖帖子列表用例');
+    expectOk(httpCall('POST', '/article/favorite', { articleId: state.ctx.articleId }, true));
+    expectOk(httpCall('POST', '/article/favorite', { articleId: state.ctx.articleId }, true));
+    return '已收藏并取消（articleId=' + state.ctx.articleId + '）';
+});
+
+addTest('[写入] 评论→删除', function () {
+    if (!byId('writeMode').checked) skip('未开启写入用例');
+    if (!state.ctx.user) skip('依赖登录用例');
+    if (!state.ctx.articleId) skip('依赖帖子列表用例');
+
+    var content = 'E2E评论-' + fileStamp();
+    expectOk(httpCall('PUT', '/comment/userComment', {
+        commentContent: content,
+        commentUserId: state.ctx.user.id,
+        commentArticleId: state.ctx.articleId,
+        isAnonymous: 0
+    }, true));
+
+    var commentId = findCommentId(content);
+    if (commentId === null) {
+        throw new Error('评论已提交但未查到记录，请人工确认是否残留：' + content);
+    }
+    expectOk(httpCall('POST', '/comment/deleteCommentById', { commentId: commentId }, true));
+    return '已创建并删除 commentId=' + commentId;
+});
+
+/* ---------- 写入用例辅助：短轮询查找 ---------- */
 
 function sleepBrief(ms) {
     var end = new Date().getTime() + ms;
     while (new Date().getTime() < end) { /* HTA 同步等待，仅用于短轮询 */ }
+}
+
+function findArticleByTitle(title) {
+    var deadline = new Date().getTime() + 5000;
+    while (new Date().getTime() < deadline) {
+        var res = httpCall('POST', '/common/article/list', { keywords: title, page: 1, size: 5 }, true);
+        if (res.json && res.json.obj && res.json.obj.list) {
+            var list = res.json.obj.list;
+            for (var i = 0; i < list.length; i++) {
+                if (String(list[i].articleTitle) === title) return list[i].articleId;
+            }
+        }
+        sleepBrief(600);
+    }
+    return null;
+}
+
+function findCommentId(content) {
+    var deadline = new Date().getTime() + 5000;
+    while (new Date().getTime() < deadline) {
+        var res = httpCall('POST', '/common/comment/getCommentReply/' + state.ctx.articleId, null, true);
+        var list = res.json;
+        if (isArray(list)) {
+            for (var i = 0; i < list.length; i++) {
+                if (String(list[i].commentContent) === content) return list[i].commentId;
+            }
+        }
+        sleepBrief(600);
+    }
+    return null;
 }
 
 /* ---------- 执行器 ---------- */
@@ -524,10 +859,9 @@ function selectRow(i) {
     if (!r) { byId('detail').innerHTML = '（尚未执行）'; return; }
     var lines = [];
     lines.push('用例：' + TESTS[i].name);
-    lines.push('结果：' + (r.state === 'ok' ? '通过' : r.state === 'fail' ? '失败' : '跳过'));
+    lines.push('结果：' + (r.state === 'ok' ? '通过' : (r.state === 'fail' ? '失败' : '跳过')));
     if (r.note) lines.push('说明：' + r.note);
     if (r.http) lines.push('HTTP：' + r.http);
-    if (r.requestUrl) lines.push('');
     if (r.method) lines.push(r.method + ' ' + r.requestUrl);
     if (r.requestBody) lines.push('请求体：' + r.requestBody);
     if (r.responseText) {
@@ -549,7 +883,7 @@ function startRun() {
     state.stopRequested = false;
     state.results = [];
     state.startedAt = nowText();
-    state.ctx = { base: base, token: '', user: null, articleId: null, labelId: null, categoryId: null };
+    state.ctx = { base: base, token: '', user: null, articleId: null, labelId: null, categoryId: null, authorUserId: null, firstTitle: '' };
     byId('detail').innerHTML = '（暂无）';
     renderTable();
     updateSummary();
@@ -574,7 +908,6 @@ function runNext(index) {
     renderTable();
     updateSummary();
 
-    // 让界面先重绘，再执行同步 HTTP
     setTimeout(function () {
         LAST_HTTP = null;
         try {
@@ -601,7 +934,7 @@ function runNext(index) {
         updateSummary();
         selectRow(index);
         runNext(index + 1);
-    }, 30);
+    }, 25);
 }
 
 function finishRun() {
@@ -676,7 +1009,7 @@ function saveReport() {
 /* ---------- 初始化 ---------- */
 
 function init() {
-    try { window.resizeTo(1120, 790); } catch (e) { }
+    try { window.resizeTo(1140, 800); } catch (e) { }
     try { window.moveTo(60, 40); } catch (e) { }
     renderTable();
     updateSummary();
@@ -687,3 +1020,4 @@ init();
 </script>
 </body>
 </html>
+

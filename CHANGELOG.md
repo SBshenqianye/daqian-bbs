@@ -27,11 +27,17 @@
 
 ### 开发环境
 - **开发态启动日志噪音**：Windows 下 enhanced-resolve 会把盘符根目录（如 `D:\`）写进 `fileDependencies`，watchpack 扫描根目录时 `lstat` 到 `pagefile.sys` / `DumpStack.log.tmp` 会抛 `Watchpack Error (initial scan): EINVAL`；开发态关闭 `resolve.symlinks`，生产构建行为不变
+- **Win7 部署验收 E2E**：新增单文件 `scripts/e2e/daqian-bbs-e2e.hta`（mshta + WinHttp，无需安装运行库），51 个用例覆盖公共/账号/消息/互动/写入五组，支持逐用例明细与报告导出，写入用例默认关闭
 
 ### 修复
 - **匿名帖没有举报入口**：详情接口脱敏时把 `userId` 置空，前端 `canReportArticle` 对所有人恒为 false；新增 `selfAuthored`（后端按当前登录用户计算），匿名帖对非作者也能显示举报入口
 - **精华帖详情缺「精华」标记**：`loadArticle` 未回填 `isFeatured`，详情页头部只显示标签 Chip，不显示「精华」
 - **输入框焦点蓝框**：`@tailwindcss/forms` 默认给文本输入/文本域加了 `#2563eb` 焦点环，叠加各处 `focus:ring` 后点一下就是一圈蓝色矩形；统一改为只把边框提亮到主色 40%，评论区卡片与回复卡片用 `focus-within` 同步提亮边框
+- **PostgreSQL 等级序列未同步**：v050 用显式 id 写入等级方案，`SERIAL` 不随显式 id 推进，v059 自增插入必然撞 id=1；新增 `v050b` 迁移把序列推到「当前序列值 / 最大 id」的较大者（MySQL 侧为空操作占位）
+- **迁移块未固定同一连接**：MySQL 条件 DDL 依赖 `SET @x` / `PREPARE` 会话变量，改为整块走同一条 JDBC 连接执行，避免列加不上
+- **前导注释导致幂等判断失效**：v012/v016 等块以 `-- 说明` 开头，`ALTER TABLE ... Duplicate column` 被误判为致命错误、每次启动重试且不记录版本；识别语句类型前先剥离前导注释
+- **备份清理可能误删业务库**：MySQL 清理旧备份原先匹配 `<库名>_%` 全部数据库，现仅删除严格 `yyyyMMdd_HHmmss` 命名的备份；PostgreSQL 同理限定 `bbs_backup_` + 时间戳
+- **初始化 SQL 切分**：`DatabaseInitHelper` 改为复用升级器的引号感知切分，避免字典/敏感词出现分号时断句（全新安装路径）
 
 ### 新增（P0）
 - **排行榜分类**：系统管理新增“排名管理”，支持从组织树拖拽组织、配置“含下级”、分类重叠；用户端排行榜改为分类 Tab
