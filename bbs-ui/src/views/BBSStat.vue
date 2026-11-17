@@ -1,8 +1,22 @@
 <template>
-  <main class="ui-page max-w-5xl">
+  <main :class="embedded ? '' : 'ui-page max-w-5xl'">
+    <!-- 内嵌到个人中心：只保留轻量区块头，不再重复整页标题 -->
+    <div v-if="embedded" class="flex items-end justify-between gap-3 mb-3">
+      <div class="min-w-0">
+        <h3 class="ui-section-title">
+          <span class="material-symbols-outlined text-[16px] text-primary">edit_square</span>我的发布
+        </h3>
+        <p class="ui-subtitle mt-1">{{ headerSubtitle }}</p>
+      </div>
+      <router-link to="/write" class="ui-btn ui-btn-sm ui-btn-primary no-underline shrink-0">
+        <span class="material-symbols-outlined text-[16px]">add</span>写新帖
+      </router-link>
+    </div>
+
     <PageHeader
+      v-else
       title="我的发布"
-      :subtitle="articles.length ? '共 ' + articles.length + ' 篇内容，按发布时间倒序' : '你发布的帖子会集中在这里'"
+      :subtitle="headerSubtitle"
       icon="edit_square"
     >
       <router-link to="/write" class="ui-btn ui-btn-sm ui-btn-primary no-underline">
@@ -54,11 +68,21 @@ import { handleResponse } from '../../../shared/feedback'
 export default {
   name: 'BBSStat',
   components: { PageHeader, PostListItem },
+  props: {
+    embedded: { type: Boolean, default: false },
+  },
   data() {
     return {
       loading: false,
       articles: [],
     }
+  },
+  computed: {
+    headerSubtitle() {
+      return this.articles.length
+        ? '共 ' + this.articles.length + ' 篇内容，按发布时间倒序'
+        : '你发布的帖子会集中在这里'
+    },
   },
   mounted() {
     this.fetchMyArticles()

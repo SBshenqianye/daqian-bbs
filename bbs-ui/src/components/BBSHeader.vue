@@ -143,7 +143,7 @@
                   个人中心
                 </router-link>
                 <router-link
-                  to="/stat"
+                  to="/userinfo?tab=posts"
                   class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant hover:text-brand-blue transition-colors font-body-md text-body-md no-underline"
                 >
                   <span class="material-symbols-outlined text-[20px]">edit_square</span>

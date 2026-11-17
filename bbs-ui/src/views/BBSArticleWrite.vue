@@ -807,7 +807,7 @@ export default {
         loading.close()
         this.publishing = false
         // 成功静默跳转（未传 successMsg 不弹 Toast）；失败弹出后端 message（不再静默吞掉，2026-09 生产故障）
-        handleResponse(resp, { onSuccess: () => this.$router.push('/stat') })
+        handleResponse(resp, { onSuccess: () => this.$router.push({ path: '/userinfo', query: { tab: 'posts' } }) })
       }).catch(err => {
         console.warn('[BBSArticleWrite] publish', err)
         loading.close()

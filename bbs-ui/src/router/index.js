@@ -55,9 +55,9 @@ const router = new VueRouter({
             meta: { auth: false }
         },
         {
-            name: 'BBSStat',
+            // 我的发布已并入个人中心，旧地址保留 302
             path: '/stat',
-            component: () => import('@/views/BBSStat.vue'),
+            redirect: { path: '/userinfo', query: { tab: 'posts' } }
         },
         {
             name: 'BBSArticleDetails',

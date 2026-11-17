@@ -57,6 +57,7 @@
 import AccountOverview from '@/components/account/AccountOverview.vue'
 import AccountProfile from '@/components/account/AccountProfile.vue'
 import AccountPassword from '@/components/account/AccountPassword.vue'
+import BBSStat from '@/views/BBSStat.vue'
 import BBSFavorites from '@/views/BBSFavorites.vue'
 import BBSMyReplies from '@/views/BBSMyReplies.vue'
 import BBSMyPointsLog from '@/views/BBSMyPointsLog.vue'
@@ -76,6 +77,7 @@ export default {
     AccountOverview,
     AccountProfile,
     AccountPassword,
+    BBSStat,
     BBSFavorites,
     BBSMyReplies,
     BBSMyPointsLog,
@@ -93,6 +95,7 @@ export default {
         { key: 'password', label: '密码修改', icon: 'lock', component: 'AccountPassword' },
       ],
       panelTabs: [
+        { key: 'posts', label: '我的发布', icon: 'edit_square', component: 'BBSStat', panel: true },
         { key: 'favorites', label: '我的收藏', icon: 'bookmark', component: 'BBSFavorites', panel: true },
         { key: 'replies', label: '我的回复', icon: 'forum', component: 'BBSMyReplies', panel: true },
         { key: 'points', label: '积分明细', icon: 'toll', component: 'BBSMyPointsLog', panel: true },
@@ -102,7 +105,7 @@ export default {
         { key: 'reports', label: '我的举报', icon: 'flag', component: 'BBSMyReports', panel: true },
       ],
       // Tab 红点：有“上次查看之后的新内容”时亮起
-      badges: { favorites: false, replies: false, points: false, violations: false, appeals: false, complaint: false, reports: false },
+      badges: { posts: false, favorites: false, replies: false, points: false, violations: false, appeals: false, complaint: false, reports: false },
     }
   },
   computed: {
