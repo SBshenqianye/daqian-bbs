@@ -37,13 +37,25 @@ cd bbs-admin-ui && npm run build
 
 ## 2.1 打包与部署
 
-### 离线升级包（生产内网）
+### 构建（Windows）
+
+```powershell
+cd bbs-ui       ; npm run build
+cd bbs-admin-ui ; npm run build
+cd bbs-server   ; mvn clean package -DskipTests   # 会拷出 target/lib（基础镜像依赖层）
+```
+
+> Maven 没有 `build` 阶段，用 `clean package`；两个前端必须串行，`bbs-ui` 构建前设 `NODE_OPTIONS=--max-old-space-size=4096`。
+
+### 离线升级包（WSL）
 
 ```bash
-# 前置：两个前端 npm run build + cd bbs-server && mvn clean package -DskipTests（会拷出 target/lib）
 bash scripts/dist/package.sh          # → dist/bbs-upgrade-<时间戳>.tar.gz（瘦包 ~5MB）
 bash scripts/verify-build.sh          # 构建机自检，要求 FAIL=0
 ```
+
+- `package.sh` / `verify-build.sh` 是 bash 脚本，**在 WSL 执行**；Windows 只负责产出构建产物。
+- `package.sh` 依赖 `python3/python` 生成瘦 jar（去掉 `BOOT-INF/lib`），依赖由基础镜像 `/app/lib` 提供。
 
 - 首次切换 / 基础镜像依赖变更，顺序**不能反**：
   `bash scripts/build/base.sh --save` → 服务器 `podman load` 新基础镜像 → 删除旧容器 → 再发瘦升级包。
