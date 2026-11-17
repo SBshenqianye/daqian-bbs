@@ -80,6 +80,10 @@ public class FeaturedPublicController {
             row.put("articleId", a.getArticleId());
             row.put("title", a.getArticleTitle());
             row.put("summary", a.getArticleSummary());
+            // 正文摘要：前端在帖子没有封面图时用它生成跑马灯内容卡
+            String content = plainExcerpt(a.getArticleContent(), 240);
+            if (content.isEmpty()) content = plainExcerpt(a.getArticleSummary(), 240);
+            row.put("content", content);
             row.put("author", Integer.valueOf(1).equals(a.getIsAnonymous()) ? "匿名用户" : a.getArticleAuthor());
             row.put("cover", a.getArticleImage());
             row.put("featuredTime", a.getFeaturedTime());
@@ -119,5 +123,22 @@ public class FeaturedPublicController {
                 recommendationMapper.updateById(rec);
             }
         }
+    }
+
+    /**
+     * 正文转纯文本摘要：去掉 Markdown 图片/链接/标记与 HTML 标签，压缩空白。
+     * 仅用于生成精华跑马灯封面，不改变文章正文本身。
+     */
+    private static String plainExcerpt(String raw, int max) {
+        if (raw == null || raw.trim().isEmpty()) return "";
+        String text = raw
+                .replaceAll("!\\[[^\\]]*\\]\\([^)]*\\)", " ")
+                .replaceAll("\\[([^\\]]*)\\]\\([^)]*\\)", "$1")
+                .replaceAll("<[^>]+>", " ")
+                .replaceAll("[#>*_`~\\-|]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (text.length() > max) text = text.substring(0, max);
+        return text;
     }
 }
