@@ -35,18 +35,45 @@ cd bbs-admin-ui && npm run build
 - 后端启动会**自动备份数据库**（生成 `bbs_db_YYYYMMDD_HHmmss`），多次重启会留多个备份库，属正常现象。
 - 管理端若由外部预览服务托管（可能返回单文件 `index.js`），改完需**重启预览服务**才能看到新代码。
 
+## 2.1 打包与部署
+
+### 离线升级包（生产内网）
+
+```bash
+# 前置：两个前端 npm run build + cd bbs-server && mvn clean package -DskipTests（会拷出 target/lib）
+bash scripts/dist/package.sh          # → dist/bbs-upgrade-<时间戳>.tar.gz（瘦包 ~5MB）
+bash scripts/verify-build.sh          # 构建机自检，要求 FAIL=0
+```
+
+- 首次切换 / 基础镜像依赖变更，顺序**不能反**：
+  `bash scripts/build/base.sh --save` → 服务器 `podman load` 新基础镜像 → 删除旧容器 → 再发瘦升级包。
+- 服务器升级：`sudo bash /data/bbs/deploy-offline.sh --upgrade /tmp/bbs-upgrade-*.tar.gz`；
+  或新版一体化入口 `bash scripts/deploy/offline.sh <tar 路径>`。
+- 部署后验证（生产机）：`bash verify-server.sh`（默认 `BBS_HOME=/data/bbs`、`BBS_SERVER_PORT=60000`），要求 `FAIL=0`。
+
+### WSL 测试部署（生产对齐）
+
+```bash
+bash scripts/deploy/wsl.sh              # 依赖 Windows 构建产物，bind-mount 部署
+bash scripts/deploy/wsl.sh --restart-only
+```
+
+- 端口：nginx `60001` / 后端 `60000` / PG `15432`；E2E 的 `baseUrl` 用 `http://localhost:60001/bbs-user/`。
+- 部署后先跑 `verify-server.sh`，再跑 E2E（HTA 或 Selenium）。
+
 ## 3. 数据库
 
 - 本地：`mysql -uroot -proot bbs_db`。
 - 四份 SQL 必须同步修改：`db/init/init-mysql.sql`、`init-pg.sql`、`upgrade-mysql.sql`、`upgrade-pg.sql`。
 - 迁移块格式：`-- @migration: vNNN-名称`，`DatabaseInitializer` 按 marker 执行并记录到 `bbs_schema_version`；**追加时必须换行开头**。
 - `init-*.sql` 含 `DROP TABLE`，**切勿对生产库执行**。
-- 已执行到 `v060`：
+- 已执行到 `v061`：
   `v044` 测试账号/扣分提醒、`v045` 排行榜分类、`v046` P0 配置、`v047` 种子修正、
   `v048` 内容互动、`v049` 审核配置、`v050` 等级/成就、`v051` 精华公示、
   `v052` 运营周期、`v053` 提醒、`v054` 组织导入、`v055` 评论/回帖点赞、
   `v056` 本部改普通分类、`v057` 等级图标自定义、`v058` SVG 素材库、
-  `v059` 两套 21 级方案、`v060` 方案标签修正 + 内置图标入库。
+  `v059` 两套 21 级方案、`v060` 方案标签修正 + 内置图标入库、
+  `v050b`/`v061` 序列同步与指数型升级门槛（两套 21 级）。
 
 ## 4. 核心模块位置
 
@@ -70,6 +97,7 @@ cd bbs-admin-ui && npm run build
 - 验收清单：`docs/验收清单-*.md`，已在 `.gitignore` 中排除，保持**一页**、可逐条打勾。
 - 提交按模块分组：`feat(server)` / `feat(admin)` / `feat(ui)` / `chore`；提交前 `git status` 必须干净。
 - 涉及数据库的变更，验收时必须先备份，并在启动日志确认 `Migration applied: vNNN`。
+- 打包/部署按 §2.1；生产部署后必须 `verify-server.sh` `FAIL=0`，再跑 E2E（内置负向自检）。
 
 ## 7. 本仓库已知坑
 

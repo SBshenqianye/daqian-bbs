@@ -29,11 +29,15 @@
 | 重启 | `powershell -File scripts/dev/restart.ps1 -Target all|server|ui|admin` | 目标端口重新 listening |
 | 提交前 | `powershell -File scripts/dev/verify.ps1` | 构建 0 error + 后端就绪 + 负向自检通过 |
 | WSL2（生产对齐） | Windows 构建后 `bash scripts/deploy/wsl.sh`，测 `http://localhost:60001/bbs-user/` | PG 方言 + nginx 路由通过 |
+| 打包（离线升级包） | Windows 构建后 `bash scripts/dist/package.sh` + `bash scripts/verify-build.sh` | 生成 `dist/bbs-upgrade-<ts>.tar.gz`，`FAIL=0` |
+| 部署（WSL 测试） | `bash scripts/deploy/wsl.sh` | `60001` 可访问，`verify-server.sh` 通过 |
+| 部署（生产离线） | `bash scripts/deploy/offline.sh dist/bbs-upgrade-*.tar.gz` | 容器重建 + 挂载探针通过，`verify-server.sh` `FAIL=0` |
 
 - 前端普通 `.vue/.js` 源码改动走 HMR，不用重启；`vue.config.js`、`.env*`、`package.json`、`tailwind/postcss/babel` 配置改动必须重启。
 - 重启一律按端口杀进程树（日志在 `tmp/run/`），不杀全部 node。
 - WSL2 端口：nginx `60001` / 后端 `60000` / PG `15432`，可与 Windows 开发栈（9081–9083）同时存在。
 - 有 DB / 后端改动时，Windows 验收之外还要在 WSL2 再跑一遍同一套冒烟。
+- 基础镜像或依赖变更必须按「`base.sh --save` → 服务器 `podman load` 新基础镜像 → 删除旧容器 → 再发瘦升级包」执行，顺序不能反；参数见 `scripts/SCRIPT.md`。
 
 ### 1.2 负向自检（每次提交前）
 

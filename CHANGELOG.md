@@ -34,6 +34,7 @@
 - **本地生命周期脚本**：新增 `scripts/dev/up|down|restart|verify|negative-smoke.ps1`，固定 9081/9082/9083，按端口杀进程树，日志写 `tmp/run/`；`verify.ps1` 串行构建两个前端、编译后端、重启后端并跑负向自检
 - **负向自检**：4 个只读注入（错误 baseUrl / 错误断言 / 未登录访问业务接口 / 基线正常），注入失败单独计为 `mutation`，不混入业务失败数；`-ApiBase` 指向错误地址时必须 exit 1
 - **WSL2 生产对齐验收**：WSL 栈固定 nginx `60001` / 后端 `60000` / PG `15432`，与 Windows 开发栈（9081–9083）并存；DB/后端改动需在 WSL2 再跑一遍冒烟
+- **生命周期补充打包与部署**：`scripts/dist/package.sh`（瘦升级包）+ `scripts/verify-build.sh`（构建机 `FAIL=0`）；WSL `scripts/deploy/wsl.sh`；生产 `scripts/deploy/offline.sh <tar>` + `verify-server.sh`；基础镜像变更按“base.sh → podman load → 删旧容器 → 发瘦包”顺序执行
 - **帖子详情不再强制计数**：`/common/article/getArticleById` 新增 `countView` 参数（默认 `true`），验收/预览可传 `false` 只读查询
 
 ### 等级体系
