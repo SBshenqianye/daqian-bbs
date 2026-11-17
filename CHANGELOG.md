@@ -28,7 +28,7 @@
 ### 开发环境
 - **开发态启动日志噪音**：Windows 下 enhanced-resolve 会把盘符根目录（如 `D:\`）写进 `fileDependencies`，watchpack 扫描根目录时 `lstat` 到 `pagefile.sys` / `DumpStack.log.tmp` 会抛 `Watchpack Error (initial scan): EINVAL`；开发态关闭 `resolve.symlinks`，生产构建行为不变
 - **Win7 部署验收 E2E**：新增单文件 `scripts/e2e/daqian-bbs-e2e.hta`（mshta + WinHttp，无需安装运行库），59 个用例覆盖公共/账号/消息/互动/负向/写入/UI 冒烟七组，支持逐用例明细、页面截图与报告导出，写入用例默认关闭；负向组 3 项（错误 baseUrl / 错误断言 / 未登录）单独统计，不并入业务失败
-- **Selenium 界面级 E2E 包**：`scripts/e2e-selenium/` 单 jar + chromedriver 109，`mode=readonly` 默认只读；`run.bat selfcheck` 跑 4 项负向自检（基线/错误 baseUrl/错误断言/未登录 401），退出码可直接接入流水线
+- **Selenium 界面级 E2E 包**：`scripts/e2e-selenium/` 单 jar + chromedriver 109，`mode=readonly` 默认只读；4 项负向自检已内置到每次运行（基线/错误 baseUrl/错误断言/未登录 401），负向结果单独统计但失败时整体退出码为 1
 - **浏览器自动探测**：自动识别 Chrome / Edge / 360 极速浏览器 / 360 安全浏览器（注册表 App Paths + 常见安装目录），支持手动填写路径与「探测」按钮；UI 冒烟通过临时批处理调用 `--headless`（失败回退 `--headless=new`），兼容含空格路径
 - **生产安全模式**：E2E 新增「生产安全模式」（默认开启），不执行写入用例；帖子详情可指定验收专用帖并使用 `countView=false`，避免真实帖子浏览量自增；公开资料/徽章等会触发成就计算的接口仅对专用测试账号执行
 - **本地生命周期脚本**：新增 `scripts/dev/up|down|restart|verify|negative-smoke.ps1`，固定 9081/9082/9083，按端口杀进程树，日志写 `tmp/run/`；`verify.ps1` 串行构建两个前端、编译后端、重启后端并跑负向自检

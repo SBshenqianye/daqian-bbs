@@ -12,14 +12,10 @@ if errorlevel 1 (
 echo ============================================
 echo  大千智荟论坛 · 界面级 E2E（Selenium）
 echo  配置文件：config.properties
+echo  负向自检：已内置（每次运行自动执行）
 echo ============================================
 
-if /I "%~1"=="selfcheck" (
-    echo 模式：负向自检（验证判据能变红，只读）
-    java -Dfile.encoding=UTF-8 -jar e2e-ui.jar --selfcheck
-) else (
-    java -Dfile.encoding=UTF-8 -jar e2e-ui.jar %*
-)
+java -Dfile.encoding=UTF-8 -jar e2e-ui.jar %*
 set CODE=%errorlevel%
 
 echo.

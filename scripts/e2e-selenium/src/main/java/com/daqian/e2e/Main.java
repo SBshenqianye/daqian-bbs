@@ -62,39 +62,39 @@ public class Main {
     private static String detailUrl;
     private static String runStamp;
 
-    private static boolean selfCheckMode;
+    private static boolean selfCheckEnabled;
 
     public static void main(String[] args) {
-        selfCheckMode = args.length > 0 && "--selfcheck".equalsIgnoreCase(args[0]);
         runStamp = TS.format(new Date());
         try {
             baseDir = Paths.get("").toAbsolutePath();
             loadConfig();
             prepareDirs();
             startDriver();
-            if (selfCheckMode) {
-                runSelfCheck();
-            } else {
-                runAll();
-            }
+            runAll();
         } catch (Throwable t) {
             System.out.println("[FATAL] " + t.getMessage());
             t.printStackTrace();
-            RESULTS.add(new Result("启动", "FAIL", 0, String.valueOf(t.getMessage()), null));
+            RESULTS.add(new Result("启动", "FAIL", 0, String.valueOf(t.getMessage()), null, false));
         } finally {
             if (driver != null) {
                 try { driver.quit(); } catch (Exception ignore) { }
             }
             writeReport();
         }
-        int failed = 0;
+        int failed = 0, mutationFailed = 0;
         for (Result r : RESULTS) {
-            if ("FAIL".equals(r.status)) failed++;
+            if ("FAIL".equals(r.status)) {
+                if (r.mutation) mutationFailed++;
+                else failed++;
+            }
         }
         System.out.println("汇总：通过 " + count("PASS") + " / 失败 " + failed + " / 跳过 " + count("SKIP")
-                + " / 共 " + RESULTS.size());
+                + " / 共 " + countBusiness());
+        System.out.println("负向自检：" + countMutation("PASS") + "/" + countMutationTotal()
+                + " 通过（不计入业务失败；失败 " + mutationFailed + " 项）");
         System.out.println("报告：" + (reportDir == null ? "-" : reportDir.resolve("report-" + runStamp + ".html")));
-        System.exit(failed > 0 ? 1 : 0);
+        System.exit((failed + mutationFailed) > 0 ? 1 : 0);
     }
 
     /* ==================== 配置与初始化 ==================== */
@@ -116,6 +116,7 @@ public class Main {
         detailEnabled = Boolean.parseBoolean(get("detail.enabled", "false"));
         detailUrl = trim(get("detail.url", ""));
         screenshotEnabled = Boolean.parseBoolean(get("screenshot", "true"));
+        selfCheckEnabled = Boolean.parseBoolean(get("selfcheck.enabled", "true"));
     }
 
     private static void prepareDirs() throws Exception {
@@ -157,6 +158,9 @@ public class Main {
     /* ==================== 用例 ==================== */
 
     private static void runAll() {
+        if (selfCheckEnabled) {
+            runNegativeChecks();
+        }
         step("打开登录页", new Step() {
             public void run() {
                 open("#/login");
@@ -291,7 +295,7 @@ public class Main {
 
     /* ==================== 负向自检（只读） ==================== */
 
-    private static void runSelfCheck() {
+    private static void runNegativeChecks() {
         step("[负向] 基线：登录页可渲染", new Step() {
             public void run() {
                 open("#/login");
@@ -318,6 +322,8 @@ public class Main {
                     }
                 } finally {
                     driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
+                    // 回到正常页面，避免影响后续用例
+                    try { open("#/login"); waitText("登录"); } catch (Exception ignore) { }
                 }
             }
         });
@@ -406,7 +412,7 @@ public class Main {
             shotPath = shot("fail-" + slug(name));
         }
         long cost = System.currentTimeMillis() - start;
-        RESULTS.add(new Result(name, status, cost, message, shotPath));
+        RESULTS.add(new Result(name, status, cost, message, shotPath, name.startsWith("[负向]")));
         System.out.println("[" + status + "] " + name + " (" + cost + "ms)" + (message.length() > 0 ? " - " + message : ""));
     }
 
@@ -475,16 +481,22 @@ public class Main {
         html.append("<h1>大千智荟论坛 · 界面级 E2E 报告</h1>");
         html.append("<div class='meta'>时间：").append(new Date()).append("<br>")
                 .append("地址：").append(esc(baseUrl)).append("<br>")
-                .append("模式：").append(selfCheckMode ? "负向自检（selfcheck，不计入业务失败）" : (writeMode ? "write（含写操作）" : "readonly（只读）")).append("<br>")
+                .append("模式：").append(writeMode ? "write（含写操作）" : "readonly（只读）")
+                .append("；负向自检：").append(selfCheckEnabled ? "内置" : "关闭").append("<br>")
                 .append("账号：").append(username.length() > 0 ? esc(username) : "(未配置)").append("<br>")
                 .append("汇总：通过 ").append(count("PASS")).append(" / 失败 ").append(count("FAIL"))
-                .append(" / 跳过 ").append(count("SKIP")).append("</div>");
+                .append(" / 跳过 ").append(count("SKIP")).append("<br>")
+                .append("负向自检：").append(countMutation("PASS")).append("/").append(countMutationTotal())
+                .append(" 通过（不计入业务失败）").append("</div>");
         html.append("<table><tr><th>#</th><th>用例</th><th>结果</th><th>耗时</th><th>说明</th><th>截图</th></tr>");
         int i = 1;
         for (Result r : RESULTS) {
             String cls = "PASS".equals(r.status) ? "pass" : ("FAIL".equals(r.status) ? "fail" : "skip");
+            String label = r.mutation
+                    ? ("PASS".equals(r.status) ? "MUT-PASS" : ("FAIL".equals(r.status) ? "MUT-FAIL" : "MUT-SKIP"))
+                    : r.status;
             html.append("<tr><td>").append(i++).append("</td><td>").append(esc(r.name)).append("</td><td class='")
-                    .append(cls).append("'>").append(r.status).append("</td><td>").append(r.cost).append("ms</td><td>")
+                    .append(cls).append("'>").append(label).append("</td><td>").append(r.cost).append("ms</td><td>")
                     .append(esc(r.message)).append("</td><td>");
             if (r.shot != null) {
                 String rel = reportDir.relativize(r.shot).toString().replace('\\', '/');
@@ -503,7 +515,25 @@ public class Main {
 
     private static int count(String status) {
         int n = 0;
-        for (Result r : RESULTS) if (status.equals(r.status)) n++;
+        for (Result r : RESULTS) if (!r.mutation && status.equals(r.status)) n++;
+        return n;
+    }
+
+    private static int countBusiness() {
+        int n = 0;
+        for (Result r : RESULTS) if (!r.mutation) n++;
+        return n;
+    }
+
+    private static int countMutation(String status) {
+        int n = 0;
+        for (Result r : RESULTS) if (r.mutation && status.equals(r.status)) n++;
+        return n;
+    }
+
+    private static int countMutationTotal() {
+        int n = 0;
+        for (Result r : RESULTS) if (r.mutation) n++;
         return n;
     }
 
@@ -543,12 +573,16 @@ public class Main {
         final String message;
         final Path shot;
 
-        Result(String name, String status, long cost, String message, Path shot) {
+        final boolean mutation;
+        Result(String name, String status, long cost, String message, Path shot, boolean mutation) {
             this.name = name;
             this.status = status;
             this.cost = cost;
             this.message = message;
             this.shot = shot;
+            this.mutation = mutation;
         }
     }
 }
+
+
