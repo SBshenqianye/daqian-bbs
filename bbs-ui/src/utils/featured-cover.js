@@ -69,9 +69,9 @@ function wrapLines(ctx, text, maxWidth, maxLines) {
 
 function titleFontSize(title) {
   const length = Array.from(String(title || '')).length
-  if (length <= 12) return 42
-  if (length <= 24) return 37
-  return 32
+  if (length <= 12) return 49
+  if (length <= 24) return 43
+  return 37
 }
 
 /**
@@ -122,17 +122,17 @@ export function generateFeaturedCover(article) {
 
   // 顶部标签
   ctx.fillStyle = 'rgba(255,255,255,0.16)'
-  roundRect(ctx, PAD, 34, 132, 30, 15)
+  roundRect(ctx, PAD, 33, 150, 32, 16)
   ctx.fill()
   ctx.fillStyle = accent
-  ctx.font = `700 15px ${FONT_STACK}`
+  ctx.font = `700 17px ${FONT_STACK}`
   ctx.textBaseline = 'middle'
   ctx.fillText('★ 精华推荐', PAD + 15, 50)
   ctx.textBaseline = 'alphabetic'
 
   // 右上角站点名
   ctx.fillStyle = 'rgba(255,255,255,0.55)'
-  ctx.font = `500 15px ${FONT_STACK}`
+  ctx.font = `500 17px ${FONT_STACK}`
   ctx.textAlign = 'right'
   ctx.fillText('大千智荟', WIDTH - PAD, 54)
   ctx.textAlign = 'left'
@@ -153,13 +153,14 @@ export function generateFeaturedCover(article) {
   const excerpt = String(data.content || data.summary || '').trim()
   const fallback = '在论坛里读到一篇值得分享的内容，点击查看全文。'
   const excerptText = Array.from(excerpt).length >= 8 ? excerpt : fallback
-  ctx.font = `400 21px ${FONT_STACK}`
+  ctx.font = `400 25px ${FONT_STACK}`
   ctx.fillStyle = 'rgba(255,255,255,0.78)'
-  const excerptLines = wrapLines(ctx, excerptText, WIDTH - PAD * 2, 3)
+  const excerptMaxLines = titleLines.length >= 3 ? 2 : 3
+  const excerptLines = wrapLines(ctx, excerptText, WIDTH - PAD * 2, excerptMaxLines)
   let excerptY = cursorY + 18
   excerptLines.forEach((line) => {
     ctx.fillText(line, PAD, excerptY)
-    excerptY += 32
+    excerptY += 34
   })
 
   // 底部信息
@@ -171,11 +172,11 @@ export function generateFeaturedCover(article) {
   ctx.stroke()
 
   ctx.fillStyle = 'rgba(255,255,255,0.92)'
-  ctx.font = `600 18px ${FONT_STACK}`
+  ctx.font = `600 21px ${FONT_STACK}`
   ctx.fillText(`@${data.author || '论坛用户'}`, PAD, HEIGHT - 42)
 
   ctx.fillStyle = 'rgba(255,255,255,0.58)'
-  ctx.font = `400 15px ${FONT_STACK}`
+  ctx.font = `400 17px ${FONT_STACK}`
   ctx.textAlign = 'right'
   ctx.fillText(`${data.views || 0} 阅读 · 大千智荟原创`, WIDTH - PAD, HEIGHT - 42)
   ctx.textAlign = 'left'

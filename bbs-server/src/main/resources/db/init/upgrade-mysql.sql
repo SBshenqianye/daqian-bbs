@@ -9436,3 +9436,21 @@ SET i.points_threshold = CASE i.level_index
   ELSE i.points_threshold END
 WHERE p.profile_name IN ('方案一 · 智荟成长', '方案二 · 电网匠心')
   AND i.level_index BETWEEN 1 AND 21;
+
+-- @migration: v062-level-threshold-resync 等级门槛二次同步（兜底）
+-- 背景：v059 若因序列冲突失败、而 v061 已经执行过（UPDATE 命中 0 行），
+--       后续补插等级项后阈值仍是旧线性值；这里再同步一次。
+-- 幂等：按 level_index 覆盖写，可重复执行。
+UPDATE `bbs_level_item` i
+JOIN `bbs_level_profile` p ON p.id = i.profile_id
+SET i.points_threshold = CASE i.level_index
+  WHEN 1 THEN 0    WHEN 2 THEN 20   WHEN 3 THEN 40
+  WHEN 4 THEN 60   WHEN 5 THEN 90   WHEN 6 THEN 120
+  WHEN 7 THEN 150  WHEN 8 THEN 200  WHEN 9 THEN 250
+  WHEN 10 THEN 300 WHEN 11 THEN 400 WHEN 12 THEN 500
+  WHEN 13 THEN 600 WHEN 14 THEN 700 WHEN 15 THEN 800
+  WHEN 16 THEN 900 WHEN 17 THEN 1100 WHEN 18 THEN 1300
+  WHEN 19 THEN 1500 WHEN 20 THEN 1700 WHEN 21 THEN 1900
+  ELSE i.points_threshold END
+WHERE p.profile_name IN ('方案一 · 智荟成长', '方案二 · 电网匠心')
+  AND i.level_index BETWEEN 1 AND 21;

@@ -723,10 +723,6 @@ SELECT setval('bbs_user_id_seq', GREATEST(nextval('bbs_user_id_seq'), (SELECT CO
 SELECT setval('bbs_article_label_label_id_seq', GREATEST(nextval('bbs_article_label_label_id_seq'), (SELECT COALESCE(max(label_id), 0) FROM bbs_article_label)));
 SELECT setval('bbs_sensitive_word_id_seq', GREATEST(nextval('bbs_sensitive_word_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_sensitive_word)));
 SELECT setval('bbs_dict_id_seq', GREATEST(nextval('bbs_dict_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_dict)));
--- 等级方案/等级项使用显式 id 写入种子数据，PostgreSQL 的 SERIAL 不会自动推进，
--- 这里同步一次，避免后续自增插入与种子 id 冲突。
-SELECT setval('bbs_level_profile_id_seq', GREATEST(nextval('bbs_level_profile_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_level_profile)));
-SELECT setval('bbs_level_item_id_seq', GREATEST(nextval('bbs_level_item_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_level_item)));
 
 -- ----------------------------
 -- Table: bbs_audit_log（关键操作审计日志）
@@ -909,6 +905,11 @@ INSERT INTO bbs_level_item (id, profile_id, level_index, major_index, major_name
 (19,1,19,7,'特级技师',1,'特级技师-1',1800,'level-7','orange',1),(20,1,20,7,'特级技师',2,'特级技师-2',1900,'level-7','orange',1),(21,1,21,7,'特级技师',3,'特级技师-3',2000,'level-7','orange',1),
 (22,1,22,8,'首席技师',1,'首席技师-1',2100,'level-8','red',1),(23,1,23,8,'首席技师',2,'首席技师-2',2200,'level-8','red',1),(24,1,24,8,'首席技师',3,'首席技师-3',2300,'level-8','red',1)
 ON CONFLICT (id) DO NOTHING;
+
+-- 等级方案/等级项使用了显式 id 写入种子；PostgreSQL 的 SERIAL 不会随显式 id 推进，
+-- 必须在这里（种子插入之后）同步，否则后续方案/等级项的自增插入会撞上已存在的 id。
+SELECT setval('bbs_level_profile_id_seq', GREATEST(nextval('bbs_level_profile_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_level_profile)));
+SELECT setval('bbs_level_item_id_seq', GREATEST(nextval('bbs_level_item_id_seq'), (SELECT COALESCE(max(id), 0) FROM bbs_level_item)));
 
 INSERT INTO bbs_achievement (achievement_code, achievement_name, description, icon_svg, category, rule_json, rule_logic, preset, enabled, sort_order, create_time, update_time) VALUES
 ('first_post', '初来乍到', '发布第一篇帖子', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><path d="M44 36 H212 V214 L128 170 L44 214 Z" fill="#1f6f5c" stroke="#fff" stroke-width="6"/><circle cx="128" cy="112" r="28" fill="none" stroke="#fff" stroke-width="4"/></svg>', '成长', '{"logic":"ALL","conditions":[{"metric":"article_count","op":">=","value":1}]}', 'ALL', 1, 1, 10, '2026-11-13 00:00:00', '2026-11-13 00:00:00'),
