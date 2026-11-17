@@ -9417,3 +9417,22 @@ SELECT CONCAT('勋章 · ', a.achievement_name) COLLATE utf8mb4_general_ci, 'med
 FROM bbs_achievement a
 WHERE a.icon_svg IS NOT NULL AND a.icon_svg <> ''
   AND NOT EXISTS (SELECT 1 FROM bbs_svg_asset s WHERE s.asset_name = CONCAT('勋章 · ', a.achievement_name) COLLATE utf8mb4_general_ci);
+
+-- @migration: v061-level-exponential-points 等级升级门槛改为指数型（内置两套方案）
+-- 目标：按产品《等级积分对照表》把两套内置方案的 21 个等级门槛改为累计消耗积分。
+-- 规则：每升一小档所需积分按“当前大等级”的档位费用累计，跨大等级时仍按离开时的档位费用；
+--       初级工 20 / 中级工 30 / 高级工 50 / 技师 100 / 高级技师 100 / 特级技师 200 / 首席技师 200。
+-- 幂等：按 level_index 覆盖写，可重复执行。
+UPDATE `bbs_level_item` i
+JOIN `bbs_level_profile` p ON p.id = i.profile_id
+SET i.points_threshold = CASE i.level_index
+  WHEN 1 THEN 0    WHEN 2 THEN 20   WHEN 3 THEN 40
+  WHEN 4 THEN 60   WHEN 5 THEN 90   WHEN 6 THEN 120
+  WHEN 7 THEN 150  WHEN 8 THEN 200  WHEN 9 THEN 250
+  WHEN 10 THEN 300 WHEN 11 THEN 400 WHEN 12 THEN 500
+  WHEN 13 THEN 600 WHEN 14 THEN 700 WHEN 15 THEN 800
+  WHEN 16 THEN 900 WHEN 17 THEN 1100 WHEN 18 THEN 1300
+  WHEN 19 THEN 1500 WHEN 20 THEN 1700 WHEN 21 THEN 1900
+  ELSE i.points_threshold END
+WHERE p.profile_name IN ('方案一 · 智荟成长', '方案二 · 电网匠心')
+  AND i.level_index BETWEEN 1 AND 21;

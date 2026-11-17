@@ -1142,6 +1142,22 @@ UPDATE bbs_level_item i SET major_name = CASE major_index WHEN 1 THEN '银线学
 FROM bbs_level_profile p
 WHERE p.id = i.profile_id AND p.profile_name = '方案二 · 电网匠心' AND i.major_index BETWEEN 1 AND 7
   AND (i.description IS NULL OR i.description NOT LIKE '对标 %');
+
+-- 指数型升级门槛：按“当前大等级每升一小档所需积分”累计（与产品对照表一致）
+UPDATE bbs_level_item i
+SET points_threshold = CASE i.level_index
+  WHEN 1 THEN 0    WHEN 2 THEN 20   WHEN 3 THEN 40
+  WHEN 4 THEN 60   WHEN 5 THEN 90   WHEN 6 THEN 120
+  WHEN 7 THEN 150  WHEN 8 THEN 200  WHEN 9 THEN 250
+  WHEN 10 THEN 300 WHEN 11 THEN 400 WHEN 12 THEN 500
+  WHEN 13 THEN 600 WHEN 14 THEN 700 WHEN 15 THEN 800
+  WHEN 16 THEN 900 WHEN 17 THEN 1100 WHEN 18 THEN 1300
+  WHEN 19 THEN 1500 WHEN 20 THEN 1700 WHEN 21 THEN 1900
+  ELSE i.points_threshold END
+FROM bbs_level_profile p
+WHERE p.id = i.profile_id
+  AND p.profile_name IN ('方案一 · 智荟成长', '方案二 · 电网匠心')
+  AND i.level_index BETWEEN 1 AND 21;
 INSERT INTO bbs_svg_asset (asset_name, category, svg, created_by, create_time, update_time)
 SELECT '等级图标 · 星', 'level', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><g transform="translate(1.5 1.5) scale(0.875)"><path fill="#16a34a" d="M12 1.9l3.05 6.18 6.82.99-4.94 4.81 1.17 6.79L12 17.48l-6.1 3.19 1.17-6.79L2.13 9.07l6.82-.99z"/></g></svg>', '系统', to_char(now(), 'YYYY-MM-DD HH24:MI:SS'), to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
 WHERE NOT EXISTS (SELECT 1 FROM bbs_svg_asset WHERE asset_name='等级图标 · 星');
