@@ -48,7 +48,7 @@ namespace DaqianE2E
 
             var top = new TableLayoutPanel();
             top.Dock = DockStyle.Top;
-            top.Height = 176;
+            top.Height = 204;
             top.ColumnCount = 4;
             top.RowCount = 5;
             top.Padding = new Padding(12, 10, 12, 4);
@@ -56,6 +56,11 @@ namespace DaqianE2E
             top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             top.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
             top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            top.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+            top.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+            top.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            top.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
+            top.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
 
             top.Controls.Add(Label("前端地址"), 0, 0);
             txtBaseUrl = Input();
