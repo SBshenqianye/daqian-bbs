@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.mapper.ArticleMapper;
 import com.walker.mapper.CommentMapper;
+import com.walker.mapper.FeaturedRecommendationMapper;
 import com.walker.mapper.SaOrgMapper;
 import com.walker.pojo.*;
 import com.walker.service.*;
@@ -93,6 +94,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Autowired
     private OperationCycleService operationCycleService;
+
+    @Autowired
+    private FeaturedRecommendationMapper featuredRecommendationMapper;
 
     @Autowired
     private AuthorizationService authorizationService;
@@ -470,7 +474,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             case "likes": return "article_good_num";
             case "favorites": return "favorite_num";
             case "shares": return "share_num";
-            case "featuredTime": return "create_time";
+            case "featuredTime": return "featured_time";
             default: return "create_time";
         }
     }
@@ -1307,6 +1311,37 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             notificationService.createNotification(article.getUserId(), operatorId,
                     "featured_granted", "恭喜！您的帖子被设为精华帖，已获得精华积分" + titleSuffix,
                     "article", articleId);
+            // 直接设精华也进入公示卡，避免绕过“精华公示”
+            try {
+                String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+                boolean publicEnabled = !"0".equals(dictService.getValueByKey("featured_public_enabled"));
+                int publicDays = 5;
+                try {
+                    String days = dictService.getValueByKey("featured_public_days");
+                    if (days != null && !days.trim().isEmpty()) publicDays = Integer.parseInt(days.trim());
+                } catch (Exception ignore) { }
+                FeaturedRecommendation rec = new FeaturedRecommendation();
+                rec.setArticleId(articleId);
+                rec.setRecommenderId(operatorId);
+                rec.setLabelId(article.getArticleLabelId());
+                rec.setStatus("approved");
+                rec.setReviewerId(operatorId);
+                rec.setReviewRemark("管理员直接设置精华");
+                rec.setReviewTime(now);
+                rec.setCreateTime(now);
+                rec.setFeaturedReason("管理员直接设置精华");
+                rec.setPublicStartTime(now);
+                if (publicEnabled) {
+                    rec.setPublicStatus("PUBLICIZING");
+                    rec.setPublicEndTime(addBusinessDays(new Date(), Math.max(1, publicDays)));
+                } else {
+                    rec.setPublicStatus("PUBLISHED");
+                    rec.setPublicEndTime(now);
+                }
+                featuredRecommendationMapper.insert(rec);
+            } catch (Exception ignore) {
+                // 公示卡写入失败不影响设精华主流程
+            }
         } else if (newFeatured != 1 && oldFeatured == 1) {
             String titleSuffix = article.getArticleTitle() != null ? "（《" + article.getArticleTitle() + "》）" : "";
             notificationService.createNotification(article.getUserId(), operatorId,
@@ -1446,6 +1481,19 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         String message = authorizationService.getBoardScopeDenialMessage(
                 currentUserService.getCurrentUser(), labelId);
         return message == null ? null : ResultBean.forbidden(message);
+    }
+
+    /** 公示结束日：按工作日顺延（跳过周六/周日）。 */
+    private String addBusinessDays(Date start, int days) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(start);
+        int added = 0;
+        while (added < days) {
+            cal.add(Calendar.DAY_OF_MONTH, 1);
+            int dow = cal.get(Calendar.DAY_OF_WEEK);
+            if (dow != Calendar.SATURDAY && dow != Calendar.SUNDAY) added++;
+        }
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(cal.getTime());
     }
 
     private ResultBean emptyAdminArticlePage(int page, int size) {

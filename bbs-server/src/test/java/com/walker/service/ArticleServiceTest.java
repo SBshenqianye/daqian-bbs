@@ -77,6 +77,9 @@ class ArticleServiceTest {
     private AchievementService achievementService;
 
     @Mock
+    private com.walker.mapper.FeaturedRecommendationMapper featuredRecommendationMapper;
+
+    @Mock
     private LevelService levelService;
 
     @Mock
@@ -286,6 +289,8 @@ class ArticleServiceTest {
         assertEquals(200, result.getCode());
         // 生产调用为 7 参重载（operatorId=登录态 1, adjustOperation=true）
         verify(pointsLogService).adjustUserPoints(eq(1), eq(10), eq("精华帖奖励积分"), eq("article"), eq(1), eq(1), eq(true));
+        // 直接设精华也写入公示记录
+        verify(featuredRecommendationMapper).insert(any(com.walker.pojo.FeaturedRecommendation.class));
     }
 
     @Test
