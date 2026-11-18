@@ -47,6 +47,9 @@ class ReplyServiceTest {
     @Mock
     private LabelPointsPolicyService labelPointsPolicyService;
 
+    @Mock
+    private AchievementService achievementService;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = replyService.getClass().getSuperclass().getDeclaredField("baseMapper");

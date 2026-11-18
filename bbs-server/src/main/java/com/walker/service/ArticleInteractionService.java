@@ -38,6 +38,9 @@ public class ArticleInteractionService {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private AchievementService achievementService;
+
     @Transactional
     public ResultBean toggleLike(Integer userId, Integer articleId) {
         if (userId == null || articleId == null) {
@@ -72,6 +75,7 @@ public class ArticleInteractionService {
         userMapper.update(null, new LambdaUpdateWrapper<User>()
                 .eq(User::getId, article.getUserId())
                 .setSql("good = COALESCE(good, 0) + 1"));
+        achievementService.evaluateUserQuietly(article.getUserId());
         return ResultBean.success("点赞成功", interactionMap(userId, articleId));
     }
 
@@ -103,6 +107,7 @@ public class ArticleInteractionService {
         articleMapper.update(null, new LambdaUpdateWrapper<Article>()
                 .eq(Article::getArticleId, articleId)
                 .setSql("favorite_num = COALESCE(favorite_num, 0) + 1"));
+        achievementService.evaluateUserQuietly(article.getUserId());
         return ResultBean.success("收藏成功", interactionMap(userId, articleId));
     }
 

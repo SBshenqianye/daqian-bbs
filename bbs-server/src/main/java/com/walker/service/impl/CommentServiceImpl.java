@@ -9,6 +9,7 @@ import com.walker.pojo.Comment;
 import com.walker.pojo.Dict;
 import com.walker.pojo.PointsLog;
 import com.walker.pojo.Reply;
+import com.walker.service.AchievementService;
 import com.walker.service.ArticleService;
 import com.walker.service.CommentService;
 import com.walker.service.DictService;
@@ -59,6 +60,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     @Autowired
     private LabelPointsPolicyService labelPointsPolicyService;
+
+    @Autowired
+    private AchievementService achievementService;
 
     /**
      * 保存用户的评论 一级
@@ -143,6 +147,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         if (quality.isSpam()) {
             return ResultBean.success("评论成功，但内容被判定为低质量，暂不展示且不计入积分");
         }
+        achievementService.evaluateUserQuietly(commentParam.getCommentUserId());
         return ResultBean.success("评论成功！");
     }
 

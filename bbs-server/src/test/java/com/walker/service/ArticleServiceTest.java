@@ -74,6 +74,9 @@ class ArticleServiceTest {
     private LabelPointsPolicyService labelPointsPolicyService;
 
     @Mock
+    private AchievementService achievementService;
+
+    @Mock
     private LevelService levelService;
 
     @Mock

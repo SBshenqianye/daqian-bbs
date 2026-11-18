@@ -77,6 +77,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private LabelPointsPolicyService labelPointsPolicyService;
 
     @Autowired
+    private AchievementService achievementService;
+
+    @Autowired
     private LevelService levelService;
 
     @Autowired
@@ -212,6 +215,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(articleParam.getUserId(), postPoints, "发帖积分",
                     "article", article.getArticleId(), null);
+        }
+        if (article.getEnable() != null && article.getEnable() == 1) {
+            achievementService.evaluateUserQuietly(articleParam.getUserId());
         }
 
         return ResultBean.success("发布成功！");
@@ -786,24 +792,26 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .setEnable(1);
         articleMapper.updateById(article);
         // 前置审核通过后补发发帖积分（每个帖子只发一次；不计分标签跳过）
-        if (existing != null && existing.getUserId() != null
-                && labelPointsPolicyService.shouldAward(existing.getArticleLabelId(), "publish")) {
-            long awarded = pointsLogService.count(new LambdaQueryWrapper<PointsLog>()
-                    .eq(PointsLog::getUserId, existing.getUserId())
-                    .eq(PointsLog::getRelatedType, "article")
-                    .eq(PointsLog::getRelatedId, articleId)
-                    .eq(PointsLog::getReason, "发帖积分")
-                    .gt(PointsLog::getPointsChange, 0)
-                    .and(w -> w.isNull(PointsLog::getIsReversed).or().eq(PointsLog::getIsReversed, 0)));
-            if (awarded == 0) {
-                int postPoints = 2;
-                try {
-                    String val = dictService.getValueByKey(ConstantUtil.MANA_POST);
-                    if (val != null) postPoints = Integer.parseInt(val);
-                } catch (Exception e) { /* use default */ }
-                pointsLogService.adjustUserPoints(existing.getUserId(), postPoints, "发帖积分",
-                        "article", articleId, null);
+        if (existing != null && existing.getUserId() != null) {
+            if (labelPointsPolicyService.shouldAward(existing.getArticleLabelId(), "publish")) {
+                long awarded = pointsLogService.count(new LambdaQueryWrapper<PointsLog>()
+                        .eq(PointsLog::getUserId, existing.getUserId())
+                        .eq(PointsLog::getRelatedType, "article")
+                        .eq(PointsLog::getRelatedId, articleId)
+                        .eq(PointsLog::getReason, "发帖积分")
+                        .gt(PointsLog::getPointsChange, 0)
+                        .and(w -> w.isNull(PointsLog::getIsReversed).or().eq(PointsLog::getIsReversed, 0)));
+                if (awarded == 0) {
+                    int postPoints = 2;
+                    try {
+                        String val = dictService.getValueByKey(ConstantUtil.MANA_POST);
+                        if (val != null) postPoints = Integer.parseInt(val);
+                    } catch (Exception e) { /* use default */ }
+                    pointsLogService.adjustUserPoints(existing.getUserId(), postPoints, "发帖积分",
+                            "article", articleId, null);
+                }
             }
+            achievementService.evaluateUserQuietly(existing.getUserId());
         }
         return ResultBean.success("修改成功！");
     }
@@ -1249,6 +1257,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // 更新精华状态
         Article update = new Article();
         update.setArticleId(articleId).setIsFeatured(isFeatured);
+        if (newFeatured == 1) {
+            update.setFeaturedTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+        }
         articleMapper.updateById(update);
 
         // 积分变动：设为精华+10，取消精华-10
@@ -1261,6 +1272,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             } catch (Exception e) { /* use default */ }
             pointsLogService.adjustUserPoints(article.getUserId(), featuredPoints, "精华帖奖励积分",
                     "article", articleId, operatorId, true);
+            achievementService.evaluateUserQuietly(article.getUserId());
         } else if (newFeatured != 1 && oldFeatured == 1) {
             // 取消精华 → 扣回
             int featuredPoints = 10;

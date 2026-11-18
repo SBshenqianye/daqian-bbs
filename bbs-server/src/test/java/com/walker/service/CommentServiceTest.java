@@ -49,6 +49,9 @@ class CommentServiceTest {
     @Mock
     private LabelPointsPolicyService labelPointsPolicyService;
 
+    @Mock
+    private AchievementService achievementService;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = commentService.getClass().getSuperclass().getDeclaredField("baseMapper");

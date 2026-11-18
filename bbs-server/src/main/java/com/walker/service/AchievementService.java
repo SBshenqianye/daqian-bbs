@@ -102,7 +102,7 @@ public class AchievementService {
 
     public String medalTemplate() {
         return "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\">\n"
-                + "  <path d=\"M44 36 H212 V214 L128 170 L44 214 Z\" fill=\"#1f6f5c\" stroke=\"#ffffff\" stroke-width=\"6\" stroke-linejoin=\"round\"/>\n"
+                + "  <path d=\"M44 36 H212 V214 L128 182 L44 214 Z\" fill=\"#1f6f5c\" stroke=\"#ffffff\" stroke-width=\"6\" stroke-linejoin=\"round\"/>\n"
                 + "  <path d=\"M60 52 H196 V196 L128 160 L60 196 Z\" fill=\"none\" stroke=\"#ffffff\" stroke-opacity=\".55\" stroke-width=\"2\"/>\n"
                 + "  <!-- 中心图形安全区：x=80..176, y=72..152 -->\n"
                 + "  <circle cx=\"128\" cy=\"112\" r=\"28\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"4\"/>\n"
@@ -173,6 +173,16 @@ public class AchievementService {
         }
     }
 
+    /** 业务动作后即时评估，失败不影响主流程。 */
+    public void evaluateUserQuietly(Integer userId) {
+        if (userId == null) return;
+        try {
+            evaluateUser(userId);
+        } catch (Exception e) {
+            log.warn("evaluate achievement failed for user {}: {}", userId, e.getMessage());
+        }
+    }
+
     @Scheduled(cron = "0 20 2 * * ?")
     public void evaluateAllUsers() {
         List<User> users = userMapper.selectList(new LambdaQueryWrapper<User>()
@@ -215,7 +225,7 @@ public class AchievementService {
     }
 
     @SuppressWarnings("unchecked")
-    private boolean evalRule(Map<String, Object> rule, Map<String, Integer> metrics) {
+    boolean evalRule(Map<String, Object> rule, Map<String, Integer> metrics) {
         if (rule == null) return false;
         String logic = String.valueOf(rule.getOrDefault("logic", "ALL")).toUpperCase();
         List<Map<String, Object>> conditions = (List<Map<String, Object>>) rule.get("conditions");

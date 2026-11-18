@@ -68,9 +68,12 @@
             <div class="border-t border-outline-variant pt-3">
               <div class="flex items-center justify-between mb-2">
                 <span class="text-label-md text-secondary">达成条件</span>
-                <button class="text-[12px] text-primary" @click="addCondition">+ 添加条件</button>
+                <div class="flex items-center gap-3">
+                  <button class="text-[12px] text-primary" @click="addCondition">+ 添加条件</button>
+                  <button class="text-[12px] text-primary" @click="addGroup">+ 添加条件组</button>
+                </div>
               </div>
-              <div v-for="(c, i) in conditions" :key="i" class="grid grid-cols-12 gap-2 mb-2 items-center">
+              <div v-for="(c, i) in conditions" :key="'c' + i" class="grid grid-cols-12 gap-2 mb-2 items-center">
                 <select v-model="c.metric" class="col-span-5 px-2 py-1.5 bg-surface border border-outline-variant rounded text-[12px]">
                   <option v-for="m in metrics" :key="m.value" :value="m.value">{{ m.label }}</option>
                 </select>
@@ -80,7 +83,31 @@
                 <input v-model.number="c.value" type="number" class="col-span-3 px-2 py-1.5 bg-surface border border-outline-variant rounded text-[12px]">
                 <button class="col-span-2 text-[11px] text-error" @click="conditions.splice(i, 1)">删除</button>
               </div>
-              <p v-if="conditions.length === 0" class="text-[11px] text-on-surface-variant">至少添加一个条件</p>
+
+              <div v-for="(g, gi) in groups" :key="'g' + gi" class="mt-3 rounded-lg border border-outline-variant bg-surface-container-lowest p-2.5">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-[12px] font-semibold text-on-surface">条件组 {{ gi + 1 }}</span>
+                  <select v-model="g.logic" class="px-2 py-1 bg-surface border border-outline-variant rounded text-[11px]">
+                    <option value="ALL">组内全部满足</option>
+                    <option value="ANY">组内任一满足</option>
+                  </select>
+                  <button class="ml-auto text-[11px] text-primary" @click="addGroupCondition(gi)">+ 组内条件</button>
+                  <button class="text-[11px] text-error" @click="groups.splice(gi, 1)">删除组</button>
+                </div>
+                <div v-for="(c, ci) in g.conditions" :key="'gc' + gi + '-' + ci" class="grid grid-cols-12 gap-2 mb-2 items-center">
+                  <select v-model="c.metric" class="col-span-5 px-2 py-1.5 bg-surface border border-outline-variant rounded text-[12px]">
+                    <option v-for="m in metrics" :key="m.value" :value="m.value">{{ m.label }}</option>
+                  </select>
+                  <select v-model="c.op" class="col-span-2 px-2 py-1.5 bg-surface border border-outline-variant rounded text-[12px]">
+                    <option value=">=">≥</option><option value=">">＞</option><option value="=">＝</option><option value="<=">≤</option><option value="<">＜</option>
+                  </select>
+                  <input v-model.number="c.value" type="number" class="col-span-3 px-2 py-1.5 bg-surface border border-outline-variant rounded text-[12px]">
+                  <button class="col-span-2 text-[11px] text-error" @click="g.conditions.splice(ci, 1)">删除</button>
+                </div>
+                <p v-if="g.conditions.length === 0" class="text-[11px] text-on-surface-variant">组内至少添加一个条件</p>
+              </div>
+
+              <p v-if="conditions.length === 0 && groups.length === 0" class="text-[11px] text-on-surface-variant">至少添加一个条件或条件组</p>
             </div>
           </div>
           <div class="flex justify-end gap-3 p-5 border-t border-outline-variant">
@@ -128,7 +155,7 @@ export default {
   data() {
     return {
       loading: false, saving: false, dialogVisible: false,
-      list: [], metrics: METRICS, conditions: [],
+      list: [], metrics: METRICS, conditions: [], groups: [],
       defaultMedal: DEFAULT_MEDAL,
       form: { id: null, achievementName: '', achievementCode: '', description: '', category: '成长', iconSvg: '', ruleLogic: 'ALL', sortOrder: 0, enabled: 1 },
       drawer: { visible: false, shapes: [], current: null, fill: '#1f6f5c', stroke: '#ffffff', width: 6 },
@@ -282,8 +309,15 @@ export default {
     formatRule(json) {
       try {
         const r = JSON.parse(json || '{}')
-        const parts = (r.conditions || []).map(c => `${this.labelOf(c.metric)} ${c.op} ${c.value}`)
-        return (r.logic === 'ANY' ? '任一：' : '全部：') + parts.join(' 且 ')
+        const text = (c) => `${this.labelOf(c.metric)} ${c.op} ${c.value}`
+        const direct = (r.conditions || []).map(text)
+        const groupTexts = (r.groups || []).map(g => {
+          const inner = (g.conditions || []).map(text).join(g.logic === 'ANY' ? ' 或 ' : ' 且 ')
+          return inner ? '(' + inner + ')' : ''
+        }).filter(Boolean)
+        const all = [...direct, ...groupTexts]
+        const connector = r.logic === 'ANY' ? ' 或 ' : ' 且 '
+        return (r.logic === 'ANY' ? '任一：' : '全部：') + (all.join(connector) || '未配置')
       } catch (e) { return json || '' }
     },
     labelOf(metric) { const m = METRICS.find(x => x.value === metric); return m ? m.label : metric },
@@ -291,6 +325,7 @@ export default {
       this.overlayZ = nextOverlayZ()
       this.form = { id: null, achievementName: '', achievementCode: '', description: '', category: '成长', iconSvg: '', ruleLogic: 'ALL', sortOrder: 0, enabled: 1 }
       this.conditions = [{ metric: 'article_count', op: '>=', value: 1 }]
+      this.groups = []
       this.dialogVisible = true
     },
     openEdit(item) {
@@ -299,11 +334,25 @@ export default {
       try {
         const r = JSON.parse(item.ruleJson || '{}')
         this.conditions = (r.conditions || []).map(c => ({ ...c }))
+        this.groups = (r.groups || []).map(g => ({
+          logic: g.logic || 'ALL',
+          conditions: (g.conditions || []).map(c => ({ ...c }))
+        }))
         this.form.ruleLogic = r.logic || item.ruleLogic || 'ALL'
-      } catch (e) { this.conditions = [] }
+      } catch (e) { this.conditions = []; this.groups = [] }
       this.dialogVisible = true
     },
     addCondition() { this.conditions.push({ metric: 'article_count', op: '>=', value: 1 }) },
+    addGroup() {
+      this.groups.push({
+        logic: 'ALL',
+        conditions: [{ metric: 'article_count', op: '>=', value: 1 }]
+      })
+    },
+    addGroupCondition(gi) {
+      const group = this.groups[gi]
+      if (group) group.conditions.push({ metric: 'article_count', op: '>=', value: 1 })
+    },
     async handleMedalImport(event) {
       const file = event.target.files && event.target.files[0]
       if (!file) return
@@ -329,9 +378,13 @@ export default {
     },
     async save() {
       if (!this.form.achievementName || !this.form.achievementName.trim()) { this.$message.warning('请输入成就名称'); return }
-      if (!this.conditions.length) { this.$message.warning('请至少添加一个条件'); return }
+      const validGroups = this.groups.filter(g => g.conditions && g.conditions.length)
+      if (!this.conditions.length && !validGroups.length) { this.$message.warning('请至少添加一个条件或条件组'); return }
       this.saving = true
-      const payload = { ...this.form, ruleJson: JSON.stringify({ logic: this.form.ruleLogic, conditions: this.conditions }) }
+      const rule = { logic: this.form.ruleLogic }
+      if (this.conditions.length) rule.conditions = this.conditions
+      if (validGroups.length) rule.groups = validGroups
+      const payload = { ...this.form, ruleJson: JSON.stringify(rule) }
       try {
         const res = await this.postRequest('/admin/achievement/save', payload)
         handleResponse(res, { successMsg: '保存成功', errorMsg: '保存失败', onSuccess: () => { this.dialogVisible = false; this.load() } })

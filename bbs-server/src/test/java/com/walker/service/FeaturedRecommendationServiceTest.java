@@ -54,6 +54,9 @@ class FeaturedRecommendationServiceTest {
     @Mock
     private LabelPointsPolicyService labelPointsPolicyService;
 
+    @Mock
+    private AchievementService achievementService;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = recommendationService.getClass().getSuperclass().getDeclaredField("baseMapper");

@@ -8,6 +8,7 @@ import com.walker.config.security.Permission;
 import com.walker.pojo.Article;
 import com.walker.pojo.FeaturedRecommendation;
 import com.walker.pojo.User;
+import com.walker.service.AchievementService;
 import com.walker.service.ArticleService;
 import com.walker.service.AuthorizationService;
 import com.walker.service.CurrentUserService;
@@ -52,6 +53,9 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
 
     @Autowired
     private LabelPointsPolicyService labelPointsPolicyService;
+
+    @Autowired
+    private AchievementService achievementService;
 
     @Autowired
     private CurrentUserService currentUserService;
@@ -226,6 +230,7 @@ public class FeaturedRecommendationServiceImpl extends ServiceImpl<FeaturedRecom
                 notificationService.createNotification(article.getUserId(), reviewerId, "featured_granted",
                         "恭喜！您的帖子《" + (article.getArticleTitle() != null ? article.getArticleTitle() : "") + "》被评定为精华帖，获得+" + featuredPoints + "积分",
                         "article", rec.getArticleId());
+                achievementService.evaluateUserQuietly(article.getUserId());
             }
         } else {
             rec.setPublicStatus("NONE");
