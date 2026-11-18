@@ -9531,3 +9531,17 @@ PREPARE s68a FROM @s_lp; EXECUTE s68a; DEALLOCATE PREPARE s68a;
 UPDATE `bbs_operation_cycle` c
 SET c.`level_profile_id` = (SELECT p.id FROM `bbs_level_profile` p WHERE p.status = 1 ORDER BY p.id DESC LIMIT 1)
 WHERE c.`status` = 1 AND c.`level_profile_id` IS NULL;
+
+-- @migration: v069-support-org-name-match 支撑机构名称兼容“供电服务指挥中心（生产管控中心）”
+-- 背景：生产组织名可能带括号后缀，旧的精确匹配会漏掉该机构。
+-- 幂等：NOT EXISTS。
+INSERT INTO `bbs_ranking_category_org` (`category_id`, `org_no`, `include_descendants`, `sort_order`, `create_time`)
+SELECT c.id, o.org_no, 1, 0, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+FROM `bbs_ranking_category` c
+JOIN `bbs_sa_org` o ON o.`is_delete` = 0
+WHERE c.`category_code` = 'support_units'
+  AND o.`org_name` LIKE '%供电服务指挥中心%'
+  AND NOT EXISTS (
+    SELECT 1 FROM `bbs_ranking_category_org` x
+    WHERE x.`category_id` = c.id AND x.`org_no` = o.org_no
+  );

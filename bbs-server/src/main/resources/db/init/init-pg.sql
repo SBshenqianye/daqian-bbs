@@ -432,7 +432,8 @@ SELECT c.id, o.org_no, 1, 0, to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
 FROM bbs_ranking_category c
 JOIN bbs_sa_org o ON o.is_delete = 0 AND (
   o.org_name IN ('变电运检中心', '输电运检中心', '客户服务中心', '经济技术研究所',
-                 '信息通信分公司', '综合服务中心', '供电服务指挥中心')
+                 '信息通信分公司', '综合服务中心')
+  OR o.org_name LIKE '%供电服务指挥中心%'
   OR o.org_name LIKE '%项目管理中心%'
 )
 WHERE c.category_code = 'support_units'
