@@ -71,6 +71,16 @@ public class ReportController {
         return reportService.listReportsGrouped(status, page, size);
     }
 
+    @ApiOperation(value = "超级管理员核查匿名举报人（写审计日志）")
+    @PreAuthorize("@authz.isSuperAdmin(principal)")
+    @AuditLog(module = "REPORT", action = "REPORT_REVEAL_REPORTER",
+            targetType = "REPORT", targetId = "#body['reportId']")
+    @PostMapping("/admin/report/revealReporter")
+    public ResultBean revealReporter(@RequestBody Map<String, Object> body) {
+        Object id = body == null ? null : body.get("reportId");
+        return reportService.revealReporter(id == null ? null : Integer.valueOf(String.valueOf(id)));
+    }
+
     @ApiOperation(value = "用户查看自己的举报记录")
     @PostMapping("/user/report/myList")
     public ResultBean listMyReports(@RequestBody Map<String, Object> params) {

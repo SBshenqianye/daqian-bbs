@@ -45,7 +45,13 @@
             <tbody class="divide-y divide-outline-variant/50">
               <tr v-for="group in list" :key="group.representative.id" class="hover:bg-surface-container-low/50">
                   <td class="px-4 py-3 text-body-sm whitespace-nowrap">
-                    <UserCell :user-id="group.representative.reporterId" :name="group.representative.reporterName" />
+                    <div class="flex items-center gap-2">
+                      <UserCell :user-id="group.representative.reporterId" :name="group.representative.reporterName" />
+                      <span v-if="group.representative.isAnonymous === 1" class="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface-variant text-[10px]">匿名</span>
+                      <button v-if="group.representative.isAnonymous === 1 && canRevealReporter"
+                        class="text-[11px] text-error hover:underline"
+                        @click="revealReporter(group.representative)">查看实名</button>
+                    </div>
                   </td>
                   <td class="px-4 py-3 text-body-sm whitespace-nowrap">
                     <div class="flex items-center gap-2">
@@ -184,10 +190,16 @@
 import { handleResponse } from '../../../shared/feedback'
 import UserCell from '@/components/UserCell.vue'
 import ContentPreviewDialog from '@/components/ContentPreviewDialog.vue'
+import adminStore from '@/utils/adminStore'
 
 export default {
   name: 'ReportPage',
   components: { UserCell, ContentPreviewDialog },
+  computed: {
+    canRevealReporter() {
+      return adminStore.hasPermission('user:grant:admin')
+    },
+  },
   data() {
     return {
       loading: false,
@@ -226,6 +238,23 @@ export default {
     this.loadList()
   },
   methods: {
+    async revealReporter(item) {
+      try {
+        const res = await this.postRequest('/admin/report/revealReporter', { reportId: item.id })
+        if (!res || res.code !== 200 || !res.obj) {
+          this.$message.error((res && res.message) || '核查失败')
+          return
+        }
+        const r = res.obj
+        this.$alert(
+          `举报人：${r.reporterName || '未知'}（ID ${r.reporterId}）\n单位：${r.orgName || '—'}\n\n本次核查已写入审计日志。`,
+          '匿名举报实名信息',
+          { type: 'warning', confirmButtonText: '知道了' }
+        )
+      } catch (e) {
+        this.$message.error('核查失败')
+      }
+    },
     async loadViolationOptions() {
       try {
         const res = await this.postRequest('/common/listDictByType', { dictType: 'violation' })

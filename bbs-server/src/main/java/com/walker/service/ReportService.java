@@ -62,4 +62,9 @@ public interface ReportService extends IService<Report> {
      * 返回 {reported: bool, status: 'pending'|'confirmed'|null}。
      */
     ResultBean checkReported(Integer reporterId, String targetType, Integer targetId);
+
+    /**
+     * 超级管理员核查匿名举报人实名信息（写审计日志）。
+     */
+    ResultBean revealReporter(Integer reportId);
 }

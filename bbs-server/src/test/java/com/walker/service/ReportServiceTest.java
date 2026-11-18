@@ -543,4 +543,28 @@ class ReportServiceTest {
         assertEquals("举报已提交，等待审核", result.getMessage());
         verify(reportMapper, atLeastOnce()).insert(any(Report.class));
     }
+
+    @Test
+    @DisplayName("匿名举报核查：超管可取得举报人实名信息")
+    void revealReporter_returnsIdentity() {
+        Report report = new Report();
+        report.setId(9);
+        report.setReporterId(REPORTER_ID);
+        report.setIsAnonymous(1);
+        when(reportMapper.selectById(9)).thenReturn(report);
+
+        User reporter = new User();
+        reporter.setId(REPORTER_ID);
+        reporter.setNickname("张三");
+        reporter.setOrgName("内江供电公司本部");
+        when(userService.getById(REPORTER_ID)).thenReturn(reporter);
+
+        ResultBean result = reportService.revealReporter(9);
+
+        assertEquals(200, result.getCode());
+        Map<?, ?> data = (Map<?, ?>) result.getObj();
+        assertEquals("张三", data.get("reporterName"));
+        assertEquals("内江供电公司本部", data.get("orgName"));
+        assertEquals(1, data.get("isAnonymous"));
+    }
 }

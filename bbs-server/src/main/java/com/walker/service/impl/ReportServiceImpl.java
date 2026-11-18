@@ -610,6 +610,22 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
         return plain.length() > maxLen ? plain.substring(0, maxLen) + "..." : plain;
     }
 
+    @Override
+    public ResultBean revealReporter(Integer reportId) {
+        if (reportId == null) return ResultBean.error("缺少举报ID");
+        Report report = reportMapper.selectById(reportId);
+        if (report == null) return ResultBean.error("举报不存在");
+        User reporter = report.getReporterId() == null ? null : userService.getById(report.getReporterId());
+        Map<String, Object> data = new java.util.LinkedHashMap<>();
+        data.put("reportId", reportId);
+        data.put("reporterId", report.getReporterId());
+        data.put("reporterName", reporter == null ? null
+                : (reporter.getNickname() != null ? reporter.getNickname() : reporter.getUsername()));
+        data.put("orgName", reporter == null ? null : reporter.getOrgName());
+        data.put("isAnonymous", Integer.valueOf(1).equals(report.getIsAnonymous()) ? 1 : 0);
+        return ResultBean.success("查询成功", data);
+    }
+
     /**
      * 将 Report 转为 Map 并附加 reporterName
      */
