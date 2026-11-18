@@ -9454,3 +9454,20 @@ SET i.points_threshold = CASE i.level_index
   ELSE i.points_threshold END
 WHERE p.profile_name IN ('方案一 · 智荟成长', '方案二 · 电网匠心')
   AND i.level_index BETWEEN 1 AND 21;
+-- @migration: v063-level-threshold-resync2 等级门槛三次同步（修复 v059 JOIN 语法前已记录 v062 的库）
+-- 背景：PostgreSQL 的 v059 曾因 `JOIN (...) t` 缺少 ON 而失败，v062 可能在表为空时已执行并记录；
+--       修复 v059 后等级项补插完成，需要再同步一次门槛。
+-- 幂等：按 level_index 覆盖写，可重复执行。
+UPDATE `bbs_level_item` i
+JOIN `bbs_level_profile` p ON p.id = i.profile_id
+SET i.points_threshold = CASE i.level_index
+  WHEN 1 THEN 0    WHEN 2 THEN 20   WHEN 3 THEN 40
+  WHEN 4 THEN 60   WHEN 5 THEN 90   WHEN 6 THEN 120
+  WHEN 7 THEN 150  WHEN 8 THEN 200  WHEN 9 THEN 250
+  WHEN 10 THEN 300 WHEN 11 THEN 400 WHEN 12 THEN 500
+  WHEN 13 THEN 600 WHEN 14 THEN 700 WHEN 15 THEN 800
+  WHEN 16 THEN 900 WHEN 17 THEN 1100 WHEN 18 THEN 1300
+  WHEN 19 THEN 1500 WHEN 20 THEN 1700 WHEN 21 THEN 1900
+  ELSE i.points_threshold END
+WHERE p.profile_name IN ('方案一 · 智荟成长', '方案二 · 电网匠心')
+  AND i.level_index BETWEEN 1 AND 21;
