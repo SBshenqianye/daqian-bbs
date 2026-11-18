@@ -41,6 +41,9 @@ public class LevelService {
     @Autowired
     private com.walker.mapper.PointsLogMapper pointsLogMapper;
 
+    @Autowired
+    private OperationCycleService operationCycleService;
+
     public ResultBean getProfilePayload() {
         LevelProfile profile = getActiveProfile();
         if (profile == null) {
@@ -53,6 +56,16 @@ public class LevelService {
     }
 
     public LevelProfile getActiveProfile() {
+        // 运营周期显式绑定的等级方案优先；未绑定或方案缺失时回落到全局启用方案
+        try {
+            com.walker.pojo.OperationCycle cycle = operationCycleService.getActiveCycle();
+            if (cycle != null && cycle.getLevelProfileId() != null) {
+                LevelProfile bound = profileMapper.selectById(cycle.getLevelProfileId());
+                if (bound != null) return bound;
+            }
+        } catch (Exception ignore) {
+            // 周期表/字段尚未迁移时回落
+        }
         List<LevelProfile> list = profileMapper.selectList(new LambdaQueryWrapper<LevelProfile>()
                 .eq(LevelProfile::getStatus, 1)
                 .orderByDesc(LevelProfile::getId)

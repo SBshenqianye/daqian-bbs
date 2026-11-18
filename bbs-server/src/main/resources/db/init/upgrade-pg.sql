@@ -9233,3 +9233,11 @@ ALTER TABLE bbs_reminder_rule ADD COLUMN IF NOT EXISTS quiet_start varchar(5);
 ALTER TABLE bbs_reminder_rule ADD COLUMN IF NOT EXISTS quiet_end varchar(5);
 ALTER TABLE bbs_reminder_rule ADD COLUMN IF NOT EXISTS escalate_minutes integer DEFAULT 0;
 ALTER TABLE bbs_reminder_rule ADD COLUMN IF NOT EXISTS escalate_permission_code varchar(64);
+
+-- @migration: v068-cycle-level-profile 运营周期绑定等级方案
+-- 背景：运营方案逐年更换时，等级方案需要随周期切换；榜单默认时间范围也使用当前周期。
+-- 幂等：ADD COLUMN IF NOT EXISTS；仅给未绑定的启用周期补当前启用方案。
+ALTER TABLE bbs_operation_cycle ADD COLUMN IF NOT EXISTS level_profile_id integer;
+UPDATE bbs_operation_cycle c
+SET level_profile_id = (SELECT p.id FROM bbs_level_profile p WHERE p.status = 1 ORDER BY p.id DESC LIMIT 1)
+WHERE c.status = 1 AND c.level_profile_id IS NULL;

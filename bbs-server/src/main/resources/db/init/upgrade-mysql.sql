@@ -9521,3 +9521,13 @@ PREPARE s67c FROM @s_em; EXECUTE s67c; DEALLOCATE PREPARE s67c;
 SET @c_ep := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_reminder_rule' AND COLUMN_NAME='escalate_permission_code');
 SET @s_ep := IF(@c_ep=0, 'ALTER TABLE `bbs_reminder_rule` ADD COLUMN `escalate_permission_code` varchar(64) DEFAULT NULL', 'SELECT 1');
 PREPARE s67d FROM @s_ep; EXECUTE s67d; DEALLOCATE PREPARE s67d;
+
+-- @migration: v068-cycle-level-profile 运营周期绑定等级方案
+-- 背景：运营方案逐年更换时，等级方案需要随周期切换；榜单默认时间范围也使用当前周期。
+-- 幂等：information_schema 检查 + PREPARE；仅给未绑定的启用周期补当前启用方案。
+SET @c_lp := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_operation_cycle' AND COLUMN_NAME='level_profile_id');
+SET @s_lp := IF(@c_lp=0, 'ALTER TABLE `bbs_operation_cycle` ADD COLUMN `level_profile_id` int(11) DEFAULT NULL COMMENT ''绑定的等级方案''', 'SELECT 1');
+PREPARE s68a FROM @s_lp; EXECUTE s68a; DEALLOCATE PREPARE s68a;
+UPDATE `bbs_operation_cycle` c
+SET c.`level_profile_id` = (SELECT p.id FROM `bbs_level_profile` p WHERE p.status = 1 ORDER BY p.id DESC LIMIT 1)
+WHERE c.`status` = 1 AND c.`level_profile_id` IS NULL;

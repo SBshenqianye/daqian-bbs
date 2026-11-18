@@ -24,6 +24,8 @@ public class OperationCycle implements Serializable {
     @TableField("end_date")
     private String endDate;
     private Integer status;
+    @TableField("level_profile_id")
+    private Integer levelProfileId;
     @TableField("create_time")
     private String createTime;
     @TableField("update_time")

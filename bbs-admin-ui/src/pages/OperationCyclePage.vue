@@ -15,8 +15,9 @@
             <tr class="bg-surface-container-low text-on-surface-variant">
               <th class="p-3 text-left font-medium">周期名称</th>
               <th class="p-3 text-left font-medium">起止日期</th>
+              <th class="p-3 text-left font-medium">等级方案</th>
               <th class="p-3 text-left font-medium">状态</th>
-              <th class="p-3 text-left font-medium w-[160px]">操作</th>
+              <th class="p-3 text-left font-medium w-[260px]">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -26,15 +27,19 @@
                 <p class="text-[10px] text-outline font-mono">{{ c.cycleCode }}</p>
               </td>
               <td class="p-3 text-on-surface-variant">{{ c.startDate }} ~ {{ c.endDate }}</td>
+              <td class="p-3 text-on-surface-variant">{{ profileName(c.levelProfileId) }}</td>
               <td class="p-3">
                 <span class="px-2 py-0.5 rounded-full text-[11px]" :class="c.status===1?'bg-emerald-50 text-emerald-700':c.status===2?'bg-surface-variant text-on-surface-variant':'bg-amber-50 text-amber-700'">
                   {{ c.status===1?'启用中':c.status===2?'已归档':'草稿' }}
                 </span>
               </td>
               <td class="p-3">
-                <div class="flex gap-2">
-                  <button v-if="c.status!==1" class="text-primary text-[12px] hover:opacity-80" @click="activate(c)">激活</button>
+                <div class="flex flex-wrap gap-2">
+                  <button v-if="c.status===0" class="text-primary text-[12px] hover:opacity-80" @click="activate(c)">激活</button>
+                  <button v-if="c.status===0" class="text-primary text-[12px] hover:opacity-80" @click="openEdit(c)">编辑</button>
+                  <button class="text-primary text-[12px] hover:opacity-80" @click="copy(c)">复制</button>
                   <button class="text-primary text-[12px] hover:opacity-80" @click="openConfig(c)">周期配置</button>
+                  <button v-if="c.status===0" class="text-error text-[12px] hover:opacity-80" @click="archive(c)">归档</button>
                 </div>
               </td>
             </tr>
@@ -68,6 +73,14 @@
               <label class="field-label">结束日期 <span class="text-error">*</span></label>
               <input v-model="form.endDate" type="date" class="field">
             </div>
+          </div>
+          <div>
+            <label class="field-label">绑定等级方案</label>
+            <select v-model="form.levelProfileId" class="field">
+              <option :value="null">跟随全局启用方案</option>
+              <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.profileName }}{{ p.status === 1 ? '（当前启用）' : '' }}</option>
+            </select>
+            <p class="field-hint">激活该周期后，用户等级按此方案计算；留空则跟随全局启用方案。</p>
           </div>
           <p class="field-hint">周期内产生的积分日志会带上该周期 ID，用于按周期统计；总积分不会因切换周期而清零。</p>
         </div>
@@ -138,19 +151,63 @@ export default {
       configs: [],
       configKey: '',
       configValue: '',
+      profiles: [],
       overlayZ: 3000,
     }
   },
-  mounted() { this.load() },
+  mounted() {
+    this.load()
+    this.loadProfiles()
+  },
   methods: {
     async load() {
       const res = await this.getRequestUrl('/admin/operation-cycle/list')
       this.list = (res && res.obj) || []
     },
+    async loadProfiles() {
+      try {
+        const res = await this.getRequestUrl('/admin/level/profiles')
+        const rows = (res && res.obj) || []
+        this.profiles = rows.map(r => r.profile || r).filter(p => p && p.id)
+      } catch (e) {
+        this.profiles = []
+      }
+    },
+    profileName(id) {
+      if (id == null) return '跟随全局'
+      const hit = this.profiles.find(p => p.id === id)
+      return hit ? hit.profileName : '#' + id
+    },
     openCreate() {
       this.overlayZ = nextOverlayZ()
-      this.form = { id: null, cycleName: '', startDate: '', endDate: '', status: 0 }
+      this.form = { id: null, cycleName: '', startDate: '', endDate: '', status: 0, levelProfileId: null }
       this.dialogVisible = true
+    },
+    openEdit(c) {
+      this.overlayZ = nextOverlayZ()
+      this.form = {
+        id: c.id,
+        cycleName: c.cycleName,
+        startDate: c.startDate,
+        endDate: c.endDate,
+        status: c.status,
+        levelProfileId: c.levelProfileId == null ? null : c.levelProfileId,
+      }
+      this.dialogVisible = true
+    },
+    copy(c) {
+      this.$confirm(`确定复制周期「${c.cycleName}」吗？将同时复制周期配置和等级方案。`, '复制周期', { type: 'info' })
+        .then(async () => {
+          const res = await this.postRequest('/admin/operation-cycle/copy', { sourceId: c.id })
+          handleResponse(res, { successMsg: '已复制', errorMsg: '复制失败', onSuccess: () => this.load() })
+        }).catch(() => {})
+    },
+    archive(c) {
+      this.$confirm(`确定归档周期「${c.cycleName}」吗？归档后只读。`, '归档周期', { type: 'warning' })
+        .then(async () => {
+          const res = await this.postRequest('/admin/operation-cycle/archive', { id: c.id })
+          handleResponse(res, { successMsg: '已归档', errorMsg: '归档失败', onSuccess: () => this.load() })
+        }).catch(() => {})
     },
     async save() {
       if (!this.form.cycleName || !this.form.cycleName.trim()) { this.$message.warning('请填写周期名称'); return }

@@ -951,6 +951,7 @@ CREATE TABLE IF NOT EXISTS bbs_operation_cycle (
     start_date  varchar(10) NOT NULL,
     end_date    varchar(10) NOT NULL,
     status      smallint NOT NULL DEFAULT 0,
+    level_profile_id integer,
     create_time varchar(20),
     update_time varchar(20)
 );

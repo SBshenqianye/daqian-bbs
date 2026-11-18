@@ -1013,6 +1013,7 @@ CREATE TABLE IF NOT EXISTS `bbs_operation_cycle` (
   `start_date`  varchar(10) NOT NULL,
   `end_date`    varchar(10) NOT NULL,
   `status`      tinyint(1) NOT NULL DEFAULT 0 COMMENT '0草稿/1启用/2归档',
+  `level_profile_id` int(11) DEFAULT NULL COMMENT '绑定的等级方案',
   `create_time` varchar(20) DEFAULT NULL,
   `update_time` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE,

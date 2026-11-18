@@ -45,6 +45,12 @@ public class OperationCycleService {
             cycle.setUpdateTime(now);
             cycleMapper.insert(cycle);
         } else {
+            OperationCycle old = cycleMapper.selectById(cycle.getId());
+            if (old == null) return ResultBean.error("周期不存在");
+            if (!Integer.valueOf(0).equals(old.getStatus())) {
+                return ResultBean.error("只有草稿周期可以编辑，请先复制为新周期");
+            }
+            cycle.setStatus(0);
             cycle.setUpdateTime(now);
             cycleMapper.updateById(cycle);
         }
@@ -96,5 +102,63 @@ public class OperationCycleService {
 
     public String getConfig(String key) {
         try { return cycleMapper.selectActiveCycleConfig(key); } catch (Exception e) { return null; }
+    }
+
+    /** 当前启用周期；没有则返回 null。 */
+    public OperationCycle getActiveCycle() {
+        List<OperationCycle> list = cycleMapper.selectList(new LambdaQueryWrapper<OperationCycle>()
+                .eq(OperationCycle::getStatus, 1)
+                .orderByDesc(OperationCycle::getId)
+                .last("LIMIT 1"));
+        return list == null || list.isEmpty() ? null : list.get(0);
+    }
+
+    /** 复制周期：日期、配置、等级方案一并带过去，新周期为草稿。 */
+    @Transactional
+    public ResultBean copy(Integer sourceId, String name) {
+        if (sourceId == null) return ResultBean.error("缺少源周期ID");
+        OperationCycle source = cycleMapper.selectById(sourceId);
+        if (source == null) return ResultBean.error("源周期不存在");
+        String newName = name == null || name.trim().isEmpty()
+                ? source.getCycleName() + " 副本" : name.trim();
+        String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+        OperationCycle copy = new OperationCycle();
+        copy.setCycleCode("CYCLE" + System.currentTimeMillis());
+        copy.setCycleName(newName);
+        copy.setStartDate(source.getStartDate());
+        copy.setEndDate(source.getEndDate());
+        copy.setLevelProfileId(source.getLevelProfileId());
+        copy.setStatus(0);
+        copy.setCreateTime(now);
+        copy.setUpdateTime(now);
+        cycleMapper.insert(copy);
+
+        List<CycleConfig> configs = cycleConfigMapper.selectList(new LambdaQueryWrapper<CycleConfig>()
+                .eq(CycleConfig::getCycleId, sourceId));
+        for (CycleConfig config : configs) {
+            CycleConfig row = new CycleConfig();
+            row.setCycleId(copy.getId());
+            row.setConfigKey(config.getConfigKey());
+            row.setConfigValue(config.getConfigValue());
+            cycleConfigMapper.insert(row);
+        }
+        return ResultBean.success("已复制为「" + newName + "」", copy.getId());
+    }
+
+    /** 归档周期：启用中的周期需先激活其他周期。 */
+    public ResultBean archive(Integer id) {
+        if (id == null) return ResultBean.error("缺少周期ID");
+        OperationCycle cycle = cycleMapper.selectById(id);
+        if (cycle == null) return ResultBean.error("周期不存在");
+        if (Integer.valueOf(1).equals(cycle.getStatus())) {
+            return ResultBean.error("启用中的周期不能归档，请先激活其他周期");
+        }
+        if (Integer.valueOf(2).equals(cycle.getStatus())) {
+            return ResultBean.error("该周期已归档");
+        }
+        cycle.setStatus(2);
+        cycle.setUpdateTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+        cycleMapper.updateById(cycle);
+        return ResultBean.success("已归档");
     }
 }

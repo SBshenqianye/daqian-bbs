@@ -29,6 +29,33 @@ public class OperationCycleController {
     @PostMapping("/admin/operation-cycle/save")
     public ResultBean save(@RequestBody OperationCycle cycle) { return cycleService.save(cycle); }
 
+    @ApiOperation("用户端：当前启用周期（榜单默认时间范围）")
+    @GetMapping("/common/operation-cycle/active")
+    public ResultBean active() {
+        return ResultBean.success("查询成功", cycleService.getActiveCycle());
+    }
+
+    @ApiOperation("管理端：复制周期")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @AuditLog(module = "CONFIG", action = "CONFIG_CYCLE_COPY", targetType = "OPERATION_CYCLE", targetId = "#body['sourceId']")
+    @PostMapping("/admin/operation-cycle/copy")
+    public ResultBean copy(@RequestBody Map<String, Object> body) {
+        Object sourceId = body == null ? null : body.get("sourceId");
+        Object name = body == null ? null : body.get("name");
+        return cycleService.copy(
+                sourceId == null ? null : Integer.valueOf(String.valueOf(sourceId)),
+                name == null ? null : String.valueOf(name));
+    }
+
+    @ApiOperation("管理端：归档周期")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @AuditLog(module = "CONFIG", action = "CONFIG_CYCLE_ARCHIVE", targetType = "OPERATION_CYCLE", targetId = "#body['id']")
+    @PostMapping("/admin/operation-cycle/archive")
+    public ResultBean archive(@RequestBody Map<String, Object> body) {
+        Object id = body == null ? null : body.get("id");
+        return cycleService.archive(id == null ? null : Integer.valueOf(String.valueOf(id)));
+    }
+
     @ApiOperation("管理端：激活周期")
     @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_CYCLE_ACTIVATE", targetType = "OPERATION_CYCLE", targetId = "#body['id']")
