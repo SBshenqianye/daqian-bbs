@@ -9471,3 +9471,31 @@ SET i.points_threshold = CASE i.level_index
   ELSE i.points_threshold END
 WHERE p.profile_name IN ('方案一 · 智荟成长', '方案二 · 电网匠心')
   AND i.level_index BETWEEN 1 AND 21;
+-- @migration: v064-level-labels-resync 方案大阶段名称/说明二次同步
+-- 背景：v059 曾因 JOIN 语法失败、而 v060 已记录；补插等级项后需要再次套用 v060 的名称与说明。
+-- 幂等：按 major_index 覆盖写，description 已带“对标 ”前缀时跳过。
+UPDATE `bbs_level_item` i
+JOIN `bbs_level_profile` p ON p.id = i.profile_id
+SET i.major_name = CASE i.major_index WHEN 1 THEN '智荟新芽' WHEN 2 THEN '拾光新锐' WHEN 3 THEN '精锐先锋' WHEN 4 THEN '破局造浪人' WHEN 5 THEN '知灯引路人' WHEN 6 THEN '云衢领航者' WHEN 7 THEN '大千执炬者' ELSE i.major_name END,
+    i.description = CONCAT('对标 ', CASE i.major_index WHEN 1 THEN '初级工' WHEN 2 THEN '中级工' WHEN 3 THEN '高级工' WHEN 4 THEN '技师' WHEN 5 THEN '高级技师' WHEN 6 THEN '特级技师' WHEN 7 THEN '首席技师' ELSE i.major_name END, i.minor_index, '档；', COALESCE(i.description, ''))
+WHERE p.profile_name = '方案一 · 智荟成长' AND i.major_index BETWEEN 1 AND 7
+  AND (i.description IS NULL OR i.description NOT LIKE '对标 %');
+
+UPDATE `bbs_level_item` i
+JOIN `bbs_level_profile` p ON p.id = i.profile_id
+SET i.major_name = CASE i.major_index WHEN 1 THEN '银线学徒' WHEN 2 THEN '线网知客' WHEN 3 THEN '送电革新者' WHEN 4 THEN '电光造梦师' WHEN 5 THEN '熔光传习师' WHEN 6 THEN '经纬领航者' WHEN 7 THEN '万伏执炬人' ELSE i.major_name END,
+    i.description = CONCAT('对标 ', CASE i.major_index WHEN 1 THEN '初级工' WHEN 2 THEN '中级工' WHEN 3 THEN '高级工' WHEN 4 THEN '技师' WHEN 5 THEN '高级技师' WHEN 6 THEN '特级技师' WHEN 7 THEN '首席技师' ELSE i.major_name END, i.minor_index, '档；', COALESCE(i.description, ''))
+WHERE p.profile_name = '方案二 · 电网匠心' AND i.major_index BETWEEN 1 AND 7
+  AND (i.description IS NULL OR i.description NOT LIKE '对标 %');
+
+-- @migration: v065-mrc-index-on-ym 版主奖励取消表索引改到 ym 列
+-- 背景：全新安装的 init 表已经是 ym；v024/v027 里针对 year_month 的索引会失败（PG 直接报错）。
+--       这里在 v029 改名之后统一补索引，旧库已有同名索引时跳过。
+-- 幂等：information_schema 检查 + PREPARE。
+SET @idx_mrc_ym := (SELECT COUNT(1) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_moderator_reward_cancel' AND INDEX_NAME='idx_mrc_ym');
+SET @sql_idx_mrc_ym := IF(@idx_mrc_ym=0, 'CREATE INDEX `idx_mrc_ym` ON `bbs_moderator_reward_cancel` (`ym`)', 'SELECT 1');
+PREPARE s90 FROM @sql_idx_mrc_ym; EXECUTE s90; DEALLOCATE PREPARE s90;
+
+SET @idx_mrc_uk := (SELECT COUNT(1) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_moderator_reward_cancel' AND INDEX_NAME='uk_mrc_ym_user');
+SET @sql_idx_mrc_uk := IF(@idx_mrc_uk=0, 'CREATE UNIQUE INDEX `uk_mrc_ym_user` ON `bbs_moderator_reward_cancel` (`ym`, `user_id`)', 'SELECT 1');
+PREPARE s91 FROM @sql_idx_mrc_uk; EXECUTE s91; DEALLOCATE PREPARE s91;

@@ -34,6 +34,7 @@
 - **本地生命周期脚本**：新增 `scripts/dev/up|down|restart|verify|negative-smoke.ps1`，固定 9081/9082/9083，按端口杀进程树，日志写 `tmp/run/`；`verify.ps1` 串行构建两个前端、编译后端、重启后端并跑负向自检
 - **负向自检**：4 个只读注入（错误 baseUrl / 错误断言 / 未登录访问业务接口 / 基线正常），注入失败单独计为 `mutation`，不混入业务失败数；`-ApiBase` 指向错误地址时必须 exit 1
 - **WSL2 生产对齐验收**：WSL 栈固定 nginx `60001` / 后端 `60000` / PG `15432`，与 Windows 开发栈（9081–9083）并存；DB/后端改动需在 WSL2 再跑一遍冒烟
+- **Win7 数据库客户端**：`dist/HeidiSQL-12.22-Win7-中文便携版.zip`，免费开源、支持 PostgreSQL/MySQL、内置 libpq-17 与简体中文语言包，解压即用
 - **生命周期补充打包与部署**：构建在 Windows（两个 `npm run build` + `mvn clean package -DskipTests`）；打包在 WSL（`scripts/dist/package.sh` 生成瘦包 + `scripts/verify-build.sh` 要求 `FAIL=0`）；WSL 测试 `scripts/deploy/wsl.sh`；生产 `scripts/deploy/offline.sh <tar>` + `verify-server.sh`；基础镜像变更按“base.sh → podman load → 删旧容器 → 发瘦包”顺序执行
 - **帖子详情不再强制计数**：`/common/article/getArticleById` 新增 `countView` 参数（默认 `true`），验收/预览可传 `false` 只读查询
 
@@ -41,6 +42,8 @@
 - **指数型升级门槛**：两套内置方案（智荟成长 / 电网匠心）的 21 级门槛由线性 0/100/…/2000 改为累计消耗积分 0/20/40/60/90/120/150/200/250/300/400/500/600/700/800/900/1100/1300/1500/1700/1900，与产品《等级积分对照表》一致；新增 `v061` 迁移覆盖存量库，`init` 脚本同步内置值
 
 ### 修复
+- **全新 PG 安装 v024/v027 索引警告**：两处索引仍指向已改名的 `year_month`，已移除；改由 `v065` 在 `ym` 上创建（MySQL 用 information_schema 条件创建，PG 用 `IF NOT EXISTS`）
+- **方案大阶段名称兜底**：新增 `v064`，v059 补插等级项后重新套用 v060 的名称/说明（否则会显示成“初级工/中级工”）
 - **PostgreSQL 方案一/二等级项为空（根因）**：v059 与 `init-pg.sql` 的等级项插入使用 `JOIN (SELECT ...) t` 却缺少 `ON`，MySQL 允许（笛卡尔积），PostgreSQL 直接语法错误，导致方案等级项整批插入失败；已补 `ON TRUE`
 - **等级门槛兜底再次同步**：新增 `v063`，修复“v059 失败但 v062 已记录”的库（补插等级项后门槛仍为旧线性值）
 - **PostgreSQL 全新安装方案一/二为空**：`init-pg.sql` 的等级序列重置写在种子之前，方案档位的自增 id 会撞上已存在的 1–24，导致等级项插入失败；已把序列重置移到种子之后，并新增 `v062` 兜底重算两套方案阈值（兼容已部署环境）
