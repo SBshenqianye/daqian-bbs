@@ -79,13 +79,14 @@ bash scripts/deploy/wsl.sh --restart-only
 - 四份 SQL 必须同步修改：`db/init/init-mysql.sql`、`init-pg.sql`、`upgrade-mysql.sql`、`upgrade-pg.sql`。
 - 迁移块格式：`-- @migration: vNNN-名称`，`DatabaseInitializer` 按 marker 执行并记录到 `bbs_schema_version`；**追加时必须换行开头**。
 - `init-*.sql` 含 `DROP TABLE`，**切勿对生产库执行**。
-- 已执行到 `v061`：
+- 已执行到 `v065`：
   `v044` 测试账号/扣分提醒、`v045` 排行榜分类、`v046` P0 配置、`v047` 种子修正、
   `v048` 内容互动、`v049` 审核配置、`v050` 等级/成就、`v051` 精华公示、
   `v052` 运营周期、`v053` 提醒、`v054` 组织导入、`v055` 评论/回帖点赞、
   `v056` 本部改普通分类、`v057` 等级图标自定义、`v058` SVG 素材库、
   `v059` 两套 21 级方案、`v060` 方案标签修正 + 内置图标入库、
-  `v050b`/`v061` 序列同步与指数型升级门槛（两套 21 级）。
+  `v050b`/`v061` 序列同步与指数型升级门槛（两套 21 级）、
+  `v062`/`v063` 指数门槛二次同步、`v064` 大阶段名称兜底、`v065` 版主奖励取消表索引改到 `ym`。
 
 ## 4. 核心模块位置
 
@@ -117,3 +118,19 @@ bash scripts/deploy/wsl.sh --restart-only
 - Element UI 的 `$confirm` 曾因 `display:flex !important` 无法关闭，改样式时优先保住关闭语义。
 - 用户端/管理端构建并行会 OOM，必须串行。
 - `init-*.sql` 与 `upgrade-*.sql` 里的新表要显式 `COLLATE=utf8mb4_general_ci`，否则与既有表联查会报 1267。
+
+### 7.1 迁移双栈坑（2026-11-18 实测，生产事故来源）
+
+- **`JOIN (SELECT ...) t` 缺 `ON`**：MySQL 当笛卡尔积照常执行，PostgreSQL 直接语法错误，整条迁移的插入全部丢失 —— 表现是「方案一/二等级项为空」，页面显示 0 级。写迁移时见到 `JOIN (` 一律补 `ON TRUE`。
+- **init 与 upgrade 是两条独立路径，必须各验证一次**：
+  `init-pg.sql` 里建表已经是新列名（`ym`），但历史迁移 v024/v027 仍按旧列名（`year_month`）建索引 → 升级路径正常、**全新安装报错**。判据：全新库启动日志里 `v024/v027` 的失败计数为 0。
+- **已发布的迁移不改，只新增**：改法永远是加一条 `vNNN`（如 `v065` 在新列名上补索引）。MySQL 用 `information_schema.STATISTICS` 判断后 `PREPARE` 动态建，PG 用 `CREATE INDEX IF NOT EXISTS`。
+- **序列（SERIAL）要单独核对**：种子数据手写了 `id` 时，`setval` 必须放在种子插入**之后**，否则新插入撞主键。
+- 全新 PG 复验 SQL（期望 `默认 24 / 方案一 21 / 方案二 21`，阈值 `0…1900`）：
+  ```sql
+  SELECT p.profile_name, COUNT(i.id) AS items,
+         MIN(i.points_threshold), MAX(i.points_threshold)
+  FROM bbs_level_profile p LEFT JOIN bbs_level_item i ON i.profile_id = p.id
+  GROUP BY p.id, p.profile_name ORDER BY p.id;
+  ```
+- 现场查库用 `dist/HeidiSQL-12.22-Win7-中文便携版.zip`（免费、Win7 可用、自带 `libpq-17.dll` 与简体中文语言包）；Navicat Premium Lite 官方要 Win8+，**Win7 装不了**。
