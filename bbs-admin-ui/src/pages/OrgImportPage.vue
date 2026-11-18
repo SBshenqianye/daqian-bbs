@@ -19,6 +19,9 @@
           <h2 class="font-headline-sm text-headline-sm">{{ result.safe ? '校验通过，可应用' : '存在不安全变更，已停止自动应用' }}</h2>
           <span class="ml-auto text-[12px] text-on-surface-variant">批次 #{{ result.batch.id }}</span>
         </div>
+        <p v-if="result.bulkChange" class="text-[12px] text-amber-700 mb-2">
+          移动/停用 {{ result.unsafeCount }} 条，占 {{ result.unsafeRatio }}%，超过 10% 阈值，请逐条核对后再确认。
+        </p>
         <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-center mb-4">
           <div class="bg-surface rounded-lg p-2"><p class="text-xl font-bold">{{ result.batch.totalCount }}</p><p class="text-[11px] text-outline">总行数</p></div>
           <div class="bg-surface rounded-lg p-2"><p class="text-xl font-bold text-green-600">{{ result.batch.addCount }}</p><p class="text-[11px] text-outline">新增</p></div>
@@ -67,8 +70,11 @@ export default {
       const formData = new FormData(); formData.append('file', file)
       try {
         const res = await this.uploadFile('/admin/org/import/validate', formData)
-        if (res && res.obj) { this.result = res.obj; this.loadBatches() }
-        else this.$message.error((res && res.message) || '校验失败')
+        if (res && res.obj) {
+          this.result = res.obj
+          this.$message[res.obj.safe ? 'success' : 'warning']((res && res.message) || '校验完成')
+          this.loadBatches()
+        } else this.$message.error((res && res.message) || '校验失败')
       } catch (e) { this.$message.error('校验失败') }
       event.target.value = ''
     },
