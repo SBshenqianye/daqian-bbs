@@ -201,7 +201,7 @@ public class ReminderService {
         for (Integer userId : authorizationService.getUserIdsWithPermission(permission)) {
             List<PendingItem> visible = visibleItems(rule, userId, matured);
             if (visible.isEmpty()) continue;
-            if (!canSendNow(rule.getId(), userId, repeatMinutes, maxPerDay, now)) continue;
+            if (!canSendNow(rule.getId(), userId, repeatMinutes, maxPerDay, now, true)) continue;
             if (send(rule, userId, visible.size(), batchKey, nowText, null)) {
                 notified.add(userId);
             }
@@ -219,7 +219,8 @@ public class ReminderService {
                 if (notified.contains(userId)) continue;
                 List<PendingItem> visible = visibleItems(rule, userId, matured);
                 if (visible.isEmpty()) continue;
-                if (!canSendNow(rule.getId(), userId, repeatMinutes, maxPerDay, now)) continue;
+                // 升级提醒不受普通提醒的重复间隔影响，只受每日上限约束
+                if (!canSendNow(rule.getId(), userId, repeatMinutes, maxPerDay, now, false)) continue;
                 send(rule, userId, visible.size(), escalateKey, nowText, "【升级】");
             }
         }
@@ -267,7 +268,8 @@ public class ReminderService {
     }
 
     /** 重复间隔与每日上限都满足时才发送。 */
-    private boolean canSendNow(Integer ruleId, Integer userId, int repeatMinutes, int maxPerDay, LocalDateTime now) {
+    private boolean canSendNow(Integer ruleId, Integer userId, int repeatMinutes, int maxPerDay,
+                               LocalDateTime now, boolean checkRepeat) {
         String dayStart = DAY_START.format(now);
         Long today = logMapper.selectCount(new LambdaQueryWrapper<ReminderLog>()
                 .eq(ReminderLog::getRuleId, ruleId)
@@ -275,6 +277,7 @@ public class ReminderService {
                 .eq(ReminderLog::getTargetType, "AGG")
                 .ge(ReminderLog::getSentAt, dayStart));
         if (today != null && today >= maxPerDay) return false;
+        if (!checkRepeat) return true;
         ReminderLog last = logMapper.selectOne(new LambdaQueryWrapper<ReminderLog>()
                 .eq(ReminderLog::getRuleId, ruleId)
                 .eq(ReminderLog::getUserId, userId)
