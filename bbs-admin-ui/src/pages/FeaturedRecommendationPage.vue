@@ -8,7 +8,7 @@
             <span class="material-symbols-outlined text-amber-600">stars</span>
             精华帖审批
           </h1>
-          <p class="text-body-md text-secondary mt-1">版主推荐 → 总运营终审</p>
+          <p class="text-body-md text-secondary mt-1">{{ reviewModeHint }}</p>
         </div>
       </div>
 
@@ -57,10 +57,11 @@
               </td>
               <td class="px-4 py-3 text-body-sm text-on-surface-variant">{{ item.createTime }}</td>
               <td class="px-4 py-3 text-body-sm">
-                <template v-if="item.status === 'pending'">
+                <template v-if="item.status === 'pending' && canReview">
                   <button class="px-2 py-1 bg-green-50 text-green-700 rounded text-[12px] hover:bg-green-100 mr-1" @click="handleReview(item, 'approved')">通过</button>
                   <button class="px-2 py-1 bg-red-50 text-red-700 rounded text-[12px] hover:bg-red-100" @click="handleReview(item, 'rejected')">拒绝</button>
                 </template>
+                <span v-else-if="item.status === 'pending'" class="text-body-sm text-on-surface-variant">等待具备终审权限的人员处理</span>
                 <span v-else class="text-body-sm text-on-surface-variant">{{ item.reviewRemark || '—' }}</span>
               </td>
             </tr>
@@ -105,6 +106,7 @@
 <script>
 import { handleResponse } from '../../../shared/feedback'
 import UserCell from '@/components/UserCell.vue'
+import adminStore from '@/utils/adminStore'
 
 export default {
   name: 'FeaturedRecommendationPage',
@@ -125,11 +127,39 @@ export default {
       ],
       reviewDialogVisible: false,
       reviewSaving: false,
+      reviewMode: 'MODERATOR_FINAL',
       reviewForm: { id: null, status: '', remark: '' }
     }
   },
-  mounted() { this.loadList() },
+  computed: {
+    reviewModeHint() {
+      return this.reviewMode === 'MODERATOR_FINAL'
+        ? '版主推荐后可直接终审通过，无需管理员复核'
+        : '版主推荐 → 管理员终审'
+    },
+    /** 当前账号在当前终审模式下是否可执行审核 */
+    canReview() {
+      if (this.reviewMode === 'MODERATOR_FINAL') {
+        return adminStore.hasPermission('featured:recommend') || adminStore.hasPermission('featured:review')
+      }
+      return adminStore.hasPermission('featured:review')
+    }
+  },
+  mounted() {
+    this.loadReviewMode()
+    this.loadList()
+  },
   methods: {
+    async loadReviewMode() {
+      try {
+        const res = await this.postRequest('/common/listDictByType', { dictType: 'featured_final_review_mode' })
+        const rows = (res && res.obj) || []
+        const hit = rows.find(r => r.dictKey === 'featured_final_review_mode')
+        if (hit && hit.dictValue) this.reviewMode = String(hit.dictValue).toUpperCase()
+      } catch (e) {
+        // 读取失败时沿用默认值，不阻断列表
+      }
+    },
     /** 当前登录管理员 id（登录态 sessionStorage['admin']，审核人不得写死为固定值） */
     currentAdminId() {
       try {

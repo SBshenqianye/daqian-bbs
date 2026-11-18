@@ -250,6 +250,51 @@ class FeaturedRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("版主终审模式：版主仅凭推荐权限即可终审通过")
+    void review_moderatorFinal_moderatorCanApprove() {
+        SecurityTestSupport.setCurrentUser(7, "4");
+        when(dictService.getValueByKey("featured_final_review_mode")).thenReturn("MODERATOR_FINAL");
+        when(authorizationService.hasPermission(any(User.class), eq(Permission.FEATURED_REVIEW)))
+                .thenReturn(false);
+        when(authorizationService.hasPermission(any(User.class), eq(Permission.FEATURED_RECOMMEND)))
+                .thenReturn(true);
+
+        FeaturedRecommendation rec = new FeaturedRecommendation();
+        rec.setId(1);
+        rec.setArticleId(10);
+        rec.setRecommenderId(2);
+        rec.setStatus("pending");
+        when(recommendationMapper.selectById(1)).thenReturn(rec);
+        when(recommendationMapper.updateById(any(FeaturedRecommendation.class))).thenReturn(1);
+
+        Article article = new Article();
+        article.setArticleId(10);
+        article.setUserId(3);
+        article.setArticleTitle("好帖子");
+        when(articleService.getById(10)).thenReturn(article);
+        when(dictService.getValueByKey("featured")).thenReturn("10");
+        when(articleService.updateById(any(Article.class))).thenReturn(true);
+
+        ResultBean result = recommendationService.review(1, "approved", "版主终审通过", 7);
+        assertEquals(200, result.getCode());
+        verify(articleService).updateById(argThat(a -> ((Article) a).getIsFeatured() == 1));
+    }
+
+    @Test
+    @DisplayName("管理员终审模式：版主即使有推荐权限也不能终审")
+    void review_adminFinal_moderatorStillForbidden() {
+        SecurityTestSupport.setCurrentUser(7, "4");
+        when(dictService.getValueByKey("featured_final_review_mode")).thenReturn("ADMIN_FINAL");
+        when(authorizationService.hasPermission(any(User.class), eq(Permission.FEATURED_REVIEW)))
+                .thenReturn(false);
+        lenient().when(authorizationService.hasPermission(any(User.class), eq(Permission.FEATURED_RECOMMEND)))
+                .thenReturn(true);
+
+        ResultBean result = recommendationService.review(1, "approved", "好", 7);
+        assertEquals(403, result.getCode());
+    }
+
+    @Test
     @DisplayName("审核推荐 → 普通管理员审核自己的推荐 → 拒绝")
     void review_selfReview_normalAdmin_returnsError() {
         setCurrentUser(5);

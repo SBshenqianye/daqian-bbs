@@ -153,7 +153,8 @@ export default new Router({
                 {
                     path: '/featured-recommendation',
                     component: () => import('../pages/FeaturedRecommendationPage.vue'),
-                    meta: { title: '精华帖审批', permission: 'featured:review' }
+                    // 版主终审模式下，拥有“精华推荐”权限的版主也需要进入本页
+                    meta: { title: '精华帖审批', permission: 'featured:recommend' }
                 },
                 {
                     path: '/permission-matrix',

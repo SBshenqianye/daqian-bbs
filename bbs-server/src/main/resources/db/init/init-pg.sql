@@ -474,7 +474,7 @@ INSERT INTO bbs_dict (id, dict_type, dict_value, dict_label, dict_sort, create_b
 (16, 'monthly_deduction_alert_enabled', '1', '月累计扣分提醒开关', 16, '系统', '2026-11-13 00:00:00', '值：0关闭，1开启', 'monthly_deduction_alert_enabled'),
 (17, 'monthly_deduction_alert_threshold', '10', '月累计扣分提醒阈值', 17, '系统', '2026-11-13 00:00:00', '当月累计扣分达到该值提醒用户', 'monthly_deduction_alert_threshold'),
 (18, 'article_publish_mode', 'AUTO', '发帖审核模式', 18, '系统', '2026-11-13 00:00:00', 'AUTO自动通过 / PRE_REVIEW前置审核 / POST_REVIEW先发后审', 'article_publish_mode'),
-(19, 'featured_final_review_mode', 'ADMIN_FINAL', '精华终审模式', 19, '系统', '2026-11-13 00:00:00', 'ADMIN_FINAL管理员终审 / MODERATOR_FINAL版主终审即通过', 'featured_final_review_mode')
+(19, 'featured_final_review_mode', 'MODERATOR_FINAL', '精华终审模式', 19, '系统', '2026-11-13 00:00:00', 'MODERATOR_FINAL版主终审即通过（默认） / ADMIN_FINAL管理员终审', 'featured_final_review_mode')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------

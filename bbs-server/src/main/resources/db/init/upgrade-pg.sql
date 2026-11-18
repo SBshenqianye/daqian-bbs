@@ -9219,3 +9219,9 @@ WHERE p.id = i.profile_id
 -- 幂等：CREATE INDEX IF NOT EXISTS。
 CREATE INDEX IF NOT EXISTS idx_mrc_ym ON bbs_moderator_reward_cancel (ym);
 CREATE UNIQUE INDEX IF NOT EXISTS uk_mrc_ym_user ON bbs_moderator_reward_cancel (ym, user_id);
+
+-- @migration: v066-featured-moderator-final-default 版主终审默认开启
+-- 背景：领导要求“版主推荐后直接审核通过，无需管理员/超管批准”；开关仍保留，可在配置管理中改回 ADMIN_FINAL。
+-- 幂等：仅把仍是旧默认值 ADMIN_FINAL 的行改为 MODERATOR_FINAL。
+UPDATE bbs_dict SET dict_value = 'MODERATOR_FINAL'
+WHERE dict_key = 'featured_final_review_mode' AND dict_value = 'ADMIN_FINAL';

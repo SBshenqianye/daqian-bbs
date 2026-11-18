@@ -9499,3 +9499,9 @@ PREPARE s90 FROM @sql_idx_mrc_ym; EXECUTE s90; DEALLOCATE PREPARE s90;
 SET @idx_mrc_uk := (SELECT COUNT(1) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_moderator_reward_cancel' AND INDEX_NAME='uk_mrc_ym_user');
 SET @sql_idx_mrc_uk := IF(@idx_mrc_uk=0, 'CREATE UNIQUE INDEX `uk_mrc_ym_user` ON `bbs_moderator_reward_cancel` (`ym`, `user_id`)', 'SELECT 1');
 PREPARE s91 FROM @sql_idx_mrc_uk; EXECUTE s91; DEALLOCATE PREPARE s91;
+
+-- @migration: v066-featured-moderator-final-default 版主终审默认开启
+-- 背景：领导要求“版主推荐后直接审核通过，无需管理员/超管批准”；开关仍保留，可在配置管理中改回 ADMIN_FINAL。
+-- 幂等：仅把仍是旧默认值 ADMIN_FINAL 的行改为 MODERATOR_FINAL。
+UPDATE `bbs_dict` SET `dict_value` = 'MODERATOR_FINAL'
+WHERE `dict_key` = 'featured_final_review_mode' AND `dict_value` = 'ADMIN_FINAL';

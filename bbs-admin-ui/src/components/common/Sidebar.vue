@@ -150,7 +150,7 @@ export default {
         { icon: 'feedback', label: '举报管理', path: '/report', permission: 'report:review', category: 'business' },
         { icon: 'assignment', label: '申诉管理', path: '/appeal', permission: 'appeal:review', category: 'business' },
         { icon: 'check_circle', label: '采纳审批', path: '/approve-adopt', permission: 'adopt:review', category: 'business' },
-        { icon: 'stars', label: '精华审批', path: '/featured-recommendation', permission: 'featured:review', category: 'business' },
+        { icon: 'stars', label: '精华审批', path: '/featured-recommendation', permission: 'featured:recommend', category: 'business' },
         // 系统管理：账号、配置、组织、版主体系
         { icon: 'group', label: '用户管理', path: '/user', permission: 'user:read', category: 'system' },
         { icon: 'label', label: '标签管理', path: '/articleLable', permission: 'config:read', category: 'system' },

@@ -33,8 +33,9 @@ public class FeaturedRecommendationController {
         return recommendationService.recommend(articleId, recommenderId, labelId);
     }
 
-    @ApiOperation(value = "总运营审核精华推荐（终审）")
-    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).FEATURED_REVIEW)")
+    @ApiOperation(value = "审核精华推荐（终审；MODERATOR_FINAL 模式下版主可直接终审）")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).FEATURED_REVIEW)"
+            + " or @authz.hasPermission(principal, T(com.walker.config.security.Permission).FEATURED_RECOMMEND)")
     @AuditLog(module = "FEATURED", action = "FEATURED_REVIEW",
             targetType = "FEATURED_RECOMMENDATION", targetId = "#params['recommendationId']")
     @PostMapping("/admin/featured/review")
