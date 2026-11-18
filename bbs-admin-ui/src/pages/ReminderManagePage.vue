@@ -124,6 +124,39 @@
             </div>
           </div>
 
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">免打扰开始</label>
+              <input v-model="form.quietStart" type="time" class="field">
+              <p class="field-hint">该时段内不发送提醒，留空表示不限制。</p>
+            </div>
+            <div>
+              <label class="field-label">免打扰结束</label>
+              <input v-model="form.quietEnd" type="time" class="field">
+              <p class="field-hint">支持跨午夜，例如 22:00 - 08:00。</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="field-label">升级提醒（分钟）</label>
+              <input v-model.number="form.escalateMinutes" type="number" min="0" max="10080" class="field">
+              <p class="field-hint">待办超过该时长仍未处理时，额外提醒更高权限人员；0 表示关闭。</p>
+            </div>
+            <div>
+              <label class="field-label">升级提醒权限点</label>
+              <el-select v-model="form.escalatePermissionCode" filterable clearable placeholder="不升级" class="w-full">
+                <el-option
+                  v-for="p in permissions"
+                  :key="'esc-' + p.code"
+                  :label="p.label + ' · ' + p.code"
+                  :value="p.code"
+                />
+              </el-select>
+              <p class="field-hint">升级提醒只发给拥有该权限点的人员。</p>
+            </div>
+          </div>
+
           <div>
             <label class="field-label">标题模板</label>
             <input v-model="form.titleTemplate" class="field" placeholder="您有 {count} 条待审核举报">
@@ -192,6 +225,10 @@ export default {
         delayMinutes: r.delayMinutes == null ? 10 : r.delayMinutes,
         repeatMinutes: r.repeatMinutes == null ? 60 : r.repeatMinutes,
         maxPerDay: r.maxPerDay == null ? 8 : r.maxPerDay,
+        quietStart: r.quietStart || '',
+        quietEnd: r.quietEnd || '',
+        escalateMinutes: r.escalateMinutes == null ? 0 : r.escalateMinutes,
+        escalatePermissionCode: r.escalatePermissionCode || '',
         titleTemplate: r.titleTemplate || '',
         enabled: r.enabled === 1,
       }

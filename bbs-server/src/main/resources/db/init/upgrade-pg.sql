@@ -9225,3 +9225,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_mrc_ym_user ON bbs_moderator_reward_cancel 
 -- 幂等：仅把仍是旧默认值 ADMIN_FINAL 的行改为 MODERATOR_FINAL。
 UPDATE bbs_dict SET dict_value = 'MODERATOR_FINAL'
 WHERE dict_key = 'featured_final_review_mode' AND dict_value = 'ADMIN_FINAL';
+
+-- @migration: v067-reminder-quiet-escalate 提醒规则免打扰与升级提醒
+-- 背景：提醒配置已有范围/延迟/重复/每日上限，本迁移补齐免打扰时段和升级提醒字段。
+-- 幂等：ADD COLUMN IF NOT EXISTS。
+ALTER TABLE bbs_reminder_rule ADD COLUMN IF NOT EXISTS quiet_start varchar(5);
+ALTER TABLE bbs_reminder_rule ADD COLUMN IF NOT EXISTS quiet_end varchar(5);
+ALTER TABLE bbs_reminder_rule ADD COLUMN IF NOT EXISTS escalate_minutes integer DEFAULT 0;
+ALTER TABLE bbs_reminder_rule ADD COLUMN IF NOT EXISTS escalate_permission_code varchar(64);

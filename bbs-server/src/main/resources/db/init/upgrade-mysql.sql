@@ -9505,3 +9505,19 @@ PREPARE s91 FROM @sql_idx_mrc_uk; EXECUTE s91; DEALLOCATE PREPARE s91;
 -- 幂等：仅把仍是旧默认值 ADMIN_FINAL 的行改为 MODERATOR_FINAL。
 UPDATE `bbs_dict` SET `dict_value` = 'MODERATOR_FINAL'
 WHERE `dict_key` = 'featured_final_review_mode' AND `dict_value` = 'ADMIN_FINAL';
+
+-- @migration: v067-reminder-quiet-escalate 提醒规则免打扰与升级提醒
+-- 背景：提醒配置已有范围/延迟/重复/每日上限，本迁移补齐免打扰时段和升级提醒字段。
+-- 幂等：information_schema 检查 + PREPARE。
+SET @c_qs := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_reminder_rule' AND COLUMN_NAME='quiet_start');
+SET @s_qs := IF(@c_qs=0, 'ALTER TABLE `bbs_reminder_rule` ADD COLUMN `quiet_start` varchar(5) DEFAULT NULL', 'SELECT 1');
+PREPARE s67a FROM @s_qs; EXECUTE s67a; DEALLOCATE PREPARE s67a;
+SET @c_qe := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_reminder_rule' AND COLUMN_NAME='quiet_end');
+SET @s_qe := IF(@c_qe=0, 'ALTER TABLE `bbs_reminder_rule` ADD COLUMN `quiet_end` varchar(5) DEFAULT NULL', 'SELECT 1');
+PREPARE s67b FROM @s_qe; EXECUTE s67b; DEALLOCATE PREPARE s67b;
+SET @c_em := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_reminder_rule' AND COLUMN_NAME='escalate_minutes');
+SET @s_em := IF(@c_em=0, 'ALTER TABLE `bbs_reminder_rule` ADD COLUMN `escalate_minutes` int(11) DEFAULT 0', 'SELECT 1');
+PREPARE s67c FROM @s_em; EXECUTE s67c; DEALLOCATE PREPARE s67c;
+SET @c_ep := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_reminder_rule' AND COLUMN_NAME='escalate_permission_code');
+SET @s_ep := IF(@c_ep=0, 'ALTER TABLE `bbs_reminder_rule` ADD COLUMN `escalate_permission_code` varchar(64) DEFAULT NULL', 'SELECT 1');
+PREPARE s67d FROM @s_ep; EXECUTE s67d; DEALLOCATE PREPARE s67d;

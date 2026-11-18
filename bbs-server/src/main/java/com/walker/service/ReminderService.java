@@ -28,11 +28,18 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 待办提醒：按规则扫描待处理事项，向有权限的用户发送聚合站内提醒。
@@ -53,6 +60,12 @@ public class ReminderService {
     @Autowired private ModeratorComplaintMapper complaintMapper;
     @Autowired private AuthorizationService authorizationService;
     @Autowired private NotificationService notificationService;
+    @Autowired private ContentBoardResolver contentBoardResolver;
+
+    private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter HOUR_KEY = DateTimeFormatter.ofPattern("yyyyMMddHH");
+    private static final DateTimeFormatter DAY_START = DateTimeFormatter.ofPattern("yyyy-MM-dd 00:00:00");
+    private static final DateTimeFormatter TIME_HHMM = DateTimeFormatter.ofPattern("HH:mm");
 
     public ResultBean listRules() {
         return ResultBean.success("查询成功", ruleMapper.selectList(new LambdaQueryWrapper<ReminderRule>()
@@ -136,6 +149,7 @@ public class ReminderService {
         if (rule.getDelayMinutes() == null) rule.setDelayMinutes(10);
         if (rule.getRepeatMinutes() == null) rule.setRepeatMinutes(60);
         if (rule.getMaxPerDay() == null) rule.setMaxPerDay(8);
+        if (rule.getEscalateMinutes() == null) rule.setEscalateMinutes(0);
         if (rule.getSortOrder() == null) rule.setSortOrder(0);
         if (rule.getId() == null) {
             rule.setCreateTime(now); rule.setUpdateTime(now); ruleMapper.insert(rule);
@@ -153,64 +167,233 @@ public class ReminderService {
         } catch (Exception e) {
             return;
         }
-        String batchKey = new SimpleDateFormat("yyyyMMddHH").format(new Date());
-        String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+        LocalDateTime now = LocalDateTime.now();
+        String nowText = DATE_TIME.format(now);
+        String batchKey = "R" + HOUR_KEY.format(now);
         for (ReminderRule rule : rules) {
-            int pending = countPending(rule.getEventType());
-            if (pending <= 0) continue;
-            Permission permission = Permission.fromCode(rule.getPermissionCode());
-            if (permission == null) continue;
-            List<Integer> users = authorizationService.getUserIdsWithPermission(permission);
-            for (Integer userId : users) {
-                Long exists = logMapper.selectCount(new LambdaQueryWrapper<ReminderLog>()
-                        .eq(ReminderLog::getRuleId, rule.getId())
-                        .eq(ReminderLog::getUserId, userId)
-                        .eq(ReminderLog::getBatchKey, batchKey));
-                if (exists != null && exists > 0) continue;
-                ReminderLog logRow = new ReminderLog();
-                logRow.setRuleId(rule.getId());
-                logRow.setTargetType("AGG");
-                logRow.setTargetId(0);
-                logRow.setUserId(userId);
-                logRow.setBatchKey(batchKey);
-                logRow.setSentAt(now);
-                try {
-                    logMapper.insert(logRow);
-                    String title = rule.getTitleTemplate() != null && !rule.getTitleTemplate().isEmpty()
-                            ? rule.getTitleTemplate().replace("{count}", String.valueOf(pending))
-                            : "您有 " + pending + " 条待处理事项（" + rule.getRuleName() + "）";
-                    notificationService.createNotification(userId, null, "reminder_pending", title, "reminder", rule.getId());
-                } catch (Exception e) {
-                    log.debug("reminder skipped: {}", e.getMessage());
-                }
+            try {
+                scanRule(rule, now, nowText, batchKey);
+            } catch (Exception e) {
+                log.warn("reminder scan failed for rule {}: {}", rule.getRuleCode(), e.getMessage());
             }
         }
     }
 
-    private int countPending(String eventType) {
-        if (eventType == null) return 0;
+    private void scanRule(ReminderRule rule, LocalDateTime now, String nowText, String batchKey) {
+        if (inQuietHours(rule.getQuietStart(), rule.getQuietEnd(), now.toLocalTime())) {
+            return;
+        }
+        List<PendingItem> pending = loadPending(rule.getEventType());
+        if (pending.isEmpty()) return;
+        int delay = rule.getDelayMinutes() == null ? 0 : Math.max(0, rule.getDelayMinutes());
+        List<PendingItem> matured = new ArrayList<>();
+        for (PendingItem item : pending) {
+            if (isMatured(item.getCreateTime(), delay, now)) matured.add(item);
+        }
+        if (matured.isEmpty()) return;
+
+        Permission permission = Permission.fromCode(rule.getPermissionCode());
+        if (permission == null) return;
+
+        int repeatMinutes = rule.getRepeatMinutes() == null ? 60 : Math.max(1, rule.getRepeatMinutes());
+        int maxPerDay = rule.getMaxPerDay() == null ? 8 : Math.max(1, rule.getMaxPerDay());
+        Set<Integer> notified = new HashSet<>();
+        for (Integer userId : authorizationService.getUserIdsWithPermission(permission)) {
+            List<PendingItem> visible = visibleItems(rule, userId, matured);
+            if (visible.isEmpty()) continue;
+            if (!canSendNow(rule.getId(), userId, repeatMinutes, maxPerDay, now)) continue;
+            if (send(rule, userId, visible.size(), batchKey, nowText, null)) {
+                notified.add(userId);
+            }
+        }
+
+        // 升级提醒：待办超过阈值仍未处理时，发给更高权限人员（同一小时去重）
+        if (rule.getEscalateMinutes() != null && rule.getEscalateMinutes() > 0
+                && rule.getEscalatePermissionCode() != null && !rule.getEscalatePermissionCode().trim().isEmpty()) {
+            LocalDateTime oldest = oldestCreateTime(matured);
+            if (oldest == null || oldest.plusMinutes(rule.getEscalateMinutes()).isAfter(now)) return;
+            Permission escalatePermission = Permission.fromCode(rule.getEscalatePermissionCode().trim());
+            if (escalatePermission == null) return;
+            String escalateKey = "E" + HOUR_KEY.format(now);
+            for (Integer userId : authorizationService.getUserIdsWithPermission(escalatePermission)) {
+                if (notified.contains(userId)) continue;
+                List<PendingItem> visible = visibleItems(rule, userId, matured);
+                if (visible.isEmpty()) continue;
+                if (!canSendNow(rule.getId(), userId, repeatMinutes, maxPerDay, now)) continue;
+                send(rule, userId, visible.size(), escalateKey, nowText, "【升级】");
+            }
+        }
+    }
+
+    /** 发送一条聚合提醒；同规则/同用户/同批次已发送时返回 false。 */
+    private boolean send(ReminderRule rule, Integer userId, int count, String batchKey,
+                         String nowText, String titlePrefix) {
+        Long exists = logMapper.selectCount(new LambdaQueryWrapper<ReminderLog>()
+                .eq(ReminderLog::getRuleId, rule.getId())
+                .eq(ReminderLog::getUserId, userId)
+                .eq(ReminderLog::getBatchKey, batchKey));
+        if (exists != null && exists > 0) return false;
+        ReminderLog logRow = new ReminderLog();
+        logRow.setRuleId(rule.getId());
+        logRow.setTargetType("AGG");
+        logRow.setTargetId(0);
+        logRow.setUserId(userId);
+        logRow.setBatchKey(batchKey);
+        logRow.setSentAt(nowText);
         try {
-            switch (eventType) {
-                case "article_pending":
-                    return safeCount(articleMapper.selectCount(new LambdaQueryWrapper<Article>().eq(Article::getEnable, 0)));
-                case "report_pending":
-                    return safeCount(reportMapper.selectCount(new LambdaQueryWrapper<Report>().eq(Report::getStatus, "pending")));
-                case "appeal_pending":
-                    return safeCount(appealMapper.selectCount(new LambdaQueryWrapper<Appeal>().eq(Appeal::getStatus, "pending")));
-                case "featured_pending":
-                    return safeCount(featuredMapper.selectCount(new LambdaQueryWrapper<FeaturedRecommendation>().eq(FeaturedRecommendation::getStatus, "pending")));
-                case "adopt_pending":
-                    return safeCount(replyMapper.selectCount(new LambdaQueryWrapper<Reply>().eq(Reply::getAdoptStatus, 1)))
-                            + safeCount(commentMapper.selectCount(new LambdaQueryWrapper<Comment>().eq(Comment::getAdoptStatus, 1)));
-                case "complaint_pending":
-                    return safeCount(complaintMapper.selectCount(new LambdaQueryWrapper<ModeratorComplaint>().eq(ModeratorComplaint::getStatus, "pending")));
-                default:
-                    return 0;
-            }
+            logMapper.insert(logRow);
+            String title = rule.getTitleTemplate() != null && !rule.getTitleTemplate().isEmpty()
+                    ? rule.getTitleTemplate().replace("{count}", String.valueOf(count))
+                    : "您有 " + count + " 条待处理事项（" + rule.getRuleName() + "）";
+            if (titlePrefix != null) title = titlePrefix + title;
+            notificationService.createNotification(userId, null, "reminder_pending", title, "reminder", rule.getId());
+            return true;
         } catch (Exception e) {
-            return 0;
+            log.debug("reminder skipped: {}", e.getMessage());
+            return false;
         }
     }
 
-    private int safeCount(Long value) { return value == null ? 0 : value.intValue(); }
+    /** 规则范围：BOARD 只提醒能管理该板块的人；无法解析板块的待办不发给版主。 */
+    private List<PendingItem> visibleItems(ReminderRule rule, Integer userId, List<PendingItem> items) {
+        if (!"BOARD".equalsIgnoreCase(rule.getScopeType())) return items;
+        List<PendingItem> result = new ArrayList<>();
+        for (PendingItem item : items) {
+            if (item.getLabelId() != null && authorizationService.canModerateBoard(userId, item.getLabelId())) {
+                result.add(item);
+            }
+        }
+        return result;
+    }
+
+    /** 重复间隔与每日上限都满足时才发送。 */
+    private boolean canSendNow(Integer ruleId, Integer userId, int repeatMinutes, int maxPerDay, LocalDateTime now) {
+        String dayStart = DAY_START.format(now);
+        Long today = logMapper.selectCount(new LambdaQueryWrapper<ReminderLog>()
+                .eq(ReminderLog::getRuleId, ruleId)
+                .eq(ReminderLog::getUserId, userId)
+                .eq(ReminderLog::getTargetType, "AGG")
+                .ge(ReminderLog::getSentAt, dayStart));
+        if (today != null && today >= maxPerDay) return false;
+        ReminderLog last = logMapper.selectOne(new LambdaQueryWrapper<ReminderLog>()
+                .eq(ReminderLog::getRuleId, ruleId)
+                .eq(ReminderLog::getUserId, userId)
+                .eq(ReminderLog::getTargetType, "AGG")
+                .orderByDesc(ReminderLog::getSentAt)
+                .last("LIMIT 1"));
+        if (last == null || last.getSentAt() == null) return true;
+        LocalDateTime lastTime = parseDateTime(last.getSentAt());
+        return lastTime == null || !lastTime.plusMinutes(repeatMinutes).isAfter(now);
+    }
+
+    static boolean inQuietHours(String start, String end, LocalTime now) {
+        if (start == null || end == null || start.trim().isEmpty() || end.trim().isEmpty()) return false;
+        try {
+            LocalTime s = LocalTime.parse(start.trim(), TIME_HHMM);
+            LocalTime e = LocalTime.parse(end.trim(), TIME_HHMM);
+            if (s.equals(e)) return false;
+            if (s.isBefore(e)) return !now.isBefore(s) && now.isBefore(e);
+            // 跨午夜，例如 22:00 - 08:00
+            return !now.isBefore(s) || now.isBefore(e);
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    static boolean isMatured(String createTime, int delayMinutes, LocalDateTime now) {
+        LocalDateTime created = parseDateTime(createTime);
+        if (created == null) return true;
+        return !created.plusMinutes(delayMinutes).isAfter(now);
+    }
+
+    private static LocalDateTime oldestCreateTime(List<PendingItem> items) {
+        LocalDateTime oldest = null;
+        for (PendingItem item : items) {
+            LocalDateTime created = parseDateTime(item.getCreateTime());
+            if (created != null && (oldest == null || created.isBefore(oldest))) oldest = created;
+        }
+        return oldest;
+    }
+
+    private static LocalDateTime parseDateTime(String value) {
+        if (value == null || value.trim().isEmpty()) return null;
+        try {
+            return LocalDateTime.parse(value.trim(), DATE_TIME);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private List<PendingItem> loadPending(String eventType) {
+        List<PendingItem> result = new ArrayList<>();
+        if (eventType == null) return result;
+        switch (eventType) {
+            case "article_pending":
+                for (Article a : articleMapper.selectList(new LambdaQueryWrapper<Article>()
+                        .eq(Article::getEnable, 0).orderByAsc(Article::getCreateTime).last("LIMIT 500"))) {
+                    result.add(new PendingItem(a.getArticleId(), a.getArticleLabelId(), a.getCreateTime()));
+                }
+                break;
+            case "report_pending":
+                for (Report r : reportMapper.selectList(new LambdaQueryWrapper<Report>()
+                        .eq(Report::getStatus, "pending").orderByAsc(Report::getCreateTime).last("LIMIT 500"))) {
+                    Integer labelId = contentBoardResolver.resolveLabelId(r.getTargetType(), r.getTargetId());
+                    result.add(new PendingItem(r.getId(), labelId, r.getCreateTime()));
+                }
+                break;
+            case "appeal_pending":
+                for (Appeal a : appealMapper.selectList(new LambdaQueryWrapper<Appeal>()
+                        .eq(Appeal::getStatus, "pending").orderByAsc(Appeal::getCreateTime).last("LIMIT 500"))) {
+                    result.add(new PendingItem(a.getId(), null, a.getCreateTime()));
+                }
+                break;
+            case "featured_pending":
+                for (FeaturedRecommendation f : featuredMapper.selectList(
+                        new LambdaQueryWrapper<FeaturedRecommendation>()
+                                .eq(FeaturedRecommendation::getStatus, "pending")
+                                .orderByAsc(FeaturedRecommendation::getCreateTime).last("LIMIT 500"))) {
+                    result.add(new PendingItem(f.getId(), f.getLabelId(), f.getCreateTime()));
+                }
+                break;
+            case "adopt_pending":
+                for (Reply r : replyMapper.selectList(new LambdaQueryWrapper<Reply>()
+                        .eq(Reply::getAdoptStatus, 1).orderByAsc(Reply::getReplyTime).last("LIMIT 500"))) {
+                    Integer labelId = contentBoardResolver.resolveLabelId("reply", r.getReplyId());
+                    result.add(new PendingItem(r.getReplyId(), labelId, r.getReplyTime()));
+                }
+                for (Comment c : commentMapper.selectList(new LambdaQueryWrapper<Comment>()
+                        .eq(Comment::getAdoptStatus, 1).orderByAsc(Comment::getCommentTime).last("LIMIT 500"))) {
+                    Integer labelId = contentBoardResolver.resolveLabelId("comment", c.getCommentId());
+                    result.add(new PendingItem(c.getCommentId(), labelId, c.getCommentTime()));
+                }
+                break;
+            case "complaint_pending":
+                for (ModeratorComplaint c : complaintMapper.selectList(
+                        new LambdaQueryWrapper<ModeratorComplaint>()
+                                .eq(ModeratorComplaint::getStatus, "pending")
+                                .orderByAsc(ModeratorComplaint::getCreateTime).last("LIMIT 500"))) {
+                    result.add(new PendingItem(c.getId(), null, c.getCreateTime()));
+                }
+                break;
+            default:
+                break;
+        }
+        return result;
+    }
+
+    private static final class PendingItem {
+        private final Integer targetId;
+        private final Integer labelId;
+        private final String createTime;
+
+        private PendingItem(Integer targetId, Integer labelId, String createTime) {
+            this.targetId = targetId;
+            this.labelId = labelId;
+            this.createTime = createTime;
+        }
+
+        private Integer getTargetId() { return targetId; }
+        private Integer getLabelId() { return labelId; }
+        private String getCreateTime() { return createTime; }
+    }
 }

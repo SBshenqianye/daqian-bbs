@@ -32,6 +32,14 @@ public class ReminderRule implements Serializable {
     private Integer repeatMinutes;
     @TableField("max_per_day")
     private Integer maxPerDay;
+    @TableField("quiet_start")
+    private String quietStart;
+    @TableField("quiet_end")
+    private String quietEnd;
+    @TableField("escalate_minutes")
+    private Integer escalateMinutes;
+    @TableField("escalate_permission_code")
+    private String escalatePermissionCode;
     @TableField("title_template")
     private String titleTemplate;
     @TableField("content_template")
