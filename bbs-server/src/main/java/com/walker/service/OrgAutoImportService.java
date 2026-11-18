@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +50,10 @@ public class OrgAutoImportService {
     @Autowired private OrgImportItemMapper itemMapper;
     @Autowired private SaOrgMapper orgMapper;
     @Autowired private UserMapper userMapper;
+
+    /** 自注入代理：保证目录扫描调用 apply 时也走 @Transactional，而不是类内自调用绕过事务。 */
+    @Autowired @Lazy
+    private OrgAutoImportService self;
 
     @Value("${bbs.org-import.dir:}")
     private String importDir;
@@ -298,7 +303,7 @@ public class OrgAutoImportService {
                 if (!(batchObj instanceof OrgImportBatch)) { move(file, "failed"); continue; }
                 OrgImportBatch batch = (OrgImportBatch) batchObj;
                 if (Integer.valueOf(1).equals(batch.getSafeFlag())) {
-                    apply(batch.getId(), true);
+                    self.apply(batch.getId(), true);
                     move(file, "processed");
                 } else {
                     move(file, "stopped");
