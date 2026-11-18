@@ -133,4 +133,5 @@ bash scripts/deploy/wsl.sh --restart-only
   FROM bbs_level_profile p LEFT JOIN bbs_level_item i ON i.profile_id = p.id
   GROUP BY p.id, p.profile_name ORDER BY p.id;
   ```
-- 现场查库用 `dist/HeidiSQL-12.22-Win7-中文便携版.zip`（免费、Win7 可用、自带 `libpq-17.dll` 与简体中文语言包）；Navicat Premium Lite 官方要 Win8+，**Win7 装不了**。
+- 现场查库用 `dist/HeidiSQL-12.22-Win7-中文便携版.zip`（免费、Win7 可用、自带简体中文语言包）；Navicat Premium Lite 官方要 Win8+，**Win7 装不了**。
+- **Win7 上 libpq 必须用老构建**：HeidiSQL 自带的 `libpq-15/17.dll` 由 OpenSSL 3 构建，静态引用 Win8+ 的 `GetSystemTimePreciseAsFileTime`，加载即报「无法定位程序输入点 / 内部错误 127」。判据：`strings libpq*.dll | grep GetSystemTimePreciseAsFileTime` 有命中就是不能用。可用替代是 PostgreSQL 13 及更早的官方 MSVC 构建 `libpq.dll`（配 `libssl-1_1-x64.dll` / `libcrypto-1_1-x64.dll`，可复用 HeidiSQL 自带 `libintl-9.dll`）；PG 13 服务端密码哈希是 `md5…`，老客户端可直接认证。同批中招的还有 `libmariadb.dll`、`libmysql-8.4/9.4.dll`、`sqlite3.dll`，Win7 上改用 `libmysql-6.1.dll` / `libmysql.dll`。
