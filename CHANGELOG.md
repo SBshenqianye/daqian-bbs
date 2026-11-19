@@ -34,7 +34,7 @@
 - **本地生命周期脚本**：新增 `scripts/dev/up|down|restart|verify|negative-smoke.ps1`，固定 9081/9082/9083，按端口杀进程树，日志写 `tmp/run/`；`verify.ps1` 串行构建两个前端、编译后端、重启后端并跑负向自检
 - **负向自检**：4 个只读注入（错误 baseUrl / 错误断言 / 未登录访问业务接口 / 基线正常），注入失败单独计为 `mutation`，不混入业务失败数；`-ApiBase` 指向错误地址时必须 exit 1
 - **WSL2 生产对齐验收**：WSL 栈固定 nginx `60001` / 后端 `60000` / PG `15432`，与 Windows 开发栈（9081–9083）并存；DB/后端改动需在 WSL2 再跑一遍冒烟
-- **Win7 数据库客户端**：`dist/HeidiSQL-12.22-Win7-中文便携版.zip`，免费开源、支持 PostgreSQL/MySQL、内置 libpq-17 与简体中文语言包，解压即用
+- **Win7 数据库客户端**：`dist/HeidiSQL-12.22-Win7-中文便携版.zip`，免费开源、支持 PostgreSQL/MySQL、内置简体中文语言包，解压即用；已替换为 Win7 可用的 `libpq.dll`（PG 13 MSVC 构建）并附离线 VC 运行库
 - **生命周期补充打包与部署**：构建在 Windows（两个 `npm run build` + `mvn clean package -DskipTests`）；打包在 WSL（`scripts/dist/package.sh` 生成瘦包 + `scripts/verify-build.sh` 要求 `FAIL=0`）；WSL 测试 `scripts/deploy/wsl.sh`；生产 `scripts/deploy/offline.sh <tar>` + `verify-server.sh`；基础镜像变更按“base.sh → podman load → 删旧容器 → 发瘦包”顺序执行
 - **帖子详情不再强制计数**：`/common/article/getArticleById` 新增 `countView` 参数（默认 `true`），验收/预览可传 `false` 只读查询
 
@@ -42,6 +42,8 @@
 - **指数型升级门槛**：两套内置方案（智荟成长 / 电网匠心）的 21 级门槛由线性 0/100/…/2000 改为累计消耗积分 0/20/40/60/90/120/150/200/250/300/400/500/600/700/800/900/1100/1300/1500/1700/1900，与产品《等级积分对照表》一致；新增 `v061` 迁移覆盖存量库，`init` 脚本同步内置值
 
 ### 修复
+- **Win7 上 libpq 加载失败（内部错误 127）**：HeidiSQL 自带的 `libpq-15/17.dll` 是 OpenSSL 3 构建，静态引用 Win8+ 才有的 `GetSystemTimePreciseAsFileTime`，Win7 报“无法定位程序输入点”；改用 PostgreSQL 13 官方 MSVC 构建的 `libpq.dll` + OpenSSL 1.1.1，并移除同样不兼容的 `libmariadb`/`libmysql-8.4`/`libmysql-9.4`/`sqlite3`/`sqlite3mc`，包内附 `运行库\VC_redist.x64.exe`
+- **用户端确认框/提示框跑到左上角**：`bbs-ui/src/assets/css/overlay.css` 为限制弹窗高度把 `.el-message-box` 改成 flex，面板因此脱离 Element 原有的 `inline-block + vertical-align` 居中逻辑，生产构建里确认框贴在左上角；改为由 `.el-message-box__wrapper` 用 flex 居中（与 admin-ui 保持一致），并补 `max-width: 100%` 防止窄屏溢出
 - **Selenium 桌面版看不到“开始验收”**：顶部 TableLayoutPanel 固定 176px，按钮行溢出被裁掉；改为显式行高并把面板加到 204px，四个按钮（开始/停止/打开报告/保存）已可见
 - **全新 PG 安装 v024/v027 索引警告**：两处索引仍指向已改名的 `year_month`，已移除；改由 `v065` 在 `ym` 上创建（MySQL 用 information_schema 条件创建，PG 用 `IF NOT EXISTS`）
 - **方案大阶段名称兜底**：新增 `v064`，v059 补插等级项后重新套用 v060 的名称/说明（否则会显示成“初级工/中级工”）
