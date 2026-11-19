@@ -320,7 +320,8 @@
                 :title="'载入到画布：' + a.assetName"
                 @click="loadAssetToCanvas(a)"
               >
-                <span class="bbs-level-svg h-14 w-14 inline-flex" v-html="a.svg"></span>
+                <span v-if="a.category === 'chart'" class="asset-chart-preview" v-html="a.svg"></span>
+                <span v-else class="bbs-level-svg h-14 w-14 inline-flex" v-html="a.svg"></span>
               </div>
               <p class="mt-1.5 text-[11px] text-on-surface truncate" :title="a.assetName">{{ a.assetName }}</p>
               <div class="flex items-center justify-between mt-1">
@@ -362,6 +363,7 @@
             <select v-model="saveForm.category" class="field">
               <option value="medal">勋章</option>
               <option value="level">等级图标</option>
+              <option value="chart">等级图表</option>
               <option value="other">其他</option>
             </select>
           </div>
@@ -407,15 +409,27 @@ const BACKPLATES = [
   { key: 'flag', label: '燕尾旗' },
   { key: 'shield', label: '盾形' },
   { key: 'circle', label: '圆徽' },
-  { key: 'star', label: '五角星' },
+  { key: 'star', label: '星星' },
   { key: 'hexagon', label: '六边形' },
   { key: 'rect', label: '方牌' },
+  { key: 'moon', label: '月亮' },
+  { key: 'sun', label: '太阳' },
+  { key: 'crown', label: '皇冠' },
+]
+
+const GLYPH_STAR = 'M12 1.9l3.05 6.18 6.82.99-4.94 4.81 1.17 6.79L12 17.48l-6.1 3.19 1.17-6.79L2.13 9.07l6.82-.99z'
+const GLYPH_MOON = 'M13.9 1.9a10.1 10.1 0 108.2 15.1A8.6 8.6 0 0113.9 1.9z'
+const GLYPH_CROWN = 'M2.9 18.2 4.4 6.4l5 4.3L12 4.2l2.6 6.5 5-4.3 1.5 11.8z'
+const GLYPH_SUN_RAYS = [
+  [12, 1.7, 12, 4.7], [12, 19.3, 12, 22.3], [1.7, 12, 4.7, 12], [19.3, 12, 22.3, 12],
+  [4.6, 4.6, 6.8, 6.8], [17.2, 17.2, 19.4, 19.4], [19.4, 4.6, 17.2, 6.8], [6.8, 17.2, 4.6, 19.4],
 ]
 
 const ASSET_FILTERS = [
   { key: 'all', label: '全部' },
   { key: 'medal', label: '勋章' },
   { key: 'level', label: '等级' },
+  { key: 'chart', label: '图表' },
   { key: 'other', label: '其他' },
 ]
 
@@ -600,7 +614,7 @@ export default {
       return `rgba(${r},${g},${b},${alpha})`
     },
     categoryLabel(c) {
-      return ({ medal: '勋章', level: '等级图标', other: '其他' })[c] || '其他'
+      return ({ medal: '勋章', level: '等级图标', chart: '等级图表', other: '其他' })[c] || '其他'
     },
     pt(event) {
       const svg = this.$refs.canvas
@@ -998,20 +1012,64 @@ export default {
       })
       this.$message.success('已添加模板图形')
     },
+    backplateGlyphSvg(key) {
+      const color = this.backplate.color
+      const stroke = this.backplate.stroke
+      const sw = 0.7
+      let body = ''
+      if (key === 'star') {
+        body = `<path d="${GLYPH_STAR}" fill="${color}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>`
+      } else if (key === 'moon') {
+        body = `<path d="${GLYPH_MOON}" fill="${color}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>`
+      } else if (key === 'sun') {
+        const rays = GLYPH_SUN_RAYS
+          .map(([x1, y1, x2, y2]) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`)
+          .join('')
+        body = `<circle cx="12" cy="12" r="4.7" fill="${color}" stroke="${stroke}" stroke-width="${sw}"/>`
+          + `<g stroke="${color}" stroke-width="2.1" stroke-linecap="round">${rays}</g>`
+      } else {
+        body = `<path d="${GLYPH_CROWN}" fill="${color}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>`
+          + `<rect x="3.3" y="19" width="17.4" height="2.5" rx="1.25" fill="${color}" stroke="${stroke}" stroke-width="${sw}"/>`
+      }
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${body}</svg>`
+    },
     addBackplate(key) {
-      const pts = this.templatePoints(key, this.backplate.scale || 0.86)
-      this.layers.unshift({
-        id: nextId(),
-        type: 'polyline',
-        name: '底板 · ' + ((BACKPLATES.find(b => b.key === key) || {}).label || key),
-        points: pts,
-        closed: true,
-        fill: this.backplate.color,
-        stroke: this.backplate.stroke,
-        strokeWidth: 6,
-        opacity: 1,
-        visible: true,
-      })
+      const meta = BACKPLATES.find(b => b.key === key) || { label: key }
+      let layer
+      if (['star', 'moon', 'sun', 'crown'].includes(key)) {
+        const size = Math.round(256 * (this.backplate.scale || 0.86))
+        const x = Math.round((256 - size) / 2)
+        const y = Math.round((256 - size) / 2)
+        layer = {
+          id: nextId(),
+          type: 'raw',
+          name: '底板 · ' + meta.label,
+          rawSvg: this.backplateGlyphSvg(key),
+          x,
+          y,
+          w: size,
+          h: size,
+          fill: 'none',
+          stroke: 'none',
+          strokeWidth: 0,
+          opacity: 1,
+          visible: true,
+        }
+      } else {
+        layer = {
+          id: nextId(),
+          type: 'polyline',
+          name: '底板 · ' + meta.label,
+          points: this.templatePoints(key, this.backplate.scale || 0.86),
+          closed: true,
+          fill: this.backplate.color,
+          stroke: this.backplate.stroke,
+          strokeWidth: 6,
+          opacity: 1,
+          visible: true,
+        }
+      }
+      this.layers.unshift(layer)
       this.dirty = true
       this.commit()
       this.$message.success('底板已置于最底层，可直接在中间绘制图案')
@@ -1223,6 +1281,18 @@ export default {
   border-radius: 6px;
 }
 .asset-row:hover { background: #f4f6fa; }
+.asset-chart-preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+}
+.asset-chart-preview ::v-deep svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .asset-act {
   width: 22px;
   height: 22px;
