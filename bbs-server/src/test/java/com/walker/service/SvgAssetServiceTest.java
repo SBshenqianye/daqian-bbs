@@ -1,11 +1,6 @@
 package com.walker.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.walker.mapper.LevelItemMapper;
-import com.walker.mapper.LevelProfileMapper;
 import com.walker.mapper.SvgAssetMapper;
-import com.walker.pojo.LevelItem;
-import com.walker.pojo.LevelProfile;
 import com.walker.pojo.SvgAsset;
 import com.walker.vo.ResultBean;
 import org.junit.jupiter.api.DisplayName;
@@ -16,14 +11,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,63 +30,77 @@ class SvgAssetServiceTest {
     private SvgAssetService service;
 
     @Mock private SvgAssetMapper svgAssetMapper;
-    @Mock private LevelProfileMapper levelProfileMapper;
-    @Mock private LevelItemMapper levelItemMapper;
 
     @Test
-    @DisplayName("等级图表：包含方案名、等级名和累计门槛，且为合法 SVG")
-    void buildLevelChart_containsSchemeAndLevels() {
-        LevelProfile profile = new LevelProfile();
-        profile.setProfileName("方案一 · 智荟成长");
-        List<LevelItem> items = Arrays.asList(
-                item(1, 1, 1, "智荟新芽·观", "智荟新芽", 0),
-                item(2, 1, 2, "智荟新芽·悟", "智荟新芽", 100),
-                item(3, 2, 1, "拾光新锐·观", "拾光新锐", 200)
-        );
+    @DisplayName("安全过滤：纯 SVG 通过，含脚本/事件外链被拒")
+    void sanitize_acceptsPureSvgAndRejectsScripts() {
+        String svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" r=\"8\"/></svg>";
+        assertEquals(svg, service.sanitize(svg));
 
-        String svg = service.buildLevelChart(profile, items);
-
-        assertTrue(svg.startsWith("<svg"));
-        assertTrue(svg.contains("方案一 · 智荟成长"));
-        assertTrue(svg.contains("智荟新芽·观"));
-        assertTrue(svg.contains("累计 200 分"));
-        assertTrue(svg.contains("Lv.3"));
-        assertNotNull(service.sanitize(svg));
+        assertNull(service.sanitize(null));
+        assertNull(service.sanitize("   "));
+        assertNull(service.sanitize("not a svg"));
+        assertNull(service.sanitize("<svg onload=\"alert(1)\"></svg>"));
+        assertNull(service.sanitize("<svg><script>alert(1)</script></svg>"));
+        assertNull(service.sanitize("<svg><a href=\"http://evil.test\">x</a></svg>"));
     }
 
     @Test
-    @DisplayName("自动生成：素材库中不存在时插入两套等级图表资产")
-    void generateLevelChartAssets_insertsChartAsset() {
-        LevelProfile profile = new LevelProfile();
-        profile.setId(1);
-        profile.setProfileName("方案一 · 智荟成长");
-        when(levelProfileMapper.selectOne(any(LambdaQueryWrapper.class)))
-                .thenReturn(profile)   // 第一个方案
-                .thenReturn(null);     // 第二个方案不存在
-        List<LevelItem> items = Collections.singletonList(
-                item(1, 1, 1, "智荟新芽·观", "智荟新芽", 0));
-        when(levelItemMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(items);
-        when(svgAssetMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+    @DisplayName("列表：纯查询，不再写入任何素材")
+    void list_isReadOnlyQuery() {
+        List<SvgAsset> rows = Collections.singletonList(new SvgAsset());
+        when(svgAssetMapper.selectList(any())).thenReturn(rows);
 
-        ResultBean result = service.generateLevelChartAssets();
+        ResultBean result = service.list(null);
 
         assertEquals(200, result.getCode());
-        assertEquals(1, result.getObj());
-        ArgumentCaptor<SvgAsset> captor = ArgumentCaptor.forClass(SvgAsset.class);
-        verify(svgAssetMapper).insert(captor.capture());
-        assertEquals("等级图表 · 智荟成长", captor.getValue().getAssetName());
-        assertEquals("chart", captor.getValue().getCategory());
+        assertSame(rows, result.getObj());
+        verify(svgAssetMapper, never()).insert(any());
+        verify(svgAssetMapper, never()).updateById(any());
     }
 
-    private LevelItem item(int levelIndex, int majorIndex, int minorIndex,
-                           String displayName, String majorName, int threshold) {
-        LevelItem item = new LevelItem();
-        item.setLevelIndex(levelIndex);
-        item.setMajorIndex(majorIndex);
-        item.setMinorIndex(minorIndex);
-        item.setDisplayName(displayName);
-        item.setMajorName(majorName);
-        item.setPointsThreshold(threshold);
-        return item;
+    @Test
+    @DisplayName("保存：空图形被拒绝，不落库")
+    void save_rejectsEmptySvg() {
+        ResultBean empty = service.save(null);
+        assertEquals(500, empty.getCode());
+
+        ResultBean noSvg = service.save(new SvgAsset());
+        assertEquals(500, noSvg.getCode());
+
+        verify(svgAssetMapper, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("保存：新增素材补全默认分类与时间戳")
+    void save_insertFillsDefaults() {
+        SvgAsset asset = new SvgAsset();
+        asset.setSvg("<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"8\" height=\"8\"/></svg>");
+
+        ResultBean result = service.save(asset);
+
+        assertEquals(200, result.getCode());
+        ArgumentCaptor<SvgAsset> captor = ArgumentCaptor.forClass(SvgAsset.class);
+        verify(svgAssetMapper).insert(captor.capture());
+        SvgAsset saved = captor.getValue();
+        assertEquals("未命名素材", saved.getAssetName());
+        assertEquals("other", saved.getCategory());
+        assertNotNull(saved.getCreateTime());
+        assertNotNull(saved.getUpdateTime());
+    }
+
+    @Test
+    @DisplayName("保存/删除：更新不存在的素材、缺少 ID 删除均报错")
+    void saveAndDelete_reportInvalidTargets() {
+        SvgAsset asset = new SvgAsset();
+        asset.setId(99);
+        asset.setSvg("<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"8\" height=\"8\"/></svg>");
+        when(svgAssetMapper.selectById(99)).thenReturn(null);
+
+        assertEquals(500, service.save(asset).getCode());
+        verify(svgAssetMapper, never()).updateById(any());
+
+        assertEquals(500, service.delete(null).getCode());
+        verify(svgAssetMapper, never()).deleteById(any(Integer.class));
     }
 }

@@ -320,8 +320,7 @@
                 :title="'载入到画布：' + a.assetName"
                 @click="loadAssetToCanvas(a)"
               >
-                <span v-if="a.category === 'chart'" class="asset-chart-preview" v-html="a.svg"></span>
-                <span v-else class="bbs-level-svg h-14 w-14 inline-flex" v-html="a.svg"></span>
+                <span class="bbs-level-svg h-14 w-14 inline-flex" v-html="a.svg"></span>
               </div>
               <p class="mt-1.5 text-[11px] text-on-surface truncate" :title="a.assetName">{{ a.assetName }}</p>
               <div class="flex items-center justify-between mt-1">
@@ -363,7 +362,6 @@
             <select v-model="saveForm.category" class="field">
               <option value="medal">勋章</option>
               <option value="level">等级图标</option>
-              <option value="chart">等级图表</option>
               <option value="other">其他</option>
             </select>
           </div>
@@ -429,7 +427,6 @@ const ASSET_FILTERS = [
   { key: 'all', label: '全部' },
   { key: 'medal', label: '勋章' },
   { key: 'level', label: '等级' },
-  { key: 'chart', label: '图表' },
   { key: 'other', label: '其他' },
 ]
 
@@ -614,7 +611,7 @@ export default {
       return `rgba(${r},${g},${b},${alpha})`
     },
     categoryLabel(c) {
-      return ({ medal: '勋章', level: '等级图标', chart: '等级图表', other: '其他' })[c] || '其他'
+      return ({ medal: '勋章', level: '等级图标', other: '其他' })[c] || '其他'
     },
     pt(event) {
       const svg = this.$refs.canvas
@@ -1281,17 +1278,6 @@ export default {
   border-radius: 6px;
 }
 .asset-row:hover { background: #f4f6fa; }
-.asset-chart-preview {
-  display: block;
-  width: 100%;
-  height: 100%;
-  padding: 4px;
-}
-.asset-chart-preview ::v-deep svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
 
 .asset-act {
   width: 22px;

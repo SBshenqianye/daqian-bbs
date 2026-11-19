@@ -37,14 +37,6 @@ public class SvgAssetController {
         return svgAssetService.save(asset);
     }
 
-    @ApiOperation("管理端：重新生成两套等级图表素材")
-    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
-    @AuditLog(module = "CONFIG", action = "CONFIG_SVG_LEVEL_CHART_GENERATE", targetType = "SVG_ASSET", targetId = "'LEVEL_CHART'")
-    @PostMapping("/admin/svg-asset/generate-level-charts")
-    public ResultBean generateLevelCharts() {
-        return svgAssetService.generateLevelChartAssets();
-    }
-
     @ApiOperation("管理端：删除素材")
     @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_SVG_ASSET_DELETE", targetType = "SVG_ASSET", targetId = "#body['id']")
