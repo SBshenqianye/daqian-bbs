@@ -25,86 +25,9 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
-        <!-- 左：工具 + 底板 + 图层 -->
-        <section class="lg:col-span-3 space-y-3">
-          <div class="bg-container border border-border rounded-xl p-3">
-            <p class="text-[11px] text-secondary mb-2">绘制工具</p>
-            <div class="grid grid-cols-2 gap-1.5">
-              <button
-                v-for="t in tools"
-                :key="t.key"
-                class="tool"
-                :class="{ 'is-on': tool === t.key }"
-                @click="selectTool(t.key)"
-              >
-                <span class="material-symbols-outlined text-[16px]">{{ t.icon }}</span>{{ t.label }}
-              </button>
-            </div>
-            <p class="text-[10px] text-outline mt-2 leading-relaxed">{{ toolHint }}</p>
-          </div>
-
-          <!-- 勋章底板：一键垫底，只画中间图案 -->
-          <div class="bg-container border border-border rounded-xl p-3">
-            <p class="text-[11px] text-secondary mb-2">快速底板</p>
-            <div class="grid grid-cols-3 gap-1.5">
-              <button v-for="b in backplates" :key="b.key" class="preset" :title="'添加' + b.label" @click="addBackplate(b.key)">
-                {{ b.label }}
-              </button>
-            </div>
-            <div class="grid grid-cols-2 gap-2 mt-2">
-              <div>
-                <p class="text-[10px] text-outline mb-0.5">填充</p>
-                <input v-model="backplate.color" type="color" class="w-full h-7 rounded border border-outline-variant bg-surface">
-              </div>
-              <div>
-                <p class="text-[10px] text-outline mb-0.5">描边</p>
-                <input v-model="backplate.stroke" type="color" class="w-full h-7 rounded border border-outline-variant bg-surface">
-              </div>
-            </div>
-            <div class="mt-2">
-              <div class="flex items-center justify-between text-[10px] text-outline">
-                <span>底板尺寸</span><span>{{ Math.round(backplate.scale * 100) }}%</span>
-              </div>
-              <input v-model.number="backplate.scale" type="range" min="0.5" max="0.98" step="0.02" class="w-full accent-primary">
-            </div>
-            <p class="text-[10px] text-outline mt-1">底板会自动居中铺好，你只需在中间画图案。</p>
-          </div>
-
-          <div class="bg-container border border-border rounded-xl p-3">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-[11px] text-secondary">图层 ({{ layers.length }})</p>
-              <button class="text-[11px] text-error hover:opacity-80" @click="clearAll">清空</button>
-            </div>
-            <div class="space-y-1 max-h-[240px] overflow-y-auto custom-scrollbar">
-              <div
-                v-for="l in layersOrdered"
-                :key="l.id"
-                class="layer-row"
-                :class="{ 'is-on': l.id === activeId }"
-                @click="selectLayer(l.id)"
-              >
-                <button class="w-5 text-outline hover:text-primary" :title="l.visible ? '隐藏' : '显示'" @click.stop="toggleVisible(l)">
-                  <span class="material-symbols-outlined text-[15px]">{{ l.visible ? 'visibility' : 'visibility_off' }}</span>
-                </button>
-                <span class="flex-1 truncate text-[11px]">{{ l.name }}</span>
-                <button class="w-5 text-outline hover:text-primary" title="上移" @click.stop="moveLayer(l.id, 1)">
-                  <span class="material-symbols-outlined text-[15px]">arrow_upward</span>
-                </button>
-                <button class="w-5 text-outline hover:text-primary" title="下移" @click.stop="moveLayer(l.id, -1)">
-                  <span class="material-symbols-outlined text-[15px]">arrow_downward</span>
-                </button>
-                <button class="w-5 text-outline hover:text-error" title="删除" @click.stop="removeLayer(l.id)">
-                  <span class="material-symbols-outlined text-[15px]">delete</span>
-                </button>
-              </div>
-              <p v-if="!layers.length" class="text-[11px] text-outline py-4 text-center">还没有图形，用上方工具绘制</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- 中：画布 -->
-        <section class="lg:col-span-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+        <!-- 画布：主区域 -->
+        <section class="order-2 lg:order-1 lg:col-span-8">
           <div class="bg-container border border-border rounded-xl p-3">
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-3 text-[11px] text-secondary">
@@ -226,80 +149,184 @@
           </div>
         </section>
 
-        <!-- 右：样式 + 素材库管理 -->
-        <section class="lg:col-span-3 space-y-3">
-          <div class="bg-container border border-border rounded-xl p-3">
-            <p class="text-[11px] text-secondary mb-2">样式</p>
-            <div class="space-y-2">
-              <div class="flex items-center gap-2">
-                <label class="w-12 text-[11px] text-on-surface-variant">填充</label>
-                <input v-model="style.fill" type="color" class="w-8 h-7 rounded border border-outline-variant bg-surface">
-                <button class="preset !py-1" @click="style.fill = 'none'">无</button>
-                <span class="text-[10px] text-outline truncate">{{ style.fill }}</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <label class="w-12 text-[11px] text-on-surface-variant">描边</label>
-                <input v-model="style.stroke" type="color" class="w-8 h-7 rounded border border-outline-variant bg-surface">
-                <button class="preset !py-1" @click="style.stroke = 'none'">无</button>
-                <span class="text-[10px] text-outline truncate">{{ style.stroke }}</span>
-              </div>
-              <div>
-                <div class="flex items-center justify-between text-[11px] text-on-surface-variant">
-                  <span>线宽</span><span>{{ style.strokeWidth }}</span>
-                </div>
-                <input v-model.number="style.strokeWidth" type="range" min="0" max="16" step="0.5" class="w-full accent-primary">
-              </div>
-              <div>
-                <div class="flex items-center justify-between text-[11px] text-on-surface-variant">
-                  <span>不透明度</span><span>{{ Math.round(style.opacity * 100) }}%</span>
-                </div>
-                <input v-model.number="style.opacity" type="range" min="0.1" max="1" step="0.05" class="w-full accent-primary">
-              </div>
-              <button class="w-full py-1.5 text-[11px] border border-outline rounded-lg hover:border-primary disabled:opacity-40" :disabled="!activeLayer" @click="applyStyle">
-                应用到选中图层
+        <!-- 右：工具面板（标签页切换，一次只展开一组） -->
+        <section class="order-1 lg:order-2 lg:col-span-4">
+          <div class="bg-container border border-border rounded-xl overflow-hidden">
+            <div class="flex flex-wrap gap-1 p-2 border-b border-outline-variant bg-surface-container-lowest">
+              <button
+                v-for="t in studioTabs"
+                :key="t.key"
+                class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] transition-colors"
+                :class="studioTab === t.key ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low'"
+                @click="switchStudioTab(t.key)"
+              >
+                <span class="material-symbols-outlined text-[15px]">{{ t.icon }}</span>
+                {{ t.label }}
+                <span
+                  v-if="t.badge"
+                  class="px-1 rounded-full text-[9px] leading-4"
+                  :class="studioTab === t.key ? 'bg-white/20' : 'bg-surface-variant'"
+                >{{ t.badge }}</span>
               </button>
             </div>
-          </div>
 
-          <div class="bg-container border border-border rounded-xl p-3">
-            <p class="text-[11px] text-secondary mb-2">图形模板</p>
-            <div class="grid grid-cols-2 gap-1.5">
-              <button v-for="t in templates" :key="t.key" class="preset" @click="applyTemplate(t.key)">{{ t.label }}</button>
-            </div>
-          </div>
-
-          <div class="bg-container border border-border rounded-xl p-3">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-[11px] text-secondary">素材库 ({{ assets.length }})</p>
-              <button class="text-[11px] text-primary" @click="loadAssets">刷新</button>
-            </div>
-            <div class="flex items-center gap-1 mb-2">
-              <button
-                v-for="c in assetFilters"
-                :key="c.key"
-                class="px-2 py-0.5 rounded text-[10px] border"
-                :class="assetFilter === c.key ? 'bg-primary text-white border-primary' : 'bg-surface text-on-surface-variant border-outline-variant'"
-                @click="assetFilter = c.key"
-              >{{ c.label }}</button>
-            </div>
-            <div class="space-y-1 max-h-[260px] overflow-y-auto custom-scrollbar">
-              <div v-for="a in filteredAssets" :key="a.id" class="asset-row">
-                <span class="bbs-level-svg h-8 w-8 inline-flex shrink-0" v-html="a.svg"></span>
-                <div class="flex-1 min-w-0">
-                  <p class="text-[11px] text-on-surface truncate" :title="a.assetName">{{ a.assetName }}</p>
-                  <p class="text-[9px] text-outline">{{ categoryLabel(a.category) }}</p>
+            <div class="p-3">
+              <!-- 绘制工具 -->
+              <div v-show="studioTab === 'tools'">
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button
+                    v-for="t in tools"
+                    :key="t.key"
+                    class="tool"
+                    :class="{ 'is-on': tool === t.key }"
+                    @click="selectTool(t.key)"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">{{ t.icon }}</span>{{ t.label }}
+                  </button>
                 </div>
-                <button class="asset-act" title="载入到画布" @click="loadAssetToCanvas(a)">
-                  <span class="material-symbols-outlined text-[15px]">add_photo_alternate</span>
-                </button>
-                <button class="asset-act" title="重命名" @click="renameAsset(a)">
-                  <span class="material-symbols-outlined text-[15px]">edit</span>
-                </button>
-                <button class="asset-act is-danger" title="删除" @click="deleteAsset(a)">
-                  <span class="material-symbols-outlined text-[15px]">delete</span>
+                <p class="text-[10px] text-outline mt-2 leading-relaxed">{{ toolHint }}</p>
+              </div>
+
+              <!-- 快速底板 -->
+              <div v-show="studioTab === 'backplate'">
+                <div class="grid grid-cols-3 gap-1.5">
+                  <button v-for="b in backplates" :key="b.key" class="preset" :title="'添加' + b.label" @click="addBackplate(b.key)">
+                    {{ b.label }}
+                  </button>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                  <div>
+                    <p class="text-[10px] text-outline mb-0.5">填充</p>
+                    <input v-model="backplate.color" type="color" class="w-full h-7 rounded border border-outline-variant bg-surface">
+                  </div>
+                  <div>
+                    <p class="text-[10px] text-outline mb-0.5">描边</p>
+                    <input v-model="backplate.stroke" type="color" class="w-full h-7 rounded border border-outline-variant bg-surface">
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="flex items-center justify-between text-[10px] text-outline">
+                    <span>底板尺寸</span><span>{{ Math.round(backplate.scale * 100) }}%</span>
+                  </div>
+                  <input v-model.number="backplate.scale" type="range" min="0.5" max="0.98" step="0.02" class="w-full accent-primary">
+                </div>
+                <p class="text-[10px] text-outline mt-1">底板会自动居中铺好，你只需在中间画图案。</p>
+              </div>
+
+              <!-- 图层 -->
+              <div v-show="studioTab === 'layers'">
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-[11px] text-secondary">图层 ({{ layers.length }})</p>
+                  <button class="text-[11px] text-error hover:opacity-80" @click="clearAll">清空</button>
+                </div>
+                <div class="space-y-1 max-h-[420px] overflow-y-auto custom-scrollbar">
+                  <div
+                    v-for="l in layersOrdered"
+                    :key="l.id"
+                    class="layer-row"
+                    :class="{ 'is-on': l.id === activeId }"
+                    @click="selectLayer(l.id)"
+                  >
+                    <button class="w-5 text-outline hover:text-primary" :title="l.visible ? '隐藏' : '显示'" @click.stop="toggleVisible(l)">
+                      <span class="material-symbols-outlined text-[15px]">{{ l.visible ? 'visibility' : 'visibility_off' }}</span>
+                    </button>
+                    <span class="flex-1 truncate text-[11px]">{{ l.name }}</span>
+                    <button class="w-5 text-outline hover:text-primary" title="上移" @click.stop="moveLayer(l.id, 1)">
+                      <span class="material-symbols-outlined text-[15px]">arrow_upward</span>
+                    </button>
+                    <button class="w-5 text-outline hover:text-primary" title="下移" @click.stop="moveLayer(l.id, -1)">
+                      <span class="material-symbols-outlined text-[15px]">arrow_downward</span>
+                    </button>
+                    <button class="w-5 text-outline hover:text-error" title="删除" @click.stop="removeLayer(l.id)">
+                      <span class="material-symbols-outlined text-[15px]">delete</span>
+                    </button>
+                  </div>
+                  <p v-if="!layers.length" class="text-[11px] text-outline py-6 text-center">还没有图形，去「工具」页绘制</p>
+                </div>
+              </div>
+
+              <!-- 样式 -->
+              <div v-show="studioTab === 'style'" class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <label class="w-12 text-[11px] text-on-surface-variant">填充</label>
+                  <input v-model="style.fill" type="color" class="w-8 h-7 rounded border border-outline-variant bg-surface">
+                  <button class="preset !py-1" @click="style.fill = 'none'">无</button>
+                  <span class="text-[10px] text-outline truncate">{{ style.fill }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <label class="w-12 text-[11px] text-on-surface-variant">描边</label>
+                  <input v-model="style.stroke" type="color" class="w-8 h-7 rounded border border-outline-variant bg-surface">
+                  <button class="preset !py-1" @click="style.stroke = 'none'">无</button>
+                  <span class="text-[10px] text-outline truncate">{{ style.stroke }}</span>
+                </div>
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-on-surface-variant">
+                    <span>线宽</span><span>{{ style.strokeWidth }}</span>
+                  </div>
+                  <input v-model.number="style.strokeWidth" type="range" min="0" max="16" step="0.5" class="w-full accent-primary">
+                </div>
+                <div>
+                  <div class="flex items-center justify-between text-[11px] text-on-surface-variant">
+                    <span>不透明度</span><span>{{ Math.round(style.opacity * 100) }}%</span>
+                  </div>
+                  <input v-model.number="style.opacity" type="range" min="0.1" max="1" step="0.05" class="w-full accent-primary">
+                </div>
+                <button class="w-full py-1.5 text-[11px] border border-outline rounded-lg hover:border-primary disabled:opacity-40" :disabled="!activeLayer" @click="applyStyle">
+                  应用到选中图层
                 </button>
               </div>
-              <p v-if="!filteredAssets.length" class="text-[11px] text-outline text-center py-3">暂无素材</p>
+
+              <!-- 图形模板 -->
+              <div v-show="studioTab === 'templates'">
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button v-for="t in templates" :key="t.key" class="preset" @click="applyTemplate(t.key)">{{ t.label }}</button>
+                </div>
+                <p class="text-[10px] text-outline mt-2 leading-relaxed">模板会作为一个新图层加入画布，可继续用工具和样式调整。</p>
+              </div>
+
+              <!-- 素材库 -->
+              <div v-show="studioTab === 'assets'">
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-[11px] text-secondary">素材库 ({{ assets.length }})</p>
+                  <button class="text-[11px] text-primary" @click="loadAssets">刷新</button>
+                </div>
+                <div class="flex flex-wrap items-center gap-1 mb-2">
+                  <button
+                    v-for="c in assetFilters"
+                    :key="c.key"
+                    class="px-2 py-0.5 rounded text-[10px] border"
+                    :class="assetFilter === c.key ? 'bg-primary text-white border-primary' : 'bg-surface text-on-surface-variant border-outline-variant'"
+                    @click="assetFilter = c.key"
+                  >{{ c.label }}</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2 max-h-[520px] overflow-y-auto custom-scrollbar pr-1">
+                  <div
+                    v-for="a in filteredAssets"
+                    :key="a.id"
+                    class="group rounded-lg border border-outline-variant bg-surface-container-lowest p-2 hover:border-primary transition-colors"
+                  >
+                    <div class="h-20 rounded-md bg-surface grid place-items-center overflow-hidden">
+                      <span class="bbs-level-svg h-12 w-12 inline-flex" v-html="a.svg"></span>
+                    </div>
+                    <p class="mt-1.5 text-[11px] text-on-surface truncate" :title="a.assetName">{{ a.assetName }}</p>
+                    <div class="flex items-center justify-between mt-1">
+                      <span class="text-[9px] text-outline">{{ categoryLabel(a.category) }}</span>
+                      <div class="flex items-center gap-0.5">
+                        <button class="asset-act" title="载入到画布" @click="loadAssetToCanvas(a)">
+                          <span class="material-symbols-outlined text-[15px]">add_photo_alternate</span>
+                        </button>
+                        <button class="asset-act" title="重命名" @click="renameAsset(a)">
+                          <span class="material-symbols-outlined text-[15px]">edit</span>
+                        </button>
+                        <button class="asset-act is-danger" title="删除" @click="deleteAsset(a)">
+                          <span class="material-symbols-outlined text-[15px]">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <p v-if="!filteredAssets.length" class="col-span-2 text-[11px] text-outline text-center py-6">暂无素材</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -449,6 +476,7 @@ export default {
       backplate: { color: '#1f6f5c', stroke: '#ffffff', scale: 0.86 },
       assets: [],
       assetFilter: 'all',
+      studioTab: 'tools',
       saveDialog: false,
       saving: false,
       saveForm: { assetName: '', category: 'medal' },
@@ -459,6 +487,16 @@ export default {
     }
   },
   computed: {
+    studioTabs() {
+      return [
+        { key: 'tools', label: '工具', icon: 'build' },
+        { key: 'backplate', label: '底板', icon: 'layers' },
+        { key: 'layers', label: '图层', icon: 'account_tree', badge: this.layers.length },
+        { key: 'style', label: '样式', icon: 'palette' },
+        { key: 'templates', label: '模板', icon: 'category' },
+        { key: 'assets', label: '素材库', icon: 'collections', badge: this.assets.length },
+      ]
+    },
     layersOrdered() {
       return this.layers.slice().reverse()
     },
@@ -532,6 +570,12 @@ export default {
     window.removeEventListener('keydown', this.onKey)
   },
   methods: {
+    /* ---------- 面板 ---------- */
+    switchStudioTab(key) {
+      this.studioTab = key
+      if (key === 'assets') this.loadAssets()
+    },
+
     /* ---------- 基础 ---------- */
     paint(color) {
       return color === 'none' || !color ? 'none' : color
