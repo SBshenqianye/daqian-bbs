@@ -758,6 +758,7 @@ public class ArticleController {
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime,
             @RequestParam(required = false, defaultValue = "51404") String orgNo,
+            @RequestParam(required = false) Integer categoryId,
             HttpServletResponse response) throws IOException {
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         String fileName = URLEncoder.encode("积分排名_" + new SimpleDateFormat("yyyyMMdd").format(new Date()), "UTF-8");
@@ -767,6 +768,7 @@ public class ArticleController {
         PointsRankParam rankParam = new PointsRankParam();
         rankParam.setRankType(rankType);
         rankParam.setOrgNo(orgNo);
+        rankParam.setCategoryId(categoryId);
         rankParam.setStartTime(startTime);
         rankParam.setEndTime(endTime);
 

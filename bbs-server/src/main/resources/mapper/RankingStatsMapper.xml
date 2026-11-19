@@ -4,11 +4,14 @@
 
     <sql id="orgFilter">
         <choose>
-            <when test="includeDescendants">
-                AND u.org_no LIKE CONCAT(#{orgNo}, '%')
+            <when test="orgNos != null and orgNos.size() > 0">
+                AND u.org_no IN
+                <foreach collection="orgNos" item="orgNo" open="(" separator="," close=")">
+                    #{orgNo}
+                </foreach>
             </when>
             <otherwise>
-                AND u.org_no = #{orgNo}
+                AND 1 = 0
             </otherwise>
         </choose>
     </sql>
@@ -18,14 +21,14 @@
         AND (u.is_test_account IS NULL OR u.is_test_account = 0)
     </sql>
 
-    <select id="countMembers" resultType="java.lang.Integer">
+    <select id="countMembersByOrgs" resultType="java.lang.Integer">
         SELECT COUNT(1)
         FROM bbs_user u
         WHERE <include refid="userFilter"/>
         <include refid="orgFilter"/>
     </select>
 
-    <select id="sumPoints" resultType="java.lang.Integer">
+    <select id="sumPointsByOrgs" resultType="java.lang.Integer">
         SELECT COALESCE(SUM(p.points_change), 0)
         FROM bbs_points_log p
         JOIN bbs_user u ON p.user_id = u.id
@@ -36,7 +39,7 @@
         <include refid="orgFilter"/>
     </select>
 
-    <select id="countPosts" resultType="java.lang.Integer">
+    <select id="countPostsByOrgs" resultType="java.lang.Integer">
         SELECT COUNT(1)
         FROM bbs_article a
         JOIN bbs_user u ON a.user_id = u.id
@@ -56,7 +59,7 @@
         <include refid="orgFilter"/>
     </select>
 
-    <select id="countReplies" resultType="java.lang.Integer">
+    <select id="countRepliesByOrgs" resultType="java.lang.Integer">
         SELECT COUNT(1)
         FROM bbs_comment c
         JOIN bbs_user u ON c.comment_user_id = u.id

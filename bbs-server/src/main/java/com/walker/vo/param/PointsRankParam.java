@@ -21,6 +21,10 @@ public class PointsRankParam {
      */
     private String orgNo;
     /**
+     * 榜单分类ID（传入后按分类成员口径过滤；不传则沿用旧“参与排名”勾选）
+     */
+    private Integer categoryId;
+    /**
      * 统计开始日期（yyyy-mm-dd）
      */
     private String startTime;

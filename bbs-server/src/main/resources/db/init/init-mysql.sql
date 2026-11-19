@@ -312,6 +312,7 @@ CREATE TABLE `bbs_ranking_category_org` (
   `category_id`         int(11) NOT NULL COMMENT '分类ID',
   `org_no`              varchar(20) NOT NULL COMMENT '组织编号',
   `include_descendants` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否包含下级(0=否,1=是)',
+  `selection_type`      varchar(10) NOT NULL DEFAULT 'include' COMMENT '成员类型(include=参与,exclude=从上级含下级中剔除)',
   `sort_order`          int(11) NOT NULL DEFAULT 0 COMMENT '排序序号',
   `create_time`         varchar(20) DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
@@ -1284,3 +1285,33 @@ SELECT CONCAT('勋章 · ', a.achievement_name) COLLATE utf8mb4_general_ci, 'med
 FROM bbs_achievement a
 WHERE a.icon_svg IS NOT NULL AND a.icon_svg <> ''
   AND NOT EXISTS (SELECT 1 FROM bbs_svg_asset s WHERE s.asset_name = CONCAT('勋章 · ', a.achievement_name) COLLATE utf8mb4_general_ci);
+
+-- @migration: v070-level-default-thresholds 默认 24 级体系改用产品累计门槛 + 8 枚大阶段徽章
+-- 背景：默认等级体系（8 大阶段 × 3 小档 = 24 级）原先每档等差 100 分（0~2300），
+--       与《大千论坛积分获取说明》的累计门槛（0~110100）不一致。两套 21 级方案保持不动。
+-- 幂等：按 profile_name + level_index 定向覆盖写，可重复执行。
+UPDATE `bbs_level_item` i
+JOIN `bbs_level_profile` p ON p.id = i.profile_id
+SET i.points_threshold = CASE i.level_index
+  WHEN 1 THEN 0      WHEN 2 THEN 100    WHEN 3 THEN 250
+  WHEN 4 THEN 500    WHEN 5 THEN 800    WHEN 6 THEN 1200
+  WHEN 7 THEN 1800   WHEN 8 THEN 2600   WHEN 9 THEN 3600
+  WHEN 10 THEN 5100  WHEN 11 THEN 7100  WHEN 12 THEN 9600
+  WHEN 13 THEN 12600 WHEN 14 THEN 16100 WHEN 15 THEN 20100
+  WHEN 16 THEN 25100 WHEN 17 THEN 31100 WHEN 18 THEN 38100
+  WHEN 19 THEN 46100 WHEN 20 THEN 55100 WHEN 21 THEN 65100
+  WHEN 22 THEN 77100 WHEN 23 THEN 92100 WHEN 24 THEN 110100
+  ELSE i.points_threshold END
+WHERE p.profile_name = '默认等级体系'
+  AND i.level_index BETWEEN 1 AND 24;
+
+UPDATE `bbs_level_item` i
+JOIN `bbs_level_profile` p ON p.id = i.profile_id
+SET i.badge_name = CASE i.level_index
+  WHEN 1 THEN '启程徽章'  WHEN 4 THEN '新芽徽章'
+  WHEN 7 THEN '耕耘徽章'  WHEN 10 THEN '创见徽章'
+  WHEN 13 THEN '砺新徽章' WHEN 16 THEN '传知徽章'
+  WHEN 19 THEN '星引徽章' WHEN 22 THEN '大成徽章'
+  ELSE i.badge_name END
+WHERE p.profile_name = '默认等级体系'
+  AND i.level_index IN (1, 4, 7, 10, 13, 16, 19, 22);

@@ -35,6 +35,10 @@ public class RankingCategoryOrg implements Serializable {
     @TableField("include_descendants")
     private Integer includeDescendants;
 
+    @ApiModelProperty("成员类型(include=参与,exclude=从上级含下级中剔除)")
+    @TableField("selection_type")
+    private String selectionType;
+
     @ApiModelProperty("排序序号")
     @TableField("sort_order")
     private Integer sortOrder;

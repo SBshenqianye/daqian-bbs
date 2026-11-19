@@ -6,12 +6,15 @@ import com.walker.pojo.RankingCategory;
 import com.walker.service.RankingCategoryService;
 import com.walker.vo.ResultBean;
 import com.walker.vo.param.RankingOrgRankParam;
+import com.walker.vo.param.RankingSelectionParam;
+import com.walker.vo.param.RankingSortItem;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -109,6 +112,45 @@ public class RankingCategoryController {
         Integer categoryId = toInt(body.get("categoryId"));
         String orgNo = body.get("orgNo") == null ? null : String.valueOf(body.get("orgNo"));
         return rankingCategoryService.removeOrg(categoryId, orgNo);
+    }
+
+    @ApiOperation("管理端：恢复内置分类默认配置")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @AuditLog(module = "CONFIG", action = "CONFIG_RANKING_CATEGORY_RESET",
+            targetType = "RANKING_CATEGORY", targetId = "#body['id']")
+    @PostMapping("/admin/ranking/category/resetDefault")
+    public ResultBean resetDefault(@RequestBody Map<String, Object> body) {
+        Integer id = body == null ? null : toInt(body.get("id"));
+        return rankingCategoryService.resetCategoryToDefault(id);
+    }
+
+    @ApiOperation("管理端：拖动排序保存")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @AuditLog(module = "CONFIG", action = "CONFIG_RANKING_CATEGORY_SORT",
+            targetType = "RANKING_CATEGORY", targetId = "'ALL'", snapshot = false)
+    @PostMapping("/admin/ranking/category/sort")
+    public ResultBean sortCategories(@RequestBody List<RankingSortItem> items) {
+        return rankingCategoryService.updateSortOrders(items);
+    }
+
+    @ApiOperation("管理端：查询内置分类默认参与单位")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @GetMapping("/admin/ranking/category/defaultMembers")
+    public ResultBean defaultMembers(@RequestParam("id") Integer id) {
+        return rankingCategoryService.getDefaultMembers(id);
+    }
+
+    @ApiOperation("管理端：三态树保存成员")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @AuditLog(module = "CONFIG", action = "CONFIG_RANKING_ORG_SELECTION",
+            targetType = "RANKING_CATEGORY", targetId = "#param.categoryId")
+    @PostMapping("/admin/ranking/category/org/setSelection")
+    public ResultBean setSelection(@RequestBody RankingSelectionParam param) {
+        if (param == null) {
+            return ResultBean.error("参数不能为空");
+        }
+        return rankingCategoryService.saveSelection(
+                param.getCategoryId(), param.getCheckedKeys(), param.getHalfCheckedKeys());
     }
 
     private Integer toInt(Object value) {

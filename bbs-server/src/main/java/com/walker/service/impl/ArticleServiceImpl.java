@@ -69,6 +69,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private SaOrgMapper saOrgMapper;
 
     @Autowired
+    private RankingCategoryService rankingCategoryService;
+
+    @Autowired
     private SaOrgService saOrgService;
 
     @Autowired
@@ -1052,27 +1055,26 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             });
         }
 
-        // 排名单位过滤：只显示在 admin-ui 中勾选了"参与排名"的单位
+        // 排名单位过滤：优先按榜单分类成员口径；未传分类时兼容旧“参与排名”勾选
         if (!CollectionUtils.isEmpty(resultList)) {
-            List<SaOrg> rankingOrgs = saOrgMapper.selectList(
-                    new LambdaQueryWrapper<SaOrg>()
-                            .eq(SaOrg::getIsRankingSelected, 1)
-                            .eq(SaOrg::getIsDelete, 0)
-            );
-            if (CollectionUtils.isEmpty(rankingOrgs)) {
-                // 没有勾选任何排名单位 → 返回空列表
-                resultList = new ArrayList<>();
+            Set<String> allowedOrgNos;
+            if (pointsRankParam.getCategoryId() != null) {
+                allowedOrgNos = new HashSet<>(rankingCategoryService.listAllowedOrgNos(pointsRankParam.getCategoryId()));
             } else {
-                // 有勾选的 → 只显示勾选的那些
-                List<String> allowedOrgNos = rankingOrgs.stream()
+                List<SaOrg> rankingOrgs = saOrgMapper.selectList(
+                        new LambdaQueryWrapper<SaOrg>()
+                                .eq(SaOrg::getIsRankingSelected, 1)
+                                .eq(SaOrg::getIsDelete, 0)
+                );
+                allowedOrgNos = rankingOrgs.stream()
                         .map(SaOrg::getOrgNo)
-                        .collect(Collectors.toList());
-                resultList = resultList.stream()
-                        .filter(item -> allowedOrgNos.contains(item.getOrgNo()))
-                        .collect(Collectors.toList());
-                int[] rank = {1};
-                resultList.forEach(item -> item.setRankNum(rank[0]++));
+                        .collect(Collectors.toSet());
             }
+            resultList = resultList.stream()
+                    .filter(item -> allowedOrgNos.contains(item.getOrgNo()))
+                    .collect(Collectors.toList());
+            int[] rank = {1};
+            resultList.forEach(item -> item.setRankNum(rank[0]++));
         }
 
         return ResultBean.success("查询成功", resultList);

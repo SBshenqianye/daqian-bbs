@@ -9255,3 +9255,63 @@ WHERE c.category_code = 'support_units'
     SELECT 1 FROM bbs_ranking_category_org x
     WHERE x.category_id = c.id AND x.org_no = o.org_no
   );
+
+
+-- @migration: v070-level-default-thresholds 默认 24 级体系改用产品累计门槛 + 8 枚大阶段徽章
+-- 背景：默认等级体系（8 大阶段 × 3 小档 = 24 级）原先每档等差 100 分（0~2300），
+--       与《大千论坛积分获取说明》的累计门槛（0~110100）不一致。两套 21 级方案保持不动。
+-- 幂等：按 profile_name + level_index 定向覆盖写，可重复执行。
+UPDATE bbs_level_item i
+SET points_threshold = CASE i.level_index
+  WHEN 1 THEN 0      WHEN 2 THEN 100    WHEN 3 THEN 250
+  WHEN 4 THEN 500    WHEN 5 THEN 800    WHEN 6 THEN 1200
+  WHEN 7 THEN 1800   WHEN 8 THEN 2600   WHEN 9 THEN 3600
+  WHEN 10 THEN 5100  WHEN 11 THEN 7100  WHEN 12 THEN 9600
+  WHEN 13 THEN 12600 WHEN 14 THEN 16100 WHEN 15 THEN 20100
+  WHEN 16 THEN 25100 WHEN 17 THEN 31100 WHEN 18 THEN 38100
+  WHEN 19 THEN 46100 WHEN 20 THEN 55100 WHEN 21 THEN 65100
+  WHEN 22 THEN 77100 WHEN 23 THEN 92100 WHEN 24 THEN 110100
+  ELSE i.points_threshold END
+FROM bbs_level_profile p
+WHERE p.id = i.profile_id
+  AND p.profile_name = '默认等级体系'
+  AND i.level_index BETWEEN 1 AND 24;
+
+UPDATE bbs_level_item i
+SET badge_name = CASE i.level_index
+  WHEN 1 THEN '启程徽章'  WHEN 4 THEN '新芽徽章'
+  WHEN 7 THEN '耕耘徽章'  WHEN 10 THEN '创见徽章'
+  WHEN 13 THEN '砺新徽章' WHEN 16 THEN '传知徽章'
+  WHEN 19 THEN '星引徽章' WHEN 22 THEN '大成徽章'
+  ELSE i.badge_name END
+FROM bbs_level_profile p
+WHERE p.id = i.profile_id
+  AND p.profile_name = '默认等级体系'
+  AND i.level_index IN (1, 4, 7, 10, 13, 16, 19, 22);
+
+-- @migration: v071-ranking-selection-tri-state 排行榜支持部分包含下级
+-- 目标：成员表增加 selection_type；把组织管理里“取消参与排名”的历史状态迁移为分类剔除项。
+-- 幂等：列存在性检查；DELETE 定向；INSERT ... ON CONFLICT DO NOTHING。
+ALTER TABLE bbs_ranking_category_org
+    ADD COLUMN IF NOT EXISTS selection_type varchar(10) NOT NULL DEFAULT 'include';
+
+DELETE FROM bbs_ranking_category_org m
+USING bbs_sa_org o
+WHERE m.org_no = o.org_no
+  AND m.selection_type = 'include'
+  AND o.is_delete = 0
+  AND o.is_ranking_selected = 0;
+
+INSERT INTO bbs_ranking_category_org
+    (category_id, org_no, include_descendants, selection_type, sort_order, create_time)
+SELECT DISTINCT i.category_id, o.org_no, 1, 'exclude', 0,
+       to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+FROM bbs_sa_org o
+JOIN bbs_ranking_category_org i
+  ON i.selection_type = 'include'
+ AND i.include_descendants = 1
+ AND i.org_no <> o.org_no
+ AND o.org_no LIKE i.org_no || '%'
+WHERE o.is_delete = 0
+  AND o.is_ranking_selected = 0
+ON CONFLICT (category_id, org_no) DO NOTHING;

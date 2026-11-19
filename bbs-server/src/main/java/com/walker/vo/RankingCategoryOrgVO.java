@@ -10,5 +10,6 @@ public class RankingCategoryOrgVO {
     private String orgNo;
     private String orgName;
     private Integer includeDescendants;
+    private String selectionType;
     private Integer sortOrder;
 }
