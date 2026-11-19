@@ -48,26 +48,9 @@
             <!-- Label -->
             <span class="flex-1 font-body-md truncate min-w-0 ml-1">{{ data.label }}</span>
 
-            <!-- ═══ mode=unit-manage: toggle buttons + CRUD ═══ -->
+            <!-- ═══ mode=unit-manage: display toggle + CRUD ═══ -->
             <template v-if="mode === 'unit-manage'">
               <div class="flex items-center gap-0.5 flex-shrink-0">
-                <!-- Ranking toggle -->
-                <div class="flex items-center gap-1 ml-1">
-                  <span class="text-[11px] text-on-surface-variant whitespace-nowrap">排名</span>
-                  <button
-                    class="relative rounded-full transition-all duration-200 flex-shrink-0"
-                    :class="rankingBtnCls(data)"
-                    style="height:18px;width:36px"
-                    :title="rankingTitle(data)"
-                    @click.stop="emitToggleRanking(data)"
-                  >
-                    <span
-                      class="absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-200"
-                      :style="rankingDotStyle(data)"
-                    ></span>
-                  </button>
-                </div>
-
                 <!-- Display toggle -->
                 <div class="flex items-center gap-1 ml-1">
                   <span class="text-[11px] text-on-surface-variant whitespace-nowrap">显示</span>
@@ -155,7 +138,7 @@ export default {
     /** 是否允许把节点拖到外部（排名管理等） */
     draggableNodes: { type: Boolean, default: false },
   },
-  emits: ['node-click', 'toggle-ranking', 'toggle-display', 'cascade-ranking', 'cascade-display', 'add-node', 'delete-node', 'node-dragstart'],
+  emits: ['node-click', 'toggle-display', 'cascade-display', 'add-node', 'delete-node', 'node-dragstart'],
   data() {
     return {
       initialized: false,
@@ -355,18 +338,6 @@ export default {
 
     /* ═══════════ Toggle Visual State ═══════════ */
 
-    rankingBtnCls(node) {
-      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
-      return on ? 'bg-primary' : 'bg-gray-300'
-    },
-    rankingDotStyle(node) {
-      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
-      return on ? 'left:19px' : 'left:2px'
-    },
-    rankingTitle(node) {
-      const on = node.isRankingSelected == 1 || node.isRankingSelected === true
-      return on ? '取消参与排名' : '参与排名'
-    },
     displayBtnCls(node) {
       const on = node.isDisplaySelected == 1 || node.isDisplaySelected === true
       return on ? 'bg-primary' : 'bg-gray-300'
@@ -384,16 +355,6 @@ export default {
 
     handleNodeClick(data, elNode) {
       this.$emit('node-click', data, elNode)
-    },
-
-    emitToggleRanking(node) {
-      if (node._hasChildren) {
-        const newVal = !(node.isRankingSelected == 1 || node.isRankingSelected === true)
-        this.$emit('toggle-ranking', node)
-        this.$emit('cascade-ranking', node, newVal)
-        return
-      }
-      this.$emit('toggle-ranking', node)
     },
 
     emitToggleDisplay(node) {

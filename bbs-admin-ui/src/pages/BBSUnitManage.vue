@@ -9,7 +9,7 @@
               <span class="material-symbols-outlined text-primary">account_tree</span>
               组织管理
             </h1>
-            <p class="text-body-md text-secondary mt-1">管理组织单位结构、配置排名参与和用户前台显示</p>
+            <p class="text-body-md text-secondary mt-1">管理组织单位结构与用户前台显示；排名参与单位在“排名管理”中配置</p>
           </div>
           <div class="flex items-center gap-2">
             <!-- Search -->
@@ -105,11 +105,7 @@
     <div ref="contentWrap" class="max-w-7xl mx-auto px-page-margin-desktop py-6">
 
       <!-- Selected summary -->
-      <div v-if="orgTree.length && (rankingSelectedCount > 0 || displaySelectedCount > 0)" class="mb-4 flex items-center gap-4 text-body-md">
-        <div v-if="rankingSelectedCount > 0" class="px-3 py-1.5 bg-primary/5 border border-primary/15 rounded-lg flex items-center gap-1.5 text-primary">
-          <span class="material-symbols-outlined" style="font-size:16px">emoji_events</span>
-          排名：<strong>{{ rankingSelectedCount }}</strong> 个单位
-        </div>
+      <div v-if="orgTree.length && displaySelectedCount > 0" class="mb-4 flex items-center gap-4 text-body-md">
         <div v-if="displaySelectedCount > 0" class="px-3 py-1.5 bg-primary/5 border border-primary/15 rounded-lg flex items-center gap-1.5 text-primary">
           <span class="material-symbols-outlined" style="font-size:16px">visibility</span>
           显示：<strong>{{ displaySelectedCount }}</strong> 个节点
@@ -137,9 +133,7 @@
           :filter-text="filterText"
           :loading="false"
           @node-click="onNodeClick"
-          @toggle-ranking="toggleRanking"
           @toggle-display="toggleDisplay"
-          @cascade-ranking="cascadeRanking"
           @cascade-display="cascadeDisplay"
           @add-node="openAdd"
           @delete-node="handleRemove"
@@ -207,9 +201,6 @@ export default {
       saving: false,
       orgTree: [],
       filterText: '',
-      // 排名开关
-      rankingMap: {},
-      originalRanking: {},
       // 显示开关
       displayMap: {},
       originalDisplay: {},
@@ -229,15 +220,11 @@ export default {
     }
   },
   computed: {
-    rankingSelectedCount() {
-      return Object.values(this.rankingMap).filter(Boolean).length
-    },
     displaySelectedCount() {
       return Object.values(this.displayMap).filter(Boolean).length
     },
     hasChanges() {
-      return Object.keys(this.rankingMap).some(k => this.rankingMap[k] !== this.originalRanking[k])
-          || Object.keys(this.displayMap).some(k => this.displayMap[k] !== this.originalDisplay[k])
+      return Object.keys(this.displayMap).some(k => this.displayMap[k] !== this.originalDisplay[k])
     },
   },
   mounted() {
@@ -279,13 +266,9 @@ export default {
           }
           fillParentRef(this.orgTree, null)
           // 初始化 maps
-          this.originalRanking = {}
           this.displayMap = {}
           this.originalDisplay = {}
           walkTree(this.orgTree, n => {
-            const rankVal = n.isRankingSelected === 1 || n.isRankingSelected === true
-            this.$set(this.rankingMap, n.id, rankVal)
-            this.$set(this.originalRanking, n.id, rankVal)
             const dispVal = n.isDisplaySelected === 1 || n.isDisplaySelected === true
             this.$set(this.displayMap, n.id, dispVal)
             this.$set(this.originalDisplay, n.id, dispVal)
@@ -491,23 +474,14 @@ export default {
       this.$nextTick(() => this._onScroll())
     },
 
-    // ---- 排名开关 ----
-    getRankingVal(id) {
-      return this.rankingMap[id] === true
+    // ---- 显示开关 ----
+    getDisplayVal(id) {
+      return this.displayMap[id] === true
     },
-    toggleRanking(node) {
-      const val = !(this.rankingMap[node.id] === true)
-      this.$set(this.rankingMap, node.id, val)
-      node.isRankingSelected = val ? 1 : 0
-    },
-    cascadeRanking(node, selected) {
-      const val = selected ? 1 : 0
-      this.$set(this.rankingMap, node.id, !!val)
-      node.isRankingSelected = val
-      walkTree(node.children, child => {
-        this.$set(this.rankingMap, child.id, !!val)
-        child.isRankingSelected = val
-      })
+    toggleDisplay(node) {
+      const val = !(this.displayMap[node.id] === true)
+      this.$set(this.displayMap, node.id, val)
+      node.isDisplaySelected = val ? 1 : 0
     },
     cascadeDisplay(node, selected) {
       const val = selected ? 1 : 0
@@ -519,16 +493,6 @@ export default {
       })
     },
 
-    // ---- 显示开关 ----
-    getDisplayVal(id) {
-      return this.displayMap[id] === true
-    },
-    toggleDisplay(node) {
-      const val = !(this.displayMap[node.id] === true)
-      this.$set(this.displayMap, node.id, val)
-      node.isDisplaySelected = val ? 1 : 0
-    },
-
     // ---- 保存 ----
     async handleSave() {
       if (!this.hasChanges) {
@@ -537,13 +501,9 @@ export default {
       }
       this.saving = true
       try {
-        const rankingChanged = Object.keys(this.rankingMap).some(k => this.rankingMap[k] !== this.originalRanking[k])
         const displayChanged = Object.keys(this.displayMap).some(k => this.displayMap[k] !== this.originalDisplay[k])
 
         const promises = []
-        if (rankingChanged) {
-          promises.push(this.postRequest('/common/saOrg/batchUpdateRanking', this.rankingMap))
-        }
         if (displayChanged) {
           promises.push(this.postRequest('/common/saOrg/batchUpdateDisplay', this.displayMap))
         }
@@ -552,7 +512,6 @@ export default {
           successMsg: '保存成功',
           partialMsg: '部分配置保存失败，已重置',
           onSuccess: () => {
-            Object.keys(this.rankingMap).forEach(k => { this.originalRanking[k] = this.rankingMap[k] })
             Object.keys(this.displayMap).forEach(k => { this.originalDisplay[k] = this.displayMap[k] })
           },
           onPartial: () => { this.loadData() },

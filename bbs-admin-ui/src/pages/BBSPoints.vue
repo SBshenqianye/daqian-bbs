@@ -397,6 +397,7 @@ export default {
       this.postRequest('/common/pointsRank', {
         rankType: '01',
         orgNo: this.detailOrgNo,
+        categoryId: this.activeCategoryId,
         startTime: this.timeRange.start,
         endTime: this.timeRange.end,
       }).then(resp => {
@@ -419,6 +420,7 @@ export default {
       this.exporting = true
       this.downloadFile('/admin/points/export', {
         rankType: this.activeMode === 'org' ? '01' : '02',
+        categoryId: this.activeMode === 'org' ? this.activeCategoryId : null,
         startTime: this.timeRange.start,
         endTime: this.timeRange.end,
       }).then(resp => {
