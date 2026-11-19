@@ -71,7 +71,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
           <!-- 曲线 -->
           <section class="lg:col-span-8 bg-container border border-border rounded-xl p-4">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
@@ -161,45 +161,30 @@
             </p>
           </section>
 
-          <!-- 概要 -->
+          <!-- 概要：只放统计，逐阶段配置移到下方整行 -->
           <section class="lg:col-span-4 bg-container border border-border rounded-xl p-4">
             <h2 class="text-[14px] font-semibold text-on-surface mb-3">体系概要</h2>
             <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="text-[11px] text-secondary">大阶段数</label>
-                <input v-model.number="profile.majorCount" type="number" min="1" max="20" class="w-full mt-1 px-3 py-1.5 bg-surface border border-outline-variant rounded-lg text-[12px]" @change="onMajorCountChange">
+              <div class="rounded-lg border border-outline-variant bg-surface-container-lowest p-2.5">
+                <p class="text-[10.5px] text-outline">大阶段</p>
+                <p class="mt-0.5 text-[20px] font-semibold text-on-surface tabnum">{{ majorGroups.length }}</p>
               </div>
-              <div class="flex items-end">
-                <p class="text-[11px] text-on-surface-variant leading-4">每个大阶段的小阶段数量可单独设置，不再强制相同。</p>
+              <div class="rounded-lg border border-outline-variant bg-surface-container-lowest p-2.5">
+                <p class="text-[10.5px] text-outline">总级数</p>
+                <p class="mt-0.5 text-[20px] font-semibold text-on-surface tabnum">{{ items.length }}</p>
+              </div>
+              <div class="rounded-lg border border-outline-variant bg-surface-container-lowest p-2.5">
+                <p class="text-[10.5px] text-outline">最高门槛</p>
+                <p class="mt-0.5 text-[18px] font-semibold text-on-surface tabnum">{{ maxThreshold }}<span class="ml-0.5 text-[10px] font-normal text-outline">分</span></p>
+              </div>
+              <div class="rounded-lg border border-outline-variant bg-surface-container-lowest p-2.5">
+                <p class="text-[10.5px] text-outline">区间跨度</p>
+                <p class="mt-0.5 text-[12px] font-medium text-on-surface leading-5">{{ spanSummary }}</p>
               </div>
             </div>
-
-            <div class="mt-3 rounded-lg border border-outline-variant overflow-hidden">
-              <div class="grid grid-cols-[28px_1fr_70px] gap-2 px-2 py-1.5 bg-surface-container-low text-[10.5px] text-outline">
-                <span>#</span><span>大阶段名称</span><span class="text-right">小阶段数</span>
-              </div>
-              <div v-for="(m, mi) in majorGroups" :key="'cfg-' + mi" class="grid grid-cols-[28px_1fr_70px] gap-2 px-2 py-1.5 border-t border-outline-variant/40 items-center">
-                <span class="text-[11px] text-on-surface-variant">{{ mi + 1 }}</span>
-                <input
-                  :value="m.name"
-                  class="px-2 py-1 bg-surface border border-outline-variant rounded text-[12px] outline-none focus:border-primary"
-                  @change="renameMajor(mi + 1, $event.target.value)"
-                >
-                <input
-                  :value="minorCounts[mi]"
-                  type="number"
-                  min="1"
-                  max="50"
-                  class="px-2 py-1 bg-surface border border-outline-variant rounded text-[12px] text-right outline-none focus:border-primary"
-                  @change="setMinorCount(mi, $event.target.value)"
-                >
-              </div>
-              <p v-if="!majorGroups.length" class="px-2 py-2 text-[11px] text-on-surface-variant">暂无等级项，请先设置大阶段数。</p>
-            </div>
-            <div class="mt-3 space-y-1 text-[12px] text-on-surface-variant">
-              <p>共 <b class="text-on-surface">{{ items.length }}</b> 级，最高门槛 <b class="text-on-surface">{{ maxThreshold }}</b> 分</p>
-              <p>区间跨度：{{ spanSummary }}</p>
-            </div>
+            <p class="mt-3 rounded-lg bg-surface px-2.5 py-2 text-[11px] leading-4 text-on-surface-variant">
+              每个大阶段的名称和小阶段数量在下方的「阶段配置」中单独调整。
+            </p>
             <div class="mt-3 flex flex-wrap gap-1">
               <span
                 v-for="(m, mi) in majorGroups"
@@ -210,6 +195,66 @@
             </div>
           </section>
         </div>
+
+        <!-- 阶段配置：整行横向铺开，避免右栏被 8 行配置撑高 -->
+        <section class="bg-container border border-border rounded-xl mt-4 p-4">
+          <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
+            <div>
+              <h2 class="text-[14px] font-semibold text-on-surface">阶段配置</h2>
+              <p class="text-[11px] text-on-surface-variant mt-0.5">每个大阶段可单独改名、设置小阶段数量；修改后自动重排该阶段门槛。</p>
+            </div>
+            <label class="flex items-center gap-2 text-[11.5px] text-secondary">
+              大阶段数
+              <input
+                v-model.number="profile.majorCount"
+                type="number"
+                min="1"
+                max="20"
+                class="w-20 px-2 py-1.5 bg-surface border border-outline-variant rounded-lg text-[12px] text-right outline-none focus:border-primary"
+                @change="onMajorCountChange"
+              >
+            </label>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+            <div
+              v-for="(m, mi) in majorGroups"
+              :key="'cfg-' + mi"
+              class="rounded-lg border border-outline-variant bg-surface-container-lowest p-2.5"
+            >
+              <div class="flex items-center gap-2">
+                <span
+                  class="grid place-items-center w-5 h-5 rounded-full text-[10px] text-white shrink-0"
+                  :style="{ backgroundColor: stageColor(mi + 1) }"
+                >{{ mi + 1 }}</span>
+                <input
+                  :value="m.name"
+                  class="min-w-0 flex-1 px-2 py-1 bg-surface border border-outline-variant rounded text-[12px] outline-none focus:border-primary"
+                  @change="renameMajor(mi + 1, $event.target.value)"
+                >
+              </div>
+              <div class="mt-2 flex items-center justify-between gap-2">
+                <span class="text-[10.5px] text-outline">小阶段数</span>
+                <div class="flex items-center gap-1">
+                  <button class="step-btn" @click="setMinorCount(mi, minorCounts[mi] - 1)">−</button>
+                  <input
+                    :value="minorCounts[mi]"
+                    type="number"
+                    min="1"
+                    max="50"
+                    class="w-12 px-1.5 py-1 bg-surface border border-outline-variant rounded text-[12px] text-center outline-none focus:border-primary"
+                    @change="setMinorCount(mi, $event.target.value)"
+                  >
+                  <button class="step-btn" @click="setMinorCount(mi, minorCounts[mi] + 1)">+</button>
+                </div>
+              </div>
+              <p class="mt-1 text-[10px] text-outline">
+                Lv.{{ m.items[0].levelIndex }}–{{ m.items[m.items.length - 1].levelIndex }}
+                · {{ m.items[0].pointsThreshold }} → {{ m.items[m.items.length - 1].pointsThreshold }} 分
+              </p>
+            </div>
+            <p v-if="!majorGroups.length" class="text-[11px] text-on-surface-variant">暂无等级项，请先设置大阶段数。</p>
+          </div>
+        </section>
 
         <!-- 等级明细 -->
         <section class="bg-container border border-border rounded-xl mt-4 overflow-hidden">
