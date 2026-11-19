@@ -284,53 +284,64 @@
                 <p class="text-[10px] text-outline mt-2 leading-relaxed">模板会作为一个新图层加入画布，可继续用工具和样式调整。</p>
               </div>
 
-              <!-- 素材库 -->
-              <div v-show="studioTab === 'assets'">
-                <div class="flex items-center justify-between mb-2">
-                  <p class="text-[11px] text-secondary">素材库 ({{ assets.length }})</p>
-                  <button class="text-[11px] text-primary" @click="loadAssets">刷新</button>
-                </div>
-                <div class="flex flex-wrap items-center gap-1 mb-2">
-                  <button
-                    v-for="c in assetFilters"
-                    :key="c.key"
-                    class="px-2 py-0.5 rounded text-[10px] border"
-                    :class="assetFilter === c.key ? 'bg-primary text-white border-primary' : 'bg-surface text-on-surface-variant border-outline-variant'"
-                    @click="assetFilter = c.key"
-                  >{{ c.label }}</button>
-                </div>
-                <div class="grid grid-cols-2 gap-2 max-h-[520px] overflow-y-auto custom-scrollbar pr-1">
-                  <div
-                    v-for="a in filteredAssets"
-                    :key="a.id"
-                    class="group rounded-lg border border-outline-variant bg-surface-container-lowest p-2 hover:border-primary transition-colors"
-                  >
-                    <div class="h-20 rounded-md bg-surface grid place-items-center overflow-hidden">
-                      <span class="bbs-level-svg h-12 w-12 inline-flex" v-html="a.svg"></span>
-                    </div>
-                    <p class="mt-1.5 text-[11px] text-on-surface truncate" :title="a.assetName">{{ a.assetName }}</p>
-                    <div class="flex items-center justify-between mt-1">
-                      <span class="text-[9px] text-outline">{{ categoryLabel(a.category) }}</span>
-                      <div class="flex items-center gap-0.5">
-                        <button class="asset-act" title="载入到画布" @click="loadAssetToCanvas(a)">
-                          <span class="material-symbols-outlined text-[15px]">add_photo_alternate</span>
-                        </button>
-                        <button class="asset-act" title="重命名" @click="renameAsset(a)">
-                          <span class="material-symbols-outlined text-[15px]">edit</span>
-                        </button>
-                        <button class="asset-act is-danger" title="删除" @click="deleteAsset(a)">
-                          <span class="material-symbols-outlined text-[15px]">delete</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <p v-if="!filteredAssets.length" class="col-span-2 text-[11px] text-outline text-center py-6">暂无素材</p>
-                </div>
-              </div>
             </div>
           </div>
         </section>
       </div>
+
+      <!-- 素材库：独立整行，不再塞进右侧标签 -->
+      <section class="bg-container border border-border rounded-xl mt-3 overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-outline-variant bg-surface-container-lowest">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px] text-primary">collections</span>
+            <h2 class="text-[13.5px] font-semibold text-on-surface">素材库 ({{ assets.length }})</h2>
+            <span class="text-[10.5px] text-outline">点击缩略图可载入画布</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-1">
+            <button
+              v-for="c in assetFilters"
+              :key="c.key"
+              class="px-2.5 py-1 rounded-md text-[10.5px] border transition-colors"
+              :class="assetFilter === c.key ? 'bg-primary text-white border-primary' : 'bg-surface text-on-surface-variant border-outline-variant hover:border-primary'"
+              @click="assetFilter = c.key"
+            >{{ c.label }}</button>
+            <button class="ml-1 px-2.5 py-1 rounded-md text-[10.5px] text-primary border border-outline-variant hover:border-primary" @click="loadAssets">刷新</button>
+          </div>
+        </div>
+        <div class="p-3">
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+            <div
+              v-for="a in filteredAssets"
+              :key="a.id"
+              class="group rounded-lg border border-outline-variant bg-surface-container-lowest p-2 hover:border-primary transition-colors"
+            >
+              <div
+                class="h-24 rounded-md bg-surface grid place-items-center overflow-hidden cursor-pointer"
+                :title="'载入到画布：' + a.assetName"
+                @click="loadAssetToCanvas(a)"
+              >
+                <span class="bbs-level-svg h-14 w-14 inline-flex" v-html="a.svg"></span>
+              </div>
+              <p class="mt-1.5 text-[11px] text-on-surface truncate" :title="a.assetName">{{ a.assetName }}</p>
+              <div class="flex items-center justify-between mt-1">
+                <span class="text-[9px] text-outline">{{ categoryLabel(a.category) }}</span>
+                <div class="flex items-center gap-0.5">
+                  <button class="asset-act" title="载入到画布" @click="loadAssetToCanvas(a)">
+                    <span class="material-symbols-outlined text-[15px]">add_photo_alternate</span>
+                  </button>
+                  <button class="asset-act" title="重命名" @click="renameAsset(a)">
+                    <span class="material-symbols-outlined text-[15px]">edit</span>
+                  </button>
+                  <button class="asset-act is-danger" title="删除" @click="deleteAsset(a)">
+                    <span class="material-symbols-outlined text-[15px]">delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p v-if="!filteredAssets.length" class="col-span-full text-[11px] text-outline text-center py-8">暂无素材</p>
+          </div>
+        </div>
+      </section>
     </div>
 
     <!-- 保存 -->
@@ -494,7 +505,6 @@ export default {
         { key: 'layers', label: '图层', icon: 'account_tree', badge: this.layers.length },
         { key: 'style', label: '样式', icon: 'palette' },
         { key: 'templates', label: '模板', icon: 'category' },
-        { key: 'assets', label: '素材库', icon: 'collections', badge: this.assets.length },
       ]
     },
     layersOrdered() {
@@ -573,7 +583,6 @@ export default {
     /* ---------- 面板 ---------- */
     switchStudioTab(key) {
       this.studioTab = key
-      if (key === 'assets') this.loadAssets()
     },
 
     /* ---------- 基础 ---------- */
