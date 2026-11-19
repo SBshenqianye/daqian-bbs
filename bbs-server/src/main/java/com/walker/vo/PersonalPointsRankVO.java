@@ -51,4 +51,9 @@ public class PersonalPointsRankVO {
      * 排名序号
      */
     private Integer rankNum;
+
+    /**
+     * 等级序号（1..24，按累计积分换算；用于列表展示等级图标）
+     */
+    private Integer levelIndex;
 }

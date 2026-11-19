@@ -53,6 +53,11 @@
         </div>
         <p class="mt-2 font-bold text-on-surface truncate">{{ profile.nickname }}</p>
         <p class="text-[11px] text-on-surface-variant truncate">{{ profile.orgNameFull || profile.orgName || '—' }}</p>
+        <p
+          v-if="profile.introduce"
+          class="mt-1 text-[11px] text-on-surface-variant leading-snug truncate"
+          :title="profile.introduce"
+        >{{ profile.introduce }}</p>
 
         <div class="flex items-center gap-2 mt-2">
           <BBSLevelBadge :level-index="profileLevel" :level="{ levelName: levelName, totalPoints: levelPoints }" />

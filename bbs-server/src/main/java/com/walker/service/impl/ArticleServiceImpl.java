@@ -1135,6 +1135,17 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // 按显示层级解析组织标签（用户组织被隐藏时显示上一可见级）
         applyDisplayOrgToRank(list);
 
+        // 批量补齐等级序号，列表直接展示等级图标（一次查询，避免 N+1）
+        if (!CollectionUtils.isEmpty(list)) {
+            try {
+                Map<Integer, Integer> levelMap = levelService.getLevelIndexMap(
+                        list.stream().map(PersonalPointsRankVO::getUserId).collect(Collectors.toList()));
+                list.forEach(item -> item.setLevelIndex(levelMap.get(item.getUserId())));
+            } catch (Exception ignore) {
+                // 等级计算失败不影响排名主流程
+            }
+        }
+
         // 查询当前用户排名
         PersonalPointsRankVO currentUser = null;
         if (param.getCurrentUserId() != null) {
@@ -1170,6 +1181,14 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // 当前用户排名卡的 orgName 同样按显示层级过滤
         if (currentUser != null && currentUser.getOrgNo() != null) {
             currentUser.setOrgName(saOrgService.resolveDisplayOrgName(currentUser.getOrgNo(), currentUser.getOrgName()));
+        }
+        // 当前用户等级（未上榜时也要显示）
+        if (currentUser != null && currentUser.getLevelIndex() == null) {
+            try {
+                currentUser.setLevelIndex(levelService.getLevelIndex(currentUser.getUserId()));
+            } catch (Exception ignore) {
+                // 等级计算失败不影响排名主流程
+            }
         }
 
         Map<String, Object> result = new HashMap<>();

@@ -223,19 +223,23 @@
             <div class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md font-bold text-[11px]" :class="getRankClass(i + 1)">
               {{ i + 1 }}
             </div>
-            <img
-              :src="normalizeFileUrl(item.portrait) || require('@/assets/portrait.png')"
-              class="w-9 h-9 rounded-full object-cover border-2 shrink-0"
-              :class="i === 0 ? 'border-rank-gold' : i === 1 ? 'border-rank-silver' : i === 2 ? 'border-rank-bronze' : 'border-outline-variant'"
-              alt="头像"
-              @error="$event.target.src = require('@/assets/portrait.png')"
-            />
             <div class="flex-1 min-w-0">
               <div class="flex items-center justify-between gap-2">
-                <p class="text-[13px] font-semibold text-on-surface truncate">{{ item.nickName }}</p>
+                <div class="flex items-center gap-2 min-w-0">
+                  <BBSUserBadge
+                    :avatar="normalizeFileUrl(item.portrait)"
+                    :nickname="item.nickName"
+                    :org-name="item.orgName"
+                    :level-index="item.levelIndex"
+                    :user-id="item.userId"
+                    size="md"
+                    layout="inline"
+                    class="min-w-0"
+                  />
+                  <BBSLevelBadge :level-index="item.levelIndex" class="shrink-0" />
+                </div>
                 <p class="text-[15px] font-bold text-primary tabnum leading-5 shrink-0">{{ item.points }} <span class="text-[9.5px] font-normal text-outline">分</span></p>
               </div>
-              <p class="text-[10.5px] text-on-surface-variant truncate">{{ item.orgName }}</p>
               <div class="flex items-center justify-between gap-2 mt-1">
                 <p class="text-[10px] text-outline">发帖 {{ item.posts }} · 回帖 {{ item.replies }}</p>
               </div>
@@ -265,16 +269,16 @@
       class="bottom-bar fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-sm border-t border-outline-variant/30 z-40"
     >
       <div class="max-w-7xl mx-auto px-page-margin-mobile md:px-page-margin-desktop py-2.5 flex items-center gap-3">
-        <img
-          :src="normalizeFileUrl(currentUserInfo.portrait) || require('@/assets/portrait.png')"
-          class="w-9 h-9 rounded-full object-cover border-2 border-primary shrink-0"
-          alt="头像"
-          @error="$event.target.src = require('@/assets/portrait.png')"
+        <BBSUserBadge
+          :avatar="normalizeFileUrl(currentUserInfo.portrait)"
+          :nickname="currentUserInfo.nickName"
+          :org-name="currentUserInfo.orgName"
+          :level-index="currentUserInfo.levelIndex"
+          :user-id="currentUserInfo.userId"
+          size="md"
+          layout="stacked"
+          class="min-w-0 flex-1"
         />
-        <div class="flex-1 min-w-0">
-          <p class="font-semibold text-on-surface text-[12.5px] truncate">{{ currentUserInfo.nickName }}</p>
-          <p class="text-[10.5px] text-on-surface-variant truncate">{{ currentUserInfo.orgName }}</p>
-        </div>
         <div class="text-right shrink-0">
           <p class="text-[10px] text-outline">我的积分</p>
           <p class="text-[16px] font-bold text-primary tabnum leading-5">{{ currentUserInfo.points }}</p>
@@ -293,6 +297,8 @@
 import { getUser } from '@/utils/auth'
 import { normalizeFileUrl } from '@/utils/utils'
 import PageHeader from '@/components/PageHeader.vue'
+import BBSUserBadge from '@/components/BBSUserBadge.vue'
+import BBSLevelBadge from '@/components/BBSLevelBadge.vue'
 import { handleResponse } from '../../../shared/feedback'
 
 const RANK_COLORS = [
@@ -341,7 +347,7 @@ function calcTimeRange(key) {
 
 export default {
   name: 'BBSPoints',
-  components: { PageHeader },
+  components: { PageHeader, BBSUserBadge, BBSLevelBadge },
   data() {
     return {
       loading: false,
