@@ -20,8 +20,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -148,6 +150,37 @@ class LevelServiceTest {
         assertEquals(500, result.getCode());
         assertTrue(result.getMessage().contains("小阶段序号"));
         verify(itemMapper, never()).insert(any(LevelItem.class));
+    }
+
+    @Test
+    @DisplayName("默认 24 级体系：按产品累计门槛解析等级，年度极限停在工匠前一级")
+    void getUserLevel_resolvesDefault24Ladder() {
+        LevelProfile profile = new LevelProfile();
+        profile.setId(1);
+        profile.setProfileName("默认等级体系");
+        profile.setStatus(1);
+        when(operationCycleService.getActiveCycle()).thenReturn(null);
+        when(profileMapper.selectList(any())).thenReturn(Collections.singletonList(profile));
+
+        int[] thresholds = {0, 100, 250, 500, 800, 1200, 1800, 2600, 3600, 5100, 7100, 9600,
+                12600, 16100, 20100, 25100, 31100, 38100, 46100, 55100, 65100, 77100, 92100, 110100};
+        List<LevelItem> items = new java.util.ArrayList<>();
+        for (int i = 0; i < thresholds.length; i++) {
+            LevelItem levelItem = item(i / 3 + 1, i % 3 + 1, thresholds[i]);
+            levelItem.setLevelIndex(i + 1);
+            items.add(levelItem);
+        }
+        when(itemMapper.selectList(any())).thenReturn(items);
+
+        when(pointsLogService.getPointsAdjustment(7)).thenReturn(43890);
+        Map<String, Object> yearlyLimit = service.getUserLevel(7);
+        assertEquals(18, yearlyLimit.get("level"));
+        assertEquals(46100, yearlyLimit.get("nextThreshold"));
+
+        when(pointsLogService.getPointsAdjustment(7)).thenReturn(110100);
+        Map<String, Object> ceiling = service.getUserLevel(7);
+        assertEquals(24, ceiling.get("level"));
+        assertNull(ceiling.get("nextThreshold"));
     }
 
     private LevelItem item(int majorIndex, int minorIndex, int threshold) {
