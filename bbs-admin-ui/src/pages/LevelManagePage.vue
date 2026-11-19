@@ -14,7 +14,24 @@
         </div>
         <div class="flex items-center gap-2">
           <button class="px-3.5 py-2 bg-surface-variant text-on-surface rounded-lg hover:bg-outline-variant text-[12px]" @click="load">刷新</button>
-          <button class="px-3.5 py-2 border border-outline-variant rounded-lg hover:border-primary text-[12px]" @click="linearize">一键等差重排</button>
+          <div class="flex items-center gap-1">
+            <select v-model="autoMode" class="px-2 py-2 text-[12px] bg-surface border border-outline-variant rounded-lg outline-none">
+              <option value="linear">等差</option>
+              <option value="geometric">等比</option>
+              <option value="fibonacci">斐波那契</option>
+              <option value="quadratic">平方递增</option>
+            </select>
+            <input
+              v-if="autoMode === 'geometric'"
+              v-model.number="autoRatio"
+              type="number"
+              min="1.01"
+              step="0.05"
+              class="w-[64px] px-2 py-2 text-[12px] bg-surface border border-outline-variant rounded-lg text-right"
+              title="等比倍率，例如 1.15"
+            >
+            <button class="px-3.5 py-2 border border-outline-variant rounded-lg hover:border-primary text-[12px]" @click="autoRelayout">一键重排</button>
+          </div>
           <button class="px-5 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 text-[12px] font-medium disabled:opacity-50" :disabled="saving" @click="save">
             {{ saving ? '保存中...' : '保存配置' }}
           </button>
@@ -150,12 +167,34 @@
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="text-[11px] text-secondary">大阶段数</label>
-                <input v-model.number="profile.majorCount" type="number" min="1" class="w-full mt-1 px-3 py-1.5 bg-surface border border-outline-variant rounded-lg text-[12px]" @change="rebuild">
+                <input v-model.number="profile.majorCount" type="number" min="1" max="20" class="w-full mt-1 px-3 py-1.5 bg-surface border border-outline-variant rounded-lg text-[12px]" @change="onMajorCountChange">
               </div>
-              <div>
-                <label class="text-[11px] text-secondary">每阶段小阶段</label>
-                <input v-model.number="profile.minorPerMajor" type="number" min="1" class="w-full mt-1 px-3 py-1.5 bg-surface border border-outline-variant rounded-lg text-[12px]" @change="rebuild">
+              <div class="flex items-end">
+                <p class="text-[11px] text-on-surface-variant leading-4">每个大阶段的小阶段数量可单独设置，不再强制相同。</p>
               </div>
+            </div>
+
+            <div class="mt-3 rounded-lg border border-outline-variant overflow-hidden">
+              <div class="grid grid-cols-[28px_1fr_70px] gap-2 px-2 py-1.5 bg-surface-container-low text-[10.5px] text-outline">
+                <span>#</span><span>大阶段名称</span><span class="text-right">小阶段数</span>
+              </div>
+              <div v-for="(m, mi) in majorGroups" :key="'cfg-' + mi" class="grid grid-cols-[28px_1fr_70px] gap-2 px-2 py-1.5 border-t border-outline-variant/40 items-center">
+                <span class="text-[11px] text-on-surface-variant">{{ mi + 1 }}</span>
+                <input
+                  :value="m.name"
+                  class="px-2 py-1 bg-surface border border-outline-variant rounded text-[12px] outline-none focus:border-primary"
+                  @change="renameMajor(mi + 1, $event.target.value)"
+                >
+                <input
+                  :value="minorCounts[mi]"
+                  type="number"
+                  min="1"
+                  max="50"
+                  class="px-2 py-1 bg-surface border border-outline-variant rounded text-[12px] text-right outline-none focus:border-primary"
+                  @change="setMinorCount(mi, $event.target.value)"
+                >
+              </div>
+              <p v-if="!majorGroups.length" class="px-2 py-2 text-[11px] text-on-surface-variant">暂无等级项，请先设置大阶段数。</p>
             </div>
             <div class="mt-3 space-y-1 text-[12px] text-on-surface-variant">
               <p>共 <b class="text-on-surface">{{ items.length }}</b> 级，最高门槛 <b class="text-on-surface">{{ maxThreshold }}</b> 分</p>
@@ -196,7 +235,13 @@
                     <td colspan="6" class="px-2 py-1.5" :style="{ backgroundColor: stageSoft(gi + 1) }">
                       <div class="flex items-center gap-2">
                         <span class="bbs-level-svg h-5 inline-flex" v-html="groupIcon(group)"></span>
-                        <span class="font-medium" :style="{ color: stageColor(gi + 1) }">{{ group.name }}</span>
+                        <input
+                          :value="group.name"
+                          class="w-28 px-1.5 py-0.5 bg-transparent border border-transparent rounded text-[12px] font-medium outline-none hover:border-outline-variant focus:border-primary focus:bg-surface"
+                          :style="{ color: stageColor(gi + 1) }"
+                          title="点击修改大阶段名称"
+                          @change="renameMajor(gi + 1, $event.target.value)"
+                        >
                         <span class="text-[11px] text-on-surface-variant">
                           Lv.{{ group.items[0].levelIndex }}–{{ group.items[group.items.length - 1].levelIndex }}
                           · {{ group.items[0].pointsThreshold }} → {{ group.items[group.items.length - 1].pointsThreshold }} 分
@@ -374,6 +419,9 @@ export default {
       activeProfileId: null,
       activating: false,
       items: [],
+      minorCounts: [],
+      autoMode: 'linear',
+      autoRatio: 1.15,
       dragging: false,
       dragIndex: -1,
       dragLevel: 0,
@@ -519,6 +567,22 @@ export default {
         badgeName: i.badgeName || '',
         description: i.description || '',
       }))
+      this.minorCounts = this.deriveMinorCounts()
+    },
+    deriveMinorCounts() {
+      const counts = []
+      this.items.forEach(i => {
+        const idx = Number(i.majorIndex) - 1
+        if (idx >= 0) counts[idx] = (counts[idx] || 0) + 1
+      })
+      const majors = counts.length > 0
+        ? counts.length
+        : Math.max(1, Number(this.profile.majorCount) || 8)
+      const fallback = Math.max(1, Number(this.profile.minorPerMajor) || 3)
+      for (let i = 0; i < majors; i++) {
+        if (!counts[i]) counts[i] = fallback
+      }
+      return counts.length ? counts : Array.from({ length: 8 }, () => 3)
     },
     onProfileSelect() {
       const entry = this.profiles.find(p => p.profile && p.profile.id === this.activeProfileId)
@@ -535,20 +599,38 @@ export default {
       }
     },
     cloneProfile() {
-      this.$prompt('新方案名称', '另存为新方案', {
+      this.$prompt('会先把当前页面上的修改一起保存到新方案。', '另存为新方案', {
         inputValue: (this.profile.profileName || '等级方案') + ' 副本',
         inputPattern: /\S+/,
         inputErrorMessage: '名称不能为空',
-      }).then(async ({ value }) => {
-        const res = await this.postRequest('/admin/level/clone', { id: this.profile.id, name: value })
-        if (res && res.code === 200) {
-          this.activeProfileId = res.obj
-          this.$message.success('已复制为新方案')
-          this.load()
-        } else {
-          this.$message.error((res && res.message) || '复制失败')
+        confirmButtonText: '保存为新方案',
+      }).then(({ value }) => this.saveAsNew(value)).catch(() => {})
+    },
+    async saveAsNew(name) {
+      this.saving = true
+      try {
+        this.syncProfileCounts()
+        const newProfile = {
+          ...this.profile,
+          id: null,
+          profileName: name,
+          status: 0,
+          createTime: null,
+          updateTime: null,
         }
-      }).catch(() => {})
+        const res = await this.postRequest('/admin/level/save', this.buildPayload(newProfile))
+        if (res && res.code === 200) {
+          this.activeProfileId = res.obj || null
+          this.$message.success('当前修改已保存为新方案')
+          await this.load()
+        } else {
+          this.$message.error((res && res.message) || '另存失败')
+        }
+      } catch (e) {
+        this.$message.error('另存失败')
+      } finally {
+        this.saving = false
+      }
     },
     removeProfile() {
       if (!this.profile.id) return
@@ -564,40 +646,125 @@ export default {
           }
         }).catch(() => {})
     },
+    onMajorCountChange() {
+      const majors = Math.max(1, Math.min(20, Math.floor(Number(this.profile.majorCount) || 1)))
+      this.profile.majorCount = majors
+      const counts = this.minorCounts.slice(0, majors)
+      while (counts.length < majors) {
+        counts.push(Math.max(1, Number(this.profile.minorPerMajor) || 3))
+      }
+      this.minorCounts = counts
+      this.rebuild()
+    },
+    setMinorCount(mi, value) {
+      const count = Math.max(1, Math.min(50, Math.floor(Number(value) || 1)))
+      this.$set(this.minorCounts, mi, count)
+      this.rebuild()
+    },
+    renameMajor(majorIndex, value) {
+      const name = (value || '').trim()
+      if (!name) return
+      const group = this.items.filter(i => i.majorIndex === majorIndex)
+      if (!group.length) return
+      const oldName = group[0].majorName
+      group.forEach(item => {
+        item.majorName = name
+        if (!item.displayName || item.displayName === `${oldName}-${item.minorIndex}`) {
+          item.displayName = `${name}-${item.minorIndex}`
+        }
+      })
+    },
     rebuild() {
-      const majorCount = Math.max(1, Number(this.profile.majorCount) || 8)
-      const minorCount = Math.max(1, Number(this.profile.minorPerMajor) || 3)
+      const majors = Math.max(1, Math.min(20, Math.floor(Number(this.profile.majorCount) || 1)))
+      const counts = []
+      for (let i = 0; i < majors; i++) {
+        const c = Number(this.minorCounts[i])
+        counts.push(Number.isFinite(c) && c >= 1 ? Math.floor(c) : 3)
+      }
+      this.minorCounts = counts
+      this.profile.majorCount = majors
+      this.profile.minorPerMajor = counts[0] || 3
+
+      const oldItems = this.items.slice()
+      const oldGroups = {}
+      const oldStarts = {}
+      oldItems.forEach(item => {
+        if (!oldGroups[item.majorIndex]) oldGroups[item.majorIndex] = []
+        oldGroups[item.majorIndex].push(item)
+        if (item.minorIndex === 1) oldStarts[item.majorIndex] = Number(item.pointsThreshold) || 0
+      })
+
       const items = []
       let level = 1
-      for (let m = 0; m < majorCount; m++) {
-        const majorName = MAJOR_NAMES[m] || ('阶段' + (m + 1))
-        for (let n = 0; n < minorCount; n++) {
+      for (let m = 1; m <= counts.length; m++) {
+        const oldGroup = oldGroups[m] || []
+        const name = (oldGroup[0] && oldGroup[0].majorName) || MAJOR_NAMES[m - 1] || ('阶段' + m)
+        const count = counts[m - 1]
+        let start = oldStarts[m]
+        if (start == null) {
+          const prev = items.length ? items[items.length - 1].pointsThreshold : -this.step
+          start = prev + this.step
+        }
+        let end = (m < counts.length && oldStarts[m + 1] != null)
+          ? oldStarts[m + 1]
+          : start + count * this.step
+        if (end <= start) end = start + count * this.step
+
+        for (let n = 0; n < count; n++) {
+          const old = oldGroup[n] || oldGroup[oldGroup.length - 1] || {}
+          let threshold = n === 0
+            ? start
+            : Math.floor(start + (end - start) * n / count)
+          const prev = items.length ? items[items.length - 1].pointsThreshold : -1
+          if (threshold <= prev) threshold = prev + 1
           items.push({
-            levelIndex: level,
-            majorIndex: m + 1,
-            majorName,
+            levelIndex: level++,
+            majorIndex: m,
+            majorName: name,
             minorIndex: n + 1,
-            displayName: majorName + '-' + (n + 1),
-            pointsThreshold: (level - 1) * this.step,
-            iconKey: null,
-            colorToken: null,
-            iconSvg: '',
-            badgeName: '',
-            description: '',
+            displayName: (old.displayName && old.majorName === name && old.minorIndex === n + 1)
+              ? old.displayName
+              : (name + '-' + (n + 1)),
+            pointsThreshold: threshold,
+            iconKey: old.iconKey || null,
+            colorToken: old.colorToken || null,
+            iconSvg: old.iconSvg || '',
+            badgeName: old.badgeName || '',
+            description: old.description || '',
           })
-          level++
         }
       }
       this.items = items
-      this.profile.majorCount = majorCount
-      this.profile.minorPerMajor = minorCount
     },
     onStepChange() {
       const s = Number(this.step)
       this.step = Number.isFinite(s) && s >= 10 ? Math.round(s) : 100
     },
-    linearize() {
-      this.items.forEach((item, i) => { item.pointsThreshold = i * this.step })
+    autoRelayout() {
+      const mode = this.autoMode
+      const ratio = Math.max(1.01, Number(this.autoRatio) || 1.15)
+      const fib = (n) => {
+        if (n <= 2) return 1
+        let a = 1, b = 1
+        for (let i = 3; i <= n; i++) {
+          const c = a + b
+          a = b
+          b = c
+        }
+        return b
+      }
+      let value = 0
+      this.items.forEach((item, i) => {
+        if (i > 0) {
+          let interval = this.step
+          if (mode === 'geometric') interval = this.step * Math.pow(ratio, i - 1)
+          else if (mode === 'fibonacci') interval = this.step * fib(i)
+          else if (mode === 'quadratic') interval = this.step * i
+          value += interval
+        }
+        item.pointsThreshold = Math.round(value)
+      })
+      this.ratios = null
     },
     findIndex(levelIndex) {
       return this.items.findIndex(i => i.levelIndex === levelIndex)
@@ -798,26 +965,37 @@ export default {
       item.colorToken = null
     },
     /* ---------- 保存 ---------- */
+    syncProfileCounts() {
+      const counts = this.deriveMinorCounts()
+      this.minorCounts = counts
+      this.profile.majorCount = counts.length
+      this.profile.minorPerMajor = counts[0] || 3
+      this.profile.minorCounts = counts.slice()
+    },
+    buildPayload(profileOverride) {
+      return {
+        profile: profileOverride || { ...this.profile, minorCounts: this.minorCounts.slice() },
+        items: this.items.map(i => ({
+          levelIndex: i.levelIndex,
+          majorIndex: i.majorIndex,
+          majorName: i.majorName,
+          minorIndex: i.minorIndex,
+          displayName: i.displayName,
+          pointsThreshold: Number(i.pointsThreshold) || 0,
+          iconKey: i.iconKey || null,
+          colorToken: i.colorToken || null,
+          iconSvg: i.iconSvg || null,
+          badgeName: i.badgeName || null,
+          description: i.description || null,
+        })),
+      }
+    },
     async save() {
+      if (!this.items.length) { this.$message.warning('请先设置等级项'); return }
       this.saving = true
       try {
-        const payload = {
-          profile: this.profile,
-          items: this.items.map(i => ({
-            levelIndex: i.levelIndex,
-            majorIndex: i.majorIndex,
-            majorName: i.majorName,
-            minorIndex: i.minorIndex,
-            displayName: i.displayName,
-            pointsThreshold: Number(i.pointsThreshold) || 0,
-            iconKey: i.iconKey || null,
-            colorToken: i.colorToken || null,
-            iconSvg: i.iconSvg || null,
-            badgeName: i.badgeName || null,
-            description: i.description || null,
-          })),
-        }
-        const res = await this.postRequest('/admin/level/save', payload)
+        this.syncProfileCounts()
+        const res = await this.postRequest('/admin/level/save', this.buildPayload())
         handleResponse(res, { successMsg: '等级配置已保存', errorMsg: '保存失败', onSuccess: () => this.load() })
       } catch (e) {
         this.$message.error('保存失败')

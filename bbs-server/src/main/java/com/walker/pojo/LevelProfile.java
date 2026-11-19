@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.List;
 
 @Data
 @TableName("bbs_level_profile")
@@ -27,4 +28,11 @@ public class LevelProfile implements Serializable {
     private String createTime;
     @TableField("update_time")
     private String updateTime;
+
+    /**
+     * 每个大阶段的小阶段数量（与 majorIndex 顺序对应）。
+     * 不落库：由等级项实时推导，保证存量方案无需迁移即可兼容。
+     */
+    @TableField(exist = false)
+    private List<Integer> minorCounts;
 }

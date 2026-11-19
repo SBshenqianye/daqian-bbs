@@ -14,6 +14,7 @@ import org.springframework.util.CollectionUtils;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -49,9 +50,11 @@ public class LevelService {
         if (profile == null) {
             return ResultBean.success("查询成功", null);
         }
+        List<LevelItem> items = listItems(profile.getId());
+        fillMinorCounts(profile, items);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("profile", profile);
-        data.put("items", listItems(profile.getId()));
+        data.put("items", items);
         return ResultBean.success("查询成功", data);
     }
 
@@ -201,15 +204,51 @@ public class LevelService {
     }
 
     @Transactional
-    public ResultBean saveProfile(LevelProfile profile, List<LevelItem> items) {        if (profile == null || profile.getMajorCount() == null || profile.getMinorPerMajor() == null) {
-            return ResultBean.error("大阶段数和小阶段数不能为空");
-        }
-        if (profile.getMajorCount() < 1 || profile.getMinorPerMajor() < 1) {
-            return ResultBean.error("大阶段数和小阶段数必须大于 0");
+    public ResultBean saveProfile(LevelProfile profile, List<LevelItem> items) {
+        if (profile == null) {
+            return ResultBean.error("方案不能为空");
         }
         if (CollectionUtils.isEmpty(items)) {
             return ResultBean.error("等级项不能为空");
         }
+
+        // 按“大阶段 → 小阶段”排序后校验连续性，并推导每个大阶段的小阶段数量。
+        // 这样存量方案（8×3、7×3 或任意不等长结构）都能直接兼容，无需改库。
+        items.sort(Comparator
+                .comparing(LevelItem::getMajorIndex, Comparator.nullsLast(Integer::compareTo))
+                .thenComparing(LevelItem::getMinorIndex, Comparator.nullsLast(Integer::compareTo)));
+        List<Integer> minorCounts = new ArrayList<>();
+        int expectedMinor = 1;
+        int lastMajor = -1;
+        for (int i = 0; i < items.size(); i++) {
+            LevelItem item = items.get(i);
+            Integer majorIndex = item.getMajorIndex();
+            Integer minorIndex = item.getMinorIndex();
+            if (majorIndex == null || majorIndex < 1) {
+                return ResultBean.error("大阶段序号不能为空");
+            }
+            if (majorIndex != lastMajor) {
+                if (majorIndex != minorCounts.size() + 1) {
+                    return ResultBean.error("大阶段序号必须从 1 连续递增");
+                }
+                lastMajor = majorIndex;
+                expectedMinor = 1;
+                minorCounts.add(0);
+            }
+            if (minorIndex == null || minorIndex != expectedMinor) {
+                return ResultBean.error("第 " + majorIndex + " 个大阶段的小阶段序号必须从 1 连续递增");
+            }
+            expectedMinor++;
+            minorCounts.set(minorCounts.size() - 1, minorCounts.get(minorCounts.size() - 1) + 1);
+            item.setLevelIndex(i + 1);
+        }
+        if (minorCounts.isEmpty()) {
+            return ResultBean.error("至少需要一个等级项");
+        }
+        profile.setMajorCount(minorCounts.size());
+        profile.setMinorPerMajor(minorCounts.get(0));
+        profile.setMinorCounts(minorCounts);
+
         String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
         if (profile.getId() == null) {
             profile.setProfileName(profile.getProfileName() == null ? "默认等级体系" : profile.getProfileName());
@@ -227,8 +266,7 @@ public class LevelService {
             itemMapper.delete(new LambdaQueryWrapper<LevelItem>().eq(LevelItem::getProfileId, profile.getId()));
         }
         int lastThreshold = -1;
-        for (int i = 0; i < items.size(); i++) {
-            LevelItem item = items.get(i);
+        for (LevelItem item : items) {
             int threshold = item.getPointsThreshold() == null ? 0 : item.getPointsThreshold();
             if (threshold < lastThreshold) {
                 return ResultBean.error("积分门槛必须单调递增");
@@ -236,12 +274,39 @@ public class LevelService {
             lastThreshold = threshold;
             item.setId(null);
             item.setProfileId(profile.getId());
-            item.setLevelIndex(item.getLevelIndex() == null ? i + 1 : item.getLevelIndex());
             item.setEnabled(1);
             item.setIconSvg(sanitizeIconSvg(item.getIconSvg()));
             itemMapper.insert(item);
         }
-        return ResultBean.success("保存成功");
+        return ResultBean.success("保存成功", profile.getId());
+    }
+
+    /** 从等级项推导每个大阶段的小阶段数量；存量方案无需迁移。 */
+    private void fillMinorCounts(LevelProfile profile, List<LevelItem> items) {
+        int majors = 0;
+        if (items != null) {
+            for (LevelItem item : items) {
+                if (item.getMajorIndex() != null) majors = Math.max(majors, item.getMajorIndex());
+            }
+        }
+        if (majors == 0) {
+            majors = profile.getMajorCount() == null ? 0 : Math.max(0, profile.getMajorCount());
+        }
+        List<Integer> counts = new ArrayList<>();
+        for (int i = 0; i < majors; i++) counts.add(0);
+        if (items != null) {
+            for (LevelItem item : items) {
+                Integer majorIndex = item.getMajorIndex();
+                if (majorIndex != null && majorIndex >= 1 && majorIndex <= majors) {
+                    counts.set(majorIndex - 1, counts.get(majorIndex - 1) + 1);
+                }
+            }
+        }
+        int fallback = profile.getMinorPerMajor() == null ? 0 : Math.max(0, profile.getMinorPerMajor());
+        for (int i = 0; i < counts.size(); i++) {
+            if (counts.get(i) == 0) counts.set(i, fallback);
+        }
+        profile.setMinorCounts(counts);
     }
 
     /**
@@ -340,14 +405,17 @@ public class LevelService {
         return ResultBean.success("删除成功");
     }
 
-    public ResultBean listAdminProfiles() {        List<LevelProfile> profiles = profileMapper.selectList(new LambdaQueryWrapper<LevelProfile>()
+    public ResultBean listAdminProfiles() {
+        List<LevelProfile> profiles = profileMapper.selectList(new LambdaQueryWrapper<LevelProfile>()
                 .orderByDesc(LevelProfile::getStatus)
                 .orderByDesc(LevelProfile::getId));
         List<Map<String, Object>> result = new ArrayList<>();
         for (LevelProfile p : profiles) {
+            List<LevelItem> items = listItems(p.getId());
+            fillMinorCounts(p, items);
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("profile", p);
-            row.put("items", listItems(p.getId()));
+            row.put("items", items);
             result.add(row);
         }
         return ResultBean.success("查询成功", result);
