@@ -1,7 +1,7 @@
 <template>
   <span
     class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium leading-none whitespace-nowrap"
-    :style="{ borderColor: spec.soft, backgroundColor: spec.soft, color: spec.color }"
+    :style="{ borderColor: spec.soft, backgroundColor: spec.soft, color: spec.ink || spec.color }"
     :title="tip"
   >
     <BBSLevelIcon

@@ -190,7 +190,7 @@
                 v-for="(m, mi) in majorGroups"
                 :key="'chip-' + mi"
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
-                :style="{ backgroundColor: stageSoft(mi + 1), color: stageColor(mi + 1) }"
+                :style="{ backgroundColor: stageSoft(mi + 1), color: stageInk(mi + 1) }"
               >{{ m.name }}</span>
             </div>
           </section>
@@ -283,7 +283,7 @@
                         <input
                           :value="group.name"
                           class="w-28 px-1.5 py-0.5 bg-transparent border border-transparent rounded text-[12px] font-medium outline-none hover:border-outline-variant focus:border-primary focus:bg-surface"
-                          :style="{ color: stageColor(gi + 1) }"
+                          :style="{ color: stageInk(gi + 1) }"
                           title="点击修改大阶段名称"
                           @change="renameMajor(gi + 1, $event.target.value)"
                         >
@@ -294,7 +294,7 @@
                         <span
                           v-if="group.badge"
                           class="px-2 py-0.5 rounded-full text-[10px] bg-white/70"
-                          :style="{ color: stageColor(gi + 1) }"
+                          :style="{ color: stageInk(gi + 1) }"
                         >徽章 {{ group.badge }}</span>
                         <span class="ml-auto text-[11px] text-on-surface-variant">
                           下一阶段 +{{ group.span || 0 }} 分
@@ -551,6 +551,10 @@ export default {
     stageColor(majorIndex) {
       const t = LEVEL_TONES[(majorIndex - 1) % LEVEL_TONES.length]
       return t ? t.color : '#2563eb'
+    },
+    stageInk(majorIndex) {
+      const t = LEVEL_TONES[(majorIndex - 1) % LEVEL_TONES.length]
+      return (t && t.ink) || (t ? t.color : '#1d4ed8')
     },
     stageSoft(majorIndex) {
       const t = LEVEL_TONES[(majorIndex - 1) % LEVEL_TONES.length]
