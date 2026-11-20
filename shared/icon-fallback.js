@@ -25,3 +25,18 @@ export function fallbackIconSvg() {
 export function safeIconSvg(svg) {
   return isSvgMarkup(svg) ? svg : fallbackIconSvg()
 }
+
+/**
+ * 把 SVG 快照缩放到指定尺寸（素材库里的快照带固定 width/height=24，
+ * 直接塞进 12–16px 的头像角标会溢出，必须先覆盖尺寸）。
+ */
+export function sizeSvg(svg, px) {
+  if (!isSvgMarkup(svg)) return fallbackIconSvg()
+  const size = Math.max(1, Math.round(Number(px) || 16))
+  return svg.replace(/<svg\b[^>]*>/i, (tag) => {
+    const cleaned = tag
+      .replace(/\swidth\s*=\s*"[^"]*"/gi, '')
+      .replace(/\sheight\s*=\s*"[^"]*"/gi, '')
+    return cleaned.replace(/>$/, ` width="${size}" height="${size}">`)
+  })
+}

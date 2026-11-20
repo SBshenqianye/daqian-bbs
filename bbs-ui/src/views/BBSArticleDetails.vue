@@ -478,6 +478,7 @@ export default {
           this.article.userId = resp.userId
           this.article.author = resp.articleAuthor || ''
           this.article.authorLevelIndex = resp.authorLevelIndex || null
+          this.article.authorIconSvg = resp.authorIconSvg || ''
           this.article.authorOrgName = resp.authorOrgName || ''
           this.article.authorOrgNameFull = resp.authorOrgNameFull || ''
           const rawContent = resp.articleContentHtml || resp.articleContent || ''

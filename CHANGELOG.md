@@ -5,6 +5,8 @@
 ## [未发布]
 
 ### 等级体系与图标
+- **头像角标与顶部等级徽记统一用自定义图标**：顶部 Header 的等级角标此前固定用默认图形（`levelEmblemSvg`），现改为复用 `BBSLevelIcon` 并读取 `icon_svg`；帖子详情页的楼主头像补上 `authorIconSvg` 映射。`BBSLevelIcon` 统一把素材快照缩放到目标尺寸，避免 24px 快照塞进 12–16px 角标溢出
+- **标签（板块）改动用写权限**：`addArticleLabel` / `updArticleLabel` / `delArticleLabel` 由 `config:read` 改为 `config:write`（此前只读权限即可改动导航板块）
 - **等级方案可重命名**：方案栏新增铅笔按钮，弹窗改名（校验空值与重名，写入 `bbs_level_profile.profile_name`）；「定位说明」补上可编辑列，此前只能在显示名的 hover 提示里看到
 - **下线运营周期模块**：周期从未真正参与计算——榜单时间窗由前端显式传区间、`points_log.cycle_id` 只写不读、周期配置覆盖是裸 key/value 且长期为空、等级方案绑定还造成「启用中不生效」。已删除页面/接口、`bbs_operation_cycle` / `bbs_cycle_config` 表与 `points_log.cycle_id` 列（`v075`）；榜单未传区间时回落本月，字典直接读全局值
 - **等级方案生效口径收敛为「显式启用优先」**：`status=1` 的方案直接生效，运营周期绑定只在没有任何方案启用时兜底；去掉「启用中 / 实际生效」双标签与提示条。启用方案、激活周期时两处绑定仍会自动同步，避免再次分叉

@@ -99,10 +99,17 @@
               :title="levelTitle"
             >
               <span
-                class="bbs-level-svg inline-flex items-center"
-                style="height:11px;filter:brightness(0) invert(1)"
-                v-html="levelEmblem"
-              ></span>
+                class="inline-flex items-center"
+                style="height:12px;filter:brightness(0) invert(1)"
+              >
+                <BBSLevelIcon
+                  :level-index="userLevel"
+                  :size="12"
+                  mode="emblem"
+                  :icon-svg="userIconSvg"
+                  :with-title="false"
+                />
+              </span>
               <span>Lv.{{ userLevel }}</span>
             </span>
             <!-- 未读通知角标（全部未读 = 各分类之和） -->
@@ -271,10 +278,12 @@ import { getToken, getUser, removeToken, removeUser } from '@/utils/auth'
 import { Notification } from 'element-ui'
 import notificationStore from '@/utils/notificationStore'
 import userStore from '@/utils/userStore'
-import { levelEmblemSvg, levelSpec, normalizeLevel } from '../../../shared/level-icons'
+import BBSLevelIcon from '@/components/BBSLevelIcon.vue'
+import { levelSpec, normalizeLevel } from '../../../shared/level-icons'
 
 export default {
   name: 'BBSHeader',
+  components: { BBSLevelIcon },
   data() {
     return {
       scrolled: false,
@@ -292,13 +301,10 @@ export default {
       pointsAlreadyAwarded: false,
       userLevel: null,
       userLevelName: '',
+      userIconSvg: '',
     }
   },
   computed: {
-    /** 头像角标：等级徽记（星/月/日/冠） */
-    levelEmblem() {
-      return levelEmblemSvg(this.userLevel || 1, 12)
-    },
     levelTitle() {
       const name = this.userLevelName || levelSpec(this.userLevel || 1).name
       return `${name} · Lv.${normalizeLevel(this.userLevel || 1)}`
@@ -414,6 +420,7 @@ export default {
         if (res && res.code == 200 && res.obj) {
           this.userLevel = res.obj.levelIndex || res.obj.level
           this.userLevelName = res.obj.levelName || ''
+          this.userIconSvg = res.obj.iconSvg || ''
         }
       }).catch(() => {})
     },
