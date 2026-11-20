@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="万伏执炬人">
+  <title>万伏执炬人</title>
+<path d="M32 2C37 7 37 12 34 15 33 11 31 10 30 9 30 12 29 13 28 14 25 10 27 5 32 2Z" fill="#fbbf24"/>
+  <path d="M32 7C34 10 34 12 32.5 14 32 12 31 11.5 30.5 11 30.5 13 30 13.5 29.5 14 28 12 29 9 32 7Z" fill="#fde68a"/>
+  <path d="M32 15 22 59H42Z" fill="none" stroke="#dc2626" stroke-width="4.4" stroke-linejoin="round"/>
+  <path d="M21 25H43" stroke="#dc2626" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M24 38H40" stroke="#dc2626" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M25 52 32 44 39 52" fill="none" stroke="#dc2626" stroke-width="3.2" stroke-linejoin="round"/>
+  <g stroke="#ff3b3b" stroke-width="2.4" stroke-linecap="round">
+    <path d="M9 8 15 12"/><path d="M55 8 49 12"/><path d="M5 24H11"/><path d="M59 24H53"/>
+  </g>
+</svg>

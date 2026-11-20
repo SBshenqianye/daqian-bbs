@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="拾光新锐">
+  <title>拾光新锐</title>
+<g stroke="#14b8a6" stroke-width="4.6" stroke-linecap="round">
+    <path d="M11 9 24 22"/>
+    <path d="M32 4V22"/>
+    <path d="M53 9 40 22"/>
+  </g>
+  <path d="M32 22 44 36 32 54 20 36Z" fill="#14b8a6"/>
+  <path d="M32 22 44 36 32 54Z" fill="#109081"/>
+  <path d="M32 22 44 36 32 36Z" fill="#1bf8e0"/>
+  <circle cx="32" cy="36" r="3.2" fill="#ffffff"/>
+  <path d="M20 58H44" stroke="#1bf8e0" stroke-width="3" stroke-linecap="round"/>
+</svg>

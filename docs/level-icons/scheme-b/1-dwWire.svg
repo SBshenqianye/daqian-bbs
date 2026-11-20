@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="银线学徒">
+  <title>银线学徒</title>
+<rect x="8" y="11" width="5.4" height="42" rx="2.7" fill="#5c6572"/>
+  <rect x="38.6" y="11" width="5.4" height="42" rx="2.7" fill="#5c6572"/>
+  <rect x="13.4" y="17" width="25.2" height="30" rx="3.4" fill="#94a3b8"/>
+  <g stroke="#c8dcf8" stroke-width="2.2" stroke-linecap="round">
+    <path d="M15 24H37"/><path d="M15 32H37"/><path d="M15 40H37"/>
+  </g>
+  <path d="M44 26C53 22 60 31 55 41" fill="none" stroke="#94a3b8" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M55 41 60 48 51 49Z" fill="#f59e0b"/>
+</svg>

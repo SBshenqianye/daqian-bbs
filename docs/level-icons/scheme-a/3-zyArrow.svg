@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="精锐先锋">
+  <title>精锐先锋</title>
+<path d="M32 6 55 31H43V50H21V31H9Z" fill="#0ea5e9"/>
+  <path d="M32 6 55 31H43V50H32Z" fill="#0b84ba"/>
+  <path d="M10 57H23" stroke="#15f8ff" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M41 57H54" stroke="#15f8ff" stroke-width="3.4" stroke-linecap="round"/>
+</svg>

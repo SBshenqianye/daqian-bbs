@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="知灯引路人">
+  <title>知灯引路人</title>
+<path d="M32 4V11" stroke="#4547a9" stroke-width="3.2" stroke-linecap="round"/>
+  <path d="M21 12H43L46 19H18Z" fill="#6366f1"/>
+  <path d="M23 19H41V45H23Z" fill="#6366f1"/>
+  <path d="M32 19H41V45H32Z" fill="#4f52c1"/>
+  <path d="M18 45H46L42 52H22Z" fill="#595cd9"/>
+  <path d="M32 52V58" stroke="#4547a9" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="6.6" fill="#ffffff"/>
+  <circle cx="32" cy="32" r="3.2" fill="#fbbf24"/>
+  <g stroke="#9599ff" stroke-width="2.6" stroke-linecap="round">
+    <path d="M12 26 17 28"/><path d="M12 38 17 36"/>
+    <path d="M52 26 47 28"/><path d="M52 38 47 36"/>
+  </g>
+</svg>

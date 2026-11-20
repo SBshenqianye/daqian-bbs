@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="云衢领航者">
+  <title>云衢领航者</title>
+<path d="M32 3 38.5 19.5 55 26 38.5 32.5 32 49 25.5 32.5 9 26 25.5 19.5Z" fill="#eab308"/>
+  <path d="M32 3 38.5 19.5 55 26 32 26Z" fill="#ffd309"/>
+  <circle cx="32" cy="26" r="5.8" fill="#fffbeb" stroke="#916f05" stroke-width="1.8"/>
+  <circle cx="32" cy="26" r="2.2" fill="#eab308"/>
+  <g fill="none" stroke="#ffd70a" stroke-width="4" stroke-linecap="round">
+    <path d="M8 53C12 47 18 47 22 53"/>
+    <path d="M25 59C29 53 35 53 39 59"/>
+    <path d="M42 53C46 47 52 47 56 53"/>
+  </g>
+</svg>

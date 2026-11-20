@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="大千执炬者">
+  <title>大千执炬者</title>
+<path d="M32 3C42 10 44 20 39 26 37 19 34 17 31 15 31 21 29 24 27 27 22 21 24 10 32 3Z" fill="#ef4444"/>
+  <path d="M32 11C36 15 37 20 34 24 33 20 31 19 30 18 30 21 29 23 28 24 26 21 27 16 32 11Z" fill="#fde68a"/>
+  <rect x="24" y="27" width="16" height="5" rx="2.5" fill="#fbbf24"/>
+  <path d="M28 32H36L34 48H30Z" fill="#ac3131"/>
+  <path d="M28 32H32L31 48H30Z" fill="#ef4444"/>
+  <path d="M22 48H42L37 58H27Z" fill="#ac3131"/>
+  <g fill="#ff6363">
+    <circle cx="13" cy="13" r="2.6"/><circle cx="21" cy="6" r="2"/>
+    <circle cx="51" cy="13" r="2.6"/><circle cx="43" cy="6" r="2"/>
+  </g>
+</svg>

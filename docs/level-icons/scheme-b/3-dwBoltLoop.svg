@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="送电革新者">
+  <title>送电革新者</title>
+<path d="M36 4 16 32H28L25 60 46 28H34Z" fill="#0ea5e9"/>
+  <path d="M36 4 16 32H28L25 60 34 40Z" fill="#0b84ba"/>
+  <path d="M10 22A23 23 0 0 1 21 7" fill="none" stroke="#15f8ff" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M54 42A23 23 0 0 1 43 57" fill="none" stroke="#15f8ff" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M21 7 26 13 18 14Z" fill="#15f8ff"/>
+  <path d="M43 57 38 51 46 50Z" fill="#15f8ff"/>
+</svg>

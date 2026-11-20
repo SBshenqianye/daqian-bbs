@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="线网知客">
+  <title>线网知客</title>
+<g stroke="#1dfff1" stroke-width="2.6" stroke-linecap="round">
+    <path d="M5 24H59"/><path d="M8 36H56"/><path d="M12 47H52"/>
+  </g>
+  <path d="M32 5 21 58H43Z" fill="none" stroke="#14b8a6" stroke-width="4.4" stroke-linejoin="round"/>
+  <path d="M23 20H41" stroke="#14b8a6" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M18 34H46" stroke="#14b8a6" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M22 47H42" stroke="#14b8a6" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M26 50 32 40 38 50" fill="none" stroke="#14b8a6" stroke-width="3" stroke-linejoin="round"/>
+</svg>
