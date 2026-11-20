@@ -585,7 +585,8 @@ export default {
     },
   },
   mounted() {
-    this.loadAssets().then(() => this.seedLevelIcons())
+    this.loadAssets()
+    this.seedLevelIcons()
     window.addEventListener('keydown', this.onKey)
   },
   beforeDestroy() {
@@ -1037,32 +1038,19 @@ export default {
      * 按名称去重：已存在就跳过，所以重复进入不会产生脏数据。
      */
     async seedLevelIcons() {
-      const existing = new Set((this.assets || []).map((a) => a.assetName))
-      const missing = LEVEL_GLYPHS
-        .map((g, i) => ({
-          assetName: '等级图标 · ' + g.label,
-          category: 'level',
-          svg: glyphSvg(g.key, (LEVEL_TONES[i] || LEVEL_TONES[0]).color),
-        }))
-        .filter((item) => !existing.has(item.assetName))
-      if (!missing.length) return
-      let created = 0
-      for (const item of missing) {
-        try {
-          const res = await this.postRequest('/admin/svg-asset/save', {
-            id: null,
-            assetName: item.assetName,
-            category: item.category,
-            svg: item.svg,
-          })
-          if (res && res.code === 200) created += 1
-        } catch (e) {
-          // 单个失败不影响其余图标
+      const payload = LEVEL_GLYPHS.map((g, i) => ({
+        assetName: '等级图标 · ' + g.label,
+        category: 'level',
+        svg: glyphSvg(g.key, (LEVEL_TONES[i] || LEVEL_TONES[0]).color),
+      }))
+      try {
+        const res = await this.postRequest('/admin/svg-asset/ensure', payload)
+        if (res && res.code === 200 && Number(res.obj) > 0) {
+          await this.loadAssets()
+          this.$message.success(`已把 ${res.obj} 枚等级图标存入素材库`)
         }
-      }
-      if (created) {
-        await this.loadAssets()
-        this.$message.success(`已把 ${created} 枚等级图标存入素材库`)
+      } catch (e) {
+        // 同步失败不影响工作台其它功能
       }
     },
     addBackplate(key) {

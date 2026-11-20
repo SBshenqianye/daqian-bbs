@@ -372,43 +372,29 @@
           </div>
 
           <div>
-            <label class="text-[12px] text-secondary">图形</label>
+            <label class="text-[12px] text-secondary">图形（来自 SVG 素材库 · 等级分类）</label>
             <div class="flex flex-wrap gap-2 mt-1.5">
-              <button class="icon-option" :class="{ 'is-on': !iconDialog.glyph && !iconDialog.svg }" @click="pickAuto">自动</button>
+              <button class="icon-option" :class="{ 'is-on': !iconDialog.svg }" @click="pickAuto">自动</button>
               <button
-                v-for="g in glyphs"
-                :key="g.key"
+                v-for="a in levelAssets"
+                :key="a.id"
                 class="icon-option"
-                :class="{ 'is-on': iconDialog.glyph === g.key && !iconDialog.svg }"
-                @click="pickGlyph(g.key)"
+                :class="{ 'is-on': iconDialog.svg && iconDialog.svg === a.svg }"
+                :title="a.assetName"
+                @click="pickAsset(a)"
               >
-                <span class="bbs-level-svg h-4 inline-flex" v-html="glyphPreview(g.key)"></span>
-                {{ g.label }}
+                <span class="bbs-level-svg h-4 inline-flex" v-html="a.svg"></span>
+                {{ assetShortName(a.assetName) }}
               </button>
+              <span v-if="!levelAssets.length" class="text-[11px] text-outline self-center">
+                素材库「等级」分类还是空的，先去「SVG 工作台」保存图标
+              </span>
             </div>
           </div>
 
-          <div>
-            <label class="text-[12px] text-secondary">主色</label>
-            <div class="flex items-center gap-2 mt-1.5">
-              <input v-model="iconDialog.color" type="color" class="w-9 h-8 rounded border border-outline-variant bg-surface">
-              <button v-for="c in palette" :key="c" class="w-6 h-6 rounded-full border border-white shadow" :style="{ backgroundColor: c }" @click="iconDialog.color = c"></button>
-            </div>
-          </div>
-
-          <div class="rounded-lg border border-outline-variant p-3">
-            <div class="flex items-center justify-between">
-              <div class="min-w-0">
-                <p class="text-[12px] text-secondary">素材库图标</p>
-                <p class="text-[11px] text-outline truncate">{{ iconDialog.svg ? '已选择素材库 SVG' : '未选择' }}</p>
-              </div>
-              <div class="flex items-center gap-2 shrink-0">
-                <button v-if="iconDialog.svg" class="text-[11px] text-outline hover:text-error" @click="clearSvg">清除</button>
-                <button class="px-3 py-1.5 text-[11px] border border-outline rounded-lg hover:border-primary" @click="pickerVisible = true">从素材库选择</button>
-              </div>
-            </div>
-            <p class="text-[11px] text-outline mt-1.5">需要新图形？去「SVG 工作台」绘制并保存后，再回来选择。</p>
-          </div>
+          <p v-if="iconDialog.svg" class="text-[11px] text-outline">
+            已选素材会以当前 SVG 快照保存到该等级；素材库里删除它不影响已保存的等级图标。
+          </p>
         </div>
         <div class="flex justify-end gap-2 px-5 py-3 border-t border-outline-variant bg-surface-container-lowest">
           <button class="px-4 py-2 border border-outline rounded-lg text-[12px]" @click="iconDialog.visible = false">取消</button>
@@ -417,13 +403,6 @@
       </div>
     </div>
 
-    <SvgAssetPicker
-      :visible="pickerVisible"
-      category="level"
-      title="选择等级图标"
-      @close="pickerVisible = false"
-      @select="onPickAsset"
-    />
   </div>
 </template>
 
@@ -431,7 +410,6 @@
 import { LEVEL_TONES, LEVEL_GLYPHS, levelRowSvg, glyphSvg } from '../../../shared/level-icons'
 import { handleResponse } from '../../../shared/feedback'
 import { nextOverlayZ } from '@/utils/overlay'
-import SvgAssetPicker from '@/components/SvgAssetPicker.vue'
 
 const PAD_L = 62
 const PAD_R = 24
@@ -443,11 +421,10 @@ const PLOT_W = VIEW_W - PAD_L - PAD_R
 const PLOT_H = VIEW_H - PAD_T - PAD_B
 
 const MAJOR_NAMES = ['学徒工', '初级工', '中级工', '高级工', '技师', '高级技师', '特级技师', '首席技师']
-const PALETTE = ['#16a34a', '#0284c7', '#d97706', '#ca8a04', '#7c3aed', '#4f46e5', '#db2777', '#dc2626', '#0f766e', '#475569']
 
 export default {
   name: 'LevelManagePage',
-  components: { SvgAssetPicker },
+  components: {},
   data() {
     return {
       loading: false,
@@ -473,13 +450,11 @@ export default {
       dragValue: 0,
       pointerValue: 0,
       ratios: null,
-      glyphs: LEVEL_GLYPHS,
-      palette: PALETTE,
-      pickerVisible: false,
+      levelAssets: [],
       overlayZ: 3000,
       iconDialog: {
         visible: false, index: -1, levelIndex: 1, displayName: '',
-        glyph: '', color: '', svg: '', modeLabel: '',
+        color: '', svg: '', modeLabel: '',
       },
     }
   },
@@ -527,11 +502,10 @@ export default {
     },
     iconPreview() {
       if (this.iconDialog.svg) return this.iconDialog.svg
-      if (this.iconDialog.glyph) return glyphSvg(this.iconDialog.glyph, this.iconDialog.color)
       return levelRowSvg(this.iconDialog.levelIndex, 28)
     },
   },
-  mounted() { this.load() },
+  mounted() { this.load(); this.loadLevelAssets() },
   beforeDestroy() { this.detachDrag() },
   methods: {
     /* ---------- 坐标 ---------- */
@@ -572,9 +546,6 @@ export default {
     },
     groupIcon(group) {
       return this.iconOf(group.items[0])
-    },
-    glyphPreview(key) {
-      return glyphSvg(key, this.iconDialog.color || this.stageColor(1))
     },
     /* ---------- 数据 ---------- */
     async load() {
@@ -968,32 +939,30 @@ export default {
         index: this.findIndex(item.levelIndex),
         levelIndex: item.levelIndex,
         displayName: item.displayName,
-        glyph: LEVEL_GLYPHS.some(g => g.key === item.iconKey) ? item.iconKey : '',
         color: item.colorToken || this.stageColor(item.majorIndex),
         svg: item.iconSvg || '',
-        modeLabel: item.iconSvg ? '自定义 SVG（素材库）' : (item.iconKey ? '自定义图形' : '自动生成'),
+        modeLabel: item.iconSvg ? '素材库 SVG' : '自动生成',
       }
     },
     pickAuto() {
-      this.iconDialog.glyph = ''
       this.iconDialog.svg = ''
       this.iconDialog.modeLabel = '自动生成'
     },
-    pickGlyph(key) {
-      this.iconDialog.glyph = key
-      this.iconDialog.svg = ''
-      this.iconDialog.modeLabel = '自定义图形 · ' + key
-    },
-    clearSvg() {
-      this.iconDialog.svg = ''
-      this.iconDialog.modeLabel = this.iconDialog.glyph ? '自定义图形' : '自动生成'
-    },
-    onPickAsset(asset) {
+    pickAsset(asset) {
       if (!asset || !asset.svg) return
       this.iconDialog.svg = asset.svg
-      this.iconDialog.glyph = ''
       this.iconDialog.modeLabel = '素材库 · ' + (asset.assetName || '未命名')
-      this.pickerVisible = false
+    },
+    assetShortName(name) {
+      return String(name || '').replace(/^等级图标\s*·\s*/, '')
+    },
+    async loadLevelAssets() {
+      try {
+        const res = await this.getRequestUrl('/admin/svg-asset/list?category=level')
+        this.levelAssets = (res && res.obj) || []
+      } catch (e) {
+        this.levelAssets = []
+      }
     },
     applyIcon() {
       const item = this.items[this.iconDialog.index]
@@ -1001,10 +970,11 @@ export default {
       if (this.iconDialog.svg) {
         item.iconSvg = this.iconDialog.svg
         item.iconKey = null
+        item.colorToken = null
       } else {
         item.iconSvg = ''
-        item.iconKey = this.iconDialog.glyph || null
-        item.colorToken = this.iconDialog.glyph ? this.iconDialog.color : null
+        item.iconKey = null
+        item.colorToken = null
       }
       this.iconDialog.visible = false
     },
