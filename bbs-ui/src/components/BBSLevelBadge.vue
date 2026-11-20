@@ -46,7 +46,8 @@ export default {
     tip() {
       const lv = this.level || {}
       const pts = lv.totalPoints != null ? ` · 累计 ${lv.totalPoints} 分` : ''
-      return `${this.label}（Lv.${this.resolvedLevel}）${pts}`
+      const badge = lv.badgeName ? ` · 徽章 ${lv.badgeName}` : ''
+      return `${this.label}（Lv.${this.resolvedLevel}）${pts}${badge}`
     },
   },
 }

@@ -292,6 +292,7 @@ export default {
       pointsAlreadyAwarded: false,
       userLevel: null,
       userLevelName: '',
+      userBadgeName: '',
     }
   },
   computed: {
@@ -301,7 +302,8 @@ export default {
     },
     levelTitle() {
       const name = this.userLevelName || levelSpec(this.userLevel || 1).name
-      return `${name} · Lv.${normalizeLevel(this.userLevel || 1)}`
+      const badge = this.userBadgeName ? ` · 徽章 ${this.userBadgeName}` : ''
+      return `${name} · Lv.${normalizeLevel(this.userLevel || 1)}${badge}`
     },
     /** 是否显示发帖入口：未登录仍显示（点击去登录），登录后按权限点判断 */
     canPost() {
@@ -414,6 +416,7 @@ export default {
         if (res && res.code == 200 && res.obj) {
           this.userLevel = res.obj.levelIndex || res.obj.level
           this.userLevelName = res.obj.levelName || ''
+          this.userBadgeName = res.obj.badgeName || ''
         }
       }).catch(() => {})
     },

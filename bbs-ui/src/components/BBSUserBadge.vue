@@ -61,9 +61,16 @@
         >{{ profile.introduce }}</p>
 
         <div class="flex items-center gap-2 mt-2">
-          <BBSLevelBadge :level-index="profileLevel" :level="{ levelName: levelName, totalPoints: levelPoints }" />
+          <BBSLevelBadge
+            :level-index="profileLevel"
+            :level="{ levelName: levelName, totalPoints: levelPoints, badgeName: (profile.level && profile.level.badgeName) || '' }"
+          />
           <span class="text-[11px] text-on-surface-variant">{{ levelPoints }} 分</span>
         </div>
+        <p v-if="profile.level && profile.level.badgeName" class="mt-1 inline-flex items-center gap-1 text-[10px] text-outline">
+          <span class="material-symbols-outlined text-[12px]">military_tech</span>
+          徽章 <span class="font-medium text-on-surface-variant">{{ profile.level.badgeName }}</span>
+        </p>
 
         <div class="mt-2 h-1.5 rounded-full bg-surface-variant overflow-hidden">
           <div class="h-full rounded-full" :style="{ width: progress + '%', backgroundColor: spec.color }"></div>

@@ -25,6 +25,11 @@
           <div class="h-1.5 rounded-full bg-surface-variant overflow-hidden">
             <div class="h-full rounded-full transition-all" :style="{ width: progressPercent + '%', backgroundColor: spec.color }"></div>
           </div>
+          <p v-if="levelInfo.badgeName" class="mt-2 inline-flex items-center gap-1 text-[10.5px] text-outline">
+            <span class="material-symbols-outlined text-[13px]">military_tech</span>
+            阶段徽章
+            <span class="font-medium text-on-surface-variant">{{ levelInfo.badgeName }}</span>
+          </p>
         </div>
       </div>
     </div>
