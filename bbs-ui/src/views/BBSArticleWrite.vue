@@ -22,6 +22,7 @@
         <button
           class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="加粗 (Ctrl+B)"
+          @mousedown.prevent
           @click="insertMdFormat('bold')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
@@ -29,6 +30,7 @@
         <button
           class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="斜体 (Ctrl+I)"
+          @mousedown.prevent
           @click="insertMdFormat('italic')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 4h4m-2 0v16m-4 0h8"/></svg>
@@ -36,6 +38,7 @@
         <button
           class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="删除线"
+          @mousedown.prevent
           @click="insertMdFormat('strikethrough')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 12H7m10-4H9m8 8H5"/></svg>
@@ -44,6 +47,7 @@
         <button
           class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="标题"
+          @mousedown.prevent
           @click="insertMdFormat('heading')"
         >
           <span class="text-sm font-bold">H</span>
@@ -51,6 +55,7 @@
         <button
           class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="引用块"
+          @mousedown.prevent
           @click="insertMdFormat('quote')"
         >
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
@@ -58,6 +63,7 @@
         <button
           class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="行内代码"
+          @mousedown.prevent
           @click="insertMdFormat('code')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
@@ -65,6 +71,7 @@
         <button
           class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="代码块"
+          @mousedown.prevent
           @click="insertMdFormat('codeblock')"
         >
           <span class="text-xs font-mono font-bold">{ }</span>
@@ -73,6 +80,7 @@
         <button
           class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="无序列表"
+          @mousedown.prevent
           @click="insertMdFormat('ul')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"/><circle cx="2" cy="6" r="1" fill="currentColor"/><circle cx="2" cy="12" r="1" fill="currentColor"/><circle cx="2" cy="18" r="1" fill="currentColor"/></svg>
@@ -80,6 +88,7 @@
         <button
           class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="有序列表"
+          @mousedown.prevent
           @click="insertMdFormat('ol')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 6h13M7 12h13M7 18h13"/><text x="2" y="7.5" font-size="7" fill="currentColor" font-weight="bold">1</text><text x="2" y="13.5" font-size="7" fill="currentColor" font-weight="bold">2</text><text x="2" y="19.5" font-size="7" fill="currentColor" font-weight="bold">3</text></svg>
@@ -87,6 +96,7 @@
         <button
           class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="分割线"
+          @mousedown.prevent
           @click="insertMdFormat('hr')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14"/></svg>
@@ -95,6 +105,7 @@
         <button
           class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="插入链接"
+          @mousedown.prevent="saveSelection"
           @click="openLinkDialog"
         >
           <span class="material-symbols-outlined text-[18px]">link</span>
@@ -102,7 +113,7 @@
         <button
           class="inline-flex items-center justify-center w-8 h-8 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors"
           title="插入图片"
-          @mousedown="saveSelection"
+          @mousedown.prevent="saveSelection"
           @click="triggerImgUpload"
         >
           <span class="material-symbols-outlined text-[18px]">image</span>
@@ -124,7 +135,7 @@
       <!-- 链接弹窗（点击周围不会关闭，避免误触丢失编辑） -->
       <div v-if="showLinkDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
         <div class="bg-container rounded-xl border border-border shadow-xl p-5 w-80">
-          <h4 class="text-[14px] font-semibold text-on-surface mb-4">{{ editingLink ? '编辑链接' : '插入链接' }}</h4>
+          <h4 class="text-[14px] font-semibold text-on-surface mb-4">插入链接</h4>
           <div class="space-y-2.5">
             <input
               v-model="linkText"
@@ -143,30 +154,26 @@
           <div class="flex justify-end gap-2 mt-4">
             <button class="px-3 py-1.5 text-[12px] text-on-surface-variant hover:text-on-surface" @click="closeLinkDialog">取消</button>
             <button
-              class="px-4 py-1.5 text-[12px] rounded-lg transition-all text-white"
-              :class="editingLink ? 'bg-amber-600 hover:opacity-90' : 'bg-primary hover:opacity-90'"
+              class="px-4 py-1.5 text-[12px] rounded-lg transition-all text-white bg-primary hover:opacity-90"
               @click="confirmLink"
-            >{{ editingLink ? '保存修改' : '确定' }}</button>
+            >确定</button>
           </div>
         </div>
       </div>
 
-      <!-- 编辑器 + 预览面板 -->
-      <div class="flex border border-t-0 border-outline-variant rounded-b-xl min-h-[500px] overflow-hidden bg-container">
-        <!-- 可视化编辑器 (contenteditable) -->
-        <div
-          ref="editorDiv"
-          contenteditable="true"
-          data-placeholder="请输入正文内容"
-          class="editor-content p-4 text-[13.5px] text-on-surface leading-relaxed outline-none transition-colors"
-          :class="showPreview ? 'border-r border-outline-variant w-1/2' : 'w-full'"
-          @blur="syncContent"
-          @input="onEditorInput"
-          @paste="handlePaste"
-          @click="handleEditorClick"
-        ></div>
+      <!-- 正文编辑器（Markdown 源码）+ 渲染预览 -->
+      <div class="flex flex-col md:flex-row border border-t-0 border-outline-variant rounded-b-xl min-h-[500px] overflow-hidden bg-container">
+        <textarea
+          ref="mdInput"
+          v-model="markdownContent"
+          class="editor-textarea w-full p-4 font-mono text-[13px] text-on-surface leading-relaxed outline-none resize-none bg-container"
+          :class="showPreview ? 'min-h-[320px] md:min-h-[500px] md:flex-1 min-w-0 border-b md:border-b-0 md:border-r border-outline-variant' : 'min-h-[500px]'"
+          placeholder="请输入正文内容，支持 Markdown 语法（**加粗**、### 标题、- 列表）"
+          spellcheck="false"
+          @keydown="handleEditorKeydown"
+        ></textarea>
         <!-- Markdown 预览面板（复用正文渲染方式） -->
-        <div v-if="showPreview" class="w-1/2 p-4 overflow-y-auto bg-container border-l border-outline-variant">
+        <div v-if="showPreview" class="w-full md:flex-1 min-w-0 p-4 overflow-y-auto bg-container min-h-[240px]">
           <section class="markdown-body" v-if="renderedHtml" v-html="renderedHtml"></section>
           <section v-else class="text-outline text-[12px] text-center mt-20">暂无内容可预览</section>
         </div>
@@ -249,12 +256,20 @@
 <script>
 import { Message, Loading } from 'element-ui'
 import { getArticleForEdit, getArticleFileByArticleId } from '@/api/article'
-import { mdToHtml, htmlToMd } from '@/utils/markdown'
+import { mdToHtml } from '@/utils/markdown'
 import { handleResponse } from '../../../shared/feedback'
 import userStore from '@/utils/userStore'
 
 // 复用正文 markdown 渲染样式（与 BBSArticleDetails 一致）
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
+
+// 行内 Markdown 标记：有选区时包裹选区，无选区时插入占位符并选中占位符
+const INLINE_MD = {
+  bold: { before: '**', after: '**', placeholder: '粗体文字' },
+  italic: { before: '*', after: '*', placeholder: '斜体文字' },
+  strikethrough: { before: '~~', after: '~~', placeholder: '删除线文字' },
+  code: { before: '`', after: '`', placeholder: '代码' },
+}
 
 export default {
   name: 'BBSArticleWrite',
@@ -270,14 +285,13 @@ export default {
       // Attachments: { fileId, fileName } after server upload
       attachments: [],
       showLinkDialog: false,
-      editingLink: false,  // true=编辑已有链接, false=新建链接
       linkText: '',
       linkUrl: '',
       uploading: false,
       publishing: false,
-      syncingContent: false,
-      savedRange: null,
-      showPreview: false,
+      // textarea 光标/选区（{ start, end } 纯数字偏移），点工具栏或插图前保存
+      savedSelection: null,
+      showPreview: true,
     }
   },
   computed: {
@@ -300,137 +314,126 @@ export default {
       return mdToHtml(this.markdownContent)
     },
   },
-  watch: {
-    markdownContent(val) {
-      // 外部修改（加载文章时）同步到编辑区——直接显示 markdown 原文，不渲染
-      // 否则 contenteditable 会把 **粗体** 渲染成 <strong>，丢失 md 语法
-      if (!this.syncingContent && this.$refs.editorDiv) {
-        const escaped = val
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/\n/g, '<br>')
-        const html = '<p>' + escaped + '</p>'
-        if (html !== this.$refs.editorDiv.innerHTML) {
-          this.$refs.editorDiv.innerHTML = html
-        }
-      }
-    },
-  },
   mounted() {
     this.checkPostRestriction()
     this.loadLabels()
+    this.loadPreviewDefault()
     if (this.articleId) {
       this.loadArticleForEdit(this.articleId)
-    } else {
-      // 新文章：初始化空内容
-      this.$nextTick(() => { if (this.$refs.editorDiv) this.$refs.editorDiv.innerHTML = '' })
     }
   },
   methods: {
     togglePreview() {
-      if (!this.showPreview) {
-        this.syncContent()
-      }
       this.showPreview = !this.showPreview
     },
-    onEditorInput() {
-      if (!this.$refs.editorDiv || this.syncingContent) return
-      this.syncingContent = true
-      this.markdownContent = this.htmlToMd(this.$refs.editorDiv.innerHTML)
-      this.$nextTick(() => { this.syncingContent = false })
+    /**
+     * 预览默认开关由后台系统配置决定：bbs_system_config.editor_preview_default（config_group=editor）。
+     * 0=默认关闭，其余/缺失=默认打开——配置拿不到时回落到打开，避免用户又只看到一堆符号。
+     */
+    loadPreviewDefault() {
+      this.postRequest('/common/systemConfig/listByGroup', { configGroup: 'editor' }).then(resp => {
+        const list = resp && Array.isArray(resp.obj) ? resp.obj : []
+        const item = list.find(c => c.configKey === 'editor_preview_default')
+        const raw = item && item.configValue != null ? String(item.configValue).trim() : ''
+        this.showPreview = raw !== '0'
+      }).catch(() => { this.showPreview = true })
+    },
+    handleEditorKeydown(e) {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+      const key = (e.key || '').toLowerCase()
+      if (key === 'b') { e.preventDefault(); this.insertMdFormat('bold') }
+      else if (key === 'i') { e.preventDefault(); this.insertMdFormat('italic') }
+    },
+    /** 当前 textarea 光标/选区（未聚焦时回落到文末，避免往第一行插格式） */
+    cursorRange() {
+      const el = this.$refs.mdInput
+      const value = this.markdownContent || ''
+      if (!el || document.activeElement !== el) return { start: value.length, end: value.length }
+      return {
+        start: el.selectionStart == null ? value.length : el.selectionStart,
+        end: el.selectionEnd == null ? value.length : el.selectionEnd,
+      }
+    },
+    /**
+     * 用 text 替换 [start, end)，并把选区放到插入内容内的相对位置。
+     * textarea 的偏移是纯数字，不会再出现 contenteditable 里"选中占位符后半截"的问题。
+     */
+    replaceRange(start, end, text, selStartOffset, selEndOffset) {
+      const value = this.markdownContent || ''
+      this.markdownContent = value.slice(0, start) + text + value.slice(end)
+      const caretStart = start + (selStartOffset == null ? text.length : selStartOffset)
+      const caretEnd = start + (selEndOffset == null ? text.length : selEndOffset)
+      this.$nextTick(() => {
+        const el = this.$refs.mdInput
+        if (!el) return
+        el.focus()
+        el.setSelectionRange(caretStart, caretEnd)
+      })
     },
     insertMdFormat(type) {
-      // 在 contenteditable 编辑器中插入 markdown 格式文本
-      const sel = window.getSelection()
-      const editor = this.$refs.editorDiv
-      if (!editor) return
+      const value = this.markdownContent || ''
+      const { start, end } = this.cursorRange()
 
-      // 聚焦编辑器
-      editor.focus()
-
-      const hasSelection = sel && sel.rangeCount && !sel.isCollapsed
-      const selectedText = hasSelection ? sel.toString() : ''
-
-      let insertBefore = ''
-      let insertAfter = ''
-      let placeholder = ''
-
-      switch (type) {
-        case 'bold':
-          insertBefore = '**'
-          insertAfter = '**'
-          placeholder = '粗体文字'
-          break
-        case 'italic':
-          insertBefore = '*'
-          insertAfter = '*'
-          placeholder = '斜体文字'
-          break
-        case 'strikethrough':
-          insertBefore = '~~'
-          insertAfter = '~~'
-          placeholder = '删除线文字'
-          break
-        case 'heading':
-          insertBefore = '### '
-          insertAfter = ''
-          placeholder = '标题'
-          break
-        case 'quote':
-          insertBefore = '> '
-          insertAfter = ''
-          placeholder = '引用内容'
-          break
-        case 'code':
-          insertBefore = '`'
-          insertAfter = '`'
-          placeholder = '代码'
-          break
-        case 'codeblock':
-          insertBefore = '```\n'
-          insertAfter = '\n```'
-          placeholder = '代码块'
-          break
-        case 'ul':
-          insertBefore = '- '
-          insertAfter = ''
-          placeholder = '列表项'
-          break
-        case 'ol':
-          insertBefore = '1. '
-          insertAfter = ''
-          placeholder = '列表项'
-          break
-        case 'hr':
-          insertBefore = '\n---\n'
-          insertAfter = ''
-          placeholder = ''
-          break
-        default:
-          return
+      const inline = INLINE_MD[type]
+      if (inline) {
+        const selected = value.slice(start, end)
+        const text = selected || inline.placeholder
+        this.replaceRange(
+          start, end,
+          inline.before + text + inline.after,
+          inline.before.length,
+          inline.before.length + text.length
+        )
+        return
       }
 
-      const text = selectedText || placeholder
-      const mdText = insertBefore + text + insertAfter
-
-      // 使用 execCommand 插入文本（会保留 undo 历史）
-      document.execCommand('insertText', false, mdText)
-
-      // 如果没有选中文字，选中占位符文本方便用户直接输入替换
-      if (!hasSelection && placeholder) {
-        const newSel = window.getSelection()
-        if (newSel && newSel.rangeCount) {
-          const range = newSel.getRangeAt(0)
-          // 往前回退 placeholder 长度
-          range.setStart(range.startContainer, range.startOffset - placeholder.length)
-          range.setEnd(range.startContainer, range.startOffset + placeholder.length)
-          newSel.removeAllRanges()
-          newSel.addRange(range)
-        }
-      }
-
-      this.syncContent()
+      if (type === 'heading') this.toggleHeadingLine(value, start)
+      else if (type === 'quote' || type === 'ul' || type === 'ol') this.toggleLinePrefix(type, value, start, end)
+      else if (type === 'hr') this.insertHorizontalRule(value, start, end)
+      else if (type === 'codeblock') this.insertCodeBlock(value, start, end)
+    },
+    /** 光标/选区覆盖的整行范围 */
+    lineRangeOf(value, start, end) {
+      const lineStart = value.lastIndexOf('\n', Math.max(0, start - 1)) + 1
+      const nl = value.indexOf('\n', end)
+      return { lineStart, lineEnd: nl === -1 ? value.length : nl }
+    },
+    /** 标题：把光标所在行在 "### " 与无前缀之间切换（多行选区只作用于首行） */
+    toggleHeadingLine(value, start) {
+      const lineStart = value.lastIndexOf('\n', Math.max(0, start - 1)) + 1
+      const nl = value.indexOf('\n', start)
+      const lineEnd = nl === -1 ? value.length : nl
+      const line = value.slice(lineStart, lineEnd)
+      const next = /^#{1,6}\s+/.test(line) ? line.replace(/^#{1,6}\s+/, '') : '### ' + line
+      this.replaceRange(lineStart, lineEnd, next, next.length, next.length)
+    },
+    /** 引用 / 无序 / 有序列表：按整行切换，多行选区逐行处理 */
+    toggleLinePrefix(type, value, start, end) {
+      const { lineStart, lineEnd } = this.lineRangeOf(value, start, end)
+      const lines = value.slice(lineStart, lineEnd).split('\n')
+      const pattern = type === 'quote' ? /^\s*>\s?/ : type === 'ul' ? /^\s*[-*+]\s+/ : /^\s*\d+\.\s+/
+      const nonEmpty = lines.filter(l => l.trim())
+      const allPrefixed = nonEmpty.length > 0 && nonEmpty.every(l => pattern.test(l))
+      let seq = 1
+      const next = lines.map(line => {
+        const body = line.replace(pattern, '')
+        if (!line.trim() || allPrefixed) return body
+        if (type === 'quote') return '> ' + body
+        if (type === 'ul') return '- ' + body
+        return `${seq++}. ` + body
+      }).join('\n')
+      this.replaceRange(lineStart, lineEnd, next, next.length, next.length)
+    },
+    insertHorizontalRule(value, start, end) {
+      const lead = start === 0 || value[start - 1] === '\n' ? '' : '\n\n'
+      const tail = end >= value.length || value[end] === '\n' ? '\n' : '\n\n'
+      const insertion = lead + '---' + tail
+      this.replaceRange(start, end, insertion, insertion.length, insertion.length)
+    },
+    insertCodeBlock(value, start, end) {
+      const text = value.slice(start, end) || '代码块'
+      const insertion = '```\n' + text + '\n```'
+      this.replaceRange(start, end, insertion, 4, 4 + text.length)
     },
     checkPostRestriction() {
       const userStr = window.sessionStorage.getItem('user')
@@ -546,74 +549,41 @@ export default {
     removeAttachment(index) {
       this.attachments.splice(index, 1)
     },
-    // --- Markdown ⇄ HTML 转换（共用函数在 utils/markdown.js） ---
-    mdToHtml(md) { return mdToHtml(md) },
-    htmlToMd(html) { return htmlToMd(html) },
-    syncContent() {
-      if (!this.$refs.editorDiv || this.syncingContent) return
-      this.syncingContent = true
-      this.markdownContent = this.htmlToMd(this.$refs.editorDiv.innerHTML)
-      if (!this.$refs.editorDiv.textContent.trim() && !this.$refs.editorDiv.querySelector('img')) {
-        this.$refs.editorDiv.innerHTML = ''
+    // --- 插入图片 / 链接 / 选区记忆（全部基于 textarea 偏移） ---
+    saveSelection() {
+      const el = this.$refs.mdInput
+      if (!el) { this.savedSelection = null; return }
+      this.savedSelection = {
+        start: el.selectionStart == null ? 0 : el.selectionStart,
+        end: el.selectionEnd == null ? 0 : el.selectionEnd,
       }
-      this.$nextTick(() => { this.syncingContent = false })
     },
-    insertHtml(html) {
-      // 在光标处插入 HTML
-      const sel = window.getSelection()
-      if (!this.$refs.editorDiv || !sel || !sel.rangeCount) {
-        Message({ message: '请先将光标置于正文编辑区，再插入图片或链接', type: 'warning', showClose: true, offset: 54 })
-        return
+    /** 优先用点按钮前记住的选区，否则用当前光标 */
+    savedRangeOrCursor() {
+      const value = this.markdownContent || ''
+      const saved = this.savedSelection
+      if (saved) {
+        const start = Math.min(Math.max(saved.start, 0), value.length)
+        const end = Math.min(Math.max(saved.end, start), value.length)
+        return { start, end }
       }
-      const range = sel.getRangeAt(0)
-      // 校验选区两端都在正文编辑区内，防止插入到标题等外部区域
-      const isInsideEditor = (node) => {
-        let el = node && node.nodeType === 3 ? node.parentNode : node
-        while (el && el !== this.$refs.editorDiv && el !== document.body) {
-          el = el.parentNode
-        }
-        return el === this.$refs.editorDiv
-      }
-      if (!isInsideEditor(range.startContainer) || !isInsideEditor(range.endContainer)) {
-        Message({ message: '请先将光标置于正文编辑区，再插入图片或链接', type: 'warning', showClose: true, offset: 54 })
-        return
-      }
-      range.deleteContents()
-      const frag = range.createContextualFragment(html)
-      range.insertNode(frag)
-      // 光标移到插入内容末尾
-      range.setStartAfter(frag)
-      range.collapse(true)
-      sel.removeAllRanges()
-      sel.addRange(range)
-      this.syncContent()
+      return this.cursorRange()
     },
-    handlePaste(e) {
-      // 粘贴时阻止带格式粘贴，只保留纯文本
-      e.preventDefault()
-      const text = (e.clipboardData || window.clipboardData).getData('text/plain')
-      document.execCommand('insertText', false, text)
-      this.syncContent()
+    insertImageMarkdown(url) {
+      const value = this.markdownContent || ''
+      const { start, end } = this.savedRangeOrCursor()
+      this.savedSelection = null
+      // 图片独立成段，避免和前后正文粘连
+      const lead = start === 0 || value[start - 1] === '\n' ? '' : '\n\n'
+      const tail = end >= value.length || value[end] === '\n' ? '\n' : '\n\n'
+      const insertion = lead + `![图片](${url})` + tail
+      this.replaceRange(start, end, insertion, insertion.length, insertion.length)
     },
-    handleEditorClick(e) {
-      // 点击编辑区内的超链接直接打开编辑弹窗
-      let node = e.target
-      while (node && node !== this.$refs.editorDiv) {
-        if (node.nodeName === 'A') {
-          e.preventDefault()
-          // 将光标移到链接内
-          const sel = window.getSelection()
-          if (sel) {
-            const range = document.createRange()
-            range.selectNodeContents(node)
-            sel.removeAllRanges()
-            sel.addRange(range)
-          }
-          this.openLinkDialog()
-          return
-        }
-        node = node.parentNode
-      }
+    insertLinkMarkdown(text, url) {
+      const { start, end } = this.savedRangeOrCursor()
+      this.savedSelection = null
+      const insertion = `[${text}](${url})`
+      this.replaceRange(start, end, insertion, insertion.length, insertion.length)
     },
     triggerImgUpload() {
       this.$refs.imgInput.click()
@@ -627,8 +597,7 @@ export default {
         // 后端上传成功返回字符串路径（/bbs-server/files/...），失败时同样返回字符串错误信息（HTTP 200），需区分
         const isPath = typeof res === 'string' && (res.startsWith('/') || /^https?:\/\//i.test(res))
         if (isPath) {
-          this.restoreSelection()
-          this.insertHtml(`<img src="${res}" alt="图片" style="max-width:100%;display:block;margin:8px 0">`)
+          this.insertImageMarkdown(res)
         } else {
           const msg = typeof res === 'string' && res ? res : '图片上传失败，请稍后重试'
           Message({ message: msg, type: 'error', showClose: true, offset: 54 })
@@ -640,33 +609,13 @@ export default {
         // 注意：api.js 拦截器已对网络/HTTP 错误统一弹窗，这里不重复提示
       })
     },
-    // --- 链接插入/编辑 ---
+    // --- 链接插入 ---
     openLinkDialog() {
-      // 打开弹窗前保存光标位置、检测是否在已有链接上
-      this.saveSelection()
-
-      // 检测光标是否在已有 <a> 上
-      const sel = window.getSelection()
-      if (sel && sel.rangeCount) {
-        let node = sel.getRangeAt(0).startContainer
-        while (node && node !== this.$refs.editorDiv) {
-          if (node.nodeName === 'A') {
-            this.linkText = node.textContent || ''
-            this.linkUrl = node.getAttribute('href') || ''
-            this.editingLink = true
-            this.showLinkDialog = true
-            this.$nextTick(() => {
-              this.$refs.linkUrlInput && this.$refs.linkUrlInput.focus()
-            })
-            return
-          }
-          node = node.parentNode
-        }
-      }
-      // 新建链接
-      this.linkText = ''
+      const value = this.markdownContent || ''
+      const { start, end } = this.savedRangeOrCursor()
+      this.savedSelection = { start, end }
+      this.linkText = start < end ? value.slice(start, end) : ''
       this.linkUrl = ''
-      this.editingLink = false
       this.showLinkDialog = true
       this.$nextTick(() => {
         this.$refs.linkUrlInput && this.$refs.linkUrlInput.focus()
@@ -676,60 +625,25 @@ export default {
       this.showLinkDialog = false
       this.linkText = ''
       this.linkUrl = ''
-      this.editingLink = false
+      this.savedSelection = null
     },
     confirmLink() {
       const text = this.linkText.trim() || '链接'
-      const url = this.linkUrl.trim()
+      let url = this.linkUrl.trim()
       if (!url) {
         Message({ message: '请输入链接地址', type: 'warning', showClose: true, offset: 54 })
         return
       }
-
-      // 恢复光标（弹窗打开前保存的位置）
-      this.restoreSelection()
-
-      try {
-        const sel = window.getSelection()
-
-        if (this.editingLink && sel && sel.rangeCount) {
-          // 编辑已有链接：从光标向上找 <a> 并更新
-          let node = sel.getRangeAt(0).startContainer
-          while (node && node.nodeName !== 'A' && node !== this.$refs.editorDiv) {
-            node = node.parentNode
-          }
-          if (node && node.nodeName === 'A') {
-            node.setAttribute('href', url)
-            node.textContent = text
-            this.syncContent()
-          }
-        } else if (sel && sel.rangeCount) {
-          // 新建链接：插入到光标处
-          this.insertHtml(`<a href="${url}">${text}</a>`)
-        }
-      } catch (e) {
-        console.warn('[BBSArticleWrite] confirmLink error', e)
-      } finally {
-        this.closeLinkDialog()
+      if (/^(javascript|data|vbscript):/i.test(url)) {
+        Message({ message: '链接地址不合法，请使用 http(s) 地址', type: 'warning', showClose: true, offset: 54 })
+        return
       }
-    },
-    saveSelection() {
-      const sel = window.getSelection()
-      if (sel && sel.rangeCount) {
-        this.savedRange = sel.getRangeAt(0)
-      }
-    },
-    restoreSelection() {
-      if (this.savedRange) {
-        try {
-          const sel = window.getSelection()
-          sel.removeAllRanges()
-          sel.addRange(this.savedRange)
-        } catch (e) {
-          // range 可能已失效，忽略
-        }
-        this.savedRange = null
-      }
+      // 用户常直接粘贴 "www.xxx.com"，补全协议，避免被当成站内相对路径
+      if (!/^([a-z][a-z0-9+.-]*:|\/|#)/i.test(url)) url = 'https://' + url
+      this.insertLinkMarkdown(text, url)
+      this.showLinkDialog = false
+      this.linkText = ''
+      this.linkUrl = ''
     },
     // --- 自动提取封面 & 摘要 ---
     extractFirstImage(markdown) {
@@ -741,7 +655,7 @@ export default {
       const plainText = markdown
         .replace(/!\[.*?\]\(.*?\)/g, '')      // 图片
         .replace(/\[([^\]]*)\]\(.*?\)/g, '$1') // 链接
-        .replace(/[#*`>~\-\+]/g, '')           // 标记符号
+        .replace(/[#*`>~+-]/g, '')             // 标记符号
         .replace(/\n{2,}/g, '\n')              // 多余空行
         .trim()
       const lines = plainText.split('\n').filter(l => l.trim())
@@ -749,8 +663,6 @@ export default {
     },
     handlePublish() {
       if (this.publishing) return
-      // 先把编辑区内容同步过来
-      this.syncContent()
       if (!this.articleTitle.trim()) {
         Message({ message: '标题不能为空', type: 'warning', showClose: true, offset: 54 })
         return
@@ -787,7 +699,6 @@ export default {
         articleSummary,
         articleImage,
         articleTypeId: 0,
-        articleCommunityId: 0,
         articleLabelId: isNaN(parseInt(this.selectedLabelId)) ? 0 : parseInt(this.selectedLabelId),
         isAnonymous: this.isAnonymous ? 1 : 0,
         userId: user.id,
@@ -827,31 +738,8 @@ textarea:focus {
 }
 </style>
 
-<!-- 非 scoped：编辑区内动态插入的 <a> 不受 scoped 影响，需要全局样式 -->
+<!-- 非 scoped：预览面板渲染的是 v-html 内容，scoped 样式覆盖不到 -->
 <style>
-.editor-content[data-placeholder]:empty:before {
-  content: attr(data-placeholder);
-  color: #c0c4cc;
-  pointer-events: none;
-}
-
-.editor-content a {
-  color: #2563eb !important;
-  text-decoration: underline !important;
-  font-weight: 500;
-  cursor: pointer;
-}
-.editor-content a:hover {
-  color: #1d4ed8 !important;
-  background-color: rgba(37, 99, 235, 0.06);
-}
-
-/* 编辑器内容撑满当无预览时 */
-.editor-content {
-  flex: 1;
-  min-width: 0;
-}
-
 /* Markdown 预览样式 —— 覆盖 Tailwind Preflight 对 p/h1-h6/ul/ol/blockquote/pre/hr 的重置 */
 .markdown-body h1,
 .markdown-body h2,
