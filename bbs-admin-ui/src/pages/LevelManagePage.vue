@@ -66,9 +66,9 @@
             >删除方案</button>
             <button
               class="px-4 py-1.5 text-[12px] bg-primary text-white rounded-lg disabled:opacity-50"
-              :disabled="currentProfileStatus === 1 || activating"
+              :disabled="currentProfileEffective || activating"
               @click="activateProfile"
-            >{{ activating ? '切换中...' : '启用此方案' }}</button>
+            >{{ activating ? '同步中...' : (currentProfileStatus === 1 ? '同步到周期' : '启用此方案') }}</button>
           </div>
         </div>
         <div
@@ -76,6 +76,7 @@
           class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800"
         >
           当前运营周期绑定了「{{ effectiveProfileName }}」，实际生效的是它；「{{ statusProfileName }}」虽然标记为启用中，但周期解绑前不会生效。
+          点「同步到周期」可把周期绑定改成当前方案。
           <router-link to="/operationCycle" class="ml-1 underline hover:text-amber-900">去运营周期调整绑定</router-link>
         </div>
 
