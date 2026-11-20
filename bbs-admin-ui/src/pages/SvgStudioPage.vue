@@ -1038,8 +1038,11 @@ export default {
      * 按名称去重：已存在就跳过，所以重复进入不会产生脏数据。
      */
     async seedLevelIcons() {
+      // 旧的 8 条「等级图标 · 星/月/日/皇冠…」保留在素材库里，
+      // 其中「皇冠」与新图标重名，会被幂等接口判为已存在，故新皇冠单独命名。
+      const NAMES = { crown8: '首席皇冠' }
       const payload = LEVEL_GLYPHS.map((g, i) => ({
-        assetName: '等级图标 · ' + g.label,
+        assetName: '等级图标 · ' + (NAMES[g.key] || g.label),
         category: 'level',
         svg: glyphSvg(g.key, (LEVEL_TONES[i] || LEVEL_TONES[0]).color),
       }))
