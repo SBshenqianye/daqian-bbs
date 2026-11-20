@@ -248,7 +248,7 @@
 
 <script>
 import { Message, Loading } from 'element-ui'
-import { getArticleById, getArticleFileByArticleId } from '@/api/article'
+import { getArticleForEdit, getArticleFileByArticleId } from '@/api/article'
 import { mdToHtml, htmlToMd } from '@/utils/markdown'
 import { handleResponse } from '../../../shared/feedback'
 import userStore from '@/utils/userStore'
@@ -477,7 +477,7 @@ export default {
       })
     },
     loadArticleForEdit(id) {
-      getArticleById(id).then(resp => {
+      getArticleForEdit(id).then(resp => {
         if (resp) {
           this.articleTitle = resp.articleTitle || ''
           this.markdownContent = resp.articleContent || ''

@@ -5,6 +5,11 @@ export const getArticleById =(articleId)=>{
     return postRequest(`/common/article/getArticleById/articleId/${articleId}`)
 }
 
+// 编辑页读取原文（仅作者本人）：公开接口返回的是脱敏后的 ***，保存会把 *** 写回库
+export const getArticleForEdit = (articleId) => {
+    return postRequest(`/article/getForEdit/${articleId}`)
+}
+
 // 获取文章对外展示状态（NORMAL/DELETED/NOT_EXIST），用于详情页区分"已删除"与"不存在"
 export const getArticleStatus = (articleId) => {
     return postRequest(`/common/article/getArticleStatus/articleId/${articleId}`)
