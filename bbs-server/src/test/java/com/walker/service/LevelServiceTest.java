@@ -53,8 +53,9 @@ class LevelServiceTest {
     }
 
     @Test
-    @DisplayName("运营周期绑定等级方案时，优先使用周期绑定的方案")
-    void activeProfile_usesCycleBinding() {
+    @DisplayName("没有显式启用的方案时，回落到运营周期绑定的方案")
+    void activeProfile_fallsBackToCycleBinding() {
+        when(profileMapper.selectList(any())).thenReturn(Collections.emptyList());
         OperationCycle cycle = new OperationCycle();
         cycle.setLevelProfileId(5);
         when(operationCycleService.getActiveCycle()).thenReturn(cycle);
@@ -66,21 +67,21 @@ class LevelServiceTest {
         LevelProfile result = service.getActiveProfile();
 
         assertEquals(5, result.getId());
-        verify(profileMapper, never()).selectList(any());
     }
 
     @Test
-    @DisplayName("周期未绑定等级方案时，回落到全局启用方案")
-    void activeProfile_fallsBackToGlobal() {
-        when(operationCycleService.getActiveCycle()).thenReturn(null);
-        LevelProfile global = new LevelProfile();
-        global.setId(1);
-        global.setStatus(1);
-        when(profileMapper.selectList(any())).thenReturn(Collections.singletonList(global));
+    @DisplayName("显式启用的方案优先于周期绑定，避免「启用中却不生效」")
+    void activeProfile_prefersEnabledProfile() {
+        LevelProfile enabled = new LevelProfile();
+        enabled.setId(1);
+        enabled.setStatus(1);
+        when(profileMapper.selectList(any())).thenReturn(Collections.singletonList(enabled));
 
         LevelProfile result = service.getActiveProfile();
 
         assertEquals(1, result.getId());
+        // 启用方案已命中，不应再去读周期绑定
+        verify(profileMapper, never()).selectById(3);
     }
 
     @Test
@@ -193,7 +194,6 @@ class LevelServiceTest {
         profile.setId(1);
         profile.setProfileName("默认等级体系");
         profile.setStatus(1);
-        when(operationCycleService.getActiveCycle()).thenReturn(null);
         when(profileMapper.selectList(any())).thenReturn(Collections.singletonList(profile));
 
         int[] thresholds = {0, 100, 250, 500, 800, 1200, 1800, 2600, 3600, 5100, 7100, 9600,

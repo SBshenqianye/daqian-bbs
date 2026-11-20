@@ -59,21 +59,24 @@ public class LevelService {
     }
 
     public LevelProfile getActiveProfile() {
-        // 运营周期显式绑定的等级方案优先；未绑定或方案缺失时回落到全局启用方案
-        try {
-            com.walker.pojo.OperationCycle cycle = operationCycleService.getActiveCycle();
-            if (cycle != null && cycle.getLevelProfileId() != null) {
-                LevelProfile bound = profileMapper.selectById(cycle.getLevelProfileId());
-                if (bound != null) return bound;
-            }
-        } catch (Exception ignore) {
-            // 周期表/字段尚未迁移时回落
-        }
+        // 显式启用的方案优先；一个方案都没启用时才回落到运营周期的绑定。
+        // 周期绑定只作为兜底/默认值，避免出现"后台显示启用中、实际按另一套算"。
         List<LevelProfile> list = profileMapper.selectList(new LambdaQueryWrapper<LevelProfile>()
                 .eq(LevelProfile::getStatus, 1)
                 .orderByDesc(LevelProfile::getId)
                 .last("LIMIT 1"));
-        return CollectionUtils.isEmpty(list) ? null : list.get(0);
+        if (!CollectionUtils.isEmpty(list)) {
+            return list.get(0);
+        }
+        try {
+            com.walker.pojo.OperationCycle cycle = operationCycleService.getActiveCycle();
+            if (cycle != null && cycle.getLevelProfileId() != null) {
+                return profileMapper.selectById(cycle.getLevelProfileId());
+            }
+        } catch (Exception ignore) {
+            // 周期表尚未迁移时忽略
+        }
+        return null;
     }
 
     public List<LevelItem> listItems(Integer profileId) {
@@ -462,9 +465,6 @@ public class LevelService {
         List<LevelProfile> profiles = profileMapper.selectList(new LambdaQueryWrapper<LevelProfile>()
                 .orderByDesc(LevelProfile::getStatus)
                 .orderByDesc(LevelProfile::getId));
-        // 实际生效方案可能与 status=1 不同：运营周期显式绑定优先
-        LevelProfile effective = getActiveProfile();
-        Integer effectiveId = effective == null ? null : effective.getId();
         List<Map<String, Object>> result = new ArrayList<>();
         for (LevelProfile p : profiles) {
             List<LevelItem> items = listItems(p.getId());
@@ -472,7 +472,6 @@ public class LevelService {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("profile", p);
             row.put("items", items);
-            row.put("effective", p.getId() != null && p.getId().equals(effectiveId));
             result.add(row);
         }
         return ResultBean.success("查询成功", result);
