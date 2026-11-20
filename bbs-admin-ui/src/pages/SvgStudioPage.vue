@@ -213,25 +213,6 @@
                 <p class="text-[10px] text-outline mt-1">底板会自动居中铺好，你只需在中间画图案。</p>
               </div>
 
-              <!-- 等级图标 -->
-              <div v-show="studioTab === 'icons'">
-                <div class="grid grid-cols-4 gap-1.5">
-                  <button
-                    v-for="g in levelGlyphs"
-                    :key="g.key"
-                    class="icon-tile"
-                    :title="'插入' + g.label"
-                    @click="addLevelIcon(g.key)"
-                  >
-                    <span class="h-7 w-7 inline-flex" v-html="levelGlyphPreview(g.key)"></span>
-                    <span class="text-[10px] leading-tight">{{ g.label }}</span>
-                  </button>
-                </div>
-                <p class="text-[10px] text-outline mt-2 leading-relaxed">
-                  点击插入到画布中心；图标自带等级配色，插到底板上即可当等级徽章使用。
-                </p>
-              </div>
-
               <!-- 图层 -->
               <div v-show="studioTab === 'layers'">
                 <div class="flex items-center justify-between mb-2">
@@ -507,7 +488,6 @@ export default {
       tools: TOOLS,
       templates: TEMPLATES,
       backplates: BACKPLATES,
-      levelGlyphs: LEVEL_GLYPHS,
       assetFilters: ASSET_FILTERS,
       tool: 'select',
       layers: [],
@@ -534,7 +514,6 @@ export default {
       return [
         { key: 'tools', label: '工具', icon: 'build' },
         { key: 'backplate', label: '底板', icon: 'layers' },
-        { key: 'icons', label: '等级图标', icon: 'military_tech' },
         { key: 'layers', label: '图层', icon: 'account_tree', badge: this.layers.length },
         { key: 'style', label: '样式', icon: 'palette' },
         { key: 'templates', label: '模板', icon: 'category' },
@@ -606,7 +585,7 @@ export default {
     },
   },
   mounted() {
-    this.loadAssets()
+    this.loadAssets().then(() => this.seedLevelIcons())
     window.addEventListener('keydown', this.onKey)
   },
   beforeDestroy() {
@@ -1053,40 +1032,38 @@ export default {
       return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${body}</svg>`
     },
     /* ---------- 等级图标 ---------- */
-    levelGlyphSvg(key) {
-      const i = LEVEL_GLYPHS.findIndex((g) => g.key === key)
-      const tone = LEVEL_TONES[i] || LEVEL_TONES[0]
-      return glyphSvg(key, tone.color)
-    },
-    levelGlyphPreview(key) {
-      return this.levelGlyphSvg(key)
-    },
-    addLevelIcon(key) {
-      const i = LEVEL_GLYPHS.findIndex((g) => g.key === key)
-      const meta = LEVEL_GLYPHS[i] || { label: key }
-      const tone = LEVEL_TONES[i] || LEVEL_TONES[0]
-      const size = Math.round(256 * 0.7)
-      const x = Math.round((256 - size) / 2)
-      const y = Math.round((256 - size) / 2)
-      this.layers.push({
-        id: nextId(),
-        type: 'raw',
-        name: '等级图标 · ' + meta.label,
-        rawSvg: glyphSvg(key, tone.color),
-        x,
-        y,
-        w: size,
-        h: size,
-        fill: 'none',
-        stroke: 'none',
-        strokeWidth: 0,
-        opacity: 1,
-        visible: true,
-      })
-      this.activeId = this.layers[this.layers.length - 1].id
-      this.dirty = true
-      this.commit()
-      this.$message.success('已插入「' + meta.label + '」')
+    /**
+     * 把 8 枚等级图标作为「已保存的素材」写进素材库（category = level）。
+     * 按名称去重：已存在就跳过，所以重复进入不会产生脏数据。
+     */
+    async seedLevelIcons() {
+      const existing = new Set((this.assets || []).map((a) => a.assetName))
+      const missing = LEVEL_GLYPHS
+        .map((g, i) => ({
+          assetName: '等级图标 · ' + g.label,
+          category: 'level',
+          svg: glyphSvg(g.key, (LEVEL_TONES[i] || LEVEL_TONES[0]).color),
+        }))
+        .filter((item) => !existing.has(item.assetName))
+      if (!missing.length) return
+      let created = 0
+      for (const item of missing) {
+        try {
+          const res = await this.postRequest('/admin/svg-asset/save', {
+            id: null,
+            assetName: item.assetName,
+            category: item.category,
+            svg: item.svg,
+          })
+          if (res && res.code === 200) created += 1
+        } catch (e) {
+          // 单个失败不影响其余图标
+        }
+      }
+      if (created) {
+        await this.loadAssets()
+        this.$message.success(`已把 ${created} 枚等级图标存入素材库`)
+      }
     },
     addBackplate(key) {
       const meta = BACKPLATES.find(b => b.key === key) || { label: key }
@@ -1316,20 +1293,6 @@ export default {
   font-size: 11px;
 }
 .preset:hover { border-color: #2563eb; color: #1d4ed8; }
-
-.icon-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 2px 4px;
-  border: 1px solid #dbe1ea;
-  border-radius: 8px;
-  background: #fff;
-  color: #475569;
-  font-size: 10px;
-}
-.icon-tile:hover { border-color: #2563eb; color: #1d4ed8; }
 
 .layer-row {
   display: flex;
