@@ -7,7 +7,6 @@ import com.walker.mapper.LevelProfileMapper;
 import com.walker.mapper.PointsLogMapper;
 import com.walker.pojo.LevelItem;
 import com.walker.pojo.LevelProfile;
-import com.walker.pojo.OperationCycle;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,7 +41,6 @@ class LevelServiceTest {
     @Mock private LevelItemMapper itemMapper;
     @Mock private PointsLogService pointsLogService;
     @Mock private PointsLogMapper pointsLogMapper;
-    @Mock private OperationCycleService operationCycleService;
 
     @BeforeEach
     void setUp() {
@@ -53,25 +51,8 @@ class LevelServiceTest {
     }
 
     @Test
-    @DisplayName("没有显式启用的方案时，回落到运营周期绑定的方案")
-    void activeProfile_fallsBackToCycleBinding() {
-        when(profileMapper.selectList(any())).thenReturn(Collections.emptyList());
-        OperationCycle cycle = new OperationCycle();
-        cycle.setLevelProfileId(5);
-        when(operationCycleService.getActiveCycle()).thenReturn(cycle);
-        LevelProfile bound = new LevelProfile();
-        bound.setId(5);
-        bound.setProfileName("周期绑定方案");
-        when(profileMapper.selectById(5)).thenReturn(bound);
-
-        LevelProfile result = service.getActiveProfile();
-
-        assertEquals(5, result.getId());
-    }
-
-    @Test
-    @DisplayName("显式启用的方案优先于周期绑定，避免「启用中却不生效」")
-    void activeProfile_prefersEnabledProfile() {
+    @DisplayName("启用中的方案即为生效方案")
+    void activeProfile_returnsEnabledProfile() {
         LevelProfile enabled = new LevelProfile();
         enabled.setId(1);
         enabled.setStatus(1);
@@ -80,8 +61,6 @@ class LevelServiceTest {
         LevelProfile result = service.getActiveProfile();
 
         assertEquals(1, result.getId());
-        // 启用方案已命中，不应再去读周期绑定
-        verify(profileMapper, never()).selectById(3);
     }
 
     @Test
@@ -218,8 +197,8 @@ class LevelServiceTest {
     }
 
     @Test
-    @DisplayName("启用方案时同步当前周期的绑定，避免周期覆盖导致「启用中却不生效」")
-    void activateProfile_syncsActiveCycleBinding() {
+    @DisplayName("启用方案后其余方案自动停用")
+    void activateProfile_switchesStatus() {
         LevelProfile target = new LevelProfile();
         target.setId(7);
         target.setProfileName("方案X");
@@ -230,7 +209,7 @@ class LevelServiceTest {
 
         assertEquals(200, result.getCode(), result.getMessage());
         assertEquals(1, target.getStatus());
-        verify(operationCycleService).bindActiveCycleLevelProfile(7);
+        verify(profileMapper).updateById(target);
     }
 
     private LevelItem item(int majorIndex, int minorIndex, int threshold) {

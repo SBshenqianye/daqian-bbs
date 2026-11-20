@@ -59,19 +59,8 @@ public class DictServiceImpl extends ServiceImpl<DictMapper, Dict> implements Di
         return lambdaQuery().eq(Dict::getDictType, dictType).list();
     }
 
-    @Autowired
-    private com.walker.mapper.OperationCycleMapper operationCycleMapper;
-
     @Override
     public String getValueByKey(String key) {
-        try {
-            String cycleValue = operationCycleMapper.selectActiveCycleConfig(key);
-            if (cycleValue != null && !cycleValue.trim().isEmpty()) {
-                return cycleValue;
-            }
-        } catch (Exception ignore) {
-            // 周期表尚未迁移时回落到全局字典
-        }
         return getBaseMapper().selectValueByKey(key);
     }
 }

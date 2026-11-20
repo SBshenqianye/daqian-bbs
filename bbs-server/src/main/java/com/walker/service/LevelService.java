@@ -42,9 +42,6 @@ public class LevelService {
     @Autowired
     private com.walker.mapper.PointsLogMapper pointsLogMapper;
 
-    @Autowired
-    private OperationCycleService operationCycleService;
-
     public ResultBean getProfilePayload() {
         LevelProfile profile = getActiveProfile();
         if (profile == null) {
@@ -59,24 +56,11 @@ public class LevelService {
     }
 
     public LevelProfile getActiveProfile() {
-        // 显式启用的方案优先；一个方案都没启用时才回落到运营周期的绑定。
-        // 周期绑定只作为兜底/默认值，避免出现"后台显示启用中、实际按另一套算"。
         List<LevelProfile> list = profileMapper.selectList(new LambdaQueryWrapper<LevelProfile>()
                 .eq(LevelProfile::getStatus, 1)
                 .orderByDesc(LevelProfile::getId)
                 .last("LIMIT 1"));
-        if (!CollectionUtils.isEmpty(list)) {
-            return list.get(0);
-        }
-        try {
-            com.walker.pojo.OperationCycle cycle = operationCycleService.getActiveCycle();
-            if (cycle != null && cycle.getLevelProfileId() != null) {
-                return profileMapper.selectById(cycle.getLevelProfileId());
-            }
-        } catch (Exception ignore) {
-            // 周期表尚未迁移时忽略
-        }
-        return null;
+        return CollectionUtils.isEmpty(list) ? null : list.get(0);
     }
 
     public List<LevelItem> listItems(Integer profileId) {
@@ -388,12 +372,6 @@ public class LevelService {
         target.setStatus(1);
         target.setUpdateTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
         profileMapper.updateById(target);
-        // 周期绑定优先于 status，切换方案时同步周期绑定，避免「启用中却不生效」
-        try {
-            operationCycleService.bindActiveCycleLevelProfile(id);
-        } catch (Exception ignore) {
-            // 周期表尚未迁移时忽略
-        }
         return ResultBean.success("已切换到「" + target.getProfileName() + "」");
     }
 

@@ -963,43 +963,6 @@ INSERT INTO bbs_dict (dict_type, dict_value, dict_label, dict_sort, create_by, c
 SELECT 'featured_showcase_count', '3', '精华展示卡数量', 22, '系统', to_char(now(), 'YYYY-MM-DD HH24:MI:SS'), '首页展示卡数量', 'featured_showcase_count'
 WHERE NOT EXISTS (SELECT 1 FROM bbs_dict WHERE dict_key = 'featured_showcase_count');
 
--- @migration: v052-p3-operation-cycle 年度运营周期
--- 幂等：CREATE TABLE IF NOT EXISTS；ADD COLUMN IF NOT EXISTS；ON CONFLICT DO NOTHING。
-CREATE TABLE IF NOT EXISTS bbs_operation_cycle (
-    id          SERIAL PRIMARY KEY,
-    cycle_code  varchar(50) NOT NULL UNIQUE,
-    cycle_name  varchar(100) NOT NULL,
-    start_date  varchar(10) NOT NULL,
-    end_date    varchar(10) NOT NULL,
-    status      smallint NOT NULL DEFAULT 0,
-    level_profile_id integer,
-    create_time varchar(20),
-    update_time varchar(20)
-);
-
-CREATE TABLE IF NOT EXISTS bbs_cycle_config (
-    id           SERIAL PRIMARY KEY,
-    cycle_id     integer NOT NULL,
-    config_key   varchar(100) NOT NULL,
-    config_value varchar(2000),
-    CONSTRAINT uk_cycle_config UNIQUE (cycle_id, config_key)
-);
-
-ALTER TABLE bbs_points_log ADD COLUMN IF NOT EXISTS cycle_id integer;
-CREATE INDEX IF NOT EXISTS idx_points_cycle ON bbs_points_log (cycle_id, create_time);
-
-INSERT INTO bbs_operation_cycle (cycle_code, cycle_name, start_date, end_date, status, create_time, update_time)
-VALUES ('CYCLE2026', '2026 年度运营周期', '2026-01-01', '2026-12-31', 1, '2026-11-13 00:00:00', '2026-11-13 00:00:00')
-ON CONFLICT (cycle_code) DO NOTHING;
-
-UPDATE bbs_points_log p
-SET cycle_id = c.id
-FROM bbs_operation_cycle c
-WHERE c.status = 1
-  AND p.cycle_id IS NULL
-  AND p.create_time >= c.start_date
-  AND p.create_time < c.end_date || ' 23:59:59';
-
 -- @migration: v053-p3-reminder 待办提醒
 -- 幂等：CREATE TABLE IF NOT EXISTS；ON CONFLICT DO NOTHING。
 CREATE TABLE IF NOT EXISTS bbs_reminder_rule (

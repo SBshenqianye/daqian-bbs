@@ -9741,3 +9741,18 @@ WHERE NOT EXISTS (SELECT 1 FROM `bbs_svg_asset` WHERE `asset_name`='等级图标
 INSERT INTO `bbs_svg_asset` (`asset_name`, `category`, `svg`, `created_by`, `create_time`, `update_time`)
 SELECT '等级图标 · 万伏执炬人', 'level', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="24" height="24" aria-hidden="true"><path d="M32 2C37 7 37 12 34 15 33 11 31 10 30 9 30 12 29 13 28 14 25 10 27 5 32 2Z" fill="#fbbf24"/> <path d="M32 7C34 10 34 12 32.5 14 32 12 31 11.5 30.5 11 30.5 13 30 13.5 29.5 14 28 12 29 9 32 7Z" fill="#fde68a"/> <path d="M32 15 22 59H42Z" fill="none" stroke="#dc2626" stroke-width="4.4" stroke-linejoin="round"/> <path d="M21 25H43" stroke="#dc2626" stroke-width="4.4" stroke-linecap="round"/> <path d="M24 38H40" stroke="#dc2626" stroke-width="4.4" stroke-linecap="round"/> <path d="M25 52 32 44 39 52" fill="none" stroke="#dc2626" stroke-width="3.2" stroke-linejoin="round"/> <g stroke="#ff3b3b" stroke-width="2.4" stroke-linecap="round"> <path d="M9 8 15 12"/><path d="M55 8 49 12"/><path d="M5 24H11"/><path d="M59 24H53"/> </g></svg>', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
 WHERE NOT EXISTS (SELECT 1 FROM `bbs_svg_asset` WHERE `asset_name`='等级图标 · 万伏执炬人' COLLATE utf8mb4_general_ci);
+
+-- @migration: v075-drop-operation-cycle 下线运营周期模块
+-- 背景：运营周期从未真正参与计算——榜单由前端传区间（未传时回落本月），points.cycle_id 只写不读，
+--       周期配置覆盖依赖裸 key/value 且长期为空；等级方案绑定还造成「启用中不生效」。整块下线。
+-- 幂等：DROP TABLE IF EXISTS；索引/列按 information_schema 判断后再删。
+DROP TABLE IF EXISTS `bbs_cycle_config`;
+DROP TABLE IF EXISTS `bbs_operation_cycle`;
+
+SET @idx_cycle := (SELECT COUNT(1) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_points_log' AND INDEX_NAME='idx_points_cycle');
+SET @sql_idx_cycle := IF(@idx_cycle>0, 'ALTER TABLE `bbs_points_log` DROP INDEX `idx_points_cycle`', 'SELECT 1');
+PREPARE s95 FROM @sql_idx_cycle; EXECUTE s95; DEALLOCATE PREPARE s95;
+
+SET @col_cycle := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_points_log' AND COLUMN_NAME='cycle_id');
+SET @sql_col_cycle := IF(@col_cycle>0, 'ALTER TABLE `bbs_points_log` DROP COLUMN `cycle_id`', 'SELECT 1');
+PREPARE s96 FROM @sql_col_cycle; EXECUTE s96; DEALLOCATE PREPARE s96;

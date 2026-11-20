@@ -96,9 +96,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private CurrentUserService currentUserService;
 
     @Autowired
-    private OperationCycleService operationCycleService;
-
-    @Autowired
     private FeaturedRecommendationMapper featuredRecommendationMapper;
 
     @Autowired
@@ -1170,25 +1167,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      */
     @Override
     public ResultBean personalPointsRank(PersonalPointsRankParam param) {
-        // 默认时间：当前运营周期；没有周期时回落到当月
+        // 默认时间：未显式传区间时回落到当月
         if (StringUtils.isEmpty(param.getStartTime()) || StringUtils.isEmpty(param.getEndTime())) {
-            String cycleStart = null, cycleEnd = null;
-            try {
-                OperationCycle cycle = operationCycleService.getActiveCycle();
-                if (cycle != null) {
-                    cycleStart = cycle.getStartDate();
-                    cycleEnd = cycle.getEndDate();
-                }
-            } catch (Exception ignore) {
-                // 周期表尚未迁移时回落当月
-            }
-            if (StringUtils.isNotEmpty(cycleStart) && StringUtils.isNotEmpty(cycleEnd)) {
-                param.setStartTime(cycleStart);
-                param.setEndTime(cycleEnd);
-            } else {
-                param.setStartTime(DateUtil.formatDate(DateUtil.beginOfMonth(new Date())));
-                param.setEndTime(DateUtil.formatDate(DateUtil.endOfMonth(new Date())));
-            }
+            param.setStartTime(DateUtil.formatDate(DateUtil.beginOfMonth(new Date())));
+            param.setEndTime(DateUtil.formatDate(DateUtil.endOfMonth(new Date())));
         }
         // 默认 size = 20
         if (param.getSize() == null || param.getSize() < 1) {

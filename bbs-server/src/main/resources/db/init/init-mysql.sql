@@ -1027,49 +1027,6 @@ INSERT INTO `bbs_dict` (`dict_type`, `dict_value`, `dict_label`, `dict_sort`, `c
 SELECT 'featured_showcase_count', '3', '精华展示卡数量', 22, '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), '首页展示卡数量', 'featured_showcase_count'
 WHERE NOT EXISTS (SELECT 1 FROM `bbs_dict` WHERE `dict_key` = 'featured_showcase_count');
 
--- @migration: v052-p3-operation-cycle 年度运营周期
--- 幂等：CREATE TABLE IF NOT EXISTS；information_schema 检查；INSERT IGNORE。
-CREATE TABLE IF NOT EXISTS `bbs_operation_cycle` (
-  `id`          int(11) NOT NULL AUTO_INCREMENT,
-  `cycle_code`  varchar(50) NOT NULL,
-  `cycle_name`  varchar(100) NOT NULL,
-  `start_date`  varchar(10) NOT NULL,
-  `end_date`    varchar(10) NOT NULL,
-  `status`      tinyint(1) NOT NULL DEFAULT 0 COMMENT '0草稿/1启用/2归档',
-  `level_profile_id` int(11) DEFAULT NULL COMMENT '绑定的等级方案',
-  `create_time` varchar(20) DEFAULT NULL,
-  `update_time` varchar(20) DEFAULT NULL,
-  PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE KEY `uk_cycle_code` (`cycle_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='运营周期';
-
-CREATE TABLE IF NOT EXISTS `bbs_cycle_config` (
-  `id`           int(11) NOT NULL AUTO_INCREMENT,
-  `cycle_id`     int(11) NOT NULL,
-  `config_key`   varchar(100) NOT NULL,
-  `config_value` varchar(2000) DEFAULT NULL,
-  PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE KEY `uk_cycle_config` (`cycle_id`, `config_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='运营周期配置';
-
-SET @col_cycle_id := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_points_log' AND COLUMN_NAME='cycle_id');
-SET @sql_cycle_id := IF(@col_cycle_id=0, 'ALTER TABLE `bbs_points_log` ADD COLUMN `cycle_id` int(11) DEFAULT NULL COMMENT ''运营周期ID''', 'SELECT 1');
-PREPARE s30 FROM @sql_cycle_id; EXECUTE s30; DEALLOCATE PREPARE s30;
-
-SET @idx_cycle_id := (SELECT COUNT(1) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_points_log' AND INDEX_NAME='idx_points_cycle');
-SET @sql_cycle_idx := IF(@idx_cycle_id=0, 'ALTER TABLE `bbs_points_log` ADD INDEX `idx_points_cycle` (`cycle_id`, `create_time`)', 'SELECT 1');
-PREPARE s31 FROM @sql_cycle_idx; EXECUTE s31; DEALLOCATE PREPARE s31;
-
-INSERT IGNORE INTO `bbs_operation_cycle` (`cycle_code`, `cycle_name`, `start_date`, `end_date`, `status`, `create_time`, `update_time`) VALUES
-('CYCLE2026', '2026 年度运营周期', '2026-01-01', '2026-12-31', 1, '2026-11-13 00:00:00', '2026-11-13 00:00:00');
-
-UPDATE `bbs_points_log` p
-JOIN `bbs_operation_cycle` c ON c.status = 1
-SET p.cycle_id = c.id
-WHERE p.cycle_id IS NULL
-  AND p.create_time >= c.start_date
-  AND p.create_time < CONCAT(c.end_date, ' 23:59:59');
-
 -- @migration: v053-p3-reminder 待办提醒
 -- 幂等：CREATE TABLE IF NOT EXISTS；INSERT IGNORE。
 CREATE TABLE IF NOT EXISTS `bbs_reminder_rule` (

@@ -1,9 +1,0 @@
-package com.walker.mapper;
-
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.walker.pojo.CycleConfig;
-import org.apache.ibatis.annotations.Mapper;
-
-@Mapper
-public interface CycleConfigMapper extends BaseMapper<CycleConfig> {
-}

@@ -9,7 +9,6 @@ import com.walker.mapper.SaOrgMapper;
 import com.walker.pojo.RankingCategory;
 import com.walker.pojo.RankingCategoryOrg;
 import com.walker.pojo.SaOrg;
-import com.walker.service.OperationCycleService;
 import com.walker.service.RankingCategoryService;
 import com.walker.vo.PointsRankVO;
 import com.walker.vo.RankingCategoryOrgVO;
@@ -58,9 +57,6 @@ public class RankingCategoryServiceImpl extends ServiceImpl<RankingCategoryMappe
 
     @Autowired
     private SaOrgMapper saOrgMapper;
-
-    @Autowired
-    private OperationCycleService operationCycleService;
 
     @Override
     public ResultBean listPublicCategories() {
@@ -770,16 +766,7 @@ public class RankingCategoryServiceImpl extends ServiceImpl<RankingCategoryMappe
         if (StringUtils.hasText(startTime) && StringUtils.hasText(endTime)) {
             return new String[]{startTime, endTime};
         }
-        // 未显式传时间时，默认按当前启用的运营周期取数；没有周期再回落到本月
-        try {
-            com.walker.pojo.OperationCycle cycle = operationCycleService.getActiveCycle();
-            if (cycle != null && StringUtils.hasText(cycle.getStartDate())
-                    && StringUtils.hasText(cycle.getEndDate())) {
-                return new String[]{cycle.getStartDate(), cycle.getEndDate()};
-            }
-        } catch (Exception ignore) {
-            // 周期表尚未迁移时回落本月
-        }
+        // 未显式传时间时回落到本月
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.DAY_OF_MONTH, 1);
         String start = new SimpleDateFormat("yyyy-MM-dd").format(cal.getTime());
