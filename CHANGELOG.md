@@ -5,6 +5,8 @@
 ## [未发布]
 
 ### 等级体系与图标
+- **悬浮卡等级徽章使用自定义图标**：`BBSUserBadge` 给 `BBSLevelBadge` 补传 `icon-svg`，资料卡里「拾光新锐·行」前的徽记不再显示默认图形
+- **下线社区与轮播图死模块**：`bbs_community` / `bbs_community_user`（0 数据、前台无接口）与 `bbs_slideshow`（仅 1 条、菜单入口被注释）整块删除；`v076` 迁移删表并移除 `bbs_article.article_community_id`。首页轮播继续由精华帖自动生成
 - **头像角标与顶部等级徽记统一用自定义图标**：顶部 Header 的等级角标此前固定用默认图形（`levelEmblemSvg`），现改为复用 `BBSLevelIcon` 并读取 `icon_svg`；帖子详情页的楼主头像补上 `authorIconSvg` 映射。`BBSLevelIcon` 统一把素材快照缩放到目标尺寸，避免 24px 快照塞进 12–16px 角标溢出
 - **标签（板块）改动用写权限**：`addArticleLabel` / `updArticleLabel` / `delArticleLabel` 由 `config:read` 改为 `config:write`（此前只读权限即可改动导航板块）
 - **等级方案可重命名**：方案栏新增铅笔按钮，弹窗改名（校验空值与重名，写入 `bbs_level_profile.profile_name`）；「定位说明」补上可编辑列，此前只能在显示名的 hover 提示里看到

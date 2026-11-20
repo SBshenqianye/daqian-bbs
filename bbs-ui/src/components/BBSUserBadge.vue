@@ -61,7 +61,7 @@
         >{{ profile.introduce }}</p>
 
         <div class="flex items-center gap-2 mt-2">
-          <BBSLevelBadge :level-index="profileLevel" :level="{ levelName: levelName, totalPoints: levelPoints }" />
+          <BBSLevelBadge :level-index="profileLevel" :icon-svg="profileIconSvg" :level="{ levelName: levelName, totalPoints: levelPoints }" />
           <span class="text-[11px] text-on-surface-variant">{{ levelPoints }} 分</span>
         </div>
 
