@@ -135,7 +135,22 @@ public class LevelService {
         data.put("iconKey", current.getIconKey());
         data.put("colorToken", current.getColorToken());
         data.put("iconSvg", current.getIconSvg());
+        data.put("badgeName", stageBadgeName(items, current));
         return data;
+    }
+
+    /** 当前大阶段的徽章名（徽章在进入阶段时解锁，挂在该阶段首档上） */
+    private String stageBadgeName(List<LevelItem> items, LevelItem current) {
+        if (items == null || current == null || current.getMajorIndex() == null) return null;
+        for (LevelItem item : items) {
+            if (Integer.valueOf(1).equals(item.getMinorIndex())
+                    && Objects.equals(item.getMajorIndex(), current.getMajorIndex())
+                    && item.getBadgeName() != null
+                    && !item.getBadgeName().trim().isEmpty()) {
+                return item.getBadgeName().trim();
+            }
+        }
+        return null;
     }
 
     /** 按累计积分与等级项解析等级序号（1 基） */

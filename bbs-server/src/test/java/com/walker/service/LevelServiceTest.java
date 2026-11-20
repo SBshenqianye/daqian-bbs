@@ -217,6 +217,37 @@ class LevelServiceTest {
         assertNull(ceiling.get("nextThreshold"));
     }
 
+    @Test
+    @DisplayName("用户等级返回当前大阶段的徽章名（徽章挂在阶段首档）")
+    void getUserLevel_returnsCurrentStageBadge() {
+        LevelProfile profile = new LevelProfile();
+        profile.setId(2);
+        profile.setStatus(1);
+        when(operationCycleService.getActiveCycle()).thenReturn(null);
+        when(profileMapper.selectList(any())).thenReturn(Collections.singletonList(profile));
+
+        List<LevelItem> items = new java.util.ArrayList<>();
+        for (int m = 1; m <= 2; m++) {
+            for (int n = 1; n <= 3; n++) {
+                LevelItem levelItem = item(m, n, (m - 1) * 100 + (n - 1) * 20);
+                levelItem.setLevelIndex((m - 1) * 3 + n);
+                items.add(levelItem);
+            }
+        }
+        items.get(0).setBadgeName("新芽徽章");
+        items.get(3).setBadgeName(" 耕耘徽章 ");
+        when(itemMapper.selectList(any())).thenReturn(items);
+
+        when(pointsLogService.getPointsAdjustment(9)).thenReturn(145);
+        Map<String, Object> current = service.getUserLevel(9);
+        assertEquals(6, current.get("level"));
+        assertEquals("耕耘徽章", current.get("badgeName"));
+
+        when(pointsLogService.getPointsAdjustment(9)).thenReturn(0);
+        Map<String, Object> first = service.getUserLevel(9);
+        assertEquals("新芽徽章", first.get("badgeName"));
+    }
+
     private LevelItem item(int majorIndex, int minorIndex, int threshold) {
         LevelItem item = new LevelItem();
         item.setMajorIndex(majorIndex);
