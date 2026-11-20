@@ -1,5 +1,5 @@
 # 编译桌面启动器（.NET Framework 4.0+，Win7 可用）
-# 用法：powershell -File scripts/e2e-selenium/build-exe.ps1
+# 用法：powershell -File scripts/test/e2e-selenium/build-exe.ps1
 param(
     [string]$Out = (Join-Path $PSScriptRoot 'target\DaqianBBS-E2E.exe')
 )

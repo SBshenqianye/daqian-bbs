@@ -3,9 +3,9 @@
 # BBS 离线打包脚本
 # 将构建产物打包为可分发的 tar.gz 文件
 # 用法:
-#   bash scripts/dist/package.sh                      # 轻量升级包（默认，输出到 dist/）
-#   bash scripts/dist/package.sh --upgrade            # 轻量升级包
-#   bash scripts/dist/package.sh --full              # 完整环境包（含基础镜像）
+#   bash scripts/prod/package.sh                      # 轻量升级包（默认，输出到 dist/）
+#   bash scripts/prod/package.sh --upgrade            # 轻量升级包
+#   bash scripts/prod/package.sh --full              # 完整环境包（含基础镜像）
 # ============================================
 set -e
 
@@ -32,7 +32,7 @@ check_artifacts() {
     if [ ! -f "bbs-server/target/bbs-server.jar" ]; then warn "bbs-server.jar 不存在"; missing=1; fi
 
     if [ "$missing" -ne 0 ]; then
-        echo ""; warn "部分构建产物缺失，请先运行: bash scripts/build/build.sh --wsl"; echo ""
+        echo ""; warn "部分构建产物缺失，请先在 Windows 完成构建（bbs-ui / bbs-admin-ui 的 npm run build + bbs-server 的 mvn clean package -DskipTests）；WSL 下可执行 bash scripts/dev/wsl.sh --build"; echo ""
         read -p "是否继续打包？(y/N) " -n 1 -r; echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then exit 1; fi
     fi
@@ -108,9 +108,18 @@ create_tarball() {
     size=$(du -h "$ROOT_DIR/dist/$PACKAGE_NAME" | cut -f1)
     ok "打包完成: $ROOT_DIR/dist/$PACKAGE_NAME (${size})"
 
+    # 生成 SHA256（与既有 .sha256 文件同格式：纯大写哈希），便于离线传输校验
+    if command -v sha256sum >/dev/null 2>&1; then
+        ( cd "$ROOT_DIR/dist" && sha256sum "$PACKAGE_NAME" | awk '{print toupper($1)}' > "$PACKAGE_NAME.sha256" )
+        ok "SHA256: $(cat "$ROOT_DIR/dist/$PACKAGE_NAME.sha256")"
+    else
+        warn "未找到 sha256sum，跳过校验文件生成"
+    fi
+
     echo ""
     info "分发文件:"
     echo "  $ROOT_DIR/dist/$PACKAGE_NAME"
+    echo "  $ROOT_DIR/dist/$PACKAGE_NAME.sha256"
     echo ""
 
     # 清理临时目录
@@ -152,6 +161,28 @@ package_upgrade() {
 
     # 2. .env.example
     cp scripts/.env.example "$OUTPUT_DIR/" 2>/dev/null || true
+
+    # 2.5 版本清单：schema 版本取自"包内 jar 里真正嵌的 SQL"，而不是源码，
+    #     这样构建产物陈旧（jar 没重新打）会在 verify-build.sh 里暴露出来。
+    local SCHEMA_VER GIT_COMMIT
+    SCHEMA_VER=$(python3 - "$OUTPUT_DIR/bbs-server.jar" <<'PYEOF'
+import sys, zipfile, re
+try:
+    with zipfile.ZipFile(sys.argv[1]) as z:
+        data = z.read('BOOT-INF/classes/db/init/upgrade-mysql.sql').decode('utf-8', 'ignore')
+    ids = re.findall(r'^-- @migration:\s+(\S+)', data, re.M)
+    print(ids[-1] if ids else 'unknown')
+except Exception:
+    print('unknown')
+PYEOF
+)
+    GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+    cat > "$OUTPUT_DIR/version.txt" << VERSIONEOF
+build_time=${TIMESTAMP}
+schema_version=${SCHEMA_VER}
+git_commit=${GIT_COMMIT}
+VERSIONEOF
+    ok "版本清单: schema=${SCHEMA_VER} commit=${GIT_COMMIT}"
 
     # 3. 生成 upgrade.sh（时间戳已硬编码）
     cat > "$OUTPUT_DIR/upgrade.sh" << UPGRADEEOF
@@ -300,12 +331,12 @@ package_full() {
     fi
 
     # 3. deploy-offline.sh
-    if [ -f "scripts/deploy/offline.sh" ]; then
-        cp scripts/deploy/offline.sh "$OUTPUT_DIR/deploy-offline.sh"
+    if [ -f "scripts/prod/offline.sh" ]; then
+        cp scripts/prod/offline.sh "$OUTPUT_DIR/deploy-offline.sh"
         chmod +x "$OUTPUT_DIR/deploy-offline.sh"
         ok "deploy-offline.sh 已复制"
     else
-        warn "scripts/deploy/offline.sh 不存在，跳过"
+        warn "scripts/prod/offline.sh 不存在，跳过"
     fi
 
     # 4. .env.example

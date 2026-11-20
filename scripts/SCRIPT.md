@@ -1,30 +1,52 @@
 # scripts/ 目录说明
 
-> 最后更新: 2026-09-23
+> 最后更新: 2026-11-20（按「开发 / 生产」重新归类）
 
 ## 目录结构
+
+按**运行环境**分三层，共享库单独放 `lib/`：
 
 ```
 scripts/
 ├── SCRIPT.md              ← 本文件
-├── .env.example           ← 环境变量配置模板
-├── verify-build.sh        ← 构建产物验证（依赖下沉改造后，构建机跑）
-├── verify-server.sh       ← 服务器部署结果验证（生产机跑）
-├── build/
-│   └── base.sh            ← 基础镜像构建/导出/加载
-├── deploy/
-│   ├── wsl.sh             ← WSL 开发部署（bind-mount 模式）
-│   └── offline.sh         ← 离线内网部署（首次安装 + 版本化升级）
-├── dist/
-│   └── package.sh         ← 离线打包分发
+├── .env.example           ← 环境变量配置模板（打包时复制进升级包）
 ├── lib/
 │   └── progress.sh        ← 进度指示工具库（步骤计数、spinner、进度条）
-└── ops/
-    ├── pg-start.sh        ← 本地 PostgreSQL 容器管理（必须挂具名卷 bbs-pgdata）
-    └── pg-backup.sh       ← 数据库备份/恢复（pg_dump + gzip）
+│
+├── dev/                   ← 本地开发与联调（不碰生产）
+│   ├── _common.ps1        ← 端口/进程公共函数
+│   ├── up.ps1             ← 启动 9081/9082/9083
+│   ├── down.ps1           ← 按端口停止
+│   ├── restart.ps1        ← 重启（all|server|ui|admin）
+│   ├── verify.ps1         ← 提交前：构建 + 就绪 + 负向自检
+│   ├── negative-smoke.ps1 ← 4 项负向注入自检
+│   ├── check-dev-port.js  ← Vue 启动前端口占用检查
+│   ├── wsl.sh             ← WSL 联调部署（bind-mount，60001）
+│   └── pg-start.sh        ← 本地 PostgreSQL 容器（必须挂具名卷 bbs-pgdata）
+│
+├── prod/                  ← 构建验证、打包、离线部署、生产运维
+│   ├── base.sh            ← 基础镜像构建/导出/加载
+│   ├── package.sh         ← 离线升级包打包（瘦 jar）
+│   ├── offline.sh         ← 内网离线部署（首次安装 + 版本化升级 + 修复）
+│   ├── one-key-deploy.sh  ← 一键：打包 → 产物验证 → 部署 → 部署后验证
+│   ├── verify-build.sh    ← 构建机自检（产物/包/版本一致性）
+│   ├── verify-server.sh   ← 服务器部署结果验证
+│   └── ops/
+│       ├── pg-backup.sh          ← 数据库备份/恢复（pg_dump + gzip）
+│       ├── diagnose-upload.sh    ← 上传目录挂载诊断
+│       ├── fix-upload-path.sh    ← 上传目录修复（生产机）
+│       ├── fix-dict-cleanup.sql
+│       └── fix-dict-key-column.sql
+│
+└── test/                  ← 验收与回归（不参与构建产物）
+    ├── e2e/daqian-bbs-e2e.hta   ← 现场/离线验收（Win7 可跑，mshta）
+    └── e2e-selenium/            ← 界面级回归（单 jar + chromedriver）
 ```
 
-> ⚠ **pg 数据持久化红线**：`bbs-postgres` 容器必须用 `-v bbs-pgdata:/var/lib/postgresql/data` 具名卷挂载。postgres 镜像不挂卷时会自动生成**匿名卷**，容器一删数据就跟容器一起消失；脚本内任何"删容器重建"逻辑都会导致换新卷、数据"丢失"（实际数据还在旧匿名卷里，可手动找回）。详见 `ops/pg-start.sh` 头注释。
+> ⚠ **pg 数据持久化红线**：`bbs-postgres` 容器必须用 `-v bbs-pgdata:/var/lib/postgresql/data` 具名卷挂载。postgres 镜像不挂卷时会自动生成**匿名卷**，容器一删数据就跟容器一起消失；脚本内任何"删容器重建"逻辑都会导致换新卷、数据"丢失"（实际数据还在旧匿名卷里，可手动找回）。详见 `dev/pg-start.sh` 头注释。
+
+> 归类口径：**会不会碰生产**。`dev/` 只动本机 9081–9083 与 WSL 容器；`prod/` 产出可发布物或直接在服务器执行；`test/` 是验收工具，不改数据（E2E 写入用例默认关闭）。
+
 
 ---
 
@@ -67,7 +89,7 @@ scripts/
 ```bash
 # 0. 首次或基础镜像依赖变更时，构建基础镜像
 #    注意：bbs-server-base 依赖 target/lib（mvn 产物），必须先执行第 1 步的 mvn
-bash scripts/build/base.sh --save
+bash scripts/prod/base.sh --save
 
 # 1. 开发机 Windows 上编译产物
 cd bbs-ui && npm run build
@@ -75,7 +97,7 @@ cd bbs-admin-ui && NODE_OPTIONS="--openssl-legacy-provider" npm run build
 cd bbs-server && mvn clean package -DskipTests   # 同时拷出 target/lib（基础镜像依赖层）
 
 # 2. WSL 部署（只需几秒）
-bash scripts/deploy/wsl.sh
+bash scripts/dev/wsl.sh
 
 # 3. 热更新（改代码后，WSL 上执行）
 podman restart bbs-server bbs-nginx
@@ -85,11 +107,11 @@ podman restart bbs-server bbs-nginx
 
 ```bash
 # 1. 打包轻量升级包（产物已存在则直接打包；需 python3/python 生成瘦 jar）
-bash scripts/dist/package.sh
+bash scripts/prod/package.sh
 # 输出: dist/bbs-upgrade-YYYYMMDD_HHMMSS.tar.gz（瘦包，~5MB）
 
 # 2. 构建产物验证（可选但建议）
-bash scripts/verify-build.sh
+bash scripts/prod/verify-build.sh
 
 # 3. 将 tar 传到目标服务器
 scp dist/bbs-upgrade-*.tar.gz user@server:/tmp/
@@ -102,18 +124,30 @@ sudo bash /data/bbs/deploy-offline.sh --upgrade /tmp/bbs-upgrade-*.tar.gz
 
 ## 各脚本说明
 
-### deploy/wsl.sh — WSL 部署
+### dev/up.ps1 | down.ps1 | restart.ps1 | verify.ps1 — 本地生命周期
+
+固定 9081（用户端）/ 9082（管理端）/ 9083（后端），按端口杀进程树，日志写 `tmp/run/`。
+
+```powershell
+powershell -File scripts/dev/up.ps1                       # 启动三个服务
+powershell -File scripts/dev/down.ps1                     # 全部停止（可 -Target admin）
+powershell -File scripts/dev/restart.ps1 -Target server   # 只重启后端
+powershell -File scripts/dev/verify.ps1                   # 提交前：串行构建 + 就绪 + 负向自检
+powershell -File scripts/dev/negative-smoke.ps1           # 4 项负向注入自检
+```
+
+### dev/wsl.sh — WSL 部署
 
 将 Windows 上已编译的 JAR + dist 通过 bind-mount 挂载到容器，秒级完成。
 启动参数为 `-Dloader.path=/app/lib -jar /app/app.jar`（依赖在镜像内，JAR 为瘦 jar）。
 
 ```bash
-bash scripts/deploy/wsl.sh                   # 检测产物 + 部署
-bash scripts/deploy/wsl.sh --build           # 强制在 WSL 上编译（慢） + 部署（先构建再建镜像）
-bash scripts/deploy/wsl.sh --restart-only    # 仅重启容器（代码已挂载）
+bash scripts/dev/wsl.sh                   # 检测产物 + 部署
+bash scripts/dev/wsl.sh --build           # 强制在 WSL 上编译（慢） + 部署（先构建再建镜像）
+bash scripts/dev/wsl.sh --restart-only    # 仅重启容器（代码已挂载）
 ```
 
-### deploy/offline.sh — 离线部署
+### prod/offline.sh — 离线部署
 
 随完整环境包分发到内网服务器，支持首次安装和版本化升级。
 
@@ -125,27 +159,65 @@ bash deploy-offline.sh --repair                        # 验证/修复（挂载�
 
 > ⚠ 依赖下沉后覆盖基础镜像不能用 `--install`（镜像已存在会跳过加载），需手动 `podman load`。
 
-### dist/package.sh — 离线打包
+### prod/package.sh — 离线打包
 
 将已有构建产物打包为 tarball，内嵌 `upgrade.sh`（服务器端自动创建版本目录 + 更新软链 + 重启/重建容器）。
 升级包内 jar 为**瘦 jar**（用 python3/python 剔除 `BOOT-INF/lib`，依赖走镜像 `/app/lib`）。
 
 ```bash
-bash scripts/dist/package.sh                  # 轻量升级包（默认，~5MB）
-bash scripts/dist/package.sh --full           # 完整环境包（含基础镜像 tar + 首次部署脚本）
+bash scripts/prod/package.sh                  # 轻量升级包（默认，~5MB）
+bash scripts/prod/package.sh --full           # 完整环境包（含基础镜像 tar + 首次部署脚本）
 ```
 
-### verify-build.sh — 构建产物验证（构建机跑）
+打包完成后自动输出同名 `.sha256`（大写哈希），离线传输时可直接 `sha256sum -c` 校验。
+
+### prod/one-key-deploy.sh — 一键部署
+
+自动识别两种环境，通常**不用填任何参数**。
+
+**生产服务器**（`/data/bbs` 即项目根，脚本在 `scripts/prod/`）：
+
+```bash
+cd /data/bbs/scripts/prod && bash one_key_deploy.sh
+```
+
+- 自动取 `/data/bbs/bbs-upgrade-*.tar.gz` 里最新的一个
+- 有同名 `.sha256` 就自动校验，不匹配立即中止
+- 部署前 3 秒倒计时（TTY 下可 Ctrl+C）
+- 验证：API / 用户端 / 管理端三个 200 + `verify-server.sh`
+- **验证全部通过后**才把 tar（和 .sha256）移入 `/data/bbs/archive/`；失败则留在根目录便于重试，并打印回滚命令
+
+**开发机 / WSL**（`<repo>/` 即项目根）：
+
+```bash
+./deploy.sh          # 打包 → 产物验证 → 部署 WSL → 探活
+./deploy.sh -n       # 只预检
+```
+
+| 选项 | 作用 |
+| --- | --- |
+| 位置参数 `wsl\|w` / `prod\|p` 或 `-t/--target` | 强制目标（默认按目录特征自动识别） |
+| `--tar <path>` | 指定升级包，默认自动查找 |
+| `-y`, `--yes` | 跳过生产部署前的 3 秒倒计时 |
+| `--skip-package` | 复用已有升级包（开发机） |
+| `--skip-verify` | 跳过部署后验证（不推荐） |
+| `-n`, `--dry-run` | 只预检并打印计划 |
+
+识别规则：仓库根有 `bbs-server/pom.xml` → 开发机（wsl）；否则有 `versions/`、`archive/` 或 `.env` → 生产。可用 `BBS_TARGET` 覆盖。
+
+预检内容：必需命令、三项构建产物是否存在、**产物是否早于源码**（防"忘了重新打包"）、git 提交与未提交改动数；生产目标额外记录 `versions/latest` 当前指向，失败时打印回滚命令。
+
+### prod/verify-build.sh — 构建产物验证（构建机跑）
 
 依赖下沉改造后，打包完成检查产物是否合格：
 
 ```bash
-bash scripts/verify-build.sh
+bash scripts/prod/verify-build.sh
 ```
 
 验证项：fat jar 为 PropertiesLauncher 布局、`target/lib` 包含 fat jar 的全部内置依赖（允许多出空壳 starter，无类无害）、升级包 <15MB、包内为瘦 jar（不含 BOOT-INF/lib）、upgrade.sh 含 `-Dloader.path=/app/lib`。
 
-### verify-server.sh — 服务器部署验证（生产机跑）
+### prod/verify-server.sh — 服务器部署验证（生产机跑）
 
 瘦升级包部署完成后，在服务器上检查部署结果：
 
@@ -155,30 +227,30 @@ bash /tmp/verify-server.sh    # 支持 BBS_HOME / BBS_SERVER_PORT 环境变量�
 
 验证项：镜像含 `/app/lib`、容器启动参数含 `-Dloader.path=/app/lib`、当前 jar 为瘦 jar、后端健康 200、上传目录挂载探针。全部通过不代表业务功能正常，仍需浏览器回归（发帖/上传）。
 
-### pg-backup.sh — 数据库备份/恢复
+### prod/ops/pg-backup.sh — 数据库备份/恢复
 
 自动检测运行环境（容器 or 原生），容器名从 `.env` 的 `BBS_PG_CONTAINER` 读取。
 
 ```bash
-bash scripts/ops/pg-backup.sh                  # 备份到当前目录（bbs_YYYYMMDD_HHMMSS.sql.gz）
-bash scripts/ops/pg-backup.sh --list           # 列出容器内可用备份
-bash scripts/ops/pg-backup.sh --env            # 显示检测到的环境信息
-bash scripts/ops/pg-backup.sh --restore bbs_20260825_120000.sql.gz  # 恢复
+bash scripts/prod/ops/pg-backup.sh                  # 备份到当前目录（bbs_YYYYMMDD_HHMMSS.sql.gz）
+bash scripts/prod/ops/pg-backup.sh --list           # 列出容器内可用备份
+bash scripts/prod/ops/pg-backup.sh --env            # 显示检测到的环境信息
+bash scripts/prod/ops/pg-backup.sh --restore bbs_20260825_120000.sql.gz  # 恢复
 ```
 
 > ⚠ 生产环境容器名可能和测试不同（如 `work-flow-db`），务必在 `.env` 中配置 `BBS_PG_CONTAINER`。
 
-### base.sh — 基础镜像管理
+### prod/base.sh — 基础镜像管理
 
 构建/导出/加载运行时基础镜像（不含应用代码），含依赖变更检测。
 `bbs-server-base` 的依赖文件列表含 `bbs-server/pom.xml`：**后端依赖变更（pom 变化）→ checksum 变化 → 自动重建镜像**。构建前校验 `bbs-server/target/lib` 存在（缺失时报错提示先跑 mvn）。
 
 ```bash
-bash scripts/build/base.sh              # 检测 + 构建（如需）
-bash scripts/build/base.sh --save       # 构建 + 导出 tar 到 dist/base-images/
-bash scripts/build/base.sh --load       # 从 tar 加载到本地
-bash scripts/build/base.sh --check      # 只检测变更
-bash scripts/build/base.sh --force-rebuild  # 强制重建
+bash scripts/prod/base.sh              # 检测 + 构建（如需）
+bash scripts/prod/base.sh --save       # 构建 + 导出 tar 到 dist/base-images/
+bash scripts/prod/base.sh --load       # 从 tar 加载到本地
+bash scripts/prod/base.sh --check      # 只检测变更
+bash scripts/prod/base.sh --force-rebuild  # 强制重建
 ```
 
 ---

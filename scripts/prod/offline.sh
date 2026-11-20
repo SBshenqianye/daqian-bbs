@@ -3,9 +3,9 @@
 # BBS 离线内网部署脚本
 #
 # 一体化用法（自动解压 + 识别 + 部署 + 清理）:
-#   bash scripts/deploy/offline.sh                       # 自动在 dist/ 找最新 tar
-#   bash scripts/deploy/offline.sh dist/bbs-full-*.tar.gz
-#   bash scripts/deploy/offline.sh /path/to/bbs-upgrade-*.tar.gz
+#   bash scripts/prod/offline.sh                       # 自动在 dist/ 找最新 tar
+#   bash scripts/prod/offline.sh dist/bbs-full-*.tar.gz
+#   bash scripts/prod/offline.sh /path/to/bbs-upgrade-*.tar.gz
 #
 # 传统用法（包内自调用仍是 deploy-offline.sh）:
 #   bash deploy-offline.sh --install                     # 完整包内执行
@@ -39,7 +39,7 @@ err()   { echo -e "${RED}[ERR]${NC} $*" >&2; }
 # 背景：老 podman（如 RHEL7 生产机上的 1.4.4）在部分场景下 bind mount 会静默失效，
 #       上传写进容器可写层、宿主/nginx 读不到 → 图片 GET 404（2026-08 生产故障根因）。
 # 方案：启动前在宿主目录写入探针文件，启动后从容器内回读；读不到即判定挂载失效并退出。
-# 注意：本段与 scripts/deploy/wsl.sh、package.sh 生成的 upgrade.sh 保持同步
+# 注意：本段与 scripts/dev/wsl.sh、package.sh 生成的 upgrade.sh 保持同步
 #       （离线包内 deploy-offline.sh 是独立副本，无共享 lib，必须各自内联）。
 STORAGE_PROBE=".deploy-mount-probe"
 
@@ -80,7 +80,7 @@ verify_upload_mount() {
 # --------------- HTTP 文件服务自检（端到端，无需登录） ---------------
 # 宿主写一个测试图 → 模拟浏览器 GET /bbs-server/files/... 回读（SecurityConfig 中
 # /files/** permitAll）。读不到 = 后端容器看不到宿主上传目录（挂载失效）或文件服务
-# 异常 → 与生产故障同症状（GET 404）。注意：本段与 scripts/deploy/wsl.sh 保持同步。
+# 异常 → 与生产故障同症状（GET 404）。注意：本段与 scripts/dev/wsl.sh 保持同步。
 write_serve_probe() {
     local dir="$1"
     dir="${dir%/}"
@@ -139,9 +139,9 @@ usage() {
   -h, --help              帮助信息
 
 示例:
-  bash scripts/deploy/offline.sh
-  bash scripts/deploy/offline.sh dist/bbs-full-20260715_154304.tar.gz
-  bash scripts/deploy/offline.sh --upgrade dist/bbs-upgrade-20260715_154305.tar.gz
+  bash scripts/prod/offline.sh
+  bash scripts/prod/offline.sh dist/bbs-full-20260715_154304.tar.gz
+  bash scripts/prod/offline.sh --upgrade dist/bbs-upgrade-20260715_154305.tar.gz
   bash deploy-offline.sh --repair   # 生产机图片 404 等场景：验证/重建后端容器
 
 环境变量:

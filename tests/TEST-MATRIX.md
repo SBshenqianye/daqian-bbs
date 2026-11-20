@@ -39,7 +39,7 @@
 | 弹层：Element UI MessageBox | 无 | 用测 | 确认框不超出视口 | E2E 未保存保护用例中的 `expect.poll` | HEAD only |
 | 弹层：长内容滚动 | 无 | 用测 | 审计详情面板高度 ≤ 90vh | 同上 E2E 的 `boundingBox` 断言 | HEAD only |
 | CORS DELETE | `WebMvcConfigTest.corsConfiguration_allowsDelete`（仅配置） | 单元 | 真实预检在 `/admin/**` 被 Spring Security 提前 401 | API `CORS-01`；修复 `WebMvcConfig` 过滤器顺序 | HEAD only |
-| 开发端口预检查 | `scripts/check-dev-port.js` | 脚本 | 空闲/占用/非法参数行为未覆盖 | 新增 `tests/dev/check-dev-port.test.js`（3 例） | HEAD only |
+| 开发端口预检查 | `scripts/dev/check-dev-port.js` | 脚本 | 空闲/占用/非法参数行为未覆盖 | 新增 `tests/dev/check-dev-port.test.js`（3 例） | HEAD only |
 | 既有回归：用户/文章/举报/违规/版主/通知/审计 | 54 个后端测试类、83 个 Playwright 用例 | 单元 + E2E | 无新增缺口 | 全量回归 | 是 |
 
 ## 2. 本次新增/修改文件

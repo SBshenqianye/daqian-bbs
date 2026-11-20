@@ -9,8 +9,8 @@
 #   3. 重建 bbs-server 容器（强制，让新环境变量生效）
 #   4. 验证：挂载探针 + HTTP 文件回读 + 抢救回来的文件 GET 200
 # 用法:
-#   bash scripts/ops/fix-upload-path.sh            # 生产机（自动找 /data/bbs/.env）
-#   BBS_HOME=/path bash scripts/ops/fix-upload-path.sh
+#   bash scripts/prod/ops/fix-upload-path.sh            # 生产机（自动找 /data/bbs/.env）
+#   BBS_HOME=/path bash scripts/prod/ops/fix-upload-path.sh
 # ============================================
 set -e
 

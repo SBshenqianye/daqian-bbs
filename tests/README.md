@@ -8,7 +8,7 @@
 |---|---|
 | `api/permission-group-api-smoke.js` | 11 个真实 HTTP 冒烟：channel 02 登录、权限组 CRUD、预设详情/删除、删除组迁移、`permission:manage`/`audit:read` 边界、`config:write` 变更、CORS DELETE 预检 |
 | `../bbs-server/src/test/e2e/permission-groups.spec.ts` | 管理端 E2E：首页我的权限/权限安全/快捷入口过滤、权限组关键权限锁定、未保存保护、创建/预设/删除、审计详情弹层 |
-| `dev/check-dev-port.test.js` | `scripts/check-dev-port.js` 的空闲/占用/非法参数行为（`node --test`） |
+| `dev/check-dev-port.test.js` | `scripts/dev/check-dev-port.js` 的空闲/占用/非法参数行为（`node --test`） |
 
 运行前置与命令见 `TEST-MATRIX.md` 第 3 节。API/E2E 必须使用从 `bbs_db` 复制的
 `bbs_e2e_test`，禁止直接写 `bbs_db`。

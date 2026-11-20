@@ -2,13 +2,13 @@
 # ============================================
 # 一次性验证脚本（构建机 / 开发机跑）
 # 验证"依赖下沉"改造后的构建产物是否合格。
-# 前置：已完成 mvn clean package -DskipTests + bash scripts/dist/package.sh
-# 用法: bash scripts/verify-build.sh
+# 前置：已完成 mvn clean package -DskipTests + bash scripts/prod/package.sh
+# 用法: bash scripts/prod/verify-build.sh
 # 退出码: 0=全部通过  1=有失败项
 # ============================================
 set -u
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 PASS=0; FAIL=0
@@ -74,6 +74,16 @@ if [ -n "$LATEST" ]; then
     check "包内含 upgrade.sh"             "[ -f '$INNER/upgrade.sh' ]"
     check "upgrade.sh 启动参数含 -Dloader.path=/app/lib" \
         "grep -q 'loader.path=/app/lib' '$INNER/upgrade.sh'"
+
+    # 版本一致性：包内 jar 真正嵌的 schema 必须等于源码最新迁移块，
+    # 否则说明 jar 是旧的（2026-11-18 的包只到 v065，源码已到 v071+，就是这个问题）
+    check "包内含 version.txt" "[ -f '$INNER/version.txt' ]"
+    if [ -f "$INNER/version.txt" ]; then
+        CUR_SCHEMA=$(grep -o '^-- @migration: [^ ]*' bbs-server/src/main/resources/db/init/upgrade-mysql.sql | tail -1 | awk '{print $3}')
+        PKG_SCHEMA=$(grep '^schema_version=' "$INNER/version.txt" | cut -d= -f2)
+        echo "      源码 schema=$CUR_SCHEMA  包内 schema=$PKG_SCHEMA"
+        check "包内 jar 的 schema 与源码一致" "[ '$PKG_SCHEMA' = '$CUR_SCHEMA' ]"
+    fi
 
     if [ -f "$INNER/bbs-server.jar" ]; then
         jar_mb=$(du -m "$INNER/bbs-server.jar" | cut -f1)

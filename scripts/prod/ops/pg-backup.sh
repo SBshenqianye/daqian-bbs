@@ -4,10 +4,10 @@
 # 自动检测环境：容器 or 宿主机原生 PostgreSQL
 # 容器名从 .env 的 BBS_PG_CONTAINER 读取，未配置则自动扫描
 # 用法:
-#   bash scripts/ops/pg-backup.sh                          # 备份到当前目录
-#   bash scripts/ops/pg-backup.sh --restore <file.sql.gz>  # 恢复指定备份
-#   bash scripts/ops/pg-backup.sh --verify [file.sql.gz]   # 验证备份（自动对比行数）
-#   bash scripts/ops/pg-backup.sh --env                    # 显示当前检测到的环境
+#   bash scripts/prod/ops/pg-backup.sh                          # 备份到当前目录
+#   bash scripts/prod/ops/pg-backup.sh --restore <file.sql.gz>  # 恢复指定备份
+#   bash scripts/prod/ops/pg-backup.sh --verify [file.sql.gz]   # 验证备份（自动对比行数）
+#   bash scripts/prod/ops/pg-backup.sh --env                    # 显示当前检测到的环境
 # ============================================
 set -e
 

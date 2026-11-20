@@ -5,11 +5,11 @@
 # 包含依赖变更检测（md5 checksum）和旧镜像归档。
 #
 # 用法:
-#   bash scripts/build/base.sh                # 检测 + 构建（如需）
-#   bash scripts/build/base.sh --save         # 构建 + 导出 tar
-#   bash scripts/build/base.sh --load         # 从 tar 加载到本地
-#   bash scripts/build/base.sh --force-rebuild # 强制重建所有
-#   bash scripts/build/base.sh --check        # 只检测变更状态
+#   bash scripts/prod/base.sh                # 检测 + 构建（如需）
+#   bash scripts/prod/base.sh --save         # 构建 + 导出 tar
+#   bash scripts/prod/base.sh --load         # 从 tar 加载到本地
+#   bash scripts/prod/base.sh --force-rebuild # 强制重建所有
+#   bash scripts/prod/base.sh --check        # 只检测变更状态
 # ============================================
 set -e
 

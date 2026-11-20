@@ -10,10 +10,10 @@
 #      （可在开发机 Windows 上 build 后同步过来）
 #
 # 用法:
-#   bash scripts/deploy/wsl.sh                       # 检测产物 + 部署
-#   bash scripts/deploy/wsl.sh --build               # 强制重编 + 部署
-#   bash scripts/deploy/wsl.sh --restart-only        # 仅重启容器
-#   bash scripts/deploy/wsl.sh --repair              # 验证挂载/文件服务，异常自动重建后端容器
+#   bash scripts/dev/wsl.sh                       # 检测产物 + 部署
+#   bash scripts/dev/wsl.sh --build               # 强制重编 + 部署
+#   bash scripts/dev/wsl.sh --restart-only        # 仅重启容器
+#   bash scripts/dev/wsl.sh --repair              # 验证挂载/文件服务，异常自动重建后端容器
 # ============================================
 set -e
 
@@ -35,7 +35,7 @@ source scripts/lib/progress.sh
 # 背景：老 podman（如 RHEL7 生产机上的 1.4.4）在部分场景下 bind mount 会静默失效，
 #       上传写进容器可写层、宿主/nginx 读不到 → 图片 GET 404（2026-08 生产故障根因）。
 # 方案：启动前在宿主目录写入探针文件，启动后从容器内回读；读不到即判定挂载失效并退出。
-# 注意：本段与 scripts/deploy/offline.sh、package.sh 生成的 upgrade.sh 保持同步
+# 注意：本段与 scripts/prod/offline.sh、package.sh 生成的 upgrade.sh 保持同步
 #       （离线包内 deploy-offline.sh 是独立副本，无共享 lib，必须各自内联）。
 STORAGE_PROBE=".deploy-mount-probe"
 
@@ -76,7 +76,7 @@ verify_upload_mount() {
 # --------------- HTTP 文件服务自检（端到端，无需登录） ---------------
 # 宿主写一个测试图 → 模拟浏览器 GET /bbs-server/files/... 回读（SecurityConfig 中
 # /files/** permitAll）。读不到 = 后端容器看不到宿主上传目录（挂载失效）或文件服务
-# 异常 → 与生产故障同症状（GET 404）。注意：本段与 scripts/deploy/offline.sh 保持同步。
+# 异常 → 与生产故障同症状（GET 404）。注意：本段与 scripts/prod/offline.sh 保持同步。
 write_serve_probe() {
     local dir="$1"
     dir="${dir%/}"
@@ -142,11 +142,11 @@ BBS_ADMIN_DIST="bbs-admin-ui/dist"
 ensure_base_images() {
     info "检测基础镜像..."
 
-    if bash scripts/build/base.sh --check 2>/dev/null; then
+    if bash scripts/prod/base.sh --check 2>/dev/null; then
         ok "基础镜像已就绪"
     else
         warn "基础镜像需要更新，正在构建..."
-        bash scripts/build/base.sh
+        bash scripts/prod/base.sh
         ok "基础镜像构建完成"
     fi
 }
@@ -406,5 +406,5 @@ echo -e "${YELLOW}║${NC}"
 echo -e "${YELLOW}║${NC}  WSL 热更新: 改代码后执行 podman restart ${BBS_SERVER_CONTAINER} ${BBS_NGINX_CONTAINER}"
 echo -e "${YELLOW}╚══════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "${GREEN}║${NC}  停止容器:  bash scripts/ops/teardown.sh"
+echo -e "${GREEN}║${NC}  停止容器:  podman stop bbs-server bbs-nginx"
 echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"

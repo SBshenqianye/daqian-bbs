@@ -5,13 +5,13 @@
  * Vue CLI 使用 portfinder，端口被占用时会自动递增到下一个端口，
  * 可能出现 admin-ui 抢到后端 9083 的情况。启动前显式检查，占用时直接失败。
  *
- * 用法：node scripts/check-dev-port.js <port>
+ * 用法：node scripts/dev/check-dev-port.js <port>
  */
 const net = require('net')
 
 const port = Number(process.argv[2])
 if (!Number.isInteger(port) || port <= 0) {
-  console.error('用法: node scripts/check-dev-port.js <port>')
+  console.error('用法: node scripts/dev/check-dev-port.js <port>')
   process.exit(1)
 }
 

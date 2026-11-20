@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================
 # 上传 404 一键诊断（只读，不改任何状态，仅一个临时写测试文件并自清理）
-# 用法: bash scripts/ops/diagnose-upload.sh [UPLOAD_DIR] [NGINX_PORT]
+# 用法: bash scripts/prod/ops/diagnose-upload.sh [UPLOAD_DIR] [NGINX_PORT]
 #   UPLOAD_DIR  上传目录（默认 /data/bbs/bbsUpload，也可从 .env 读取）
 #   NGINX_PORT  nginx 端口（默认 60001）
 # 输出 6 项证据，用于定位"上传成功但 GET 404"的根因。
