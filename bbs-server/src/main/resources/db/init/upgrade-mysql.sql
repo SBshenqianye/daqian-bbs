@@ -310,16 +310,28 @@ CREATE TABLE IF NOT EXISTS `bbs_board_moderator` (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='版块管理员';
 
 -- === 2. 修改现有表 ===
+-- 幂等：先查 information_schema 再 ALTER。原实现是无条件 ADD COLUMN，
+-- init 建表已含这些列时重放会报 Duplicate column 并中断后续语句（2026-11-19 重放验证发现）。
+-- 正常流程不会重跑本块（老库已记录、新库 baseline 全标记），加守卫是为了脚本可安全重放。
 
--- bbs_reply 增加 is_adopted 字段（忽略已存在错误）
-ALTER TABLE `bbs_reply` ADD COLUMN `is_adopted` tinyint(1) DEFAULT 0 COMMENT '是否被采纳(0=否,1=是)';
+-- bbs_reply 增加 is_adopted 字段
+SET @c12a := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_reply' AND COLUMN_NAME='is_adopted');
+SET @s12a := IF(@c12a=0, 'ALTER TABLE `bbs_reply` ADD COLUMN `is_adopted` tinyint(1) DEFAULT 0 COMMENT ''是否被采纳(0=否,1=是)''', 'SELECT 1');
+PREPARE s12a FROM @s12a; EXECUTE s12a; DEALLOCATE PREPARE s12a;
 
 -- bbs_user 增加发帖限制字段
-ALTER TABLE `bbs_user` ADD COLUMN `post_restricted` tinyint(1) DEFAULT 0 COMMENT '是否限制发帖(0=否,1=是)';
-ALTER TABLE `bbs_user` ADD COLUMN `post_restricted_until` varchar(20) DEFAULT NULL COMMENT '限制发帖截止时间';
+SET @c12b := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_user' AND COLUMN_NAME='post_restricted');
+SET @s12b := IF(@c12b=0, 'ALTER TABLE `bbs_user` ADD COLUMN `post_restricted` tinyint(1) DEFAULT 0 COMMENT ''是否限制发帖(0=否,1=是)''', 'SELECT 1');
+PREPARE s12b FROM @s12b; EXECUTE s12b; DEALLOCATE PREPARE s12b;
+
+SET @c12c := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_user' AND COLUMN_NAME='post_restricted_until');
+SET @s12c := IF(@c12c=0, 'ALTER TABLE `bbs_user` ADD COLUMN `post_restricted_until` varchar(20) DEFAULT NULL COMMENT ''限制发帖截止时间''', 'SELECT 1');
+PREPARE s12c FROM @s12c; EXECUTE s12c; DEALLOCATE PREPARE s12c;
 
 -- bbs_article 增加热度奖励标记字段
-ALTER TABLE `bbs_article` ADD COLUMN `is_hot_bonus` tinyint(1) DEFAULT 0 COMMENT '热度奖励是否已发放(0=否,1=是)';
+SET @c12d := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_article' AND COLUMN_NAME='is_hot_bonus');
+SET @s12d := IF(@c12d=0, 'ALTER TABLE `bbs_article` ADD COLUMN `is_hot_bonus` tinyint(1) DEFAULT 0 COMMENT ''热度奖励是否已发放(0=否,1=是)''', 'SELECT 1');
+PREPARE s12d FROM @s12d; EXECUTE s12d; DEALLOCATE PREPARE s12d;
 
 -- === 3. 数据字典新增 ===
 
@@ -453,17 +465,25 @@ UPDATE bbs_points_log SET reason = '每日有效登录浏览积分' WHERE reason
 
 -- @migration: v015-adopt-status 采纳审批状态（问题求助最佳解答）
 -- bbs_reply 新增 adopt_status：0=未采纳 1=待审批 2=已确认 3=已拒绝
-ALTER TABLE `bbs_reply` ADD COLUMN `adopt_status` tinyint(1) DEFAULT 0 COMMENT '采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)';
+-- 幂等：information_schema 检查（init 建表已含该列时重放不再报错）
+SET @c15a := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_reply' AND COLUMN_NAME='adopt_status');
+SET @s15a := IF(@c15a=0, 'ALTER TABLE `bbs_reply` ADD COLUMN `adopt_status` tinyint(1) DEFAULT 0 COMMENT ''采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)''', 'SELECT 1');
+PREPARE s15a FROM @s15a; EXECUTE s15a; DEALLOCATE PREPARE s15a;
 
 -- 回填：已采纳的记录设为已确认(2)
 UPDATE bbs_reply SET adopt_status = 2 WHERE is_adopted = 1 AND (adopt_status IS NULL OR adopt_status = 0);
 
 -- bbs_comment 同步新增 adopt_status（评论也可被采纳为最佳解答）
-ALTER TABLE `bbs_comment` ADD COLUMN `adopt_status` tinyint(1) DEFAULT 0 COMMENT '采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)';
+SET @c15b := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_comment' AND COLUMN_NAME='adopt_status');
+SET @s15b := IF(@c15b=0, 'ALTER TABLE `bbs_comment` ADD COLUMN `adopt_status` tinyint(1) DEFAULT 0 COMMENT ''采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)''', 'SELECT 1');
+PREPARE s15b FROM @s15b; EXECUTE s15b; DEALLOCATE PREPARE s15b;
 
 -- @migration: v016-adopt-comment-status 补充 bbs_comment.adopt_status
 -- 早期 v015 只加了 bbs_reply.adopt_status，此迁移确保 bbs_comment 也有该列
-ALTER TABLE `bbs_comment` ADD COLUMN `adopt_status` tinyint(1) DEFAULT 0 COMMENT '采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)';
+-- 幂等：information_schema 检查
+SET @c16 := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_comment' AND COLUMN_NAME='adopt_status');
+SET @s16 := IF(@c16=0, 'ALTER TABLE `bbs_comment` ADD COLUMN `adopt_status` tinyint(1) DEFAULT 0 COMMENT ''采纳审批状态(0=未采纳,1=待审批,2=已确认,3=已拒绝)''', 'SELECT 1');
+PREPARE s16 FROM @s16; EXECUTE s16; DEALLOCATE PREPARE s16;
 
 -- @migration: v017-suggestion-label 添加"建议反馈"标签
 INSERT INTO `bbs_article_label` (`label_id`, `label_name`, `enabled`, `icon`, `description`)
@@ -551,7 +571,7 @@ SELECT COUNT(*) INTO @uk_sw_exists FROM information_schema.STATISTICS WHERE TABL
 SET @uk_sw_sql = IF(@uk_sw_exists = 0, 'ALTER TABLE `bbs_sensitive_word` ADD UNIQUE INDEX `uk_sensitive_word_keyword` (`keyword`)', 'SELECT 1');
 PREPARE uk_sw_stmt FROM @uk_sw_sql;
 EXECUTE uk_sw_stmt;
-DEALLOCATE uk_sw_stmt;
+DEALLOCATE PREPARE uk_sw_stmt;
 
 -- @migration: v022-moderator-complaint 版主投诉表（用户可投诉版主违规操作）
 CREATE TABLE IF NOT EXISTS `bbs_moderator_complaint` (
@@ -938,10 +958,17 @@ SET @sql_uksw = IF(@idx_uksw = 0, 'ALTER TABLE `bbs_sensitive_word` ADD UNIQUE I
 PREPARE stmt_uksw FROM @sql_uksw; EXECUTE stmt_uksw; DEALLOCATE PREPARE stmt_uksw;
 
 -- @migration: v029-rename-year-month 列名 year_month → ym（MySQL 8.0 保留字）
-ALTER TABLE `bbs_moderator_reward_cancel` RENAME COLUMN `year_month` TO `ym`;
+-- 幂等：仅当 year_month 存在且 ym 不存在时才改名（init 建表已是 ym，重放不报错）
+SET @c29a := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_moderator_reward_cancel' AND COLUMN_NAME='year_month');
+SET @c29b := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_moderator_reward_cancel' AND COLUMN_NAME='ym');
+SET @s29 := IF(@c29a > 0 AND @c29b = 0, 'ALTER TABLE `bbs_moderator_reward_cancel` RENAME COLUMN `year_month` TO `ym`', 'SELECT 1');
+PREPARE s29 FROM @s29; EXECUTE s29; DEALLOCATE PREPARE s29;
 
 -- @migration: v030-rename-ym-mysql 重试改名（v029 被占位语句占用）
-ALTER TABLE `bbs_moderator_reward_cancel` RENAME COLUMN `year_month` TO `ym`;
+SET @c30a := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_moderator_reward_cancel' AND COLUMN_NAME='year_month');
+SET @c30b := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_moderator_reward_cancel' AND COLUMN_NAME='ym');
+SET @s30 := IF(@c30a > 0 AND @c30b = 0, 'ALTER TABLE `bbs_moderator_reward_cancel` RENAME COLUMN `year_month` TO `ym`', 'SELECT 1');
+PREPARE s30 FROM @s30; EXECUTE s30; DEALLOCATE PREPARE s30;
 -- @migration: v031-sensitive-words-import 导入国内常见敏感词库（来源：SensitivePy words.txt，全量幂等）
 INSERT IGNORE INTO `bbs_sensitive_word` (`keyword`) VALUES
 ('顶级'),
@@ -9608,3 +9635,63 @@ JOIN `bbs_ranking_category_org` i
  AND o.org_no LIKE CONCAT(i.org_no, '%')
 WHERE o.is_delete = 0
   AND o.is_ranking_selected = 0;
+
+-- @migration: v072-sensitive-word-mask-switch 敏感词遮蔽开关（灌水/误伤词只监控不打码）
+-- 背景：v009 的"扩展垃圾/灌水关键词库"把灌水词写进了敏感词表，命中后正文被打成 ***，
+--       例如"大家看看这个"显示为"大家***这个"，属误伤正常阅读（markdown 也会被"mark"打成 ***down）。
+-- 处理：新增 mask_enabled 列，默认 1（既有行为不变）；仅把 v009 那批灌水词置 0，
+--       数据保留、命中监控保留，只是不再前台打码；后台可逐个改回 1。
+-- 幂等：information_schema 检查 + 按 keyword UPDATE。
+SET @c_mask := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_sensitive_word' AND COLUMN_NAME='mask_enabled');
+SET @s_mask := IF(@c_mask=0, 'ALTER TABLE `bbs_sensitive_word` ADD COLUMN `mask_enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT ''是否参与脱敏遮蔽(1=是,0=仅监控不打码)''', 'SELECT 1');
+PREPARE s72a FROM @s_mask; EXECUTE s72a; DEALLOCATE PREPARE s72a;
+
+UPDATE `bbs_sensitive_word` SET `mask_enabled` = 0 WHERE `keyword` IN (
+'哈哈哈','嘻嘻嘻','嘿嘿嘿','啊啊啊','嗯嗯嗯','哦哦哦','呵呵呵','啦啦啦','呜呜呜',
+'沙发','占位','占楼','路过','马克','mark','mark一下','顶贴','灌水','水水水','水帖',
+'来了','看看','打卡','签到','666666','8888','11111','123456','测试测试','测试一下','testtest'
+);
+
+-- @migration: v073-sensitive-governance 词表分类 + 命中记录 + 风险查看权限
+-- 背景：严禁词（打码/审核）与垃圾灌水词（警告放行）口径混在一张表里，导致同一句话被打星又被判垃圾。
+-- 处理：新增 category 区分两类词；把灌水词库归入 spam；新建命中记录表；授予 sensitive:read。
+-- 幂等：information_schema 检查 + CREATE TABLE IF NOT EXISTS + INSERT IGNORE。
+SET @c_cat := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_sensitive_word' AND COLUMN_NAME='category');
+SET @s_cat := IF(@c_cat=0, 'ALTER TABLE `bbs_sensitive_word` ADD COLUMN `category` varchar(16) NOT NULL DEFAULT ''sensitive'' COMMENT ''分类(sensitive=严禁词,spam=垃圾词)''', 'SELECT 1');
+PREPARE s73a FROM @s_cat; EXECUTE s73a; DEALLOCATE PREPARE s73a;
+
+-- v009 那批灌水词归入 spam：不再打码，改为"警告放行"（可见但不计分）
+UPDATE `bbs_sensitive_word` SET `category` = 'spam', `mask_enabled` = 0 WHERE `keyword` IN (
+'哈哈哈','嘻嘻嘻','嘿嘿嘿','啊啊啊','嗯嗯嗯','哦哦哦','呵呵呵','啦啦啦','呜呜呜',
+'沙发','占位','占楼','路过','马克','mark','mark一下','顶贴','灌水','水水水','水帖',
+'来了','看看','打卡','签到','666666','8888','11111','123456','测试测试','测试一下','testtest'
+);
+
+-- 质量检测的硬编码垃圾词迁入词表，后台可直接维护
+INSERT IGNORE INTO `bbs_sensitive_word` (`keyword`, `mask_enabled`, `category`) VALUES
+('哈哈哈啊', 0, 'spam'), ('嘿嘿', 0, 'spam'), ('路过看看', 0, 'spam'),
+('666', 0, 'spam'), ('6666', 0, 'spam'), ('66666', 0, 'spam'),
+('888', 0, 'spam'), ('111', 0, 'spam'),
+('123', 0, 'spam'), ('1234', 0, 'spam'), ('12345', 0, 'spam'),
+('test', 0, 'spam');
+
+CREATE TABLE IF NOT EXISTS `bbs_sensitive_hit` (
+  `id`          bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `user_id`     int(11) NOT NULL COMMENT '作者用户id',
+  `target_type` varchar(16) NOT NULL COMMENT '内容类型(article/comment/reply)',
+  `target_id`   int(11) NOT NULL COMMENT '内容id',
+  `label_id`    int(11) DEFAULT NULL COMMENT '所属板块id',
+  `hit_words`   varchar(500) DEFAULT NULL COMMENT '命中词（逗号拼接，最多10个）',
+  `hit_count`   int(11) DEFAULT 0 COMMENT '命中词次',
+  `create_time` varchar(20) DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_sensitive_hit_target` (`target_type`, `target_id`),
+  KEY `idx_sensitive_hit_user_time` (`user_id`, `create_time`),
+  KEY `idx_sensitive_hit_time` (`create_time`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '敏感词命中记录';
+
+-- 风险画像查看权限：超级管理员/管理员/版主默认授予（自定义权限组不自动授予）
+INSERT IGNORE INTO `bbs_permission_group_item` (`group_id`, `permission_code`, `effect`, `create_time`)
+SELECT `id`, 'sensitive:read', 'grant', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+FROM `bbs_permission_group`
+WHERE `group_code` IN ('role_super', 'role_admin', 'role_moderator');

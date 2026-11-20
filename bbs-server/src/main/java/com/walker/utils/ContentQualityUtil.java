@@ -19,7 +19,7 @@ public class ContentQualityUtil {
     /** 边界阈值：score < 此值视为低质量（不推荐但允许展示） */
     private static final int LOW_QUALITY_THRESHOLD = 60;
 
-    // ── 常见垃圾/灌水短语（从 bbs_sensitive_word 补充，此处为硬编码兜底） ──
+    // ── 常见垃圾/灌水短语（bbs_sensitive_word 的 category=spam 为权威来源，此处为硬编码兜底） ──
     // 注意：只保留"强灌水特征"词（叠词灌水/灌水黑话/纯数字），
     // 不含"好、看看、可以、不错、顶、打卡"等正常高频词（contains 匹配会误伤正常文章，2026-09 生产故障）
 
@@ -132,10 +132,13 @@ public class ContentQualityUtil {
             }
         }
 
-        // ── 5. 垃圾关键词匹配（词表仅含强灌水特征，不含正常高频词；多个灌水词叠加扣分，正常文章零误伤） ──
+        // ── 5. 垃圾关键词匹配（词表优先取数据库 spam 分类，未加载时回退硬编码；多个灌水词叠加扣分） ──
         String lowerText = fullText.toLowerCase();
         boolean matchedSpam = false;
-        for (String phrase : SPAM_PHRASES) {
+        for (String phrase : spamPhrases()) {
+            if (phrase == null || phrase.isEmpty()) {
+                continue;
+            }
             if (lowerText.contains(phrase.toLowerCase())) {
                 matchedSpam = true;
                 score -= 40;
@@ -143,12 +146,9 @@ public class ContentQualityUtil {
             }
         }
 
-        // ── 6. 敏感词命中也降低质量分 ──
-        if (!matchedSpam && SensitiveWordUtil.getSensitiveWords().stream()
-                .anyMatch(w -> lowerText.contains(w.toLowerCase()))) {
-            score -= 30;
-            reasons.add("包含敏感词");
-        }
+        // ── 6. 合规判定不参与质量分 ──
+        // 严禁词（category=sensitive）由词表单独处置：打码或进审核，与"内容质量"正交。
+        // 历史实现此处会因敏感词扣 30 分，且被 matchedSpam 短路，口径与词表互相覆盖，已移除。
 
         // ── 7. 内容与标题相关性（简单检查：内容是否完全不含标题中的词） ──
         if (plainTitle != null && plainTitle.length() >= 4 && plainContent != null) {
@@ -181,6 +181,14 @@ public class ContentQualityUtil {
      */
     public static boolean isSpam(String title, String content) {
         return checkContent(title, content).isSpam();
+    }
+
+    /**
+     * 垃圾词来源：优先数据库词表（category=spam），未加载时回退硬编码兜底。
+     */
+    private static List<String> spamPhrases() {
+        List<String> fromDb = SensitiveWordUtil.getSpamWords();
+        return fromDb.isEmpty() ? SPAM_PHRASES : fromDb;
     }
 
     // ── 内部工具方法 ──

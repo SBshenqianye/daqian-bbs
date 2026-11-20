@@ -17,6 +17,7 @@ import com.walker.service.LabelPointsPolicyService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
 import com.walker.service.ReplyService;
+import com.walker.service.SensitiveHitService;
 import com.walker.utils.ConstantUtil;
 import com.walker.utils.ContentQualityUtil;
 import com.walker.vo.ResultBean;
@@ -63,6 +64,9 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
     @Autowired
     private AchievementService achievementService;
 
+    @Autowired
+    private SensitiveHitService sensitiveHitService;
+
     /**
      * 通过评论获取回复
      * @param commentId
@@ -73,6 +77,8 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
 
         LambdaQueryWrapper<Reply> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper.eq(Reply::getCommentId,commentId);
+        // 只返回对外可见的回复（enable=0 为审核中/被隐藏）
+        lambdaQueryWrapper.eq(Reply::getEnable, 1);
 
         return replyMapper.selectList(lambdaQueryWrapper);
     }
@@ -109,9 +115,13 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
         reply.setReplyToUserId(replyParam.getReplyToUserId());
         reply.setCommentId(replyParam.getCommentId());
         reply.setIsAnonymous(anonymous ? 1 : 0);
-        // 垃圾内容标记为不可见
-        reply.setEnable(quality.isPassed() ? 1 : 0);
+        // 垃圾内容照常可见（不再静默隐藏），只是不计分并由版主复核
+        reply.setEnable(1);
         this.save(reply);
+
+        // 采集敏感词命中（内部吞异常，不影响发布）
+        sensitiveHitService.record("reply", reply.getReplyId(), replyParam.getReplyUserId(),
+                targetArticle == null ? null : targetArticle.getArticleLabelId(), replyParam.getReplyContent());
 
         // 回复积分：只有通过质量检测的回复才计分，且同一篇帖子下同一用户最多3次
         // 运营方案：回帖人在自己的帖子内进行回复不再获得积分；不计分标签跳过
@@ -166,7 +176,7 @@ public class ReplyServiceImpl extends ServiceImpl<ReplyMapper, Reply> implements
         }
 
         if (quality.isSpam()) {
-            return ResultBean.success("回复成功，但内容被判定为低质量，暂不展示且不计入积分");
+            return ResultBean.success("回复已发布，但内容被判定为低质量，未获得积分，版主会复核");
         }
         achievementService.evaluateUserQuietly(replyParam.getReplyUserId());
         return ResultBean.success("回复成功！");

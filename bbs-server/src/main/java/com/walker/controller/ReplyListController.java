@@ -13,6 +13,7 @@ import com.walker.service.SaOrgService;
 import com.walker.service.UserService;
 import com.walker.vo.ReplyListItemVO;
 import com.walker.vo.ResultBean;
+import com.walker.utils.SensitiveWordUtil;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -121,7 +122,7 @@ public class ReplyListController {
                 interaction.put("articleId", articleId);
                 interaction.put("commentId", commentId);
                 interaction.put("replyId", reply.getReplyId());
-                interaction.put("content", reply.getReplyContent());
+                interaction.put("content", SensitiveWordUtil.desensitize(reply.getReplyContent()));
                 interaction.put("time", reply.getReplyTime());
                 interaction.put("source", "reply");
                 articleInteractions.put(articleId, interaction);
@@ -132,7 +133,7 @@ public class ReplyListController {
                 if (replyTime != null && (existingTime == null || replyTime.compareTo(existingTime) > 0)) {
                     existing.put("commentId", commentId);
                     existing.put("replyId", reply.getReplyId());
-                    existing.put("content", reply.getReplyContent());
+                    existing.put("content", SensitiveWordUtil.desensitize(reply.getReplyContent()));
                     existing.put("time", reply.getReplyTime());
                     existing.put("source", "reply");
                 }
@@ -250,7 +251,7 @@ public class ReplyListController {
                 Article art = myArticleMap.get(c.getCommentArticleId());
                 item.setArticleTitle(art != null ? art.getArticleTitle() : "");
                 item.setCommentId(c.getCommentId());
-                item.setContent(c.getCommentContent());
+                item.setContent(SensitiveWordUtil.desensitize(c.getCommentContent()));
                 item.setTime(c.getCommentTime());
                 item.setFromUserId(fromUser.getId());
                 item.setFromNickname(fromUser.getNickname());
@@ -296,7 +297,7 @@ public class ReplyListController {
                     }
                     item.setReplyId(r.getReplyId());
                     item.setCommentId(r.getCommentId());
-                    item.setContent(r.getReplyContent());
+                    item.setContent(SensitiveWordUtil.desensitize(r.getReplyContent()));
                     item.setTime(r.getReplyTime());
                     item.setFromUserId(fromUser.getId());
                     item.setFromNickname(fromUser.getNickname());
@@ -356,7 +357,7 @@ public class ReplyListController {
                 }
                 item.setReplyId(r.getReplyId());
                 item.setCommentId(r.getCommentId());
-                item.setContent(r.getReplyContent());
+                item.setContent(SensitiveWordUtil.desensitize(r.getReplyContent()));
                 item.setTime(r.getReplyTime());
                 item.setFromUserId(fromUser.getId());
                 item.setFromNickname(fromUser.getNickname());

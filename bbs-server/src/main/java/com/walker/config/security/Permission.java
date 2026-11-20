@@ -30,6 +30,9 @@ public enum Permission {
     ARTICLE_FEATURE("article:feature", true, true),
     ARTICLE_SUGGESTION_ADOPT("article:suggestion:adopt", true, true),
 
+    /** 敏感词命中详情与风险画像：版主、管理员、超管均可授予（数据范围仍按板块校验） */
+    SENSITIVE_READ("sensitive:read", true, true),
+
     REPORT_REVIEW("report:review", true, true),
     APPEAL_REVIEW("appeal:review", true, true),
 

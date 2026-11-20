@@ -70,6 +70,8 @@ public class SensitiveWordServiceImpl extends ServiceImpl<SensitiveWordMapper, S
         // 组装数据并添加到数据库
         SensitiveWord sensitiveWord = new SensitiveWord();
         sensitiveWord.setKeyword(keyword);
+        sensitiveWord.setMaskEnabled(1);
+        sensitiveWord.setCategory("sensitive");
         int result = sensitiveWordMapper.insert(sensitiveWord);
         if (result > 0) {
             // 刷新敏感词列表
@@ -106,6 +108,8 @@ public class SensitiveWordServiceImpl extends ServiceImpl<SensitiveWordMapper, S
             }
             SensitiveWord word = new SensitiveWord();
             word.setKeyword(trimmed);
+            word.setMaskEnabled(1);
+            word.setCategory("sensitive");
             int result = sensitiveWordMapper.insert(word);
             if (result > 0) {
                 addedCount++;
@@ -147,11 +151,109 @@ public class SensitiveWordServiceImpl extends ServiceImpl<SensitiveWordMapper, S
     public void loadSensitiveWords() {
         List<SensitiveWord> list = this.list();
 
+        // 严禁词（category 为空按严禁词处理，兼容历史数据）：参与监控、命中采集与风险统计
         List<String> words = list.stream()
+                .filter(word -> !isSpam(word))
                 .map(SensitiveWord::getKeyword)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toList());
+        // 其中 mask_enabled=1 的才在前台打码
+        List<String> maskable = list.stream()
+                .filter(word -> !isSpam(word))
+                .filter(word -> word.getMaskEnabled() == null || word.getMaskEnabled() == 1)
+                .map(SensitiveWord::getKeyword)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toList());
+        // 垃圾/灌水词：不打码，命中即"警告放行"（内容可见但不计分）
+        List<String> spam = list.stream()
+                .filter(this::isSpam)
+                .map(SensitiveWord::getKeyword)
+                .filter(StringUtils::isNotBlank)
                 .collect(Collectors.toList());
         // 存入工具类（静态变量）
-        SensitiveWordUtil.updateSensitiveWords(words);
+        SensitiveWordUtil.updateSensitiveWords(words, maskable, spam);
+    }
+
+    private boolean isSpam(SensitiveWord word) {
+        return word != null && "spam".equalsIgnoreCase(word.getCategory());
+    }
+
+    @Override
+    public ResultBean updateAction(Integer id, String action) {
+        if (id == null) {
+            return ResultBean.error("敏感词id不能为空！");
+        }
+        String normalized = action == null ? "" : action.trim().toLowerCase();
+        if (!"mask".equals(normalized) && !"monitor".equals(normalized) && !"warn".equals(normalized)) {
+            return ResultBean.error("处置方式有误，只能是 mask / monitor / warn！");
+        }
+        SensitiveWord word = sensitiveWordMapper.selectById(id);
+        if (word == null) {
+            return ResultBean.error("敏感词不存在！");
+        }
+        boolean spam = "warn".equals(normalized);
+        word.setCategory(spam ? "spam" : "sensitive");
+        word.setMaskEnabled("mask".equals(normalized) ? 1 : 0);
+        int result = sensitiveWordMapper.updateById(word);
+        if (result > 0) {
+            refresh();
+            if ("mask".equals(normalized)) {
+                return ResultBean.success("已设为严禁词并打码！");
+            }
+            if ("monitor".equals(normalized)) {
+                return ResultBean.success("已设为严禁词、仅监控（不打码，仍计入风险）！");
+            }
+            return ResultBean.success("已设为垃圾词（警告放行，不计分）！");
+        }
+        return ResultBean.error("修改失败！");
+    }
+
+    @Override
+    public ResultBean updateCategory(Integer id, String category) {
+        if (id == null) {
+            return ResultBean.error("敏感词id不能为空！");
+        }
+        if (!"spam".equalsIgnoreCase(category) && !"sensitive".equalsIgnoreCase(category)) {
+            return ResultBean.error("分类参数有误，只能是 sensitive 或 spam！");
+        }
+        SensitiveWord word = sensitiveWordMapper.selectById(id);
+        if (word == null) {
+            return ResultBean.error("敏感词不存在！");
+        }
+        boolean spam = "spam".equalsIgnoreCase(category);
+        word.setCategory(spam ? "spam" : "sensitive");
+        // 垃圾词不参与打码；改为严禁词时默认打码，之后可单独关闭
+        word.setMaskEnabled(spam ? 0 : 1);
+        int result = sensitiveWordMapper.updateById(word);
+        if (result > 0) {
+            refresh();
+            return ResultBean.success(spam ? "已改为垃圾词（警告放行）！" : "已改为严禁词！");
+        }
+        return ResultBean.error("修改失败！");
+    }
+
+    @Override
+    public ResultBean updateMaskEnabled(Integer id, Integer enabled) {
+        if (id == null) {
+            return ResultBean.error("敏感词id不能为空！");
+        }
+        if (enabled == null || (enabled != 0 && enabled != 1)) {
+            return ResultBean.error("遮蔽开关参数有误！");
+        }
+        SensitiveWord word = sensitiveWordMapper.selectById(id);
+        if (word == null) {
+            return ResultBean.error("敏感词不存在！");
+        }
+        if (enabled == 1 && "spam".equalsIgnoreCase(word.getCategory())) {
+            return ResultBean.error("垃圾词走警告放行，不参与打码；如需打码请先改为严禁词！");
+        }
+        word.setMaskEnabled(enabled);
+        int result = sensitiveWordMapper.updateById(word);
+        if (result > 0) {
+            refresh();
+            return ResultBean.success(enabled == 1 ? "已开启遮蔽！" : "已关闭遮蔽（仍保留监控）！");
+        }
+        return ResultBean.error("修改失败！");
     }
 
     /**

@@ -105,6 +105,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private AuthorizationService authorizationService;
 
     @Autowired
+    private SensitiveHitService sensitiveHitService;
+
+    @Autowired
     private SelfApprovalPolicy selfApprovalPolicy;
 
     /**
@@ -174,13 +177,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             return ResultBean.error("内容不能为空");
         }
 
-        // ── 内容质量检测：垃圾内容直接拒绝发布（不入库、明确提示），低质量内容正常展示但不计积分 ──
+        // ── 内容质量检测：垃圾内容不再硬拒绝，照常发布但不计分，由版主复核 ──
+        // 2026-09 生产故障的教训是"静默不可见"，不是"拒绝"：允许发布 + 明确告知才安全。
         ContentQualityUtil.QualityResult quality = ContentQualityUtil.checkContent(
                 articleParam.getArticleTitle(), articleParam.getArticleContent());
-        if (quality.isSpam()) {
-            // 前端对发布失败会展示后端 message，不再"入库但不可见"的静默模式（2026-09 生产故障）
-            return ResultBean.error("发布失败：内容被判定为" + quality.getDetail() + "，请修改后重试");
-        }
+        boolean spamContent = quality.isSpam();
 
         Date date = new Date();
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -205,7 +206,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setLastActivityTime(day);
         // 审核模式：默认 AUTO（与运营方案自动计分+抽查一致）；PRE_REVIEW 时进入待审核
         String publishMode = dictService.getValueByKey(ConstantUtil.ARTICLE_PUBLISH_MODE);
-        article.setEnable("PRE_REVIEW".equalsIgnoreCase(publishMode) ? 0 : 1);
+        boolean preReview = "PRE_REVIEW".equalsIgnoreCase(publishMode);
+        // 命中敏感词超阈值：该用户的新内容临时进审核（需通知作者与版主/管理员）
+        int recentHits = sensitiveHitService.countRecentHits(articleParam.getUserId(), 24);
+        boolean hitReview = recentHits >= sensitiveReviewThreshold();
+        article.setEnable(preReview || hitReview ? 0 : 1);
         article.setArticleCommunityId(articleParam.getArticleCommunityId());
         article.setCreateTime(day);
 
@@ -215,8 +220,16 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             articleFileService.updateArticleFile(articleParam.getFiles(), article.getArticleId());
         }
 
+        // 采集命中记录（内部吞异常，绝不影响发布）
+        sensitiveHitService.record("article", article.getArticleId(), articleParam.getUserId(), labelId,
+                title + "\n" + articleParam.getArticleContent());
+
+        if (hitReview) {
+            notifyContentReview(article, recentHits);
+        }
+
         // 发帖积分：通过质量检测且标签允许计分、帖子已可见时才计分
-        if (article.getEnable() != null && article.getEnable() == 1
+        if (!spamContent && article.getEnable() != null && article.getEnable() == 1
                 && labelPointsPolicyService.shouldAward(labelId, "publish")) {
             int postPoints = 2; // default
             try {
@@ -230,7 +243,62 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             achievementService.evaluateUserQuietly(articleParam.getUserId());
         }
 
+        if (spamContent) {
+            return ResultBean.success("发布成功，但内容被标记为低质量（" + quality.getDetail()
+                    + "），未获得积分，版主会复核");
+        }
+        if (hitReview) {
+            return ResultBean.success("发布成功，因近期多次命中敏感词，该内容需审核后展示");
+        }
+
         return ResultBean.success("发布成功！");
+    }
+
+    /**
+     * 命中敏感词进审核的阈值（24 小时内命中内容条数），可通过字典 sensitive_review_threshold 调整。
+     */
+    private int sensitiveReviewThreshold() {
+        try {
+            String val = dictService.getValueByKey("sensitive_review_threshold");
+            if (StringUtils.isNotBlank(val)) {
+                int parsed = Integer.parseInt(val.trim());
+                return parsed > 0 ? parsed : 3;
+            }
+        } catch (Exception e) {
+            // 配置异常时用默认值
+        }
+        return 3;
+    }
+
+    /**
+     * 内容进审核：通知作者 + 通知该板块版主/全局管理员（无版主时按权限上推）。
+     */
+    private void notifyContentReview(Article article, int recentHits) {
+        try {
+            notificationService.createNotification(article.getUserId(), null, "content_review",
+                    "您的帖子因近期多次命中敏感词，正在审核中，通过后会正常展示",
+                    "article", article.getArticleId());
+
+            List<Integer> receivers = new ArrayList<>();
+            for (Integer reviewerId : authorizationService.getUserIdsWithPermission(
+                    com.walker.config.security.Permission.ARTICLE_REVIEW)) {
+                if (authorizationService.canModerateBoard(reviewerId, article.getArticleLabelId())) {
+                    receivers.add(reviewerId);
+                }
+            }
+            // 该板块没有版主时按权限上推：交给所有具备审核权限的管理员
+            if (receivers.isEmpty()) {
+                receivers = authorizationService.getUserIdsWithPermission(
+                        com.walker.config.security.Permission.ARTICLE_REVIEW);
+            }
+            for (Integer reviewerId : receivers) {
+                notificationService.createNotification(reviewerId, article.getUserId(), "content_review",
+                        "有内容命中敏感词进入审核：" + article.getArticleTitle(),
+                        "article", article.getArticleId());
+            }
+        } catch (Exception e) {
+            // 通知失败不影响发布
+        }
     }
 
     /**

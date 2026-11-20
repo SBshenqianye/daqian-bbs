@@ -17,6 +17,7 @@ import com.walker.service.LabelPointsPolicyService;
 import com.walker.service.NotificationService;
 import com.walker.service.PointsLogService;
 import com.walker.service.ReplyService;
+import com.walker.service.SensitiveHitService;
 import com.walker.utils.ConstantUtil;
 import com.walker.utils.ContentQualityUtil;
 import com.walker.vo.ResultBean;
@@ -64,6 +65,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     @Autowired
     private AchievementService achievementService;
 
+    @Autowired
+    private SensitiveHitService sensitiveHitService;
+
     /**
      * 保存用户的评论 一级
      * @param commentParam
@@ -92,9 +96,13 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         comment.setCommentArticleId(commentParam.getCommentArticleId());
         comment.setCommentTime(day);
         comment.setIsAnonymous(anonymous ? 1 : 0);
-        // 垃圾内容标记为不可见
-        comment.setEnable(quality.isPassed() ? 1 : 0);
+        // 垃圾内容照常可见（不再静默隐藏），只是不计分并由版主复核
+        comment.setEnable(1);
         this.save(comment);
+
+        // 采集敏感词命中（内部吞异常，不影响发布）
+        sensitiveHitService.record("comment", comment.getCommentId(), commentParam.getCommentUserId(),
+                targetArticle == null ? null : targetArticle.getArticleLabelId(), commentParam.getCommentContent());
 
         // 评论积分：只有通过质量检测的评论才计分，且同一篇帖子下同一用户最多3次
         // 运营方案：回帖人在自己的帖子内进行回复不再获得积分；不计分标签跳过
@@ -145,7 +153,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         }
 
         if (quality.isSpam()) {
-            return ResultBean.success("评论成功，但内容被判定为低质量，暂不展示且不计入积分");
+            return ResultBean.success("评论已发布，但内容被判定为低质量，未获得积分，版主会复核");
         }
         achievementService.evaluateUserQuietly(commentParam.getCommentUserId());
         return ResultBean.success("评论成功！");
@@ -161,6 +169,8 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
         LambdaQueryWrapper<Comment> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper.eq(Comment::getCommentArticleId,articleId);
+        // 只返回对外可见的评论（enable=0 为审核中/被隐藏）
+        lambdaQueryWrapper.eq(Comment::getEnable, 1);
 
         return commentMapper.selectList(lambdaQueryWrapper);
 

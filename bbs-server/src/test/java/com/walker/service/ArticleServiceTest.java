@@ -91,6 +91,9 @@ class ArticleServiceTest {
     @Mock
     private AuthorizationService authorizationService;
 
+    @Mock
+    private SensitiveHitService sensitiveHitService;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = articleService.getClass().getSuperclass().getDeclaredField("baseMapper");
@@ -200,6 +203,48 @@ class ArticleServiceTest {
         ResultBean result = articleService.publish(param);
         assertEquals(200, result.getCode());
         verify(pointsLogService).adjustUserPoints(eq(1), eq(3), eq("发帖积分"), eq("article"), any(), isNull());
+    }
+
+    @Test
+    @DisplayName("发帖 → 命中垃圾词 → 照常发布但不计分")
+    void publish_spamContent_publishesWithoutPoints() {
+        ArticleParam param = new ArticleParam();
+        param.setArticleTitle("哈哈哈");
+        param.setArticleContent("哈哈哈");
+        param.setUserId(1);
+        param.setArticleAuthor("作者");
+
+        when(userService.getById(1)).thenReturn(null);
+        when(dictService.getValueByKey("article_publish_mode")).thenReturn("AUTO");
+        when(articleMapper.insert(any(Article.class))).thenReturn(1);
+
+        ResultBean result = articleService.publish(param);
+
+        assertEquals(200, result.getCode());
+        assertTrue(String.valueOf(result.getMessage()).contains("未获得积分"), "应提示未获得积分，实际：" + result.getMessage());
+        verify(articleMapper).insert(argThat(article -> article.getEnable() != null && article.getEnable() == 1));
+        verify(pointsLogService, never()).adjustUserPoints(any(), anyInt(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    @DisplayName("发帖 → 近 24 小时命中超阈值 → 进入审核（enable=0）")
+    void publish_overSensitiveThreshold_goesToReview() {
+        ArticleParam param = new ArticleParam();
+        param.setArticleTitle("正常标题");
+        param.setArticleContent("正常内容");
+        param.setUserId(1);
+        param.setArticleAuthor("作者");
+
+        when(userService.getById(1)).thenReturn(null);
+        when(dictService.getValueByKey("article_publish_mode")).thenReturn("AUTO");
+        when(sensitiveHitService.countRecentHits(eq(1), anyInt())).thenReturn(3);
+        when(articleMapper.insert(any(Article.class))).thenReturn(1);
+
+        ResultBean result = articleService.publish(param);
+
+        assertEquals(200, result.getCode());
+        verify(articleMapper).insert(argThat(article -> article.getEnable() != null && article.getEnable() == 0));
+        verify(notificationService, atLeastOnce()).createNotification(eq(1), any(), eq("content_review"), anyString(), eq("article"), any());
     }
 
     @Test

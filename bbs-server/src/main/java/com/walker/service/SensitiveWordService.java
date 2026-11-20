@@ -57,6 +57,32 @@ public interface SensitiveWordService {
     ResultBean delSensitiveWord(Integer id);
 
     /**
+     * 方法描述 修改敏感词是否参与脱敏遮蔽
+     * @param id 敏感词id
+     * @param enabled 1=前台打码，0=保留监控但不打码
+     * @return ResultBean 返回封装类
+     */
+    ResultBean updateMaskEnabled(Integer id, Integer enabled);
+
+    /**
+     * 方法描述 修改敏感词分类
+     * spam=垃圾词（内容照常显示、不计分、提示），sensitive=严禁词（默认打码）
+     * @param id 敏感词id
+     * @param category 分类 sensitive/spam
+     * @return ResultBean 返回封装类
+     */
+    ResultBean updateCategory(Integer id, String category);
+
+    /**
+     * 方法描述 用一个动作同时设置分类与遮蔽（后台三档下拉）
+     * mask=严禁词且打码，monitor=严禁词仅监控，warn=垃圾词警告放行
+     * @param id 敏感词id
+     * @param action mask/monitor/warn
+     * @return ResultBean 返回封装类
+     */
+    ResultBean updateAction(Integer id, String action);
+
+    /**
      * 方法描述 项目启动时加载敏感词
      * @author chengQing
      * @date 2026/4/9 15:01

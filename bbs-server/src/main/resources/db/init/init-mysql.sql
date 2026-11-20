@@ -327,9 +327,30 @@ DROP TABLE IF EXISTS `bbs_sensitive_word`;
 CREATE TABLE `bbs_sensitive_word` (
   `id`      int(11) NOT NULL AUTO_INCREMENT COMMENT '唯一标识',
   `keyword` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '敏感词',
+  `mask_enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否参与脱敏遮蔽(1=是,0=仅监控不打码)',
+  `category` varchar(16) NOT NULL DEFAULT 'sensitive' COMMENT '分类(sensitive=严禁词,spam=垃圾词)',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_sensitive_word_keyword` (`keyword`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table: bbs_sensitive_hit
+-- ----------------------------
+DROP TABLE IF EXISTS `bbs_sensitive_hit`;
+CREATE TABLE `bbs_sensitive_hit` (
+  `id`          bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `user_id`     int(11) NOT NULL COMMENT '作者用户id',
+  `target_type` varchar(16) NOT NULL COMMENT '内容类型(article/comment/reply)',
+  `target_id`   int(11) NOT NULL COMMENT '内容id',
+  `label_id`    int(11) DEFAULT NULL COMMENT '所属板块id',
+  `hit_words`   varchar(500) DEFAULT NULL COMMENT '命中词（逗号拼接，最多10个）',
+  `hit_count`   int(11) DEFAULT 0 COMMENT '命中词次',
+  `create_time` varchar(20) DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_sensitive_hit_target` (`target_type`, `target_id`),
+  KEY `idx_sensitive_hit_user_time` (`user_id`, `create_time`),
+  KEY `idx_sensitive_hit_time` (`create_time`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '敏感词命中记录';
 
 -- ----------------------------
 -- Table: bbs_slideshow

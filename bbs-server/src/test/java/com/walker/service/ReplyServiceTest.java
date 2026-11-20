@@ -50,6 +50,9 @@ class ReplyServiceTest {
     @Mock
     private AchievementService achievementService;
 
+    @Mock
+    private SensitiveHitService sensitiveHitService;
+
     @BeforeEach
     void setUp() throws Exception {
         Field baseMapperField = replyService.getClass().getSuperclass().getDeclaredField("baseMapper");

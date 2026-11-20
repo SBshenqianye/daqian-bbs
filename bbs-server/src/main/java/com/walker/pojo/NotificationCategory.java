@@ -39,6 +39,9 @@ public final class NotificationCategory {
         m.put("suggestion_adopted", SYSTEM);    // 建议被采纳
         m.put("report_confirmed", SYSTEM);      // 举报核实
         m.put("report_pending", SYSTEM);        // 实名举报待审核（通知超级管理员）
+        m.put("content_review", SYSTEM);        // 内容命中敏感词待审核（通知版主/管理员）
+        m.put("sensitive_hit", SYSTEM);         // 内容命中敏感词（通知作者）
+        m.put("sensitive_user", SYSTEM);        // 高风险用户聚合提醒（通知版主/管理员）
         m.put("report_received", SYSTEM);       // 举报提交成功回执（通知举报人）
         m.put("report_rejected", SYSTEM);       // 举报被驳回（通知举报人，含恶意举报扣分）
         m.put("violation", SYSTEM);             // 违规记录

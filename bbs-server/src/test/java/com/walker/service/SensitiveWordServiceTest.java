@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.walker.mapper.SensitiveWordMapper;
 import com.walker.pojo.SensitiveWord;
 import com.walker.service.impl.SensitiveWordServiceImpl;
+import com.walker.utils.SensitiveWordUtil;
 import com.walker.vo.ResultBean;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +42,12 @@ class SensitiveWordServiceTest {
         Field baseMapperField = sensitiveWordService.getClass().getSuperclass().getDeclaredField("baseMapper");
         baseMapperField.setAccessible(true);
         baseMapperField.set(sensitiveWordService, sensitiveWordMapper);
+    }
+
+    @AfterEach
+    void tearDown() {
+        // 静态词表状态，测试后清空，避免影响其他用例
+        SensitiveWordUtil.updateSensitiveWords(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
     }
 
     @Test
@@ -102,5 +110,191 @@ class SensitiveWordServiceTest {
 
         List<SensitiveWord> result = sensitiveWordService.getList();
         assertEquals(1, result.size());
+    }
+
+    @Test
+    @DisplayName("关闭遮蔽 → 成功并刷新缓存")
+    void updateMaskEnabled_disable_succeeds() {
+        SensitiveWord word = new SensitiveWord();
+        word.setId(1);
+        word.setKeyword("看看");
+        word.setMaskEnabled(1);
+        when(sensitiveWordMapper.selectById(1)).thenReturn(word);
+        when(sensitiveWordMapper.updateById(any(SensitiveWord.class))).thenReturn(1);
+        when(sensitiveWordMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(new ArrayList<>());
+
+        ResultBean result = sensitiveWordService.updateMaskEnabled(1, 0);
+
+        assertEquals(200, result.getCode());
+        assertEquals(0, word.getMaskEnabled());
+    }
+
+    @Test
+    @DisplayName("遮蔽开关 → 参数非法 → 返回错误")
+    void updateMaskEnabled_invalidParam_returnsError() {
+        assertEquals(500, sensitiveWordService.updateMaskEnabled(null, 1).getCode());
+        assertEquals(500, sensitiveWordService.updateMaskEnabled(1, 2).getCode());
+        assertEquals(500, sensitiveWordService.updateMaskEnabled(1, null).getCode());
+    }
+
+    @Test
+    @DisplayName("遮蔽开关 → 词不存在 → 返回错误")
+    void updateMaskEnabled_notFound_returnsError() {
+        when(sensitiveWordMapper.selectById(999)).thenReturn(null);
+        assertEquals(500, sensitiveWordService.updateMaskEnabled(999, 1).getCode());
+    }
+
+    @Test
+    @DisplayName("修改分类 → 改为垃圾词 → 自动关闭打码")
+    void updateCategory_toSpam_disablesMask() {
+        SensitiveWord word = new SensitiveWord();
+        word.setId(1);
+        word.setKeyword("看看");
+        word.setMaskEnabled(1);
+        word.setCategory("sensitive");
+        when(sensitiveWordMapper.selectById(1)).thenReturn(word);
+        when(sensitiveWordMapper.updateById(any(SensitiveWord.class))).thenReturn(1);
+        when(sensitiveWordMapper.selectList(any())).thenReturn(new ArrayList<>());
+
+        ResultBean result = sensitiveWordService.updateCategory(1, "spam");
+
+        assertEquals(200, result.getCode());
+        assertEquals("spam", word.getCategory());
+        assertEquals(0, word.getMaskEnabled());
+    }
+
+    @Test
+    @DisplayName("修改分类 → 改回严禁词 → 默认打码")
+    void updateCategory_toSensitive_enablesMask() {
+        SensitiveWord word = new SensitiveWord();
+        word.setId(1);
+        word.setKeyword("赌博");
+        word.setMaskEnabled(0);
+        word.setCategory("spam");
+        when(sensitiveWordMapper.selectById(1)).thenReturn(word);
+        when(sensitiveWordMapper.updateById(any(SensitiveWord.class))).thenReturn(1);
+        when(sensitiveWordMapper.selectList(any())).thenReturn(new ArrayList<>());
+
+        ResultBean result = sensitiveWordService.updateCategory(1, "sensitive");
+
+        assertEquals(200, result.getCode());
+        assertEquals("sensitive", word.getCategory());
+        assertEquals(1, word.getMaskEnabled());
+    }
+
+    @Test
+    @DisplayName("修改分类 → 非法值 → 返回错误")
+    void updateCategory_invalid_returnsError() {
+        assertEquals(500, sensitiveWordService.updateCategory(1, "other").getCode());
+    }
+
+    @Test
+    @DisplayName("垃圾词不允许开启打码")
+    void updateMaskEnabled_spamWord_returnsError() {
+        SensitiveWord word = new SensitiveWord();
+        word.setId(1);
+        word.setKeyword("看看");
+        word.setCategory("spam");
+        word.setMaskEnabled(0);
+        when(sensitiveWordMapper.selectById(1)).thenReturn(word);
+
+        ResultBean result = sensitiveWordService.updateMaskEnabled(1, 1);
+
+        assertEquals(500, result.getCode());
+    }
+
+    @Test
+    @DisplayName("三档处置 → 打码 → 严禁词且开启遮蔽")
+    void updateAction_mask_setsSensitiveAndMasked() {
+        SensitiveWord word = sensitiveWord();
+        when(sensitiveWordMapper.selectById(1)).thenReturn(word);
+        when(sensitiveWordMapper.updateById(any(SensitiveWord.class))).thenReturn(1);
+        when(sensitiveWordMapper.selectList(any())).thenReturn(new ArrayList<>());
+
+        ResultBean result = sensitiveWordService.updateAction(1, "mask");
+
+        assertEquals(200, result.getCode());
+        assertEquals("sensitive", word.getCategory());
+        assertEquals(1, word.getMaskEnabled());
+    }
+
+    @Test
+    @DisplayName("三档处置 → 仅监控 → 严禁词但不打码")
+    void updateAction_monitor_setsSensitiveAndUnmasked() {
+        SensitiveWord word = sensitiveWord();
+        when(sensitiveWordMapper.selectById(1)).thenReturn(word);
+        when(sensitiveWordMapper.updateById(any(SensitiveWord.class))).thenReturn(1);
+        when(sensitiveWordMapper.selectList(any())).thenReturn(new ArrayList<>());
+
+        ResultBean result = sensitiveWordService.updateAction(1, "monitor");
+
+        assertEquals(200, result.getCode());
+        assertEquals("sensitive", word.getCategory());
+        assertEquals(0, word.getMaskEnabled());
+    }
+
+    @Test
+    @DisplayName("三档处置 → 警告放行 → 垃圾词且不打码")
+    void updateAction_warn_setsSpam() {
+        SensitiveWord word = sensitiveWord();
+        when(sensitiveWordMapper.selectById(1)).thenReturn(word);
+        when(sensitiveWordMapper.updateById(any(SensitiveWord.class))).thenReturn(1);
+        when(sensitiveWordMapper.selectList(any())).thenReturn(new ArrayList<>());
+
+        ResultBean result = sensitiveWordService.updateAction(1, "warn");
+
+        assertEquals(200, result.getCode());
+        assertEquals("spam", word.getCategory());
+        assertEquals(0, word.getMaskEnabled());
+    }
+
+    @Test
+    @DisplayName("三档处置 → 非法动作 → 返回错误")
+    void updateAction_invalid_returnsError() {
+        assertEquals(500, sensitiveWordService.updateAction(1, "block").getCode());
+        assertEquals(500, sensitiveWordService.updateAction(null, "mask").getCode());
+    }
+
+    private SensitiveWord sensitiveWord() {
+        SensitiveWord word = new SensitiveWord();
+        word.setId(1);
+        word.setKeyword("赌博");
+        word.setMaskEnabled(1);
+        word.setCategory("sensitive");
+        return word;
+    }
+
+    @Test
+    @DisplayName("启动加载 → 按 mask_enabled 拆分遮蔽词与监控词")
+    void loadSensitiveWords_splitsMaskableWords() {
+        SensitiveWord masked = new SensitiveWord();
+        masked.setKeyword("赌博");
+        masked.setMaskEnabled(1);
+        SensitiveWord monitored = new SensitiveWord();
+        monitored.setKeyword("看看");
+        monitored.setMaskEnabled(0);
+        // 历史数据：字段为空时按开启遮蔽处理
+        SensitiveWord legacy = new SensitiveWord();
+        legacy.setKeyword("抢劫");
+        legacy.setMaskEnabled(null);
+        // 垃圾词：不参与严禁词监控，走警告放行
+        SensitiveWord spam = new SensitiveWord();
+        spam.setKeyword("哈哈哈");
+        spam.setMaskEnabled(0);
+        spam.setCategory("spam");
+        when(sensitiveWordMapper.selectList(any()))
+                .thenReturn(Arrays.asList(masked, monitored, legacy, spam));
+
+        sensitiveWordService.loadSensitiveWords();
+
+        // 严禁词 3 个（含 mask_enabled=0 的"看看"），垃圾词单独成表
+        assertEquals(3, SensitiveWordUtil.getSensitiveWords().size());
+        List<String> maskWords = SensitiveWordUtil.getMaskWords();
+        assertEquals(2, maskWords.size());
+        assertTrue(maskWords.contains("赌博"));
+        assertTrue(maskWords.contains("抢劫"));
+        assertFalse(maskWords.contains("看看"));
+        assertEquals(1, SensitiveWordUtil.getSpamWords().size());
+        assertEquals("哈哈哈", SensitiveWordUtil.getSpamWords().get(0));
     }
 }

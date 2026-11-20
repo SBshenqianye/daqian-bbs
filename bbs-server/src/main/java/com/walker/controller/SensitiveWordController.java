@@ -94,6 +94,56 @@ public class SensitiveWordController {
     }
 
     /**
+     * 方法描述 开启/关闭某个敏感词的前台遮蔽
+     * 关闭后该词仍参与命中统计与质量检测，只是不再被打码。
+     * @param id 敏感词id
+     * @param enabled 1=打码，0=不打码
+     * @return ResultBean
+     */
+    @ApiOperation("修改敏感词是否参与脱敏遮蔽")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @AuditLog(module = "CONFIG", action = "CONFIG_SENSITIVE_MASK",
+            targetType = "SENSITIVE_WORD", targetId = "#id")
+    @PostMapping("/sensitiveWord/updateMaskEnabled")
+    public ResultBean updateMaskEnabled(@RequestParam("id") Integer id,
+                                        @RequestParam("enabled") Integer enabled) {
+        return sensitiveWordService.updateMaskEnabled(id, enabled);
+    }
+
+    /**
+     * 方法描述 用三档动作一次性设置分类与遮蔽（后台下拉用，避免两次请求产生中间态）
+     * @param id 敏感词id
+     * @param action mask=严禁词且打码，monitor=严禁词仅监控，warn=垃圾词警告放行
+     * @return ResultBean
+     */
+    @ApiOperation("修改敏感词处置方式（打码/仅监控/警告放行）")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @AuditLog(module = "CONFIG", action = "CONFIG_SENSITIVE_ACTION",
+            targetType = "SENSITIVE_WORD", targetId = "#id")
+    @PostMapping("/sensitiveWord/updateAction")
+    public ResultBean updateAction(@RequestParam("id") Integer id,
+                                   @RequestParam("action") String action) {
+        return sensitiveWordService.updateAction(id, action);
+    }
+
+    /**
+     * 方法描述 修改敏感词分类（严禁词 / 垃圾词）
+     * 垃圾词走"警告放行"：内容照常显示、不计分、命中不计入审核阈值。
+     * @param id 敏感词id
+     * @param category sensitive=严禁词，spam=垃圾词
+     * @return ResultBean
+     */
+    @ApiOperation("修改敏感词分类")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @AuditLog(module = "CONFIG", action = "CONFIG_SENSITIVE_CATEGORY",
+            targetType = "SENSITIVE_WORD", targetId = "#id")
+    @PostMapping("/sensitiveWord/updateCategory")
+    public ResultBean updateCategory(@RequestParam("id") Integer id,
+                                     @RequestParam("category") String category) {
+        return sensitiveWordService.updateCategory(id, category);
+    }
+
+    /**
      * 方法描述 导出敏感词为 Excel 文件
      * @param response HTTP 响应
      */

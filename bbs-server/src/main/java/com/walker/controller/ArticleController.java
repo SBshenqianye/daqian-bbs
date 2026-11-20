@@ -294,6 +294,28 @@ public class ArticleController {
         return normalizeArticle(article);
     }
 
+    @ApiOperation(value = "编辑页读取原文（仅作者本人，未脱敏）")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).POST_UPDATE_OWN)")
+    @GetMapping("/article/getForEdit/{articleId}")
+    public ResultBean getArticleForEdit(@PathVariable("articleId") Integer articleId) {
+        Article article = articleService.getById(articleId);
+        if (article == null) {
+            return ResultBean.error("文章不存在或已删除");
+        }
+        User currentUser = currentUserService.getCurrentUser();
+        if (currentUser == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        if (article.getUserId() == null || !currentUser.getId().equals(article.getUserId())) {
+            return ResultBean.forbidden("只能编辑自己发布的帖子");
+        }
+        // 只做路径归一化，不做脱敏：否则编辑框回显 *** 再保存会把原文覆盖掉
+        article.setArticleContent(FilePathNormalizer.normalizeEmbeddedUrls(article.getArticleContent(), contextPath));
+        article.setArticleContentHtml(FilePathNormalizer.normalizeEmbeddedUrls(article.getArticleContentHtml(), contextPath));
+        article.setArticleImage(FilePathNormalizer.normalizeFieldUrl(article.getArticleImage(), contextPath));
+        return ResultBean.success("查询成功！", article);
+    }
+
     @ApiOperation(value = "用户端帖子分页筛选/排序")
     @PostMapping("/common/article/list")
     public ResultBean articleList(@RequestBody com.walker.vo.param.ArticleListParam param) {

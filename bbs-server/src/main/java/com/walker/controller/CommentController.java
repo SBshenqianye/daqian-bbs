@@ -10,6 +10,7 @@ import com.walker.vo.ResultBean;
 import com.walker.vo.param.CommentParam;
 import com.walker.vo.ReplyVO;
 import com.walker.vo.param.ReplyParam;
+import com.walker.utils.SensitiveWordUtil;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -119,7 +120,7 @@ public class CommentController {
 
                 commentReplyVO.setCommentId(commentId);
                 commentReplyVO.setCommentTime(comment.getCommentTime());
-                commentReplyVO.setCommentContent(comment.getCommentContent());
+                commentReplyVO.setCommentContent(SensitiveWordUtil.desensitize(comment.getCommentContent()));
                 commentReplyVO.setInputShow(false);
 
                 //得到回复用户的id，通过id查询用户信息
@@ -154,7 +155,7 @@ public class CommentController {
                         Reply reply = replyList.get(j);
 
                         replyVO.setReplyId(reply.getReplyId());
-                        replyVO.setReplyContent(reply.getReplyContent());
+                        replyVO.setReplyContent(SensitiveWordUtil.desensitize(reply.getReplyContent()));
                         replyVO.setReplyTime(reply.getReplyTime());
                         replyVO.setInputShow(false);
 

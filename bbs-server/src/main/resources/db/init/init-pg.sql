@@ -285,8 +285,27 @@ CREATE INDEX IF NOT EXISTS idx_ranking_category
 CREATE TABLE IF NOT EXISTS bbs_sensitive_word (
     id      SERIAL PRIMARY KEY,
     keyword varchar(255) NOT NULL,
+    mask_enabled smallint NOT NULL DEFAULT 1,
+    category varchar(16) NOT NULL DEFAULT 'sensitive',
     CONSTRAINT uk_sensitive_word_keyword UNIQUE (keyword)
 );
+
+-- ----------------------------
+-- Table: bbs_sensitive_hit
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS bbs_sensitive_hit (
+    id          BIGSERIAL PRIMARY KEY,
+    user_id     integer NOT NULL,
+    target_type varchar(16) NOT NULL,
+    target_id   integer NOT NULL,
+    label_id    integer,
+    hit_words   varchar(500),
+    hit_count   integer DEFAULT 0,
+    create_time varchar(20),
+    CONSTRAINT uk_sensitive_hit_target UNIQUE (target_type, target_id)
+);
+CREATE INDEX IF NOT EXISTS idx_sensitive_hit_user_time ON bbs_sensitive_hit (user_id, create_time);
+CREATE INDEX IF NOT EXISTS idx_sensitive_hit_time ON bbs_sensitive_hit (create_time);
 
 -- ----------------------------
 -- Table: bbs_slideshow

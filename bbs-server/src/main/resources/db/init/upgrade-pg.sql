@@ -766,6 +766,8 @@ INSERT INTO bbs_sensitive_word (keyword) VALUES
 ON CONFLICT DO NOTHING;
 
 -- @migration: v029-rename-year-month 列名 year_month → ym
+-- 说明：init 建表已是 ym 时，本语句会报 "column does not exist"，由 DatabaseInitializer
+-- 的 isTolerableFailure 判定为可跳过（ALTER TABLE + does not exist），不阻断迁移块。
 ALTER TABLE bbs_moderator_reward_cancel RENAME COLUMN year_month TO ym;
 -- @migration: v031-sensitive-words-import 导入国内常见敏感词库（来源：SensitivePy words.txt，全量幂等）
 INSERT INTO bbs_sensitive_word (keyword) VALUES
@@ -9315,3 +9317,57 @@ JOIN bbs_ranking_category_org i
 WHERE o.is_delete = 0
   AND o.is_ranking_selected = 0
 ON CONFLICT (category_id, org_no) DO NOTHING;
+
+-- @migration: v072-sensitive-word-mask-switch 敏感词遮蔽开关（灌水/误伤词只监控不打码）
+-- 背景：v009 的"扩展垃圾/灌水关键词库"把灌水词写进了敏感词表，命中后正文被打成 ***，
+--       例如"大家看看这个"显示为"大家***这个"，属误伤正常阅读（markdown 也会被"mark"打成 ***down）。
+-- 处理：新增 mask_enabled 列，默认 1（既有行为不变）；仅把 v009 那批灌水词置 0，
+--       数据保留、命中监控保留，只是不再前台打码；后台可逐个改回 1。
+-- 幂等：ADD COLUMN IF NOT EXISTS + 按 keyword UPDATE。
+ALTER TABLE bbs_sensitive_word ADD COLUMN IF NOT EXISTS mask_enabled smallint NOT NULL DEFAULT 1;
+
+UPDATE bbs_sensitive_word SET mask_enabled = 0 WHERE keyword IN (
+'哈哈哈','嘻嘻嘻','嘿嘿嘿','啊啊啊','嗯嗯嗯','哦哦哦','呵呵呵','啦啦啦','呜呜呜',
+'沙发','占位','占楼','路过','马克','mark','mark一下','顶贴','灌水','水水水','水帖',
+'来了','看看','打卡','签到','666666','8888','11111','123456','测试测试','测试一下','testtest'
+);
+
+-- @migration: v073-sensitive-governance 词表分类 + 命中记录 + 风险查看权限
+-- 背景：严禁词（打码/审核）与垃圾灌水词（警告放行）口径混在一张表里，导致同一句话被打星又被判垃圾。
+-- 处理：新增 category 区分两类词；把灌水词库归入 spam；新建命中记录表；授予 sensitive:read。
+-- 幂等：ADD COLUMN IF NOT EXISTS / CREATE TABLE IF NOT EXISTS / ON CONFLICT DO NOTHING。
+ALTER TABLE bbs_sensitive_word ADD COLUMN IF NOT EXISTS category varchar(16) NOT NULL DEFAULT 'sensitive';
+
+UPDATE bbs_sensitive_word SET category = 'spam', mask_enabled = 0 WHERE keyword IN (
+'哈哈哈','嘻嘻嘻','嘿嘿嘿','啊啊啊','嗯嗯嗯','哦哦哦','呵呵呵','啦啦啦','呜呜呜',
+'沙发','占位','占楼','路过','马克','mark','mark一下','顶贴','灌水','水水水','水帖',
+'来了','看看','打卡','签到','666666','8888','11111','123456','测试测试','测试一下','testtest'
+);
+
+INSERT INTO bbs_sensitive_word (keyword, mask_enabled, category) VALUES
+('哈哈哈啊', 0, 'spam'), ('嘿嘿', 0, 'spam'), ('路过看看', 0, 'spam'),
+('666', 0, 'spam'), ('6666', 0, 'spam'), ('66666', 0, 'spam'),
+('888', 0, 'spam'), ('111', 0, 'spam'),
+('123', 0, 'spam'), ('1234', 0, 'spam'), ('12345', 0, 'spam'),
+('test', 0, 'spam')
+ON CONFLICT (keyword) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS bbs_sensitive_hit (
+    id          BIGSERIAL PRIMARY KEY,
+    user_id     integer NOT NULL,
+    target_type varchar(16) NOT NULL,
+    target_id   integer NOT NULL,
+    label_id    integer,
+    hit_words   varchar(500),
+    hit_count   integer DEFAULT 0,
+    create_time varchar(20),
+    CONSTRAINT uk_sensitive_hit_target UNIQUE (target_type, target_id)
+);
+CREATE INDEX IF NOT EXISTS idx_sensitive_hit_user_time ON bbs_sensitive_hit (user_id, create_time);
+CREATE INDEX IF NOT EXISTS idx_sensitive_hit_time ON bbs_sensitive_hit (create_time);
+
+INSERT INTO bbs_permission_group_item (group_id, permission_code, effect, create_time)
+SELECT id, 'sensitive:read', 'grant', to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+FROM bbs_permission_group
+WHERE group_code IN ('role_super', 'role_admin', 'role_moderator')
+ON CONFLICT (group_id, permission_code) DO NOTHING;
