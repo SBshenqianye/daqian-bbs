@@ -53,6 +53,9 @@
                 {{ p.profile.profileName }}（{{ p.items.length }} 级{{ p.profile.status === 1 ? ' · 启用中' : '' }}）
               </option>
             </select>
+            <button class="icon-act" title="重命名当前方案" @click="renameProfile">
+              <span class="material-symbols-outlined text-[16px]">edit</span>
+            </button>
           </div>
           <span v-if="currentProfileStatus === 1" class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px]">当前启用</span>
           <span v-else class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[11px]">未启用（仅预览 / 可编辑）</span>
@@ -276,6 +279,7 @@
                   <th class="p-2 w-20 text-left">图标</th>
                   <th class="p-2 w-[76px] whitespace-nowrap text-center">小阶段</th>
                   <th class="p-2 text-left">显示名</th>
+                  <th class="p-2 w-56 text-left">定位说明</th>
                   <th class="p-2 w-44 text-left">累计积分门槛</th>
                   <th class="p-2 w-24 text-left">操作</th>
                 </tr>
@@ -283,7 +287,7 @@
               <tbody>
                 <template v-for="(group, gi) in majorGroups">
                   <tr :key="'g-' + gi" class="border-t border-outline-variant/70">
-                    <td colspan="6" class="px-2 py-1.5" :style="{ backgroundColor: stageSoft(gi + 1) }">
+                    <td colspan="7" class="px-2 py-1.5" :style="{ backgroundColor: stageSoft(gi + 1) }">
                       <div class="flex items-center gap-2">
                         <span class="bbs-level-svg h-5 inline-flex" v-html="groupIcon(group)"></span>
                         <button
@@ -324,6 +328,9 @@
                     </td>
                     <td class="p-2">
                       <input v-model="item.displayName" class="cell-input w-full" :title="item.description || ''">
+                    </td>
+                    <td class="p-2">
+                      <input v-model="item.description" class="cell-input w-full" placeholder="可空，如「对标 技师1档」">
                     </td>
                     <td class="p-2">
                       <div class="inline-flex items-center gap-1">
@@ -639,6 +646,21 @@ export default {
       } finally {
         this.activating = false
       }
+    },
+    renameProfile() {
+      const entry = this.profiles.find(p => p.profile && p.profile.id === this.activeProfileId)
+      if (!entry) return
+      this.$prompt('只改名称，不影响等级项与启用状态。', '重命名方案', {
+        inputValue: entry.profile.profileName,
+        inputPattern: /\S+/,
+        inputErrorMessage: '名称不能为空',
+        confirmButtonText: '保存',
+        cancelButtonText: '取消',
+      }).then(({ value }) => {
+        this.postRequest('/admin/level/rename', { id: entry.profile.id, name: value }).then(res => {
+          handleResponse(res, { successMsg: '已重命名', errorMsg: '重命名失败', onSuccess: () => this.load() })
+        })
+      }).catch(() => {})
     },
     cloneProfile() {
       this.$prompt('会先把当前页面上的修改一起保存到新方案。', '另存为新方案', {
