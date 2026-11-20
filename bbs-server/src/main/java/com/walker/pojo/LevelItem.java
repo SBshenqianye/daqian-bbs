@@ -1,5 +1,6 @@
 package com.walker.pojo;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -29,17 +30,18 @@ public class LevelItem implements Serializable {
     private String displayName;
     @TableField("points_threshold")
     private Integer pointsThreshold;
-    @TableField("icon_key")
+    // 以下字段允许被清空：updateById 默认忽略 null，会导致「自动图标 / 清空徽章」保存不生效
+    @TableField(value = "icon_key", updateStrategy = FieldStrategy.IGNORED)
     private String iconKey;
-    @TableField("color_token")
+    @TableField(value = "color_token", updateStrategy = FieldStrategy.IGNORED)
     private String colorToken;
     @TableField("enabled")
     private Integer enabled;
 
-    @TableField("icon_svg")
+    @TableField(value = "icon_svg", updateStrategy = FieldStrategy.IGNORED)
     private String iconSvg;
 
-    @TableField("badge_name")
+    @TableField(value = "badge_name", updateStrategy = FieldStrategy.IGNORED)
     private String badgeName;
 
     @TableField("description")
