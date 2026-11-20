@@ -121,6 +121,11 @@ export default new Router({
                     meta: { title: '敏感词管理', permission: 'config:read' }
                 },
                 {
+                    path: '/sensitiveRisk',
+                    component: () => import('../pages/SensitiveRiskPage.vue'),
+                    meta: { title: '敏感词风险', permission: 'sensitive:read' }
+                },
+                {
                     path: '/violation',
                     component: () => import('../pages/ViolationPage.vue'),
                     meta: { title: '违规管理', permission: 'violation:review' }

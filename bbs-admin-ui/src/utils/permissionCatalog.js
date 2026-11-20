@@ -31,6 +31,7 @@ export const PERMISSION_GROUPS = [
           { code: 'article:review', label: '审核/违规' },
           { code: 'article:delete', label: '删除帖子' },
           { code: 'article:feature', label: '设置精华' },
+          { code: 'sensitive:read', label: '敏感词风险查看' },
           { code: 'article:suggestion:adopt', label: '采纳建议' }
         ]
       },

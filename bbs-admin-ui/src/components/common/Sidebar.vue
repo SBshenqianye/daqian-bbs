@@ -164,6 +164,7 @@ export default {
         { icon: 'upload_file', label: '组织导入', path: '/orgImport', permission: 'config:read', category: 'system' },
         { icon: 'notifications_active', label: '提醒配置', path: '/reminderManage', permission: 'config:read', category: 'system' },
         { icon: 'block', label: '敏感词管理', path: '/sensitiveWord', permission: 'config:read', category: 'system' },
+        { icon: 'local_fire_department', label: '敏感词风险', path: '/sensitiveRisk', permission: 'sensitive:read', category: 'business' },
         { icon: 'shield', label: '版主管理', path: '/moderator', permission: 'moderator:manage', category: 'system' },
         { icon: 'feedback', label: '版主投诉', path: '/moderator-complaint', permission: 'moderator:complaint:review', category: 'system' },
   { icon: 'policy', label: '权限矩阵', path: '/permission-matrix', permission: 'permission:manage', category: 'system' },

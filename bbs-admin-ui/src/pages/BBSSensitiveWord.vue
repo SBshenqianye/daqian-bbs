@@ -8,7 +8,7 @@
             <span class="material-symbols-outlined text-error">warning</span>
             敏感词管理
           </h1>
-          <p class="text-body-md text-secondary mt-1">管理论坛敏感词过滤列表</p>
+          <p class="text-body-md text-secondary mt-1">每条词可三档处置：严禁词·打码（显示 ***）/ 严禁词·仅监控（不打码但计入风险）/ 垃圾词·警告放行（照常显示、不计分）</p>
         </div>
       </div>
 
@@ -68,11 +68,24 @@
                 <span class="material-symbols-outlined text-error text-[18px]">block</span>
                 {{ item.keyword }}
               </span>
-              <button class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors disabled:opacity-50" :disabled="deletingId === item.id" @click="handleDelete(item)">
-                <span v-if="deletingId === item.id" class="inline-block w-3 h-3 border-2 border-error/30 border-t-error rounded-full animate-spin"></span>
-                <span v-else class="material-symbols-outlined text-[14px]">delete</span>
-                删除
-              </button>
+              <div class="flex items-center gap-4">
+                <el-select
+                  :value="actionOf(item)"
+                  size="mini"
+                  style="width: 190px"
+                  :disabled="actionUpdatingId === item.id"
+                  @change="handleActionChange(item, $event)"
+                >
+                  <el-option label="严禁词 · 打码" value="mask" />
+                  <el-option label="严禁词 · 仅监控" value="monitor" />
+                  <el-option label="垃圾词 · 警告放行" value="warn" />
+                </el-select>
+                <button class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors disabled:opacity-50" :disabled="deletingId === item.id" @click="handleDelete(item)">
+                  <span v-if="deletingId === item.id" class="inline-block w-3 h-3 border-2 border-error/30 border-t-error rounded-full animate-spin"></span>
+                  <span v-else class="material-symbols-outlined text-[14px]">delete</span>
+                  删除
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -146,6 +159,7 @@ export default {
       loading: false,
       adding: false,
       deletingId: null,
+      actionUpdatingId: null,
       keyword: '',
       searchKeyword: '',
       list: [],
@@ -169,7 +183,13 @@ export default {
         }
         const res = await this.getRequestUrl(url)
         if (res && res.code == 200 && res.obj) {
-          this.list = Array.isArray(res.obj.list) ? res.obj.list : []
+          const rows = Array.isArray(res.obj.list) ? res.obj.list : []
+          // 兼容历史数据：maskEnabled 为空时按开启遮蔽处理
+          this.list = rows.map(row => ({
+            ...row,
+            maskEnabled: row.maskEnabled === 0 ? 0 : 1,
+            category: row.category === 'spam' ? 'spam' : 'sensitive'
+          }))
           this.total = res.obj.total || 0
         } else {
           this.list = []
@@ -213,6 +233,35 @@ export default {
         })
       } catch (e) { this.$message.error('添加失败') }
       finally { this.adding = false }
+    },
+    actionOf(item) {
+      if (!item) return 'mask'
+      if (item.category === 'spam') return 'warn'
+      return item.maskEnabled === 0 ? 'monitor' : 'mask'
+    },
+    async handleActionChange(item, action) {
+      if (!item || item.id == null || !action) return
+      this.actionUpdatingId = item.id
+      try {
+        const res = await this.postRequest(
+          `/sensitiveWord/updateAction?id=${item.id}&action=${action}`, {}
+        )
+        handleResponse(res, {
+          errorMsg: '修改处置方式失败',
+          onSuccess: () => {
+            // 与后端保持一致：只有 mask 档打码
+            item.category = action === 'warn' ? 'spam' : 'sensitive'
+            item.maskEnabled = action === 'mask' ? 1 : 0
+            this.$message.success(res.message || '已更新')
+          },
+          onError: () => { this.loadPage() }
+        })
+      } catch (e) {
+        this.loadPage()
+        this.$message.error('修改处置方式失败')
+      } finally {
+        this.actionUpdatingId = null
+      }
     },
     handleDelete(item) {
       if (!item || item.id == null) return

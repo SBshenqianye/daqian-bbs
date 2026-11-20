@@ -109,7 +109,8 @@ export const AUDIT_ACTION_GROUPS = [
     { value: 'ARTICLE_BATCH_AUDIT', label: '批量审核文章' },
     { value: 'ARTICLE_DELETE', label: '删除文章' },
     { value: 'ARTICLE_BATCH_DELETE', label: '批量删除文章' },
-    { value: 'ARTICLE_FEATURE_CHANGE', label: '设置/取消精华' }
+    { value: 'ARTICLE_FEATURE_CHANGE', label: '设置/取消精华' },
+    { value: 'ARTICLE_SENSITIVE_VIEW', label: '查看命中详情' }
   ] },
   { module: 'REPORT', label: '举报', actions: [
     { value: 'REPORT_REVIEW', label: '举报审核' }
@@ -171,6 +172,9 @@ export const AUDIT_ACTION_GROUPS = [
     { value: 'CONFIG_SENSITIVE_ADD', label: '新增敏感词' },
     { value: 'CONFIG_SENSITIVE_DELETE', label: '删除敏感词' },
     { value: 'CONFIG_SENSITIVE_IMPORT', label: '导入敏感词' },
+    { value: 'CONFIG_SENSITIVE_MASK', label: '修改敏感词遮蔽' },
+  { value: 'CONFIG_SENSITIVE_CATEGORY', label: '修改敏感词分类' },
+  { value: 'CONFIG_SENSITIVE_ACTION', label: '修改敏感词处置' },
     { value: 'CONFIG_SLIDESHOW_CREATE', label: '新增轮播图' },
     { value: 'CONFIG_SLIDESHOW_UPDATE', label: '修改轮播图' },
     { value: 'CONFIG_SYSTEM_CREATE', label: '新增系统配置' },
