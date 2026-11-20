@@ -9768,3 +9768,13 @@ DROP TABLE IF EXISTS `bbs_slideshow`;
 SET @col_comm := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_article' AND COLUMN_NAME='article_community_id');
 SET @sql_col_comm := IF(@col_comm>0, 'ALTER TABLE `bbs_article` DROP COLUMN `article_community_id`', 'SELECT 1');
 PREPARE s97 FROM @sql_col_comm; EXECUTE s97; DEALLOCATE PREPARE s97;
+
+-- @migration: v076-editor-preview-default 发帖编辑器预览默认开关
+-- 背景：发帖页工具栏插入的是 Markdown 源码（**…**、### 、- ），左栏看到符号、右栏才是渲染结果；
+--       预览默认关闭时用户以为"格式没生效"（2026-11-20 生产反馈）。
+-- 处理：新增系统配置 editor_preview_default（config_group=editor），1=默认打开预览，0=默认关闭；
+--       后台"系统配置"页可改，前端读不到该配置时按打开处理。
+-- 幂等：WHERE NOT EXISTS 按 config_key 判断。
+INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
+SELECT 'editor_preview_default', '1', '发帖页默认打开预览', 'editor', 'switch', 10, '1=默认打开 Markdown 预览，0=默认关闭；用户重新进入发帖页生效', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'editor_preview_default');
