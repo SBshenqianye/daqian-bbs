@@ -96,6 +96,8 @@ export default {
         toolbarsFlag: false,
         subfield: false,
         defaultOpen: 'preview',
+        // 正文里的裸 HTML 一律转义，不让用户帖子的标签进预览区（安全 2026-11-20）
+        html: false,
         externalLink: {
           hljs_js: () => process.env.BASE_URL + 'lib/highlight/highlight.min.js',
           hljs_css: (css) => process.env.BASE_URL + `lib/highlight/styles/${css}.min.css`,

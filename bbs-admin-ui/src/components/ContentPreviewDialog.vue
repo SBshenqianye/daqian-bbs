@@ -154,6 +154,7 @@
 
 <script>
 import MarkdownIt from 'markdown-it/dist/markdown-it'
+import { sanitizeHtml } from '../../../shared/sanitize-html'
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
 
 export default {
@@ -187,7 +188,7 @@ export default {
       if (!this._md) {
         this._md = new MarkdownIt({ html: true, xhtmlOut: true, breaks: true, linkify: false, typographer: true })
       }
-      return this._md.render(this.detailContent)
+      return sanitizeHtml(this._md.render(this.detailContent))
     },
     detailCommentCount() {
       if (!this.detailComments.length) return 0

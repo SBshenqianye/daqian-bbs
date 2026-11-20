@@ -3,7 +3,9 @@
  *
  * mdToHtml 轻量 Markdown 渲染器（零外部依赖）。
  * 发帖页编辑器直接持有 Markdown 源码，发布/详情/预览共用本函数渲染。
+ * 输出统一过一遍白名单过滤（shared/sanitize-html.js），交给 v-html 前先去掉可执行内容。
  */
+import { sanitizeHtml } from '../../../shared/sanitize-html'
 
 /**
  * 转义 HTML 特殊字符（防 XSS）
@@ -14,6 +16,13 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+}
+
+/**
+ * 过滤渲染结果：白名单标签 + 去掉 on* / 危险协议 / 危险样式
+ */
+export function mdToHtml(md) {
+  return sanitizeHtml(renderMarkdown(md))
 }
 
 /**
@@ -41,7 +50,7 @@ function renderInline(text) {
  * 将 Markdown 渲染为 HTML
  * 支持：标题(h1-h6)、粗体、斜体、删除线、行内代码、代码块、引用块、有序/无序列表、图片、链接、表格、水平线
  */
-export function mdToHtml(md) {
+function renderMarkdown(md) {
   if (!md) return ''
 
   const lines = md.split('\n')
@@ -93,7 +102,7 @@ export function mdToHtml(md) {
         quoteLines.push(lines[i].trim().replace(/^>\s?/, ''))
         i++
       }
-      result.push('<blockquote>' + mdToHtml(quoteLines.join('\n')) + '</blockquote>')
+      result.push('<blockquote>' + renderMarkdown(quoteLines.join('\n')) + '</blockquote>')
       continue
     }
 

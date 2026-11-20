@@ -497,6 +497,7 @@
 
 <script>
 import MarkdownIt from 'markdown-it/dist/markdown-it'
+import { sanitizeHtml } from '../../../shared/sanitize-html'
 import 'mavon-editor/dist/markdown/github-markdown.min.css'
 import paginationMixin from '@/mixins/pagination'
 import adminStore from '@/utils/adminStore'
@@ -801,7 +802,7 @@ export default {
           typographer: true
         })
       }
-      return this._md.render(content)
+      return sanitizeHtml(this._md.render(content))
     },
     handleDel(articleId) {
       this.$confirm('删除后帖子将从用户前台隐藏，并移入「已删除」标签，管理员仍可查看。确定要删除该文章吗？', '提示', { type: 'warning' }).then(() => {
