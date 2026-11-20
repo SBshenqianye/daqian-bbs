@@ -138,6 +138,40 @@ class LevelServiceTest {
     }
 
     @Test
+    @DisplayName("保存已有方案：按 level_index 原地更新，id 保持稳定")
+    void saveProfile_keepsItemIdsStable() {
+        LevelProfile profile = new LevelProfile();
+        profile.setId(3);
+        profile.setProfileName("方案二 · 电网匠心");
+        profile.setStatus(0);
+
+        LevelItem row1 = item(1, 1, 0);
+        row1.setId(101);
+        row1.setProfileId(3);
+        row1.setLevelIndex(1);
+        LevelItem row2 = item(1, 2, 100);
+        row2.setId(102);
+        row2.setProfileId(3);
+        row2.setLevelIndex(2);
+        LevelItem stale = item(1, 3, 200);
+        stale.setId(103);
+        stale.setProfileId(3);
+        stale.setLevelIndex(3);
+        when(itemMapper.selectList(any())).thenReturn(Arrays.asList(row1, row2, stale));
+
+        List<LevelItem> items = Arrays.asList(item(1, 1, 0), item(1, 2, 120));
+
+        com.walker.vo.ResultBean result = service.saveProfile(profile, items);
+
+        assertEquals(200, result.getCode(), result.getMessage());
+        assertEquals(101, items.get(0).getId());
+        assertEquals(102, items.get(1).getId());
+        verify(itemMapper, times(2)).updateById(any(LevelItem.class));
+        verify(itemMapper, never()).insert(any(LevelItem.class));
+        verify(itemMapper, times(1)).delete(any());
+    }
+
+    @Test
     @DisplayName("保存方案：小阶段序号不连续时拒绝，避免生成错乱等级")
     void saveProfile_rejectsBrokenMinorSequence() {
         LevelProfile profile = new LevelProfile();

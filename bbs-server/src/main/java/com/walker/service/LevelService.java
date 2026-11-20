@@ -271,6 +271,8 @@ public class LevelService {
         profile.setMinorCounts(minorCounts);
 
         String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+        // 已有等级明细按 level_index 建索引：保存时原地更新，保持 id 稳定
+        Map<Integer, LevelItem> existing = new HashMap<>();
         if (profile.getId() == null) {
             profile.setProfileName(profile.getProfileName() == null ? "默认等级体系" : profile.getProfileName());
             if (profile.getStatus() == null) {
@@ -284,7 +286,13 @@ public class LevelService {
         } else {
             profile.setUpdateTime(now);
             profileMapper.updateById(profile);
-            itemMapper.delete(new LambdaQueryWrapper<LevelItem>().eq(LevelItem::getProfileId, profile.getId()));
+            List<LevelItem> rows = itemMapper.selectList(new LambdaQueryWrapper<LevelItem>()
+                    .eq(LevelItem::getProfileId, profile.getId()));
+            if (rows != null) {
+                rows.stream()
+                        .filter(row -> row.getLevelIndex() != null)
+                        .forEach(row -> existing.put(row.getLevelIndex(), row));
+            }
         }
         int lastThreshold = -1;
         for (LevelItem item : items) {
@@ -293,11 +301,29 @@ public class LevelService {
                 return ResultBean.error("积分门槛必须单调递增");
             }
             lastThreshold = threshold;
-            item.setId(null);
             item.setProfileId(profile.getId());
             item.setEnabled(1);
             item.setIconSvg(sanitizeIconSvg(item.getIconSvg()));
-            itemMapper.insert(item);
+            LevelItem old = existing.get(item.getLevelIndex());
+            if (old != null) {
+                // 同一 level_index 复用原行，id 不变
+                item.setId(old.getId());
+                itemMapper.updateById(item);
+            } else {
+                item.setId(null);
+                itemMapper.insert(item);
+            }
+        }
+        // 等级数缩减时，删除多出来的尾部等级
+        if (!existing.isEmpty()) {
+            List<Integer> removed = existing.keySet().stream()
+                    .filter(index -> items.stream().noneMatch(it -> Objects.equals(it.getLevelIndex(), index)))
+                    .collect(Collectors.toList());
+            if (!removed.isEmpty()) {
+                itemMapper.delete(new LambdaQueryWrapper<LevelItem>()
+                        .eq(LevelItem::getProfileId, profile.getId())
+                        .in(LevelItem::getLevelIndex, removed));
+            }
         }
         return ResultBean.success("保存成功", profile.getId());
     }
