@@ -16,7 +16,6 @@
         <result column="user_id" property="userId" />
         <result column="article_good_num" property="articleGoodNum" />
         <result column="article_view_num" property="articleViewNum" />
-        <result column="article_community_id" property="articleCommunityId" />
         <result column="create_time" property="createTime" />
         <result column="recommend" property="recommend" />
         <result column="enable" property="enable" />
@@ -26,7 +25,7 @@
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        article_id, article_label_id, article_author, article_title, article_summary, article_type_id, article_content, article_content_html, article_image, user_id, article_good_num, article_view_num, article_community_id, create_time, recommend, enable, is_delete, is_featured
+        article_id, article_label_id, article_author, article_title, article_summary, article_type_id, article_content, article_content_html, article_image, user_id, article_good_num, article_view_num, create_time, recommend, enable, is_delete, is_featured
     </sql>
 
     <!--按单位统计查询文章数-->

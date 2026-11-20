@@ -47,9 +47,6 @@ public class ArticleParam {
     @ApiModelProperty(value = "发布文章的用户ID",required = true)
     private Integer userId;
 
-    @ApiModelProperty(value = "文章发布的社区的ID",required = true)
-    private Integer articleCommunityId;
-
     @ApiModelProperty(value = "文章发布的时间",required = true)
     private String createTime;
 

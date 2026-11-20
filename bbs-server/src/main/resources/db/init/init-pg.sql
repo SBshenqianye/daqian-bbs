@@ -43,9 +43,7 @@ CREATE TABLE IF NOT EXISTS bbs_article (
     article_image        text,
     user_id              integer,
     article_good_num     integer DEFAULT 0,
-    article_view_num     integer DEFAULT 0,
-    article_community_id integer,
-    create_time          varchar(20),
+    article_view_num     integer DEFAULT 0,    create_time          varchar(20),
     recommend            smallint,
     enable               integer DEFAULT 0,
     is_delete            integer DEFAULT 0,
@@ -129,30 +127,6 @@ CREATE TABLE IF NOT EXISTS bbs_comment (
     adopt_status        smallint DEFAULT 0,
     is_anonymous        smallint NOT NULL DEFAULT 0,
     comment_good_num    integer NOT NULL DEFAULT 0
-);
-
--- ----------------------------
--- Table: bbs_community
--- ----------------------------
-CREATE TABLE IF NOT EXISTS bbs_community (
-    community_id         SERIAL PRIMARY KEY,
-    community_name       varchar(20),
-    community_introduce  varchar(255),
-    community_image      varchar(255),
-    community_user_num   integer DEFAULT 0,
-    create_user_id       integer,
-    create_time          varchar(20),
-    enable               integer DEFAULT 1,
-    is_delete            integer DEFAULT 0
-);
-
--- ----------------------------
--- Table: bbs_community_user
--- ----------------------------
-CREATE TABLE IF NOT EXISTS bbs_community_user (
-    id            SERIAL PRIMARY KEY,
-    community_id  integer,
-    user_id       integer
 );
 
 -- ----------------------------
@@ -306,16 +280,6 @@ CREATE TABLE IF NOT EXISTS bbs_sensitive_hit (
 );
 CREATE INDEX IF NOT EXISTS idx_sensitive_hit_user_time ON bbs_sensitive_hit (user_id, create_time);
 CREATE INDEX IF NOT EXISTS idx_sensitive_hit_time ON bbs_sensitive_hit (create_time);
-
--- ----------------------------
--- Table: bbs_slideshow
--- ----------------------------
-CREATE TABLE IF NOT EXISTS bbs_slideshow (
-    slideshow_id SERIAL PRIMARY KEY,
-    image_url    varchar(255),
-    successive   integer,
-    create_time  varchar(20)
-);
 
 -- ----------------------------
 -- Table: bbs_user
@@ -504,6 +468,14 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO bbs_system_config (config_key, config_value, config_label, config_group, config_type, sort_order, remark, create_by, create_time)
 SELECT 'feedback_contact', '{"name":"","email":""}', '使用反馈联系方式', 'contact', 'json', 0, '配置使用反馈弹窗中的联系人信息，格式：{"name":"联系人姓名","email":"联系邮箱"}', '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS')
 WHERE NOT EXISTS (SELECT 1 FROM bbs_system_config WHERE config_key = 'feedback_contact');
+
+-- ----------------------------
+-- 系统配置（发帖编辑器）
+-- ----------------------------
+INSERT INTO bbs_system_config (config_key, config_value, config_label, config_group, config_type, sort_order, remark, create_by, create_time)
+SELECT 'editor_preview_default', '1', '发帖页默认打开预览', 'editor', 'switch', 10, '1=默认打开 Markdown 预览，0=默认关闭；用户重新进入发帖页生效', '系统', TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+WHERE NOT EXISTS (SELECT 1 FROM bbs_system_config WHERE config_key = 'editor_preview_default');
+
 
 -- ----------------------------
 -- 敏感词

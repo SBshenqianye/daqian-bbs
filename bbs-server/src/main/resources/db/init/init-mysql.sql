@@ -49,9 +49,7 @@ CREATE TABLE `bbs_article` (
   `article_image`       text CHARACTER SET utf8 COLLATE utf8_general_ci NULL COMMENT '文章中的图片',
   `user_id`             int(11) NULL DEFAULT NULL COMMENT '发布文章的用户的id',
   `article_good_num`    int(11) NULL DEFAULT 0 COMMENT '文章获赞数量',
-  `article_view_num`    int(11) NULL DEFAULT 0 COMMENT '文章的浏览量',
-  `article_community_id` int(11) NULL DEFAULT NULL COMMENT '文章所属的社区id',
-  `create_time`         varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '文章发布的时间',
+  `article_view_num`    int(11) NULL DEFAULT 0 COMMENT '文章的浏览量',  `create_time`         varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '文章发布的时间',
   `recommend`           tinyint(1) UNSIGNED ZEROFILL NULL DEFAULT NULL COMMENT '是否推荐该文章',
   `enable`              int(11) NULL DEFAULT 0 COMMENT '是否审核通过',
   `is_delete`           int(11) NULL DEFAULT 0 COMMENT '逻辑删除',
@@ -151,34 +149,6 @@ CREATE TABLE `bbs_comment` (
   `is_anonymous`        tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否匿名',
   `comment_good_num`    int(11) NOT NULL DEFAULT 0 COMMENT '评论点赞数',
   PRIMARY KEY (`comment_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table: bbs_community
--- ----------------------------
-DROP TABLE IF EXISTS `bbs_community`;
-CREATE TABLE `bbs_community` (
-  `community_id`         int(11) NOT NULL AUTO_INCREMENT COMMENT '社区id',
-  `community_name`       varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '社区名称',
-  `community_introduce`  varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '社区介绍',
-  `community_image`      varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '社区的照片',
-  `community_user_num`   int(11) NULL DEFAULT 0 COMMENT '社区用户数量',
-  `create_user_id`       int(11) NULL DEFAULT NULL COMMENT '创建改社区的用户id',
-  `create_time`          varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '社区的创建时间',
-  `enable`               int(11) NULL DEFAULT 1 COMMENT '是否审核通过',
-  `is_delete`            int(11) NULL DEFAULT 0 COMMENT '逻辑删除',
-  PRIMARY KEY (`community_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table: bbs_community_user
--- ----------------------------
-DROP TABLE IF EXISTS `bbs_community_user`;
-CREATE TABLE `bbs_community_user` (
-  `id`            int(11) NOT NULL AUTO_INCREMENT,
-  `community_id`  int(11) NULL DEFAULT NULL COMMENT '社区的id',
-  `user_id`       int(11) NULL DEFAULT NULL COMMENT '社区用户的id',
-  PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -353,18 +323,6 @@ CREATE TABLE `bbs_sensitive_hit` (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '敏感词命中记录';
 
 -- ----------------------------
--- Table: bbs_slideshow
--- ----------------------------
-DROP TABLE IF EXISTS `bbs_slideshow`;
-CREATE TABLE `bbs_slideshow` (
-  `slideshow_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '轮播图的id',
-  `image_url`    varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '轮播图的地址',
-  `successive`   int(11) NULL DEFAULT NULL COMMENT '顺序（数字越大，越靠前）',
-  `create_time`  varchar(20) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '创建时间',
-  PRIMARY KEY (`slideshow_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
 -- Table: bbs_user
 -- ----------------------------
 DROP TABLE IF EXISTS `bbs_user`;
@@ -529,6 +487,13 @@ INSERT INTO `bbs_dict` (`id`, `dict_type`, `dict_value`, `dict_label`, `dict_sor
 INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
 SELECT 'feedback_contact', '{\"name\":\"\",\"email\":\"\"}', '使用反馈联系方式', 'contact', 'json', 0, '配置使用反馈弹窗中的联系人信息，格式：{"name":"联系人姓名","email":"联系邮箱"}', '系统', '2026-07-15 00:00:00'
 WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'feedback_contact');
+
+-- ----------------------------
+-- 系统配置（发帖编辑器）
+-- ----------------------------
+INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
+SELECT 'editor_preview_default', '1', '发帖页默认打开预览', 'editor', 'switch', 10, '1=默认打开 Markdown 预览，0=默认关闭；用户重新进入发帖页生效', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'editor_preview_default');
 
 -- ----------------------------
 -- Table: bbs_points_log（积分调整日志）

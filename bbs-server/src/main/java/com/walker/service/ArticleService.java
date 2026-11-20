@@ -88,21 +88,6 @@ public interface ArticleService extends IService<Article> {
     List<Article> queryAllArticleList(String keywords);
 
     /**
-     * 获取社区文章按照发布时间排序
-     * @param communityId
-     * @return
-     */
-    List<Article> queryArticleByCommunityId(Integer communityId);
-
-
-    /**
-     * 获取社区的文章按照浏览量降序排列
-     * @param communityId
-     * @return
-     */
-    List<Article> getArticleByHotAndOrderByDesc(Integer communityId);
-
-    /**
      * 通过关键词搜索文章
      * @param keywords
      * @return

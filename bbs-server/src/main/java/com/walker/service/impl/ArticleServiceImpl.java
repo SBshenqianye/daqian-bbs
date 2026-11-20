@@ -208,7 +208,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         int recentHits = sensitiveHitService.countRecentHits(articleParam.getUserId(), 24);
         boolean hitReview = recentHits >= sensitiveReviewThreshold();
         article.setEnable(preReview || hitReview ? 0 : 1);
-        article.setArticleCommunityId(articleParam.getArticleCommunityId());
         article.setCreateTime(day);
 
         this.save(article);
@@ -724,28 +723,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
-    public List<Article> queryArticleByCommunityId(Integer communityId) {
-
-        LambdaQueryWrapper<Article> lambdaQueryWrapper = new LambdaQueryWrapper<>();
-        lambdaQueryWrapper
-                .eq(Article::getEnable,1)
-                .eq(Article::getArticleCommunityId, communityId)
-                .orderByDesc(Article::getCreateTime);
-        return articleMapper.selectList(lambdaQueryWrapper);
-    }
-
-    @Override
-    public List<Article> getArticleByHotAndOrderByDesc(Integer communityId) {
-        LambdaQueryWrapper<Article> lambdaQueryWrapper = new LambdaQueryWrapper<>();
-        lambdaQueryWrapper
-                .eq(Article::getEnable,1)
-                .eq(Article::getArticleCommunityId, communityId)
-                .orderByDesc(Article::getArticleViewNum);
-        return articleMapper.selectList(lambdaQueryWrapper);
-
-    }
-
-    @Override
     public List<Article> getArticleByKeywords(String keywords) {
         LambdaQueryWrapper<Article> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper
@@ -1046,7 +1023,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .setArticleContentHtml(articleParam.getArticleContentHtml())
                 .setArticleSummary(articleParam.getArticleSummary())
                 .setArticleTypeId(articleParam.getArticleTypeId())
-                .setArticleCommunityId(articleParam.getArticleCommunityId())
                 .setArticleLabelId(articleParam.getArticleLabelId())
                 .setIsAnonymous(Integer.valueOf(1).equals(articleParam.getIsAnonymous()) ? 1 : 0);
         // System.out.println("articleParam.getArticleImage() = " + articleParam.getArticleImage());

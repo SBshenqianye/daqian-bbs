@@ -342,18 +342,6 @@ public class ArticleController {
         return normalizeArticles(articleService.queryAllArticleList(keywords));
     }
 
-    @ApiOperation(value = "获取社区文章 时间排序")
-    @GetMapping("/article/getArticleByCommunityId/{communityId}")
-    public List<Article> getArticleByCommunityId(@PathVariable("communityId") Integer communityId) {
-        return normalizeArticles(articleService.queryArticleByCommunityId(communityId));
-    }
-
-    @ApiOperation(value = "获取社区文章 浏览量排序")
-    @GetMapping("/article/getArticleByHotAndOrderByDesc/{communityId}")
-    public List<Article> getArticleByHotAndOrderByDesc(@PathVariable("communityId") Integer communityId) {
-        return normalizeArticles(articleService.getArticleByHotAndOrderByDesc(communityId));
-    }
-
 
     @ApiOperation(value = "通过关键词搜索文章(搜索框)")
     @GetMapping("/article/getArticleByKeywords")

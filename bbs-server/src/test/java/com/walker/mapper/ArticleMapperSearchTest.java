@@ -49,7 +49,7 @@ class ArticleMapperSearchTest {
                     + "article_id INT PRIMARY KEY, article_label_id INT, article_author VARCHAR(100),"
                     + "article_title VARCHAR(200), article_summary VARCHAR(500), article_type_id INT,"
                     + "article_content CLOB, article_content_html CLOB, article_image VARCHAR(255),"
-                    + "user_id INT, article_good_num INT, article_view_num INT, article_community_id INT,"
+                    + "user_id INT, article_good_num INT, article_view_num INT,"
                     + "create_time VARCHAR(20), recommend VARCHAR(10), enable INT, is_delete INT, is_featured INT)");
             st.execute("CREATE TABLE bbs_user ("
                     + "id INT PRIMARY KEY, username VARCHAR(50), nickname VARCHAR(50),"
@@ -62,16 +62,16 @@ class ArticleMapperSearchTest {
             st.execute("INSERT INTO bbs_article_label VALUES (10, '经验分享', 'normal')");
 
             // 正常帖子（作者昵称快照为张三）
-            st.execute("INSERT INTO bbs_article VALUES (1, 10, '张三', '普通标题A', '', 1, '正文A', '', '', 1, 0, 0, 0,"
+            st.execute("INSERT INTO bbs_article VALUES (1, 10, '张三', '普通标题A', '', 1, '正文A', '', '', 1, 0, 0,"
                     + "'2026-10-01 10:00:00', '0', 1, 0, 0)");
             // 正常帖子（作者李四，正文/标题均不含人名关键词）
-            st.execute("INSERT INTO bbs_article VALUES (2, 10, '李四', '普通标题B', '', 1, '正文B', '', '', 2, 0, 0, 0,"
+            st.execute("INSERT INTO bbs_article VALUES (2, 10, '李四', '普通标题B', '', 1, '正文B', '', '', 2, 0, 0,"
                     + "'2026-10-02 10:00:00', '0', 1, 0, 0)");
             // 已删除帖子（标题关键词可命中，但不应出现在前台搜索结果）
-            st.execute("INSERT INTO bbs_article VALUES (3, 10, '张三', '已删标题C', '', 1, '正文C', '', '', 1, 0, 0, 0,"
+            st.execute("INSERT INTO bbs_article VALUES (3, 10, '张三', '已删标题C', '', 1, '正文C', '', '', 1, 0, 0,"
                     + "'2026-10-03 10:00:00', '0', 1, 1, 0)");
             // 未审核帖子（标题关键词可命中，但不应出现在前台搜索结果）
-            st.execute("INSERT INTO bbs_article VALUES (4, 10, '李四', '待审标题D', '', 1, '正文D', '', '', 2, 0, 0, 0,"
+            st.execute("INSERT INTO bbs_article VALUES (4, 10, '李四', '待审标题D', '', 1, '正文D', '', '', 2, 0, 0,"
                     + "'2026-10-04 10:00:00', '0', 0, 0, 0)");
         }
 

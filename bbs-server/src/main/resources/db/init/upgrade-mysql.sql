@@ -9756,3 +9756,15 @@ PREPARE s95 FROM @sql_idx_cycle; EXECUTE s95; DEALLOCATE PREPARE s95;
 SET @col_cycle := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_points_log' AND COLUMN_NAME='cycle_id');
 SET @sql_col_cycle := IF(@col_cycle>0, 'ALTER TABLE `bbs_points_log` DROP COLUMN `cycle_id`', 'SELECT 1');
 PREPARE s96 FROM @sql_col_cycle; EXECUTE s96; DEALLOCATE PREPARE s96;
+
+-- @migration: v076-drop-community-slideshow 下线社区与轮播图模块
+-- 背景：社区（bbs_community / bbs_community_user）0 数据、前台无接口调用；轮播图（bbs_slideshow）
+--       仅有 1 条数据且菜单入口被注释，首页轮播实际由精华帖自动生成。两个模块整块下线。
+-- 幂等：DROP TABLE IF EXISTS；article_community_id 按 information_schema 判断后再删。
+DROP TABLE IF EXISTS `bbs_community_user`;
+DROP TABLE IF EXISTS `bbs_community`;
+DROP TABLE IF EXISTS `bbs_slideshow`;
+
+SET @col_comm := (SELECT COUNT(1) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bbs_article' AND COLUMN_NAME='article_community_id');
+SET @sql_col_comm := IF(@col_comm>0, 'ALTER TABLE `bbs_article` DROP COLUMN `article_community_id`', 'SELECT 1');
+PREPARE s97 FROM @sql_col_comm; EXECUTE s97; DEALLOCATE PREPARE s97;

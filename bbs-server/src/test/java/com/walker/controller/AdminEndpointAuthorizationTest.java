@@ -77,8 +77,6 @@ class AdminEndpointAuthorizationTest {
         assertPermissionGrantedToAdmin(ArticleLabelController.class, "addArticleLabel");
         assertPermissionGrantedToAdmin(ArticleLabelController.class, "updateArticleLabel");
         assertPermissionGrantedToAdmin(ArticleLabelController.class, "deleteArticleLabel");
-        assertPermissionGrantedToAdmin(CommunityController.class, "updateCommunityStatus");
-        assertPermissionGrantedToAdmin(CommunityController.class, "deleteCommunityByCommunityId");
         assertPermissionGrantedToAdmin(SaOrgController.class, "deleteSaOrgByOrgNo");
         assertPermissionGrantedToAdmin(SaOrgController.class, "addSaOrg");
         assertPermissionGrantedToAdmin(SaOrgController.class, "batchUpdateRanking");
@@ -92,9 +90,6 @@ class AdminEndpointAuthorizationTest {
         assertPermissionGrantedToAdmin(SensitiveWordController.class, "addSensitiveWord");
         assertPermissionGrantedToAdmin(SensitiveWordController.class, "delSensitiveWord");
         assertPermissionGrantedToAdmin(SensitiveWordController.class, "importExcel");
-        assertPermissionGrantedToAdmin(SlideshowController.class, "addSlideshowReturnUrl");
-        assertPermissionGrantedToAdmin(SlideshowController.class, "addSlideshow");
-        assertPermissionGrantedToAdmin(SlideshowController.class, "updateSuccessive");
     }
 
     private static void assertPermissionGrantedToAdmin(Class<?> controller, String methodName) {

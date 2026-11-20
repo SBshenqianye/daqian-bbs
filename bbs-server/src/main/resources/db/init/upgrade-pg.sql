@@ -9426,3 +9426,11 @@ DROP TABLE IF EXISTS bbs_cycle_config;
 DROP TABLE IF EXISTS bbs_operation_cycle;
 DROP INDEX IF EXISTS idx_points_cycle;
 ALTER TABLE bbs_points_log DROP COLUMN IF EXISTS cycle_id;
+
+-- @migration: v076-drop-community-slideshow 下线社区与轮播图模块
+-- 背景：社区 0 数据、前台无接口；轮播图仅 1 条且菜单入口被注释，首页轮播由精华帖自动生成。
+-- 幂等：DROP TABLE IF EXISTS；字段 DROP COLUMN IF EXISTS。
+DROP TABLE IF EXISTS bbs_community_user;
+DROP TABLE IF EXISTS bbs_community;
+DROP TABLE IF EXISTS bbs_slideshow;
+ALTER TABLE bbs_article DROP COLUMN IF EXISTS article_community_id;

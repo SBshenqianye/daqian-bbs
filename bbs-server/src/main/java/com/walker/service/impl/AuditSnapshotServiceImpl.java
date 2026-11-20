@@ -16,7 +16,6 @@ import com.walker.mapper.ReplyMapper;
 import com.walker.mapper.ReportMapper;
 import com.walker.mapper.SaOrgMapper;
 import com.walker.mapper.SensitiveWordMapper;
-import com.walker.mapper.SlideshowMapper;
 import com.walker.mapper.SystemConfigMapper;
 import com.walker.mapper.UserMapper;
 import com.walker.mapper.ViolationMapper;
@@ -35,7 +34,6 @@ import com.walker.pojo.Reply;
 import com.walker.pojo.Report;
 import com.walker.pojo.SaOrg;
 import com.walker.pojo.SensitiveWord;
-import com.walker.pojo.Slideshow;
 import com.walker.pojo.SystemConfig;
 import com.walker.pojo.User;
 import com.walker.pojo.Violation;
@@ -103,9 +101,6 @@ public class AuditSnapshotServiceImpl implements AuditSnapshotService {
     private SensitiveWordMapper sensitiveWordMapper;
 
     @Autowired
-    private SlideshowMapper slideshowMapper;
-
-    @Autowired
     private SaOrgMapper saOrgMapper;
 
     @Autowired
@@ -152,8 +147,6 @@ public class AuditSnapshotServiceImpl implements AuditSnapshotService {
                     return articleLabel(parseInt(targetId));
                 case "SENSITIVE_WORD":
                     return sensitiveWord(parseInt(targetId));
-                case "SLIDESHOW":
-                    return slideshow(parseInt(targetId));
                 case "ORG":
                     return org(targetId);
                 case "PERMISSION_GROUP":
@@ -390,17 +383,6 @@ public class AuditSnapshotServiceImpl implements AuditSnapshotService {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", w.getId());
         map.put("keyword", w.getKeyword());
-        return map;
-    }
-
-    private Map<String, Object> slideshow(Integer id) {
-        if (id == null) return null;
-        Slideshow s = slideshowMapper.selectById(id);
-        if (s == null) return null;
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("slideshowId", s.getSlideshowId());
-        map.put("imageUrl", s.getImageUrl());
-        map.put("successive", s.getSuccessive());
         return map;
     }
 

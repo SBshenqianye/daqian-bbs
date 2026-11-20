@@ -76,10 +76,6 @@ public class Article implements Serializable {
     @TableField("article_view_num")
     private Integer articleViewNum;
 
-    @ApiModelProperty("文章所属的社区id")
-    @TableField("article_community_id")
-    private Integer articleCommunityId;
-
     @ApiModelProperty("文章发布的时间")
     @TableField("create_time")
     private String createTime;

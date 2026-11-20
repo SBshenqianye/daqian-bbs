@@ -567,20 +567,6 @@ class ArticleServiceTest {
     }
 
     @Test
-    @DisplayName("按社区ID查询文章 → 返回该社区的文章")
-    void queryArticleByCommunityId_returnsArticles() {
-        Article a1 = new Article();
-        a1.setArticleId(1);
-        a1.setArticleCommunityId(100);
-
-        when(articleMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(Arrays.asList(a1));
-
-        List<Article> result = articleService.queryArticleByCommunityId(100);
-        assertEquals(1, result.size());
-        assertEquals(100, result.get(0).getArticleCommunityId());
-    }
-
-    @Test
     @DisplayName("按关键词搜索文章 → 返回匹配的文章")
     void getArticleByKeywords_returnsMatchingArticles() {
         Article a1 = new Article();
