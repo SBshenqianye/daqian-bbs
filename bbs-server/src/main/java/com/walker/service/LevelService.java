@@ -375,6 +375,24 @@ public class LevelService {
         return ResultBean.success("已切换到「" + target.getProfileName() + "」");
     }
 
+    /** 重命名方案（只改名称，不动等级项） */
+    public ResultBean renameProfile(Integer id, String name) {
+        if (id == null) return ResultBean.error("缺少方案ID");
+        String trimmed = name == null ? "" : name.trim();
+        if (trimmed.isEmpty()) return ResultBean.error("方案名称不能为空");
+        if (trimmed.length() > 50) return ResultBean.error("方案名称不能超过 50 个字符");
+        LevelProfile target = profileMapper.selectById(id);
+        if (target == null) return ResultBean.error("方案不存在");
+        Long same = profileMapper.selectCount(new LambdaQueryWrapper<LevelProfile>()
+                .eq(LevelProfile::getProfileName, trimmed)
+                .ne(LevelProfile::getId, id));
+        if (same != null && same > 0) return ResultBean.error("方案名称已存在");
+        target.setProfileName(trimmed);
+        target.setUpdateTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+        profileMapper.updateById(target);
+        return ResultBean.success("已重命名为「" + trimmed + "」", id);
+    }
+
     /** 复制一份方案（用于快速派生新方案） */
     @Transactional
     public ResultBean cloneProfile(Integer id, String name) {

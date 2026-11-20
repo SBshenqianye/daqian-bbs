@@ -89,6 +89,16 @@ public class LevelController {
         return levelService.activateProfile(toInt(body == null ? null : body.get("id")));
     }
 
+    @ApiOperation("管理端：重命名等级方案")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @AuditLog(module = "CONFIG", action = "CONFIG_LEVEL_RENAME", targetType = "LEVEL_PROFILE", targetId = "#body['id']")
+    @PostMapping("/admin/level/rename")
+    public ResultBean rename(@RequestBody Map<String, Object> body) {
+        Integer id = toInt(body == null ? null : body.get("id"));
+        String name = body == null || body.get("name") == null ? null : String.valueOf(body.get("name"));
+        return levelService.renameProfile(id, name);
+    }
+
     @ApiOperation("管理端：复制等级方案")
     @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_LEVEL_CLONE", targetType = "LEVEL_PROFILE", targetId = "#body['id']")

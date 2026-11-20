@@ -44,6 +44,6 @@ public class LevelItem implements Serializable {
     @TableField(value = "badge_name", updateStrategy = FieldStrategy.IGNORED)
     private String badgeName;
 
-    @TableField("description")
+    @TableField(value = "description", updateStrategy = FieldStrategy.IGNORED)
     private String description;
 }
