@@ -591,7 +591,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
         try {
             if (article.getUserId() != null) {
-                article.setAuthorLevelIndex(levelService.getLevelIndex(article.getUserId()));
+                Integer levelIndex = levelService.getLevelIndex(article.getUserId());
+                article.setAuthorLevelIndex(levelIndex);
+                article.setAuthorIconSvg(levelService.getIconSvg(levelIndex));
             }
         } catch (Exception ignore) {
             // 等级查询失败不影响帖子正文展示
@@ -658,6 +660,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         Map<String, String> orgNameMap = saOrgService.resolveDisplayOrgNames(orgNos);
 
         Map<Integer, Integer> levelMap = levelService.getLevelIndexMap(userIds);
+        Map<Integer, String> iconMap = levelService.getIconSvgMap();
 
         articles.forEach(a -> {
             if (a.getUserId() != null && userMap.containsKey(a.getUserId())) {
@@ -672,6 +675,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             }
             if (a.getUserId() != null) {
                 a.setAuthorLevelIndex(levelMap.get(a.getUserId()));
+                a.setAuthorIconSvg(iconMap.get(levelMap.get(a.getUserId())));
             }
         });
     }
@@ -1208,7 +1212,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             try {
                 Map<Integer, Integer> levelMap = levelService.getLevelIndexMap(
                         list.stream().map(PersonalPointsRankVO::getUserId).collect(Collectors.toList()));
-                list.forEach(item -> item.setLevelIndex(levelMap.get(item.getUserId())));
+                Map<Integer, String> iconMap = levelService.getIconSvgMap();
+                list.forEach(item -> {
+                    item.setLevelIndex(levelMap.get(item.getUserId()));
+                    item.setIconSvg(iconMap.get(item.getLevelIndex()));
+                });
             } catch (Exception ignore) {
                 // 等级计算失败不影响排名主流程
             }
@@ -1256,6 +1264,13 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 currentUser.setLevelIndex(levelService.getLevelIndex(currentUser.getUserId()));
             } catch (Exception ignore) {
                 // 等级计算失败不影响排名主流程
+            }
+        }
+        if (currentUser != null && currentUser.getLevelIndex() != null) {
+            try {
+                currentUser.setIconSvg(levelService.getIconSvg(currentUser.getLevelIndex()));
+            } catch (Exception ignore) {
+                // 图标缺失按自动图标兜底
             }
         }
 

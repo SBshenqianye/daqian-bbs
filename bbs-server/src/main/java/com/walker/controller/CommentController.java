@@ -108,6 +108,7 @@ public class CommentController {
                 }
             }
             java.util.Map<Integer, Integer> levelMap = levelService.getLevelIndexMap(levelUserIds);
+            java.util.Map<Integer, String> iconMap = levelService.getIconSvgMap();
             Integer currentUserId = currentUserService.getCurrentUserId();
             java.util.Set<Integer> likedCommentIds = thumbService.likedIds(currentUserId, ThumbService.TYPE_COMMENT, commentIds);
             java.util.Set<Integer> likedReplyIds = thumbService.likedIds(currentUserId, ThumbService.TYPE_REPLY, replyIds);
@@ -138,6 +139,7 @@ public class CommentController {
                 commentReplyVO.setPoints(anonymous || user == null ? null : pointsLogService.getPointsAdjustment(userId));
                 commentReplyVO.setAdoptStatus(comment.getAdoptStatus());
                 commentReplyVO.setLevelIndex(anonymous ? null : levelMap.get(userId));
+                commentReplyVO.setIconSvg(anonymous ? null : iconMap.get(levelMap.get(userId)));
                 commentReplyVO.setGoodNum(comment.getGoodNum() == null ? 0 : comment.getGoodNum());
                 commentReplyVO.setLiked(likedCommentIds.contains(commentId));
 
@@ -174,6 +176,7 @@ public class CommentController {
                         replyVO.setIsAdopted(reply.getIsAdopted());
                         replyVO.setAdoptStatus(reply.getAdoptStatus());
                         replyVO.setLevelIndex(replyAnonymous ? null : levelMap.get(fromUserId));
+                        replyVO.setIconSvg(replyAnonymous ? null : iconMap.get(levelMap.get(fromUserId)));
                         replyVO.setGoodNum(reply.getGoodNum() == null ? 0 : reply.getGoodNum());
                         replyVO.setLiked(likedReplyIds.contains(reply.getReplyId()));
 

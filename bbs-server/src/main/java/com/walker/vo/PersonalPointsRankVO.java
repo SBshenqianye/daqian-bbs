@@ -56,4 +56,9 @@ public class PersonalPointsRankVO {
      * 等级序号（1..24，按累计积分换算；用于列表展示等级图标）
      */
     private Integer levelIndex;
+
+    /**
+     * 该等级的自定义图标 SVG（素材库快照；未自定义时为空）
+     */
+    private String iconSvg;
 }

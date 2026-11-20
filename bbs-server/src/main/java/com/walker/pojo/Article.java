@@ -153,6 +153,10 @@ public class Article implements Serializable {
     @TableField(exist = false)
     private Integer authorLevelIndex;
 
+    @ApiModelProperty("作者等级自定义图标 SVG（关联查询，非数据库字段）")
+    @TableField(exist = false)
+    private String authorIconSvg;
+
     @ApiModelProperty("用户头像")
     @TableField(exist = false)
     private String portrait;

@@ -203,6 +203,27 @@ public class LevelService {
         return result;
     }
 
+    /** 当前启用方案的 levelIndex → 自定义图标 SVG（只含有自定义图标的等级） */
+    public Map<Integer, String> getIconSvgMap() {
+        Map<Integer, String> result = new HashMap<>();
+        LevelProfile profile = getActiveProfile();
+        if (profile == null) return result;
+        List<LevelItem> items = listItems(profile.getId());
+        for (LevelItem item : items) {
+            String svg = item.getIconSvg();
+            if (svg != null && !svg.trim().isEmpty() && item.getLevelIndex() != null) {
+                result.put(item.getLevelIndex(), svg);
+            }
+        }
+        return result;
+    }
+
+    /** 单个等级的自定义图标（没有自定义时返回 null） */
+    public String getIconSvg(Integer levelIndex) {
+        if (levelIndex == null) return null;
+        return getIconSvgMap().get(levelIndex);
+    }
+
     @Transactional
     public ResultBean saveProfile(LevelProfile profile, List<LevelItem> items) {
         if (profile == null) {

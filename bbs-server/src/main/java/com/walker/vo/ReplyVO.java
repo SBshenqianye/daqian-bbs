@@ -61,6 +61,9 @@ public class ReplyVO {
     @ApiModelProperty("作者等级序号(1..24)，用于头像等级角标")
     private Integer levelIndex;
 
+    @ApiModelProperty("作者等级自定义图标 SVG（素材库快照）")
+    private String iconSvg;
+
     @ApiModelProperty("回复点赞数")
     private Integer goodNum;
 
