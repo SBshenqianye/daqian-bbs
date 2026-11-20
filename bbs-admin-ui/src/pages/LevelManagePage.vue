@@ -50,12 +50,11 @@
               @change="onProfileSelect"
             >
               <option v-for="p in profiles" :key="p.profile.id" :value="p.profile.id">
-                {{ p.profile.profileName }}（{{ p.items.length }} 级{{ p.profile.status === 1 ? ' · 启用中' : '' }}{{ p.effective ? ' · 实际生效' : '' }}）
+                {{ p.profile.profileName }}（{{ p.items.length }} 级{{ p.profile.status === 1 ? ' · 启用中' : '' }}）
               </option>
             </select>
           </div>
-          <span v-if="currentProfileEffective" class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px]">实际生效</span>
-          <span v-else-if="currentProfileStatus === 1" class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[11px]">启用中 · 被周期绑定覆盖</span>
+          <span v-if="currentProfileStatus === 1" class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px]">当前启用</span>
           <span v-else class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[11px]">未启用（仅预览 / 可编辑）</span>
           <div class="ml-auto flex items-center gap-2">
             <button class="px-3 py-1.5 text-[12px] border border-outline rounded-lg hover:border-primary" @click="cloneProfile">另存为新方案</button>
@@ -66,18 +65,10 @@
             >删除方案</button>
             <button
               class="px-4 py-1.5 text-[12px] bg-primary text-white rounded-lg disabled:opacity-50"
-              :disabled="currentProfileEffective || activating"
+              :disabled="currentProfileStatus === 1 || activating"
               @click="activateProfile"
-            >{{ activating ? '同步中...' : (currentProfileStatus === 1 ? '同步到周期' : '启用此方案') }}</button>
+            >{{ activating ? '切换中...' : '启用此方案' }}</button>
           </div>
-        </div>
-        <div
-          v-if="bindingMismatch"
-          class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800"
-        >
-          当前运营周期绑定了「{{ effectiveProfileName }}」，实际生效的是它；「{{ statusProfileName }}」虽然标记为启用中，但周期解绑前不会生效。
-          点「同步到周期」可把周期绑定改成当前方案。
-          <router-link to="/operationCycle" class="ml-1 underline hover:text-amber-900">去运营周期调整绑定</router-link>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
@@ -499,28 +490,6 @@ export default {
     currentProfileStatus() {
       const hit = this.profiles.find(p => p.profile && p.profile.id === this.activeProfileId)
       return hit && hit.profile ? hit.profile.status : 0
-    },
-    effectiveProfile() {
-      return this.profiles.find(p => p && p.effective) || null
-    },
-    currentProfileEffective() {
-      const e = this.effectiveProfile
-      return !!(e && e.profile && e.profile.id === this.activeProfileId)
-    },
-    statusProfile() {
-      return this.profiles.find(p => p.profile && p.profile.status === 1) || null
-    },
-    /** status=1 与周期绑定方案不一致时提示，避免「启用中」被误认为已生效 */
-    bindingMismatch() {
-      const e = this.effectiveProfile
-      const s = this.statusProfile
-      return !!(e && s && e.profile.id !== s.profile.id)
-    },
-    effectiveProfileName() {
-      return this.effectiveProfile ? this.effectiveProfile.profile.profileName : ''
-    },
-    statusProfileName() {
-      return this.statusProfile ? this.statusProfile.profile.profileName : ''
     },
     maxThreshold() {
       return this.items.reduce((m, i) => Math.max(m, Number(i.pointsThreshold) || 0), 0)
