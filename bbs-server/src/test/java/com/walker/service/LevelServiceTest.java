@@ -217,6 +217,22 @@ class LevelServiceTest {
         assertNull(ceiling.get("nextThreshold"));
     }
 
+    @Test
+    @DisplayName("启用方案时同步当前周期的绑定，避免周期覆盖导致「启用中却不生效」")
+    void activateProfile_syncsActiveCycleBinding() {
+        LevelProfile target = new LevelProfile();
+        target.setId(7);
+        target.setProfileName("方案X");
+        target.setStatus(0);
+        when(profileMapper.selectById(7)).thenReturn(target);
+
+        com.walker.vo.ResultBean result = service.activateProfile(7);
+
+        assertEquals(200, result.getCode(), result.getMessage());
+        assertEquals(1, target.getStatus());
+        verify(operationCycleService).bindActiveCycleLevelProfile(7);
+    }
+
     private LevelItem item(int majorIndex, int minorIndex, int threshold) {
         LevelItem item = new LevelItem();
         item.setMajorIndex(majorIndex);

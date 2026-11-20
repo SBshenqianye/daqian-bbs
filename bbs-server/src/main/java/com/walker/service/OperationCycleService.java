@@ -3,8 +3,10 @@ package com.walker.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.walker.mapper.CycleConfigMapper;
+import com.walker.mapper.LevelProfileMapper;
 import com.walker.mapper.OperationCycleMapper;
 import com.walker.pojo.CycleConfig;
+import com.walker.pojo.LevelProfile;
 import com.walker.pojo.OperationCycle;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,8 @@ public class OperationCycleService {
     private OperationCycleMapper cycleMapper;
     @Autowired
     private CycleConfigMapper cycleConfigMapper;
+    @Autowired
+    private LevelProfileMapper levelProfileMapper;
 
     public ResultBean list() {
         return ResultBean.success("查询成功", cycleMapper.selectList(new LambdaQueryWrapper<OperationCycle>()
@@ -66,7 +70,30 @@ public class OperationCycleService {
                 .set(OperationCycle::getStatus, 0));
         cycle.setStatus(1);
         cycleMapper.updateById(cycle);
+        syncLevelProfileStatus(cycle.getLevelProfileId());
         return ResultBean.success("已激活");
+    }
+
+    /** 把当前启用周期的等级方案绑定改为指定方案（等级页切换方案时保持两处一致） */
+    public void bindActiveCycleLevelProfile(Integer profileId) {
+        if (profileId == null) return;
+        OperationCycle active = getActiveCycle();
+        if (active == null) return;
+        cycleMapper.update(null, new LambdaUpdateWrapper<OperationCycle>()
+                .eq(OperationCycle::getId, active.getId())
+                .set(OperationCycle::getLevelProfileId, profileId));
+    }
+
+    /** 激活周期时反向同步等级方案的启用状态，避免周期与方案两处配置互相覆盖 */
+    private void syncLevelProfileStatus(Integer profileId) {
+        if (profileId == null) return;
+        LevelProfile target = levelProfileMapper.selectById(profileId);
+        if (target == null) return;
+        levelProfileMapper.update(null, new LambdaUpdateWrapper<LevelProfile>()
+                .set(LevelProfile::getStatus, 0));
+        target.setStatus(1);
+        target.setUpdateTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+        levelProfileMapper.updateById(target);
     }
 
     public ResultBean listConfigs(Integer cycleId) {

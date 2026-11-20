@@ -385,6 +385,12 @@ public class LevelService {
         target.setStatus(1);
         target.setUpdateTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
         profileMapper.updateById(target);
+        // 周期绑定优先于 status，切换方案时同步周期绑定，避免「启用中却不生效」
+        try {
+            operationCycleService.bindActiveCycleLevelProfile(id);
+        } catch (Exception ignore) {
+            // 周期表尚未迁移时忽略
+        }
         return ResultBean.success("已切换到「" + target.getProfileName() + "」");
     }
 
