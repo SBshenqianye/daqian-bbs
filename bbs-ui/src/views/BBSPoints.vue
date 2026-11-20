@@ -360,7 +360,6 @@ export default {
       activeCategoryId: null, // 当前选中的排行榜分类；初始化后取第一个分类
       // 时间
       activeTimeKey: 'month',
-      activeCycle: null,
       customStartDate: '',
       customEndDate: '',
       // 组织排名
@@ -376,9 +375,6 @@ export default {
     activeTimeRange() {
       if (this.activeTimeKey === 'custom') {
         return { start: this.customStartDate, end: this.customEndDate }
-      }
-      if (this.activeTimeKey === 'cycle' && this.activeCycle) {
-        return { start: this.activeCycle.startDate, end: this.activeCycle.endDate }
       }
       return calcTimeRange(this.activeTimeKey)
     },
@@ -428,7 +424,7 @@ export default {
       return Math.max(1, Math.ceil(this.totalCount / this.pageSize))
     },
     timeQuickBtns() {
-      return this.activeCycle ? [{ key: 'cycle', label: '本周期' }, ...TIME_BTNS] : TIME_BTNS
+      return TIME_BTNS
     },
     activeTimeLabel() {
       const hit = this.timeQuickBtns.find(b => b.key === this.activeTimeKey)
@@ -443,25 +439,10 @@ export default {
     },
   },
   async mounted() {
-    await this.loadActiveCycle()
     this.initTabs()
   },
   methods: {
     normalizeFileUrl,
-    async loadActiveCycle() {
-      try {
-        const resp = await this.getRequest('/common/operation-cycle/active')
-        const cycle = resp && resp.code == 200 ? resp.obj : null
-        if (cycle && cycle.startDate && cycle.endDate) {
-          this.activeCycle = cycle
-          this.activeTimeKey = 'cycle'
-          this.customStartDate = cycle.startDate
-          this.customEndDate = cycle.endDate
-        }
-      } catch (e) {
-        this.activeCycle = null
-      }
-    },
     /** 得分条：以榜首为 100%，保留 4% 最小可见宽度 */
     scoreWidth(score, max) {
       const value = Number(score) || 0
@@ -526,9 +507,7 @@ export default {
      */
     selectQuickTime(btn) {
       this.activeTimeKey = btn.key
-      const range = btn.key === 'cycle' && this.activeCycle
-        ? { start: this.activeCycle.startDate, end: this.activeCycle.endDate }
-        : calcTimeRange(btn.key)
+      const range = calcTimeRange(btn.key)
       this.customStartDate = range.start
       this.customEndDate = range.end
       this.currentPage = 1
