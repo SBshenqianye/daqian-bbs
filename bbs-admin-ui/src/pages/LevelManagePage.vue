@@ -125,18 +125,24 @@
 
               <!-- 节点 -->
               <g v-for="(item, i) in items" :key="'node-' + i">
-                <!-- 大阶段：菱形，更大 -->
+                <!-- 大阶段：等级图标 + 配色环（与下方列表、全站头像口径一致） -->
                 <template v-if="isMajorStart(item)">
-                  <rect
-                    :x="xOf(i) - 7.2"
-                    :y="yOf(item.pointsThreshold) - 7.2"
-                    width="14.4"
-                    height="14.4"
-                    :transform="'rotate(45 ' + xOf(i) + ' ' + yOf(item.pointsThreshold) + ')'"
-                    :fill="stageColor(item.majorIndex)"
-                    stroke="#ffffff"
-                    stroke-width="2.2"
+                  <circle
+                    :cx="xOf(i)"
+                    :cy="yOf(item.pointsThreshold)"
+                    r="11"
+                    fill="#ffffff"
+                    :stroke="stageColor(item.majorIndex)"
+                    stroke-width="2"
                     class="cursor-ns-resize"
+                  />
+                  <image
+                    :href="stageIconUri(item)"
+                    :x="xOf(i) - 7.5"
+                    :y="yOf(item.pointsThreshold) - 7.5"
+                    width="15"
+                    height="15"
+                    class="pointer-events-none"
                   />
                   <circle :cx="xOf(i)" :cy="yOf(item.pointsThreshold)" r="15" fill="transparent" class="cursor-ns-resize" @mousedown.prevent.stop="startDrag(item, i, $event)" />
                 </template>
@@ -544,6 +550,10 @@ export default {
         return glyphSvg(item.iconKey, item.colorToken || this.stageColor(item.majorIndex))
       }
       return levelRowSvg(item.levelIndex, 20)
+    },
+    /** 大阶段节点用图标渲染（SVG 内嵌需转 data URI，避免 v-html 注入到 <svg> 里） */
+    stageIconUri(item) {
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(this.iconOf(item))
     },
     groupIcon(group) {
       return this.iconOf(group.items[0])
@@ -1081,13 +1091,17 @@ export default {
   height: 9px;
 }
 .legend-major {
-  background: #2563eb;
-  transform: rotate(45deg);
-  border-radius: 1px;
+  width: 11px;
+  height: 11px;
+  background: #fff;
+  border: 3px solid #2563eb;
+  border-radius: 50%;
+  box-sizing: border-box;
 }
 .legend-minor {
   background: #fff;
   border: 2px solid #2563eb;
   border-radius: 50%;
+  box-sizing: border-box;
 }
 </style>
