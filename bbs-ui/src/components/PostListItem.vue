@@ -23,6 +23,7 @@
                 :org-name="article.authorOrgName"
                 :org-name-full="article.authorOrgNameFull"
                 :level-index="article.authorLevelIndex"
+                :icon-svg="article.authorIconSvg || ''"
                 :user-id="article.userId"
                 size="xs"
                 layout="inline"

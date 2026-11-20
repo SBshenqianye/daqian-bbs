@@ -492,6 +492,7 @@ export default {
           likes: a.articleGoodNum || 0,
           favorites: a.favoriteNum || 0,
           authorLevelIndex: a.authorLevelIndex || null,
+          authorIconSvg: a.authorIconSvg || '',
           cover: normalizeFileUrl(a.articleImage || null),
         }))
         this.articleTotal = Number(data.total || 0)

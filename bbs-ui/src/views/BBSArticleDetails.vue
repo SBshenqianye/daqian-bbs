@@ -34,6 +34,7 @@
                 :org-name="article.authorOrgName"
                 :org-name-full="article.authorOrgNameFull"
                 :level-index="article.authorLevelIndex"
+                :icon-svg="article.authorIconSvg || ''"
                 :user-id="article.userId"
                 size="md"
               />
@@ -585,6 +586,7 @@ export default {
         commentRootId: commentId,
         userId: c.userId,
         levelIndex: c.levelIndex || null,
+        iconSvg: c.iconSvg || '',
         isAnonymous: c.isAnonymous === 1 || c.isAnonymous === '1',
         goodNum: c.goodNum || 0,
         liked: !!c.liked,
@@ -605,6 +607,7 @@ export default {
             commentRootId: commentId,
             userId: r.replyUserId || r.userId,
             levelIndex: r.levelIndex || null,
+            iconSvg: r.iconSvg || '',
             isAnonymous: r.isAnonymous === 1 || r.isAnonymous === '1',
             goodNum: r.goodNum || 0,
             liked: !!r.liked,

@@ -8,7 +8,7 @@
       :level-index="resolvedLevel"
       :size="12"
       mode="emblem"
-      :icon-svg="(level && level.iconSvg) || ''"
+      :icon-svg="(level && level.iconSvg) || iconSvg || ''"
       :with-title="false"
     />
     <span>{{ label }}</span>
@@ -27,6 +27,8 @@ export default {
     level: { type: Object, default: () => ({}) },
     /** 也可直接传等级序号 */
     levelIndex: { type: [Number, String], default: null },
+    /** 等级自定义图标 SVG（素材库快照），level 里没有时用它 */
+    iconSvg: { type: String, default: '' },
   },
   computed: {
     resolvedLevel() {

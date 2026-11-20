@@ -231,12 +231,13 @@
                     :nickname="item.nickName"
                     :org-name="item.orgName"
                     :level-index="item.levelIndex"
+                    :icon-svg="item.iconSvg || ''"
                     :user-id="item.userId"
                     size="md"
                     layout="inline"
                     class="min-w-0"
                   />
-                  <BBSLevelBadge :level-index="item.levelIndex" class="shrink-0" />
+                  <BBSLevelBadge :level-index="item.levelIndex" :icon-svg="item.iconSvg || ''" class="shrink-0" />
                 </div>
                 <p class="text-[15px] font-bold text-primary tabnum leading-5 shrink-0">{{ item.points }} <span class="text-[9.5px] font-normal text-outline">分</span></p>
               </div>
@@ -274,6 +275,7 @@
           :nickname="currentUserInfo.nickName"
           :org-name="currentUserInfo.orgName"
           :level-index="currentUserInfo.levelIndex"
+          :icon-svg="currentUserInfo.iconSvg || ''"
           :user-id="currentUserInfo.userId"
           size="md"
           layout="stacked"

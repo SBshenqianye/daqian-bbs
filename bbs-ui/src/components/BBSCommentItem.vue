@@ -9,6 +9,7 @@
             :show-org="false"
             :user-id="comment.userId"
             :level-index="comment.levelIndex"
+            :icon-svg="comment.iconSvg || ''"
             :size="isReply ? 'xs' : 'sm'"
           />
           <span
