@@ -112,6 +112,7 @@ bash scripts/dev/wsl.sh --restart-only
 
 - 验收清单：`docs/验收清单-*.md`，已在 `.gitignore` 中排除，保持**一页**、可逐条打勾。
 - 提交按模块分组：`feat(server)` / `feat(admin)` / `feat(ui)` / `chore`；提交前 `git status` 必须干净。
+- 推送默认只走 `github`（`SBshenqianye/daqian-bbs`）；`upstream`（`kimljx/daqian-bbs`）是他人仓库，**未明确要求时不推**（2026-11-20 用户裁决）。
 - 涉及数据库的变更，验收时必须先备份，并在启动日志确认 `Migration applied: vNNN`。
 - 打包/部署按 §2.1；生产部署后必须 `verify-server.sh` `FAIL=0`，再跑 E2E（内置负向自检）。
 

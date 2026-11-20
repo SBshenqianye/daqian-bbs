@@ -65,6 +65,7 @@
 - 任何 `DROP` / `TRUNCATE`、对 `bbs_db` 或生产库写数据 → 先问；`init-*.sql` 永不对生产库执行。
 - 要改动**已发布的迁移块**（`vNNN` 已记录在 `bbs_schema_version`）→ 先问；只能新增迁移。
 - 要 `git push`、改 `.gitignore`、改 `.env` → 先问。
+- **推送只走本账号远程 `github`（SBshenqianye/daqian-bbs）**；未明确要求时**一律不推 `upstream`（kimljx/daqian-bbs）**，也不推其他他人仓库（2026-11-20 用户裁决）。
 - 需求有歧义，或验收标准不明确 → 先问，不要按自己的理解往下做。
 
 ## 3. 失败与交接
