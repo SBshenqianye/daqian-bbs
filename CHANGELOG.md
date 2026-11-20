@@ -4,6 +4,18 @@
 
 ## [未发布]
 
+### 内容治理
+- **词表分两类**：`bbs_sensitive_word` 新增 `category`（`sensitive`=严禁词、`spam`=垃圾灌水词），两类共用一张表、一套缓存，区别只在命中后的处置；`v073` 迁移把 v009 灌水词与 `ContentQualityUtil` 的硬编码垃圾词统一归入 `spam`
+- **三档处置一个下拉**：敏感词管理每行改为「严禁词·打码 / 严禁词·仅监控 / 垃圾词·警告放行」，一次请求同时写入分类与遮蔽（`POST /sensitiveWord/updateAction`，审计 `CONFIG_SENSITIVE_ACTION`），避免两个开关产生中间态与无效组合；「仅监控」保留「要计入风险但不该打星」的词
+- **三档处置口径收敛**：严禁词→打码（`mask_enabled`）或进审核；垃圾词→**警告放行**（内容照常可见、不计分、明确提示）；结构性错误（空内容等）才拒绝。质量分不再对敏感词扣分，避免"同一句话既被打星又被判垃圾"
+- **帖子不再硬拒绝垃圾内容**：命中垃圾词的帖子照常发布、不计分并提示"未获得积分，版主会复核"；评论/回复同样改为可见，不再出现"提示已发布但实际不展示"的假隐藏
+- **命中即审核**：同一用户 24 小时内命中 ≥3 条（字典 `sensitive_review_threshold` 可调）时，新帖自动 `enable=0` 进审核，并双向通知作者与板块版主；板块无版主时按 `article:review` 权限上推给管理员
+- **补齐评论/回复屏蔽**：`getCommentReply`、`我的回复`、`回复我的` 全部按 `mask_enabled` 打码；此前只有帖子脱敏，评论与回复原样上屏
+- **修复编辑回显污染**：新增 `GET /article/getForEdit/{id}`（仅作者本人、不脱敏），写帖页改用该接口，避免把 `***` 保存回库导致原文丢失
+- **敏感词风险画像**：新增 `bbs_sensitive_hit` 命中记录表与后台「业务管理 → 敏感词风险」页——全量用户 45×45 热力方阵（一格一人、颜色=累计命中）、风险排行榜（含近 12 周热力条与命中率）、单用户命中详情（命中词 + 原文上下文片段，受 `sensitive:read` 与板块范围约束，查看写审计）
+- **每日风险提醒**：每天 09:00 扫描近 24 小时命中 ≥3 条的用户，按板块通知版主，无版主时上推管理员；同一接收人同日同用户只提醒一次
+- **新增权限点** `sensitive:read`：默认授予超级管理员/管理员/版主，自定义权限组不自动授予
+
 ### 排行榜
 - **排名配置合并到「排名管理」**：组织管理移除“排名”开关（保留“显示”），参与单位统一在排名管理用三态树配置；勾选父级 = 含全部下级，取消个别下级即只含部分下级
 - **榜单顺序改为拖动**：分类卡片直接拖动排序，保存时按拖动后的顺序写入 10/20/30…，编辑弹窗不再要求手填数字
@@ -33,6 +45,10 @@
 - **内联回复框统一**：点「回复」展开的输入框从裸 `textarea` 改为浅底卡片（头像、输入区、提示与按钮同处一张卡），左边缘对齐正文列，按钮改用 `ui-btn-xs`，展开/收起补 120ms 过渡
 
 ### 开发环境
+- **一键部署**：`scripts/prod/one-key-deploy.sh`（兼容下划线文件名 `one_key_deploy.sh`）自动识别两种环境——生产机上 `cd /data/bbs/scripts/prod && bash one_key_deploy.sh` **零参数**即可：自动取项目根最新的 `bbs-upgrade-*.tar.gz`、有 `.sha256` 就校验、部署前 3 秒倒计时、验证（三个入口 200 + `verify-server.sh`）通过后自动把包移入 `archive/`，失败则保留并打印回滚命令；开发机用根目录 `./deploy.sh`（打包→产物验证→部署 WSL→探活，`-n` 只预检）
+- **打包自带 SHA256**：`package.sh` 生成 `.tar.gz` 后自动输出同名 `.sha256`（大写哈希，与既有分发文件同格式），离线传输可直接校验
+- **脚本按环境归类**：`scripts/` 重组为 `dev/`（本地 9081–9083、WSL 60001、本地 PG）、`prod/`（基础镜像、打包、离线部署、构建/服务器验证、生产运维 `prod/ops/`）、`test/`（HTA 与 Selenium 验收）、`lib/`（共享进度库）；`AGENTS.md`、`DEPLOY.md`、`scripts/SCRIPT.md` 与项目 skill 的路径同步更新，`DEPLOY.md` 中指向已不存在的 `scripts/build.sh` / `scripts/ops/teardown.sh` 的段落改为当前构建/部署流程
+- **升级脚本可重放**：`v012/v015/v016` 的 `ADD COLUMN`、`v029/v030` 的 `RENAME COLUMN` 补上 `information_schema` 守卫，修正 `v021` 的 `DEALLOCATE` 缺少 `PREPARE`；全新库上 `mysql < upgrade-mysql.sql` 从 6 条报错降到 **0 条**（正常升级路径不受影响，这些块早已记录）
 - **开发态启动日志噪音**：Windows 下 enhanced-resolve 会把盘符根目录（如 `D:\`）写进 `fileDependencies`，watchpack 扫描根目录时 `lstat` 到 `pagefile.sys` / `DumpStack.log.tmp` 会抛 `Watchpack Error (initial scan): EINVAL`；开发态关闭 `resolve.symlinks`，生产构建行为不变
 - **Win7 部署验收 E2E**：新增单文件 `scripts/e2e/daqian-bbs-e2e.hta`（mshta + WinHttp，无需安装运行库），59 个用例覆盖公共/账号/消息/互动/负向/写入/UI 冒烟七组，支持逐用例明细、页面截图与报告导出，写入用例默认关闭；负向组 3 项（错误 baseUrl / 错误断言 / 未登录）单独统计，不并入业务失败
 - **Selenium 界面级 E2E 包**：`scripts/e2e-selenium/` 单 jar + chromedriver 109，`mode=readonly` 默认只读；4 项负向自检已内置到每次运行（基线/错误 baseUrl/错误断言/未登录 401），负向结果单独统计但失败时整体退出码为 1

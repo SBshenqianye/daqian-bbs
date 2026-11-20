@@ -50,28 +50,35 @@ cd bbs-server   ; mvn clean package -DskipTests   # 会拷出 target/lib（基�
 ### 离线升级包（WSL）
 
 ```bash
-bash scripts/dist/package.sh          # → dist/bbs-upgrade-<时间戳>.tar.gz（瘦包 ~5MB）
-bash scripts/verify-build.sh          # 构建机自检，要求 FAIL=0
+bash scripts/prod/package.sh          # → dist/bbs-upgrade-<时间戳>.tar.gz（瘦包 ~5MB）
+bash scripts/prod/verify-build.sh     # 构建机自检，要求 FAIL=0
 ```
 
 - `package.sh` / `verify-build.sh` 是 bash 脚本，**在 WSL 执行**；Windows 只负责产出构建产物。
 - `package.sh` 依赖 `python3/python` 生成瘦 jar（去掉 `BOOT-INF/lib`），依赖由基础镜像 `/app/lib` 提供。
 
 - 首次切换 / 基础镜像依赖变更，顺序**不能反**：
-  `bash scripts/build/base.sh --save` → 服务器 `podman load` 新基础镜像 → 删除旧容器 → 再发瘦升级包。
+  `bash scripts/prod/base.sh --save` → 服务器 `podman load` 新基础镜像 → 删除旧容器 → 再发瘦升级包。
 - 服务器升级：`sudo bash /data/bbs/deploy-offline.sh --upgrade /tmp/bbs-upgrade-*.tar.gz`；
-  或新版一体化入口 `bash scripts/deploy/offline.sh <tar 路径>`。
+  或新版一体化入口 `bash scripts/prod/offline.sh <tar 路径>`。
 - 部署后验证（生产机）：`bash verify-server.sh`（默认 `BBS_HOME=/data/bbs`、`BBS_SERVER_PORT=60000`），要求 `FAIL=0`。
 
 ### WSL 测试部署（生产对齐）
 
 ```bash
-bash scripts/deploy/wsl.sh              # 依赖 Windows 构建产物，bind-mount 部署
-bash scripts/deploy/wsl.sh --restart-only
+bash scripts/dev/wsl.sh              # 依赖 Windows 构建产物，bind-mount 部署
+bash scripts/dev/wsl.sh --restart-only
 ```
 
 - 端口：nginx `60001` / 后端 `60000` / PG `15432`；E2E 的 `baseUrl` 用 `http://localhost:60001/bbs-user/`。
 - 部署后先跑 `verify-server.sh`，再跑 E2E（HTA 或 Selenium）。
+
+### 发布一致性（2026-11-20，stale 包事故）
+
+- **版本号必须从产物取证，不能从源码自证**：包内 `version.txt` 的 `schema_version` 由 `package.sh` 从**包内 jar** 的 `BOOT-INF/classes/db/init/upgrade-mysql.sql` 读取；`verify-build.sh` 再与源码最新 marker 比对。反例：2026-11-18 的包源码已到 v073，jar 里只有 v065 —— 若版本号从源码算，这个包会"自证清白"。
+- **只 `mvn compile` 不重打 jar 是 stale 包的根源**：打包前必须 `mvn clean package -DskipTests`。
+- **生产升级前记录起点**：`SELECT version FROM bbs_schema_version ORDER BY applied_at DESC LIMIT 3;`，与包内 `schema_version` 一起留档。
+- **一键部署**：生产机 `cd /data/bbs/scripts/prod && bash one_key_deploy.sh`（零参数，自动取根目录最新 `bbs-upgrade-*.tar.gz`，校验 `.sha256`，验证通过后归档到 `archive/`）；开发机用根目录 `./deploy.sh`（`-n` 只预检）。服务器上至少需要 `scripts/prod/` 下的 `one-key-deploy.sh`、`one_key_deploy.sh`、`offline.sh`、`verify-server.sh`。
 
 ## 3. 数据库
 
@@ -79,14 +86,10 @@ bash scripts/deploy/wsl.sh --restart-only
 - 四份 SQL 必须同步修改：`db/init/init-mysql.sql`、`init-pg.sql`、`upgrade-mysql.sql`、`upgrade-pg.sql`。
 - 迁移块格式：`-- @migration: vNNN-名称`，`DatabaseInitializer` 按 marker 执行并记录到 `bbs_schema_version`；**追加时必须换行开头**。
 - `init-*.sql` 含 `DROP TABLE`，**切勿对生产库执行**。
-- 已执行到 `v065`：
-  `v044` 测试账号/扣分提醒、`v045` 排行榜分类、`v046` P0 配置、`v047` 种子修正、
-  `v048` 内容互动、`v049` 审核配置、`v050` 等级/成就、`v051` 精华公示、
-  `v052` 运营周期、`v053` 提醒、`v054` 组织导入、`v055` 评论/回帖点赞、
-  `v056` 本部改普通分类、`v057` 等级图标自定义、`v058` SVG 素材库、
-  `v059` 两套 21 级方案、`v060` 方案标签修正 + 内置图标入库、
-  `v050b`/`v061` 序列同步与指数型升级门槛（两套 21 级）、
-  `v062`/`v063` 指数门槛二次同步、`v064` 大阶段名称兜底、`v065` 版主奖励取消表索引改到 `ym`。
+- 版本演进：截至 2026-11-20 已到 `v073`（v072/v073 = 敏感词遮蔽开关、词表分类 + 命中记录表 + `sensitive:read`）；历史逐条列表不再维护，以 `bbs_schema_version` 为准。
+- **迁移块必须可重放**：新增 `ALTER TABLE ... ADD COLUMN` 一律先查 `information_schema.COLUMNS` 再 `PREPARE`；`RENAME COLUMN` 要判断"旧列在且新列不在"；`PREPARE` 与 `DEALLOCATE PREPARE` 必须成对（v021 曾漏写 `PREPARE`，纯语法错误）。反例：v012/v015/v016 无条件 `ADD COLUMN`，在 init 已含该列时重放报 `Duplicate column`。
+- **CLI 重放结果 ≠ 应用升级结果**：应用层有两条兜底 —— 全新库走 `baselineExistingMigrations`（把文件里所有迁移标记为已执行，一条都不跑）；执行时 `isTolerableFailure` 把 `Duplicate column` / `does not exist` 记为 warning 继续。所以 CLI 报错不代表升级会失败，CLI 通过也不代表升级路径被验证过。
+- **验证升级路径要用"落后的库"**：用停在小版本号的副本（如 WSL 的 PG 停在 v036），不是全新库。判据：日志 `Migration applied: vNNN` 的条数与 `bbs_schema_version` 增量一致，且无 `FAILED`。
 
 ## 4. 核心模块位置
 
@@ -133,5 +136,14 @@ bash scripts/deploy/wsl.sh --restart-only
   FROM bbs_level_profile p LEFT JOIN bbs_level_item i ON i.profile_id = p.id
   GROUP BY p.id, p.profile_name ORDER BY p.id;
   ```
-- 现场查库用 `dist/HeidiSQL-12.22-Win7-中文便携版.zip`（免费、Win7 可用、自带简体中文语言包）；Navicat Premium Lite 官方要 Win8+，**Win7 装不了**。
-- **Win7 上 libpq 必须用老构建**：HeidiSQL 自带的 `libpq-15/17.dll` 由 OpenSSL 3 构建，静态引用 Win8+ 的 `GetSystemTimePreciseAsFileTime`，加载即报「无法定位程序输入点 / 内部错误 127」。判据：`strings libpq*.dll | grep GetSystemTimePreciseAsFileTime` 有命中就是不能用。可用替代是 PostgreSQL 13 及更早的官方 MSVC 构建 `libpq.dll`（配 `libssl-1_1-x64.dll` / `libcrypto-1_1-x64.dll`，可复用 HeidiSQL 自带 `libintl-9.dll`）；PG 13 服务端密码哈希是 `md5…`，老客户端可直接认证。同批中招的还有 `libmariadb.dll`、`libmysql-8.4/9.4.dll`、`sqlite3.dll`，Win7 上改用 `libmysql-6.1.dll` / `libmysql.dll`。
+- Win7 现场（数据库客户端 HeidiSQL/libpq、HTA/Selenium 验收、DLL 兼容）统一见 skill `win7-field-ops`。
+
+## 8. 内容治理口径（2026-11-20 起）
+
+- **三档处置**（后台「敏感词管理」逐条切换）：`严禁词·打码`（前台 `***`，计入风险与审核阈值）／`严禁词·仅监控`（不打码，仍计入风险）／`垃圾词·警告放行`（不打码、不计风险、不计分，内容照常可见）。
+- **一张词表两个分类**：`bbs_sensitive_word.category = sensitive|spam`；`mask_enabled` 只对 sensitive 生效，spam 一律不参与打码。
+- **命中必须在写库时采集**：脱敏是读时替换（`SensitiveWordUtil.desensitize`），从 `***` 反推不出原词；采集落 `bbs_sensitive_hit`（一内容一行，`uk(target_type,target_id)`，编辑只更新）。采集异常必须吞掉，不能影响发布。
+- **质量分与合规分离**：`ContentQualityUtil` 只判形式（长度/纯数字/重复/灌水词），已删除"敏感词 -30 分"；垃圾词走"警告放行"不再硬拒绝（2026-09 事故根因是静默不可见，不是拒绝）。
+- **进审核靠行为阈值**：同一用户 24h 命中 ≥3 条（字典 `sensitive_review_threshold`）→ 新内容 `enable=0`，通知作者 + 板块版主；无版主时按 `article:review` 上推。
+- **打码只对外、对作者不隐藏**：编辑页必须走 `GET /article/getForEdit/{id}`（仅作者本人、不脱敏），否则回显 `***` 再保存会把原文永久覆盖（库里已有此类脏标题）。
+- **新增权限点要写三处**：`Permission` 枚举、`admin-ui` 的 `permissionCatalog.js`、迁移里给 `role_super/role_admin/role_moderator` 插 `bbs_permission_group_item`；漏第三处等于谁都没有（`hasPermission` 只读权限组）。

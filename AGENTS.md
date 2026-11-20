@@ -14,7 +14,7 @@
 | `bbs-admin-ui` | `cd bbs-admin-ui && npm run build` | 0 error（脚本已内置 `NODE_OPTIONS`） |
 | 数据库脚本 | 四份 SQL 同步 + 重启后端 | 启动日志出现 `Migration applied: vNNN` |
 | 权限 / 端到端 | `tests/` 下的 API 冒烟或 Playwright | 见 `tests/TEST-MATRIX.md` |
-| 部署产物 | `bash scripts/verify-build.sh` | `FAIL=0` |
+| 部署产物 | `bash scripts/prod/verify-build.sh` | `FAIL=0` |
 
 - 两个前端**串行**构建；构建前先结束 node 进程，再单独发起构建。
 - API / E2E 只能跑在副本库 `bbs_e2e_test`，禁止对 `bbs_db` 写入。
@@ -28,10 +28,12 @@
 | 停止 | `powershell -File scripts/dev/down.ps1` | 三个端口释放 |
 | 重启 | `powershell -File scripts/dev/restart.ps1 -Target all|server|ui|admin` | 目标端口重新 listening |
 | 提交前 | `powershell -File scripts/dev/verify.ps1` | 构建 0 error + 后端就绪 + 负向自检通过 |
-| WSL2（生产对齐） | Windows 构建后 `bash scripts/deploy/wsl.sh`，测 `http://localhost:60001/bbs-user/` | PG 方言 + nginx 路由通过 |
-| 打包（离线升级包） | **Windows** 构建：两个前端 `npm run build` + `cd bbs-server && mvn clean package -DskipTests`；**WSL** 执行 `bash scripts/dist/package.sh` + `bash scripts/verify-build.sh` | 生成 `dist/bbs-upgrade-<ts>.tar.gz`，`FAIL=0` |
-| 部署（WSL 测试） | `bash scripts/deploy/wsl.sh` | `60001` 可访问，`verify-server.sh` 通过 |
-| 部署（生产离线） | `bash scripts/deploy/offline.sh dist/bbs-upgrade-*.tar.gz` | 容器重建 + 挂载探针通过，`verify-server.sh` `FAIL=0` |
+| WSL2（生产对齐） | Windows 构建后 `bash scripts/dev/wsl.sh`，测 `http://localhost:60001/bbs-user/` | PG 方言 + nginx 路由通过 |
+| 打包（离线升级包） | **Windows** 构建：两个前端 `npm run build` + `cd bbs-server && mvn clean package -DskipTests`；**WSL** 执行 `bash scripts/prod/package.sh` + `bash scripts/prod/verify-build.sh` | 生成 `dist/bbs-upgrade-<ts>.tar.gz`，`FAIL=0` |
+| 部署（WSL 测试） | `bash scripts/dev/wsl.sh` | `60001` 可访问，`verify-server.sh` 通过 |
+| 部署（生产离线） | `bash scripts/prod/offline.sh dist/bbs-upgrade-*.tar.gz` | 容器重建 + 挂载探针通过，`verify-server.sh` `FAIL=0` |
+| 一键（生产，零参数） | `cd /data/bbs/scripts/prod && bash one_key_deploy.sh` | 部署根目录最新 `bbs-upgrade-*.tar.gz`，验证通过后归档到 `archive/` |
+| 一键（开发机 WSL） | `./deploy.sh` | 打包→产物验证→部署 WSL→探活；`-n` 只预检 |
 
 - 前端普通 `.vue/.js` 源码改动走 HMR，不用重启；`vue.config.js`、`.env*`、`package.json`、`tailwind/postcss/babel` 配置改动必须重启。
 - 重启一律按端口杀进程树（日志在 `tmp/run/`），不杀全部 node。

@@ -120,16 +120,23 @@ sudo -u postgres psql -c "CREATE DATABASE bbs OWNER work_flow;"
 cp scripts/.env.example .env
 # 编辑 .env 修改数据库密码等
 
-# 2. 一键构建 + 部署（并行构建前端 + Docker 镜像，自动启动容器）
-bash scripts/build.sh
+# 2. Windows 上构建产物（两个前端 + 后端 fat jar）
+cd bbs-ui && npm run build
+cd ../bbs-admin-ui && npm run build
+cd ../bbs-server && mvn clean package -DskipTests
 
-# 3. 访问
+# 3. WSL 联调部署（bind-mount，秒级）
+bash scripts/dev/wsl.sh
+
+# 4. 访问
 # 用户前端: http://localhost:60001/bbs-user/
 # 管理后台: http://localhost:60001/bbs-admin/
 
-# 4. 清理
-bash scripts/ops/teardown.sh
+# 5. 停止容器
+podman stop bbs-server bbs-nginx
 ```
+
+> 旧的 `scripts/build.sh` 一键构建脚本已移除：构建固定在 Windows（前端 npm + 后端 mvn），部署/打包在 WSL。脚本按环境归入 `scripts/dev/` 与 `scripts/prod/`。
 
 ---
 
@@ -138,27 +145,33 @@ bash scripts/ops/teardown.sh
 ### 4.1 构建
 
 ```bash
-# 完整构建（前端 + 后端镜像 + Nginx 镜像）
-bash scripts/build.sh
+# 前端（两个，串行）
+cd bbs-ui && npm run build
+cd ../bbs-admin-ui && npm run build
 
-# 仅构建前端
-bash scripts/build.sh --frontend
+# 后端 fat jar（同时产出 target/lib）
+cd ../bbs-server && mvn clean package -DskipTests
 
-# 仅构建后端镜像
-bash scripts/build.sh --backend
+# 基础镜像：仅当依赖（pom / target/lib）变化时需要重建
+bash scripts/prod/base.sh --save
 ```
 
-构建脚本会自动并行构建两个前端项目（bbs-ui 和 bbs-admin-ui），然后构建后端和 Nginx 的 Docker 镜像。
-构建完成后**自动部署容器**并同时打包离线分发包。
+> 依赖下沉后，基础镜像 `/app/lib` 与 `target/lib` 必须匹配；只改业务代码不必重建镜像，打瘦升级包即可。
 
 ### 4.2 部署
 
-构建完成后容器会自动运行，通常无需手动部署。
-如需单独管理容器：
+构建完成后按环境部署：
 
 ```bash
-bash scripts/ops/teardown.sh                  # 停止容器
+bash scripts/dev/wsl.sh                       # WSL 联调（60001）
+podman stop bbs-server bbs-nginx              # 停止容器
 podman start bbs-server bbs-nginx             # 启动容器
+
+# 一键：打包 → 产物验证 → 部署 → 部署后验证
+./deploy.sh                                  # 开发机 / WSL
+
+# 生产服务器（零参数；自动取根目录最新包，验证通过后归档到 archive/）
+cd /data/bbs/scripts/prod && bash one_key_deploy.sh
 ```
 
 容器使用 **host 网络**模式：
@@ -173,14 +186,13 @@ podman start bbs-server bbs-nginx             # 启动容器
 ### 5.1 打包命令
 
 ```bash
-# 构建 + 自动打包（推荐）
-bash scripts/build/build.sh                   # 容器模式 → bbs-offline-*.tar.gz
+# 轻量升级包（默认，日常迭代用）
+bash scripts/prod/package.sh
+# 完整环境包（含基础镜像 tar + 首次部署脚本）
+bash scripts/prod/package.sh --full
 
-# 或用已有构建产物手动打包
-bash scripts/dist/package.sh                  # 容器离线包（默认）
-bash scripts/dist/package.sh --native         # 原生部署包
-bash scripts/dist/package.sh --minimal        # 仅运行所需文件
-bash scripts/dist/package.sh --with-source    # 含源代码
+# 打包后自检（产物 / 包内容 / 版本一致性）
+bash scripts/prod/verify-build.sh
 ```
 
 ### 5.2 输出文件
@@ -304,9 +316,9 @@ location = "docker.m.daocloud.io"
 而 GET 侧 `WebMvcConfig` 会补斜杠读 `/data/bbs/bbsUpload/common/...` → 404。
 WSL 正常是因为 `wsl.sh` 强制补尾斜杠（`${BBS_UPLOAD_DIR%/}/`），生产 `offline.sh` 之前不补。
 旧文件（尾斜杠正确时期上传的）不受影响，容易误判为"选择性失效"。
-**诊断**: `bash scripts/ops/diagnose-upload.sh` —— 一键输出 7 项证据；
+**诊断**: `bash scripts/prod/ops/diagnose-upload.sh` —— 一键输出 7 项证据；
 关键看 `podman diff` 是否有 `bbsUploadcommon` / `bbsUploadUser` 这类无斜杠拼接目录。
-**修复**: `bash scripts/ops/fix-upload-path.sh`（生产机）—— ①抢救容器层错误目录文件到
+**修复**: `bash scripts/prod/ops/fix-upload-path.sh`（生产机）—— ①抢救容器层错误目录文件到
 正确目录（8-04 起的图片可恢复）②修 .env 尾斜杠 ③重建 bbs-server ④挂载/HTTP 回读/
 抢救文件三连验证。
 **预防**:
@@ -400,7 +412,7 @@ WSL 正常是因为 `wsl.sh` 强制补尾斜杠（`${BBS_UPLOAD_DIR%/}/`），�
 
 ```bash
 # 确保基础镜像已构建（仅首次需要，或依赖变更时）
-bash scripts/build/base.sh --save
+bash scripts/prod/base.sh --save
 ```
 
 ### 9.2 工作流 A：开发机 Build，WSL 只 Deploy（推荐）
@@ -415,15 +427,17 @@ cd bbs-server && mvn package -DskipTests
 
 # 代码（含 dist + JAR）同步到 WSL 后
 cd /path/to/daqian-bbs
-bash scripts/deploy/wsl.sh                 # 5-10 秒完成
+bash scripts/dev/wsl.sh                 # 5-10 秒完成
 ```
 
-### 9.3 工作流 B：全自动 WSL 构建 + 部署
+### 9.3 工作流 B：WSL 内构建 + 部署
 
 ```bash
-# 一步完成：安装依赖 → 构建 → bind-mount 部署
-bash scripts/build/build.sh --wsl          # 检测已有产物，缺失才编译
+# 一步完成：检测已有产物，缺失才编译，然后 bind-mount 部署
+bash scripts/dev/wsl.sh --build
 ```
+
+> 构建仍发生在 Windows 侧（npm + mvn）；该参数只是让脚本在产物缺失时给出明确提示。日常推荐工作流 A。
 
 ### 9.4 WSL 热更新
 
@@ -431,7 +445,7 @@ bash scripts/build/build.sh --wsl          # 检测已有产物，缺失才编�
 
 ```bash
 # 只重启容器（假设 JAR/dist 已通过 bind-mount 挂载）
-bash scripts/deploy/wsl.sh --restart-only
+bash scripts/dev/wsl.sh --restart-only
 # 或直接
 podman restart bbs-server bbs-nginx
 ```
@@ -451,12 +465,12 @@ podman restart bbs-server bbs-nginx
 
 ```bash
 # 轻量升级包（不含基础镜像，日常迭代用）
-bash scripts/build/build.sh --offline
-# 输出: dist/bbs-upgrade-20260715_143025.tar.gz
+bash scripts/prod/package.sh
+# 输出: dist/bbs-upgrade-YYYYMMDD_HHMMSS.tar.gz
 
 # 完整环境包（含基础镜像，首次部署或基础镜像变更时用）
-bash scripts/build/build.sh --offline --with-base
-# 输出: dist/bbs-full-20260715_143025.tar.gz
+bash scripts/prod/package.sh --full
+# 输出: dist/bbs-full-YYYYMMDD_HHMMSS.tar.gz
 ```
 
 ### 10.3 首次安装
@@ -473,7 +487,7 @@ cd /data/bbs-split-*
 sudo bash deploy-offline.sh --install
 
 # 按提示检查 .env 中的数据库密码等配置
-# （注意：包内的部署脚本是 deploy-offline.sh，不是 scripts/deploy/offline.sh）
+# （注意：包内的部署脚本是 deploy-offline.sh，不是 scripts/prod/offline.sh）
 ```
 
 ### 10.4 日常升级
