@@ -170,7 +170,6 @@ export default {
   { icon: 'policy', label: '权限矩阵', path: '/permission-matrix', permission: 'permission:manage', category: 'system' },
         { icon: 'admin_panel_settings', label: '权限管理', path: '/permission-groups', permission: 'permission:manage', category: 'system' },
         { icon: 'receipt_long', label: '审计日志', path: '/audit', permission: 'audit:read', category: 'system' },
-        // { icon: 'view_carousel', label: '轮播图管理', path: '/slideshow' },
         // { icon: 'bar_chart', label: '文章统计', path: '/statistic' },
         // { icon: 'edit_note', label: '写文章', path: '/write' },
       ].map(item => ({ ...item, _open: false })),

@@ -52,11 +52,6 @@ export default new Router({
                     meta: { title: '文章详情', noCache: false, permission: 'article:read' },
                 },
                 {
-                    path: '/community',
-                    component: () => import('../pages/CommunityPage.vue'),
-                    meta: { title: '社区管理', permission: 'article:read' }
-                },
-                {
                     path: '/points',
                     component: () => import('../pages/BBSPoints.vue'),
                     meta: { title: '积分排名', permission: 'points:read' }
