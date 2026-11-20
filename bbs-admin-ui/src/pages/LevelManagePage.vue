@@ -274,7 +274,7 @@
                 <tr class="bg-surface-container-low text-on-surface-variant">
                   <th class="p-2 w-10 text-left">级</th>
                   <th class="p-2 w-20 text-left">图标</th>
-                  <th class="p-2 w-14 text-center">小阶段</th>
+                  <th class="p-2 w-[76px] whitespace-nowrap text-center">小阶段</th>
                   <th class="p-2 text-left">显示名</th>
                   <th class="p-2 w-44 text-left">累计积分门槛</th>
                   <th class="p-2 w-24 text-left">操作</th>
@@ -286,6 +286,13 @@
                     <td colspan="6" class="px-2 py-1.5" :style="{ backgroundColor: stageSoft(gi + 1) }">
                       <div class="flex items-center gap-2">
                         <span class="bbs-level-svg h-5 inline-flex" v-html="groupIcon(group)"></span>
+                        <button
+                          class="icon-act"
+                          title="一键替换本阶段图标（该阶段全部等级同图）"
+                          @click="openGroupIconDialog(group)"
+                        >
+                          <span class="material-symbols-outlined text-[16px]">palette</span>
+                        </button>
                         <input
                           :value="group.name"
                           class="w-28 px-1.5 py-0.5 bg-transparent border border-transparent rounded text-[12px] font-medium outline-none hover:border-outline-variant focus:border-primary focus:bg-surface"
@@ -297,11 +304,16 @@
                           Lv.{{ group.items[0].levelIndex }}–{{ group.items[group.items.length - 1].levelIndex }}
                           · {{ group.items[0].pointsThreshold }} → {{ group.items[group.items.length - 1].pointsThreshold }} 分
                         </span>
-                        <span
-                          v-if="group.badge"
-                          class="px-2 py-0.5 rounded-full text-[10px] bg-white/70"
+                        <span class="text-[10px] text-on-surface-variant">徽章</span>
+                        <input
+                          :value="group.badge"
+                          maxlength="30"
+                          placeholder="未命名（可空）"
+                          class="w-28 px-2 py-0.5 rounded-full text-[10px] bg-white/70 border border-transparent outline-none hover:border-outline-variant focus:border-primary focus:bg-surface"
                           :style="{ color: stageInk(gi + 1) }"
-                        >徽章 {{ group.badge }}</span>
+                          title="点击修改本阶段徽章名称（保存后生效）"
+                          @change="renameBadge(gi + 1, $event.target.value)"
+                        >
                         <span class="ml-auto text-[11px] text-on-surface-variant">
                           下一阶段 +{{ group.span || 0 }} 分
                         </span>
@@ -362,7 +374,7 @@
       <div class="relative bg-container w-full max-w-lg rounded-xl shadow-2xl overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3 border-b border-outline-variant">
           <h3 class="text-[14px] font-semibold text-on-surface">
-            图标设置 · Lv.{{ iconDialog.levelIndex }} {{ iconDialog.displayName }}
+            {{ iconDialogTitle }}
           </h3>
           <button class="text-outline hover:text-error" @click="iconDialog.visible = false">
             <span class="material-symbols-outlined">close</span>
@@ -374,6 +386,9 @@
             <div class="text-[11px] text-on-surface-variant">
               <p>{{ iconDialog.modeLabel }}</p>
               <p class="mt-0.5">未自定义时按等级自动生成</p>
+              <p v-if="iconDialog.scope === 'stage'" class="mt-0.5 text-primary">
+                应用后本阶段 {{ iconDialog.count }} 个等级统一使用该图标
+              </p>
             </div>
           </div>
 
@@ -460,7 +475,8 @@ export default {
       levelAssets: [],
       overlayZ: 3000,
       iconDialog: {
-        visible: false, index: -1, levelIndex: 1, displayName: '',
+        visible: false, scope: 'level', majorIndex: null, index: -1,
+        levelIndex: 1, displayName: '', stageName: '', rangeLabel: '', count: 1,
         color: '', svg: '', modeLabel: '',
       },
     }
@@ -510,6 +526,11 @@ export default {
     iconPreview() {
       if (this.iconDialog.svg) return safeIconSvg(this.iconDialog.svg)
       return levelRowSvg(this.iconDialog.levelIndex, 28)
+    },
+    iconDialogTitle() {
+      const d = this.iconDialog
+      if (d.scope === 'stage') return `图标设置 · ${d.stageName}（${d.rangeLabel}）`
+      return `图标设置 · Lv.${d.levelIndex} ${d.displayName}`
     },
   },
   mounted() { this.load(); this.loadLevelAssets() },
@@ -704,6 +725,13 @@ export default {
           item.displayName = `${name}-${item.minorIndex}`
         }
       })
+    },
+    /** 徽章名按大阶段维护：只落在该阶段首档（徽章在进入阶段时解锁） */
+    renameBadge(majorIndex, value) {
+      const name = String(value || '').trim().slice(0, 30)
+      const first = this.items.find(i => i.majorIndex === majorIndex && i.minorIndex === 1)
+      if (!first) return
+      first.badgeName = name
     },
     rebuild() {
       const majors = Math.max(1, Math.min(20, Math.floor(Number(this.profile.majorCount) || 1)))
@@ -947,12 +975,38 @@ export default {
       this.overlayZ = nextOverlayZ()
       this.iconDialog = {
         visible: true,
+        scope: 'level',
+        majorIndex: item.majorIndex,
         index: this.findIndex(item.levelIndex),
         levelIndex: item.levelIndex,
         displayName: item.displayName,
+        stageName: '',
+        rangeLabel: '',
+        count: 1,
         color: item.colorToken || this.stageColor(item.majorIndex),
         svg: item.iconSvg || '',
         modeLabel: item.iconSvg ? '素材库 SVG' : '自动生成',
+      }
+    },
+    /** 整个大阶段一键换图：打开同一弹窗，应用时写到该阶段所有等级 */
+    openGroupIconDialog(group) {
+      if (!group || !group.items.length) return
+      const first = group.items[0]
+      const last = group.items[group.items.length - 1]
+      this.overlayZ = nextOverlayZ()
+      this.iconDialog = {
+        visible: true,
+        scope: 'stage',
+        majorIndex: first.majorIndex,
+        index: this.findIndex(first.levelIndex),
+        levelIndex: first.levelIndex,
+        displayName: first.displayName,
+        stageName: group.name,
+        rangeLabel: `Lv.${first.levelIndex}–${last.levelIndex} · ${group.items.length} 级`,
+        count: group.items.length,
+        color: first.colorToken || this.stageColor(first.majorIndex),
+        svg: first.iconSvg || '',
+        modeLabel: first.iconSvg ? '素材库 SVG' : '自动生成',
       }
     },
     pickAuto() {
@@ -976,18 +1030,17 @@ export default {
       }
     },
     applyIcon() {
-      const item = this.items[this.iconDialog.index]
-      if (!item) return
-      if (this.iconDialog.svg) {
-        item.iconSvg = this.iconDialog.svg
+      const d = this.iconDialog
+      const targets = d.scope === 'stage'
+        ? this.items.filter(i => i.majorIndex === d.majorIndex)
+        : [this.items[d.index]].filter(Boolean)
+      if (!targets.length) return
+      targets.forEach(item => {
+        item.iconSvg = d.svg || ''
         item.iconKey = null
         item.colorToken = null
-      } else {
-        item.iconSvg = ''
-        item.iconKey = null
-        item.colorToken = null
-      }
-      this.iconDialog.visible = false
+      })
+      d.visible = false
     },
     resetIcon(item) {
       item.iconSvg = ''
