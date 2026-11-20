@@ -60,6 +60,31 @@ class SvgAssetServiceTest {
     }
 
     @Test
+    @DisplayName("内置素材幂等补齐：已存在跳过，缺失才插入")
+    void ensure_skipsExistingAndInsertsMissing() {
+        SvgAsset existing = new SvgAsset();
+        existing.setAssetName("等级图标 · 新芽");
+        existing.setCategory("level");
+        existing.setSvg("<svg></svg>");
+
+        SvgAsset missing = new SvgAsset();
+        missing.setAssetName("等级图标 · 皇冠");
+        missing.setCategory("level");
+        missing.setSvg("<svg><circle cx=\"12\" cy=\"12\" r=\"8\"/></svg>");
+
+        when(svgAssetMapper.selectCount(any())).thenReturn(1L, 0L);
+
+        ResultBean result = service.ensure(java.util.Arrays.asList(existing, missing));
+
+        assertEquals(200, result.getCode());
+        assertEquals(1, result.getObj());
+        ArgumentCaptor<SvgAsset> captor = ArgumentCaptor.forClass(SvgAsset.class);
+        verify(svgAssetMapper, org.mockito.Mockito.times(1)).insert(captor.capture());
+        assertEquals("等级图标 · 皇冠", captor.getValue().getAssetName());
+        assertEquals("level", captor.getValue().getCategory());
+    }
+
+    @Test
     @DisplayName("保存：空图形被拒绝，不落库")
     void save_rejectsEmptySvg() {
         ResultBean empty = service.save(null);

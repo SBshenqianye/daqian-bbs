@@ -37,6 +37,13 @@ public class SvgAssetController {
         return svgAssetService.save(asset);
     }
 
+    @ApiOperation("管理端：批量补齐内置素材（按名称+分类幂等）")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
+    @PostMapping("/admin/svg-asset/ensure")
+    public ResultBean ensure(@RequestBody java.util.List<SvgAsset> assets) {
+        return svgAssetService.ensure(assets);
+    }
+
     @ApiOperation("管理端：删除素材")
     @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).CONFIG_WRITE)")
     @AuditLog(module = "CONFIG", action = "CONFIG_SVG_ASSET_DELETE", targetType = "SVG_ASSET", targetId = "#body['id']")

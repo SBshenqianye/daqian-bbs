@@ -6,6 +6,7 @@ import com.walker.pojo.SvgAsset;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.text.SimpleDateFormat;
@@ -62,8 +63,39 @@ public class SvgAssetService {
         return ResultBean.success("保存成功", asset.getId());
     }
 
-    public ResultBean delete(Integer id) {
-        if (id == null) {
+    /**
+     * 幂等写入内置素材：按「名称 + 分类」判重，只补齐缺失项。
+     * 供前端把内置图标（如 8 枚等级图标）一次性同步进素材库，重复调用不会产生重复数据。
+     */
+    @Transactional
+    public ResultBean ensure(List<SvgAsset> assets) {
+        if (assets == null || assets.isEmpty()) {
+            return ResultBean.success("无需处理", 0);
+        }
+        String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+        int created = 0;
+        for (SvgAsset asset : assets) {
+            if (asset == null || !StringUtils.hasText(asset.getAssetName())) continue;
+            String svg = sanitize(asset.getSvg());
+            if (svg == null) continue;
+            String category = StringUtils.hasText(asset.getCategory()) ? asset.getCategory() : "other";
+            Long exists = svgAssetMapper.selectCount(new LambdaQueryWrapper<SvgAsset>()
+                    .eq(SvgAsset::getAssetName, asset.getAssetName())
+                    .eq(SvgAsset::getCategory, category));
+            if (exists != null && exists > 0) continue;
+            SvgAsset row = new SvgAsset();
+            row.setAssetName(asset.getAssetName());
+            row.setCategory(category);
+            row.setSvg(svg);
+            row.setCreateTime(now);
+            row.setUpdateTime(now);
+            svgAssetMapper.insert(row);
+            created++;
+        }
+        return ResultBean.success("已补充 " + created + " 条素材", created);
+    }
+
+    public ResultBean delete(Integer id) {        if (id == null) {
             return ResultBean.error("缺少素材ID");
         }
         svgAssetMapper.deleteById(id);
