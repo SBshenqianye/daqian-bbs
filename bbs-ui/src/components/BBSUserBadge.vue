@@ -11,6 +11,7 @@
         :src="avatar"
         :size="avatarBox"
         :level-index="levelIndex"
+        :icon-svg="iconSvg"
       />
       <!-- inline：作者与单位压成一行，避免列表卡片被单位名撑高；stacked：仍分两行 -->
       <span v-if="layout === 'inline'" class="inline-flex items-baseline gap-1 min-w-0">
@@ -44,7 +45,7 @@
       <div class="h-14" :style="{ background: 'linear-gradient(120deg,' + spec.soft + ',' + spec.color + '33)' }"></div>
       <div class="px-4 pb-4 -mt-8">
         <div class="flex items-end justify-between gap-2">
-          <BBSAvatar :src="profile.portrait" :size="56" :level-index="profileLevel" />
+          <BBSAvatar :src="profile.portrait" :size="56" :level-index="profileLevel" :icon-svg="profileIconSvg" />
           <button
             class="mb-1 px-3 py-1.5 rounded-full text-[12px] font-medium text-white transition-opacity hover:opacity-90"
             :style="{ backgroundColor: spec.color }"
@@ -121,6 +122,8 @@ export default {
     orgName: { type: String, default: '' },
     orgNameFull: { type: String, default: '' },
     levelIndex: { type: [Number, String], default: null },
+    /** 自定义等级图标（素材库 SVG），与 levelIndex 配套 */
+    iconSvg: { type: String, default: '' },
     /** 传 userId 才启用悬浮卡与跳转 */
     userId: { type: [Number, String], default: null },
     /** xs | sm | md | lg */
@@ -164,6 +167,10 @@ export default {
         return normalizeLevel(this.profile.level.levelIndex)
       }
       return normalizeLevel(this.levelIndex)
+    },
+    profileIconSvg() {
+      const fromRemote = this.profile && this.profile.level && this.profile.level.iconSvg
+      return fromRemote || this.iconSvg || ''
     },
     spec() {
       return levelSpec(this.profileLevel)

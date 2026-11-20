@@ -5,7 +5,7 @@
       <div class="h-16" :style="{ background: 'linear-gradient(120deg,' + spec.soft + ',' + spec.color + '33)' }"></div>
       <div class="px-5 pb-4 -mt-8">
         <div class="flex items-end justify-between gap-3 flex-wrap">
-          <BBSAvatar :src="avatarSrc" :size="72" :level-index="levelInfo.levelIndex" />
+          <BBSAvatar :src="avatarSrc" :size="72" :level-index="levelInfo.levelIndex" :icon-svg="levelInfo.iconSvg || ''" />
           <div class="flex items-center gap-2 mb-1">
             <BBSLevelBadge :level="levelInfo" />
             <span class="text-[11.5px] text-on-surface-variant tabnum">{{ levelInfo.totalPoints || 0 }} 分</span>

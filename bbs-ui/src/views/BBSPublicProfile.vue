@@ -13,7 +13,7 @@
         <div class="h-20" :style="{ background: 'linear-gradient(120deg,' + spec.soft + ',' + spec.color + '33)' }"></div>
         <div class="px-5 md:px-6 pb-5 -mt-10">
           <div class="flex items-end justify-between gap-3 flex-wrap">
-            <BBSAvatar :src="profile.portrait" :size="80" :level-index="levelIndex" />
+            <BBSAvatar :src="profile.portrait" :size="80" :level-index="levelIndex" :icon-svg="(profile.level && profile.level.iconSvg) || ''" />
             <div class="flex items-center gap-2 mb-1">
               <BBSLevelBadge :level-index="levelIndex" :level="profile.level || {}" />
               <span class="text-[11.5px] text-on-surface-variant tabnum">{{ points }} 分</span>
