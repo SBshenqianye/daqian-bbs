@@ -41,6 +41,48 @@
         </div>
       </div>
 
+      <!-- Editor Settings Card -->
+      <div class="bg-container border border-border rounded-xl p-card-padding mb-6">
+        <div class="flex items-center gap-2 mb-4 pb-3 border-b border-outline-variant">
+          <span class="material-symbols-outlined text-primary">edit_note</span>
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">发帖编辑器</h2>
+          <span class="text-[11px] text-on-surface-variant ml-auto">用户端发帖页的默认展示方式</span>
+        </div>
+        <div class="flex items-start justify-between gap-6">
+          <div class="min-w-0">
+            <p class="font-label-md text-label-md text-secondary mb-1">默认打开 Markdown 预览</p>
+            <p class="text-[11.5px] text-on-surface-variant leading-relaxed">
+              打开：进入发帖页即为「左侧源码 + 右侧渲染」。关闭：默认只显示源码，用户需手动点「预览」。
+              用户仍可随时自行切换，本开关只决定初始状态。
+            </p>
+          </div>
+          <button
+            class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            :class="editorForm.previewDefault ? 'bg-primary' : 'bg-outline-variant'"
+            role="switch"
+            :aria-checked="editorForm.previewDefault"
+            :disabled="!canWriteConfig"
+            :title="canWriteConfig ? '切换默认状态' : '无配置修改权限'"
+            @click="editorForm.previewDefault = !editorForm.previewDefault"
+          >
+            <span
+              class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+              :class="editorForm.previewDefault ? 'translate-x-6' : 'translate-x-1'"
+            ></span>
+          </button>
+        </div>
+        <div class="flex justify-end mt-4">
+          <button
+            class="inline-flex items-center gap-1.5 px-5 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            @click="saveEditorConfig"
+            :disabled="editorSaving || !canWriteConfig"
+            :title="canWriteConfig ? '保存编辑器设置' : '无配置修改权限'"
+          >
+            {{ editorSaving ? '保存中...' : '保存编辑器设置' }}
+          </button>
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="flex items-center gap-3 mb-6">
         <button
@@ -217,9 +259,11 @@ export default {
       editForm: { id: null, configKey: '', configValue: '', configLabel: '', configGroup: '', configType: 'text', sortOrder: 0, remark: '' },
       contactForm: { name: '', email: '' },
       contactSaving: false,
+      editorForm: { previewDefault: true },
+      editorSaving: false,
     }
   },
-  mounted() { this.loadList(); this.loadContactInfo() },
+  mounted() { this.loadList(); this.loadContactInfo(); this.loadEditorConfig() },
   methods: {
     loadList() {
       this.postRequest('/admin/systemConfig/list', {}).then(resp => {
@@ -295,6 +339,36 @@ export default {
           }
         }
       })
+    },
+    loadEditorConfig() {
+      this.postRequest('/common/systemConfig/listByGroup', { configGroup: 'editor' }).then(resp => {
+        const list = resp && resp.obj && Array.isArray(resp.obj) ? resp.obj : []
+        const item = list.find(c => c.configKey === 'editor_preview_default')
+        // 配置缺失时前端按"默认打开预览"处理，与用户端回落保持一致
+        this.editorForm.previewDefault = !item || String(item.configValue).trim() !== '0'
+      })
+    },
+    saveEditorConfig() {
+      const value = this.editorForm.previewDefault ? '1' : '0'
+      this.editorSaving = true
+      this.postRequest('/common/systemConfig/listByGroup', { configGroup: 'editor' }).then(resp => {
+        const list = resp && resp.obj && Array.isArray(resp.obj) ? resp.obj : []
+        const item = list.find(c => c.configKey === 'editor_preview_default')
+        if (item && item.id) {
+          return this.postRequest('/admin/systemConfig/update', { id: item.id, configValue: value })
+        }
+        return this.postRequest('/admin/systemConfig/add', {
+          configKey: 'editor_preview_default',
+          configValue: value,
+          configLabel: '发帖页默认打开预览',
+          configGroup: 'editor',
+          configType: 'switch',
+          sortOrder: 10,
+          remark: '1=默认打开 Markdown 预览，0=默认关闭；用户重新进入发帖页生效'
+        })
+      }).then(resp => {
+        handleResponse(resp, { successMsg: '编辑器设置已保存', onSuccess: () => { this.loadList(); this.loadEditorConfig() } })
+      }).catch(() => {}).finally(() => { this.editorSaving = false })
     },
     saveContactInfo() {
       if (!this.contactForm.name.trim() && !this.contactForm.email.trim()) {
