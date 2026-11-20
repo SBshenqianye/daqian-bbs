@@ -408,6 +408,7 @@
 
 <script>
 import { LEVEL_TONES, LEVEL_GLYPHS, levelRowSvg, glyphSvg } from '../../../shared/level-icons'
+import { safeIconSvg } from '../../../shared/icon-fallback'
 import { handleResponse } from '../../../shared/feedback'
 import { nextOverlayZ } from '@/utils/overlay'
 
@@ -501,7 +502,7 @@ export default {
       return this.items.map((item, i) => `${this.xOf(i)},${this.yOf(item.pointsThreshold)}`).join(' ')
     },
     iconPreview() {
-      if (this.iconDialog.svg) return this.iconDialog.svg
+      if (this.iconDialog.svg) return safeIconSvg(this.iconDialog.svg)
       return levelRowSvg(this.iconDialog.levelIndex, 28)
     },
   },
@@ -538,7 +539,7 @@ export default {
       return item.minorIndex === 1
     },
     iconOf(item) {
-      if (item.iconSvg) return item.iconSvg
+      if (item.iconSvg) return safeIconSvg(item.iconSvg)
       if (item.iconKey && LEVEL_GLYPHS.some(g => g.key === item.iconKey)) {
         return glyphSvg(item.iconKey, item.colorToken || this.stageColor(item.majorIndex))
       }

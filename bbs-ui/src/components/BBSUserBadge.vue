@@ -87,7 +87,7 @@
               v-for="a in unlockedAchievements.slice(0, 5)"
               :key="a.id"
               class="w-6 h-6"
-              v-html="a.iconSvg"
+              v-html="safeIcon(a.iconSvg)"
               :title="a.name"
             ></span>
           </div>
@@ -101,6 +101,7 @@
 import BBSAvatar from '@/components/BBSAvatar.vue'
 import BBSLevelBadge from '@/components/BBSLevelBadge.vue'
 import { levelSpec, normalizeLevel } from '../../../shared/level-icons'
+import { safeIconSvg } from '../../../shared/icon-fallback'
 
 const AVATAR_BOX = { xs: 24, sm: 28, md: 36, lg: 48 }
 const NAME_CLASS = {
@@ -187,6 +188,9 @@ export default {
     },
   },
   methods: {
+    safeIcon(svg) {
+      return safeIconSvg(svg)
+    },
     onEnter() {
       if (!this.hover || this.userId == null) return
       this.cancelClose()

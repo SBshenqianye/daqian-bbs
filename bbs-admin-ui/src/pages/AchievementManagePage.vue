@@ -19,7 +19,7 @@
       <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <div v-for="item in list" :key="item.id" class="bg-container border border-border rounded-xl p-card-padding">
           <div class="flex items-start gap-3">
-            <div class="w-16 h-16 shrink-0" v-html="item.iconSvg || defaultMedal"></div>
+            <div class="w-16 h-16 shrink-0" v-html="item.iconSvg ? safeIcon(item.iconSvg) : defaultMedal"></div>
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <h3 class="font-headline-sm text-on-surface truncate">{{ item.achievementName }}</h3>
@@ -58,7 +58,7 @@
               <div><label class="text-label-md text-secondary">排序</label><input v-model.number="form.sortOrder" type="number" class="w-full mt-1 px-3 py-2 bg-surface border border-outline-variant rounded-lg"></div>
             </div>
             <div class="flex items-center gap-4">
-              <div class="w-20 h-20 rounded-lg border border-dashed border-outline-variant flex items-center justify-center" v-html="form.iconSvg || defaultMedal"></div>
+              <div class="w-20 h-20 rounded-lg border border-dashed border-outline-variant flex items-center justify-center" v-html="form.iconSvg ? safeIcon(form.iconSvg) : defaultMedal"></div>
               <div class="space-y-1">
                 <button class="px-3 py-1.5 text-[12px] border border-outline rounded" @click="pickerVisible = true">选择勋章</button>
                 <p class="text-[11px] text-on-surface-variant">从「SVG 工作台」素材库选择；没有合适的就去工作台绘制</p>
@@ -133,6 +133,7 @@
 import { handleResponse } from '../../../shared/feedback'
 import { nextOverlayZ } from '@/utils/overlay'
 import SvgAssetPicker from '@/components/SvgAssetPicker.vue'
+import { safeIconSvg } from '../../../shared/icon-fallback'
 
 const METRICS = [
   { value: 'article_count', label: '发帖数' },
@@ -178,6 +179,9 @@ export default {
   },
   mounted() { this.load() },
   methods: {
+    safeIcon(svg) {
+      return safeIconSvg(svg)
+    },
     onPickMedal(asset) {
       if (!asset || !asset.svg) return
       this.form.iconSvg = asset.svg

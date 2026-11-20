@@ -4,6 +4,7 @@
 
 <script>
 import { levelRowSvg, levelEmblemSvg, levelSpec, glyphSvg } from '../../../shared/level-icons'
+import { safeIconSvg } from '../../../shared/icon-fallback'
 
 export default {
   name: 'BBSLevelIcon',
@@ -24,7 +25,7 @@ export default {
   },
   computed: {
     svg() {
-      if (this.iconSvg && this.iconSvg.trim()) return this.iconSvg
+      if (this.iconSvg && this.iconSvg.trim()) return safeIconSvg(this.iconSvg)
       if (this.glyph) return glyphSvg(this.glyph, this.color || undefined)
       const px = Number(this.size) || 16
       return this.mode === 'emblem'
