@@ -160,7 +160,7 @@ export default {
         { icon: 'military_tech', label: '等级管理', path: '/levelManage', permission: 'config:read', category: 'system' },
         { icon: 'workspace_premium', label: '成就管理', path: '/achievementManage', permission: 'config:read', category: 'system' },
         { icon: 'draw', label: 'SVG 工作台', path: '/svgStudio', permission: 'config:read', category: 'system' },
-        { icon: 'event_repeat', label: '运营周期', path: '/operationCycle', permission: 'config:read', category: 'system' },
+  
         { icon: 'upload_file', label: '组织导入', path: '/orgImport', permission: 'config:read', category: 'system' },
         { icon: 'notifications_active', label: '提醒配置', path: '/reminderManage', permission: 'config:read', category: 'system' },
         { icon: 'block', label: '敏感词管理', path: '/sensitiveWord', permission: 'config:read', category: 'system' },

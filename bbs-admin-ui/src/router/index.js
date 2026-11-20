@@ -96,11 +96,6 @@ export default new Router({
                     meta: { title: 'SVG 工作台', permission: 'config:read' }
                 },
                 {
-                    path: '/operationCycle',
-                    component: () => import('../pages/OperationCyclePage.vue'),
-                    meta: { title: '运营周期', permission: 'config:read' }
-                },
-                {
                     path: '/orgImport',
                     component: () => import('../pages/OrgImportPage.vue'),
                     meta: { title: '组织导入', permission: 'config:read' }

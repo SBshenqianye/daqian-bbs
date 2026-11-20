@@ -60,7 +60,6 @@
         <div class="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-outline-variant/30 bg-surface-container-lowest">
           <span class="text-sm text-on-surface-variant font-medium">时间：</span>
           <el-radio-group v-model="activeTimeKey" size="small" @change="onTimeChange">
-            <el-radio-button v-if="activeCycle" label="cycle">本周期</el-radio-button>
             <el-radio-button label="month">本月</el-radio-button>
             <el-radio-button label="quarter">本季</el-radio-button>
             <el-radio-button label="year">本年</el-radio-button>
@@ -233,7 +232,6 @@ export default {
       activeCategoryLegacy: true,
       categoryTabs: [],
       activeTimeKey: 'month',
-      activeCycle: null,
       customDateRange: null,
       timeRange: TIME_RANGES.month(),
       // 单位排名
@@ -259,22 +257,9 @@ export default {
   },
   mounted() {
     this.currentUserId = this.getCurrentUserId()
-    this.loadActiveCycle().then(() => this.loadCategories())
+    this.loadCategories()
   },
   methods: {
-    async loadActiveCycle() {
-      try {
-        const res = await this.getRequestUrl('/common/operation-cycle/active')
-        const cycle = res && res.code == 200 ? res.obj : null
-        if (cycle && cycle.startDate && cycle.endDate) {
-          this.activeCycle = cycle
-          this.activeTimeKey = 'cycle'
-          this.timeRange = { start: cycle.startDate, end: cycle.endDate }
-        }
-      } catch (e) {
-        this.activeCycle = null
-      }
-    },
     getCurrentUserId() {
       try {
         // 管理端登录态存 sessionStorage['admin']，勿读 'user'（那是用户端键）
@@ -322,9 +307,7 @@ export default {
 
     onTimeChange() {
       this.customDateRange = null
-      if (this.activeTimeKey === 'cycle' && this.activeCycle) {
-        this.timeRange = { start: this.activeCycle.startDate, end: this.activeCycle.endDate }
-      } else if (TIME_RANGES[this.activeTimeKey]) {
+      if (TIME_RANGES[this.activeTimeKey]) {
         this.timeRange = TIME_RANGES[this.activeTimeKey]()
       }
       this.fetchData()
