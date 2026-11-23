@@ -29,7 +29,7 @@
 | 重启 | `powershell -File scripts/dev/restart.ps1 -Target all|server|ui|admin` | 目标端口重新 listening |
 | 提交前 | `powershell -File scripts/dev/verify.ps1` | 方法契约 + 构建 0 error + 后端就绪 + 负向自检通过 |
 | WSL2（生产对齐） | Windows 构建后 `bash scripts/dev/wsl.sh`，测 `http://localhost:60001/bbs-user/` | PG 方言 + nginx 路由通过 |
-| 打包（离线升级包） | **Windows** 构建：两个前端 `npm run build` + `cd bbs-server && mvn clean package -DskipTests`；**WSL** 执行 `bash scripts/prod/package.sh` + `bash scripts/prod/verify-build.sh` | 生成 `dist/bbs-upgrade-<ts>.tar.gz`，`FAIL=0` |
+| 打包（离线升级包） | **Windows** 构建：两个前端 `npm run build` + `cd bbs-server && mvn clean package -DskipTests`；**WSL** 执行 `bash scripts/prod/package.sh` + `bash scripts/prod/verify-build.sh`。也可直接 `powershell -File scripts/dev/package.ps1`（停栈→构建→WSL 打包→**finally 自动恢复开发栈**） | 生成 `dist/bbs-upgrade-<ts>.tar.gz`，`FAIL=0`，打包后 9081/9082/9083 仍 listening |
 | 部署（WSL 测试） | `bash scripts/dev/wsl.sh` | `60001` 可访问，`verify-server.sh` 通过 |
 | 部署（生产离线） | `bash scripts/prod/offline.sh dist/bbs-upgrade-*.tar.gz` | 容器重建 + 挂载探针通过，`verify-server.sh` `FAIL=0` |
 | 一键（生产，零参数） | `cd /data/bbs/scripts/prod && bash one_key_deploy.sh` | 部署根目录最新 `bbs-upgrade-*.tar.gz`，验证通过后归档到 `archive/` |

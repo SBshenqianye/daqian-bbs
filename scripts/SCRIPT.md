@@ -19,6 +19,7 @@ scripts/
 │   ├── down.ps1           ← 按端口停止
 │   ├── restart.ps1        ← 重启（all|server|ui|admin）
 │   ├── verify.ps1         ← 提交前：构建 + 就绪 + 负向自检
+│   ├── package.ps1        ← 打包：停栈 → 构建 → WSL 打包 → finally 自动恢复开发栈
 │   ├── negative-smoke.ps1 ← 4 项负向注入自检
 │   ├── check-dev-port.js  ← Vue 启动前端口占用检查
 │   ├── wsl.sh             ← WSL 联调部署（bind-mount，60001）
