@@ -24,6 +24,7 @@ export const PERMISSION_LABELS = {
   'article:delete': '删除帖子',
   'article:feature': '设置精华',
   'article:suggestion:adopt': '采纳建议',
+  'article:purge:test-account': '清理测试账号帖子',
 
   'report:review': '举报审核',
   'appeal:review': '申诉审核',

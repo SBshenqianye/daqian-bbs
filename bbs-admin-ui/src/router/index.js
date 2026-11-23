@@ -167,6 +167,11 @@ export default new Router({
                     meta: { title: '审计日志', permission: 'audit:read' }
                 },
                 {
+                    path: '/maintenance',
+                    component: () => import('../pages/SystemMaintenancePage.vue'),
+                    meta: { title: '系统维护', permission: 'article:purge:test-account' }
+                },
+                {
                     path: '/404',
                     component: () => import('../pages/404.vue'),
                     meta: { title: '404' }
