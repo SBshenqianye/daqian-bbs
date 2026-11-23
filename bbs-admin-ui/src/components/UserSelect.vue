@@ -19,15 +19,19 @@
         :placeholder="placeholder"
         @input="onInput"
         @focus="onFocus"
+        @click="onFocus"
         @blur="onBlur"
       />
     </div>
 
     <!-- 下拉搜索结果 -->
     <div v-if="showDropdown && results.length > 0" class="absolute z-50 mt-1 w-full bg-container border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+      <div v-if="!keyword.trim() && candidates.length" class="sticky top-0 px-3 py-1.5 text-[11px] text-on-surface-variant bg-surface-container-low">
+        被举报候选（有未处理举报）
+      </div>
       <div
         v-for="user in results"
-        :key="user.id"
+        :key="user.id + '|' + (user.candidateKey || '')"
         class="flex items-center gap-2 px-3 py-2 hover:bg-surface-container-low cursor-pointer border-b border-outline-variant/30 last:border-0"
         @mousedown.prevent="onSelect(user)"
       >
@@ -35,7 +39,7 @@
         <div v-else class="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] text-primary font-medium flex-shrink-0">{{ (user.nickname || user.username || '?').charAt(0) }}</div>
         <div class="flex-1 min-w-0">
           <div class="text-body-sm font-medium truncate">{{ user.nickname || user.username }}</div>
-          <div class="text-[11px] text-on-surface-variant truncate">{{ user.username }} · {{ user.orgName || '未分配单位' }}</div>
+          <div class="text-[11px] text-on-surface-variant truncate">{{ user.extra || ((user.username || '') + ' · ' + (user.orgName || '未分配单位')) }}</div>
         </div>
         <el-tooltip :content="tooltipContent(user)" placement="right" :open-delay="300">
           <span class="material-symbols-outlined text-[14px] text-on-surface-variant cursor-help">info</span>
@@ -59,6 +63,8 @@ export default {
   props: {
     value: { type: [Number, String], default: null },
     placeholder: { type: String, default: '搜索用户名或昵称...' },
+    /** 快捷候选（如「被举报的用户」）：聚焦且未输入关键词时展示 */
+    candidates: { type: Array, default: () => [] },
   },
   data() {
     return {
@@ -82,6 +88,15 @@ export default {
           this.keyword = ''
         }
       }
+    },
+    candidates(list) {
+      // 候选异步加载完成时：下拉已开则刷新；输入框仍聚焦（用户先点了输入框、候选后到）也直接展开
+      if (this.keyword.trim()) return
+      const active = this.$refs.searchInput && document.activeElement === this.$refs.searchInput
+      if (this.showDropdown || active) {
+        this.results = (list || []).slice()
+        if (active) this.showDropdown = this.results.length > 0
+      }
     }
   },
   methods: {
@@ -91,8 +106,9 @@ export default {
     onInput() {
       clearTimeout(this.debounceTimer)
       if (!this.keyword.trim()) {
-        this.results = []
-        this.showDropdown = false
+        // 清空关键词：回到候选列表（如「被举报候选」），没有候选则收起
+        this.results = this.candidates.slice()
+        this.showDropdown = this.results.length > 0
         return
       }
       this.debounceTimer = setTimeout(() => {
@@ -102,10 +118,16 @@ export default {
     onFocus() {
       if (this.keyword.trim() && this.results.length > 0) {
         this.showDropdown = true
+      } else if (!this.keyword.trim() && this.candidates.length > 0) {
+        this.results = this.candidates.slice()
+        this.showDropdown = true
       }
     },
     onBlur() {
-      setTimeout(() => { this.showDropdown = false }, 200)
+      // 延迟关闭：留出点击下拉项的时间；若这期间又回到输入框（焦点未移走）则不要再关
+      setTimeout(() => {
+        if (document.activeElement !== this.$refs.searchInput) this.showDropdown = false
+      }, 200)
     },
     async search(kw) {
       this.searching = true

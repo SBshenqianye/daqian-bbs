@@ -10,47 +10,73 @@
           </h1>
           <p class="text-body-md text-secondary mt-1">管理用户违规记录与积分扣减</p>
         </div>
+        <button
+          class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md"
+          @click="openAddDialog"
+        >
+          <span class="material-symbols-outlined text-[18px]">add</span>
+          新增违规记录
+        </button>
       </div>
 
       <!-- Add Violation Dialog -->
-      <div class="bg-container border border-border rounded-xl p-card-padding mb-6">
-        <h3 class="font-title-lg text-title-lg mb-4">新增违规记录</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <el-dialog
+        title="新增违规记录"
+        :visible.sync="addDialogVisible"
+        width="680px"
+        :close-on-click-modal="false"
+        @closed="resetForm"
+      >
+        <div class="space-y-4">
           <div>
-            <label class="block text-body-sm text-on-surface-variant mb-1">选择用户</label>
-            <UserSelect v-model="form.userId" placeholder="搜索用户名或昵称..." />
+            <label class="block text-body-sm text-on-surface-variant mb-1">选择用户 <span class="text-red-500">*</span></label>
+            <UserSelect
+              v-model="form.userId"
+              :candidates="reportCandidates"
+              placeholder="搜索用户名或昵称，或点开从被举报候选中选择..."
+              @select="onUserSelected"
+            />
+            <p v-if="autoFillHint" class="mt-1.5 text-[12px] text-primary leading-relaxed">{{ autoFillHint }}</p>
+            <p v-else-if="candidatesLoading" class="mt-1.5 text-[12px] text-on-surface-variant">正在加载被举报候选...</p>
+            <p v-else-if="reportCandidates.length === 0" class="mt-1.5 text-[12px] text-on-surface-variant">暂无待处理的举报，可直接搜索用户</p>
           </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-body-sm text-on-surface-variant mb-1">违规类型 <span class="text-red-500">*</span></label>
+              <select v-model="form.violationType" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none">
+                <option value="">请选择</option>
+                <option v-for="opt in violationOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-body-sm text-on-surface-variant mb-1">关联类型</label>
+              <select v-model="form.relatedType" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none">
+                <option v-if="isSuperAdmin" value="">无</option>
+                <option value="article">帖子</option>
+                <option value="comment">评论</option>
+                <option value="reply">回复</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-body-sm text-on-surface-variant mb-1">关联ID</label>
+              <input v-model="form.relatedId" type="number" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none" placeholder="可选">
+            </div>
+          </div>
+
           <div>
-            <label class="block text-body-sm text-on-surface-variant mb-1">违规类型</label>
-            <select v-model="form.violationType" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none">
-              <option value="">请选择</option>
-              <option v-for="opt in violationOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-body-sm text-on-surface-variant mb-1">关联类型</label>
-            <select v-model="form.relatedType" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none">
-              <option v-if="isSuperAdmin" value="">无</option>
-              <option value="article">帖子</option>
-              <option value="comment">评论</option>
-              <option value="reply">回复</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-body-sm text-on-surface-variant mb-1">关联ID</label>
-            <input v-model="form.relatedId" type="number" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none" placeholder="可选">
-          </div>
-          <div class="md:col-span-2">
             <label class="block text-body-sm text-on-surface-variant mb-1">备注说明</label>
-            <textarea v-model="form.remark" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none" rows="2" placeholder="可选"></textarea>
+            <textarea v-model="form.remark" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary outline-none" rows="3" placeholder="扣分依据；从被举报候选选择时会自动带出举报理由等信息"></textarea>
           </div>
         </div>
-        <div class="mt-4 flex justify-end">
+
+        <div slot="footer" class="flex justify-end gap-2">
+          <button class="px-4 py-2 text-body-sm border border-outline-variant rounded-lg hover:bg-surface-container-low" @click="addDialogVisible = false">取消</button>
           <button class="px-5 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 disabled:opacity-60" :disabled="submitting" @click="handleAdd">
             {{ submitting ? '提交中...' : '记录违规' }}
           </button>
         </div>
-      </div>
+      </el-dialog>
 
       <!-- List -->
       <div class="bg-container border border-border rounded-xl p-card-padding">
@@ -190,6 +216,11 @@ export default {
       pageSize: 10,
       searchUserId: '',
       violationOptions: [],
+      addDialogVisible: false,
+      candidatesLoading: false,
+      reportCandidates: [],
+      autoFillHint: '',
+      autoFilled: false,
       form: {
         userId: '',
         violationType: '',
@@ -256,7 +287,7 @@ export default {
     },
     async handleAdd() {
       if (!this.form.userId || !this.form.violationType) {
-        this.$message.warning('请填写用户ID和违规类型')
+        this.$message.warning('请填写用户和违规类型')
         return
       }
       this.submitting = true
@@ -268,12 +299,113 @@ export default {
           successMsg: '违规记录已添加',
           errorMsg: '操作失败',
           onSuccess: async () => {
-            this.form = { userId: '', violationType: '', relatedType: '', relatedId: '', remark: '' }
+            this.addDialogVisible = false
             await this.loadList()
           }
         })
       } catch (e) { this.$message.error('操作失败') }
       finally { this.submitting = false }
+    },
+    // ========== 新增违规（弹窗 + 被举报候选） ==========
+    openAddDialog() {
+      this.resetForm()
+      this.addDialogVisible = true
+      this.loadReportCandidates()
+    },
+    resetForm() {
+      this.form = { userId: '', violationType: '', relatedType: '', relatedId: '', remark: '' }
+      this.autoFillHint = ''
+      this.autoFilled = false
+    },
+    /**
+     * 待处理举报的“被举报人”候选。
+     * 用分组的举报列表：同一内容的多条举报会合并，代表记录里已带 targetAuthorId / targetType / targetId。
+     */
+    async loadReportCandidates() {
+      // 候选来自举报列表，需要 report:review；没有该权限时静默跳过，避免打开弹窗就弹无权限提示
+      if (!adminStore.hasAnyPermission(['report:review'])) {
+        this.reportCandidates = []
+        return
+      }
+      this.candidatesLoading = true
+      try {
+        const res = await this.postRequest('/admin/report/listGrouped', { status: 'pending', page: 1, size: 100 })
+        const records = (res && res.code == 200 && res.obj && res.obj.records) || []
+        const seen = new Map()
+        for (const group of records) {
+          const r = group.representative || {}
+          // 内容已删除或拿不到作者时无法作为候选（也填不了用户）
+          if (!r.targetAuthorId) continue
+          const key = `${r.targetAuthorId}|${r.targetType || ''}|${r.targetId || ''}`
+          if (seen.has(key)) continue
+          seen.set(key, {
+            id: r.targetAuthorId,
+            candidateKey: key,
+            nickname: r.targetAuthorName || ('用户' + r.targetAuthorId),
+            username: r.targetAuthorName || '',
+            extra: this.candidateExtra(r, group.totalCount),
+            report: r,
+            reportCount: group.totalCount || 1
+          })
+        }
+        this.reportCandidates = Array.from(seen.values())
+      } catch (e) {
+        this.reportCandidates = []
+      } finally {
+        this.candidatesLoading = false
+      }
+    },
+    candidateExtra(r, count) {
+      const parts = [`被举报：${this.getRelatedTypeLabel(r.targetType)}#${r.targetId}`]
+      if (r.reason) parts.push('理由：' + r.reason)
+      if (count > 1) parts.push(`${count} 条举报`)
+      return parts.join(' · ')
+    },
+    /** 选中用户：来自举报候选时按举报信息回填，能填的才填，填不了的留空 */
+    onUserSelected(user) {
+      if (!user) {
+        // 清空用户时，带走自动回填的内容，避免误记到别人头上
+        if (this.autoFilled) {
+          this.form.violationType = ''
+          this.form.relatedType = ''
+          this.form.relatedId = ''
+          this.form.remark = ''
+        }
+        this.autoFillHint = ''
+        this.autoFilled = false
+        return
+      }
+      const r = user.report
+      if (!r) {
+        this.autoFillHint = ''
+        this.autoFilled = false
+        return
+      }
+      const relatedType = r.targetType || ''
+      const relatedId = relatedType && r.targetId != null ? String(r.targetId) : ''
+      this.form.violationType = r.violationType || ''
+      this.form.relatedType = relatedType
+      this.form.relatedId = relatedId
+      this.form.remark = this.buildRemarkFromReport(r, user.reportCount)
+
+      const filled = ['用户']
+      if (this.form.violationType) filled.push('违规类型')
+      if (relatedId) filled.push('关联内容')
+      filled.push('备注')
+      const missing = []
+      if (!this.form.violationType) missing.push('违规类型')
+      this.autoFillHint = `已按举报 #${r.id} 带出${filled.join('、')}，可修改`
+        + (missing.length ? `；${missing.join('、')}无法从举报确定，请手动选择` : '')
+      this.autoFilled = true
+    },
+    buildRemarkFromReport(r, count) {
+      const parts = []
+      if (r.reason) parts.push('举报理由：' + r.reason)
+      parts.push(`来源：举报#${r.id}`)
+      if (r.reporterName) parts.push('举报人：' + r.reporterName)
+      if (count > 1) parts.push(`同内容共 ${count} 条举报`)
+      if (r.createTime) parts.push('举报时间：' + r.createTime)
+      return parts.join('；')
     },
     /** 当前登录管理员 id（登录态 sessionStorage['admin']，操作人不得写死为固定值） */
     currentAdminId() {
