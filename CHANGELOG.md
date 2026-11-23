@@ -7,6 +7,12 @@
 ### 发帖编辑器
 - **发帖页正文改为「纯 Markdown 源码 + 渲染预览」**：此前正文是 `contenteditable` 富文本，工具栏却只把 `**粗体**`、`### ` 这类源码当普通文字插进光标处，用户点 B 看到的是符号而不是格式（生产反馈 2026-11-20）；无选区时选区回退算错，还会选中占位符尾部并吃掉闭合的 `**`，越点越乱。现改为原生 `textarea`：工具栏按光标/选区精确包裹（`setSelectionRange`），标题/引用/有序无序列表按整行切换，图片与链接直接插入 `![图片](url)` / `[文字](url)`，`Ctrl+B` / `Ctrl+I` 生效，工具栏点击不再抢走编辑区焦点；`htmlToMd` 一并删除（它会把 `<strong>`、`<ul>` 等标签静默抹成纯文本）
 - **预览默认开关由后台配置**：新增系统配置 `editor_preview_default`（分组 `editor`，`v076` 迁移播种，默认 `1`=打开）；后台「系统配置 → 发帖编辑器」用开关切换，用户端读不到配置时回落到「默认打开」。窄屏（`md` 以下）改为上下排，预览不再挤压正文
+- **修复点击「编辑帖子」报错**：`getArticleForEdit` 用 POST 调 `@GetMapping` 接口，登录后必然 405；且返回值没从 `ResultBean.obj` 解包，即使请求成功标题正文也是空的。现改为 GET + 解包 `obj`
+- **详情页直达编辑**：作者本人（含匿名帖，按后端 `selfAuthored` 判断）在帖子详情页可点「编辑」直接进发帖页的编辑模式；编辑模式按 `post:update:own` 判权，按钮文案变为「保存修改 / 无编辑权限」
+- **编辑接口补归属校验**：`post:update:own` 只说明"能改自己的帖子"，`editArticle` 此前没校验 `articleId` 归属，任何登录用户都能凭 ID 改别人的帖子；现比对当前登录用户与文章 `user_id`，不匹配返回 403
+
+### 帖子管理
+- **一键清理测试账号帖子**：后台「帖子管理」右上角新增按钮（仅超管可见），按 `bbs_user.is_test_account=1` 查出这些用户发布的帖子并逻辑删除（可在「已删除」Tab 复核），返回实际删除条数，审计动作 `ARTICLE_PURGE_TEST_ACCOUNT`；评论/回复不随帖子级联删除
 
 ### 安全
 - **正文渲染统一白名单过滤**：新增 `shared/sanitize-html.js`，用户端 `mdToHtml` 与后台 markdown-it 的渲染结果在进 `v-html` 前统一过白名单——`<script>` / `<iframe>` / `<object>` / `<svg>` / `<form>` 等整块删除，其余未知标签拆壳保留文字，`on*` 事件属性、`javascript:` / `data:text/html` 链接、含 `expression()` 的 `style` 一律清掉；段落、标题、列表、表格、图片、链接、代码与安全行内样式照常保留，外链自动补 `rel="noopener noreferrer"`。修复正文里写 `<img onerror=...>` 这类标签会在详情页（含后台预览）实际执行的问题；后台 mavon 预览页（`ArticleDetailsPage`）同时改为 `html: false`，裸 HTML 一律转义
