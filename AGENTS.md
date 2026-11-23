@@ -27,7 +27,7 @@
 | 启动 | `powershell -File scripts/dev/up.ps1` | 9081 / 9082 / 9083 均 listening |
 | 停止 | `powershell -File scripts/dev/down.ps1` | 三个端口释放 |
 | 重启 | `powershell -File scripts/dev/restart.ps1 -Target all|server|ui|admin` | 目标端口重新 listening |
-| 提交前 | `powershell -File scripts/dev/verify.ps1` | 构建 0 error + 后端就绪 + 负向自检通过 |
+| 提交前 | `powershell -File scripts/dev/verify.ps1` | 方法契约 + 构建 0 error + 后端就绪 + 负向自检通过 |
 | WSL2（生产对齐） | Windows 构建后 `bash scripts/dev/wsl.sh`，测 `http://localhost:60001/bbs-user/` | PG 方言 + nginx 路由通过 |
 | 打包（离线升级包） | **Windows** 构建：两个前端 `npm run build` + `cd bbs-server && mvn clean package -DskipTests`；**WSL** 执行 `bash scripts/prod/package.sh` + `bash scripts/prod/verify-build.sh` | 生成 `dist/bbs-upgrade-<ts>.tar.gz`，`FAIL=0` |
 | 部署（WSL 测试） | `bash scripts/dev/wsl.sh` | `60001` 可访问，`verify-server.sh` 通过 |
