@@ -148,3 +148,60 @@ bash scripts/dev/wsl.sh --restart-only
 - **进审核靠行为阈值**：同一用户 24h 命中 ≥3 条（字典 `sensitive_review_threshold`）→ 新内容 `enable=0`，通知作者 + 板块版主；无版主时按 `article:review` 上推。
 - **打码只对外、对作者不隐藏**：编辑页必须走 `GET /article/getForEdit/{id}`（仅作者本人、不脱敏），否则回显 `***` 再保存会把原文永久覆盖（库里已有此类脏标题）。
 - **新增权限点要写三处**：`Permission` 枚举、`admin-ui` 的 `permissionCatalog.js`、迁移里给 `role_super/role_admin/role_moderator` 插 `bbs_permission_group_item`；漏第三处等于谁都没有（`hasPermission` 只读权限组）。
+
+## 9. 2026-11-23 迭代沉淀（编辑器 / 渲染安全 / 编辑链路 / 系统维护）
+
+### 9.1 为什么“单测 + E2E 全绿”仍能把功能发坏
+
+- 真实案例：前端用 `postRequest` 调 `@GetMapping` 的 `/article/getForEdit/{id}`，登录后必然 405。单测直连 Service（不经过 MVC），E2E 没覆盖编辑流程，负向自检只有 4 个固定探针 —— 三层都测不出来。
+- **判据**：任何“前端调后端”的改动，先看 controller 注解，再看前端用哪个 request 方法。
+- **已固化的防线**：`tests/dev/api-method-contract.test.js` 扫控制器映射（含类级 `@RequestMapping` 前缀）与两套前端的请求调用，路径归一化后比对方法；已接入 `verify.ps1` 第 1 步（方法契约失败直接中止）。变异自检：把 `getRequest` 改回 `postRequest` 必须变红。
+- 同一类坑的另一半：`ResultBean` 未解包。除 `Article` 等直接返回实体的老接口外，一律取 `resp.obj`。
+
+### 9.2 `contenteditable` 不要接 Markdown 工具栏
+
+- 现象：点 B 只插入 `**粗体**` 原文；无选区时用 `Range` 回退选区算错，选中“占位符尾部 + 闭合标记”，一打字就吃掉 `**`，越点越乱。
+- 结论：要么纯 WYSIWYG（`execCommand`），要么纯 Markdown 源码（`textarea`）。本仓库选后者：`textarea` + `setSelectionRange` 精确包裹，图片/链接直接插 `![]()` / `[]()`，删掉 `htmlToMd`（它会把 `<strong>`/`<ul>` 静默抹成纯文本）。
+- 工具栏按钮加 `@mousedown.prevent`，否则点击会抢走编辑区焦点。
+
+### 9.3 `v-html` 渲染用户内容必须有白名单
+
+- `mdToHtml` 不自带转义，`<img onerror>`、`javascript:` 链接会原样进 DOM。统一走 `shared/sanitize-html.js`：删 `script/iframe/svg/form`，清 `on*` 与危险协议，保留排版标签与安全 `style`；详情页、发帖预览、后台 markdown-it 预览、mavon（`html:false`）都要接。
+- 用 `DOMParser` 走真实 DOM 再序列化，比正则可靠；历史数据可能存过裸 HTML，所以选“过滤”而不是“整体转义”。
+
+### 9.4 迁移编号是完整 id，不是 `vNNN` 前缀
+
+- `bbs_schema_version.version` 存的是 `@migration:` 后整串（如 `v076-editor-preview-default`），两个 `v076-*` 可以共存。**不要因为“前缀撞车”擅自改号**（2026-11-23 曾改出一个孤儿 `v077-editor-preview-default` 行，无对应块、无副作用但会干扰排查）。
+- 结论：新增迁移直接取下一个未被占用的完整 id；已执行的块永远不改，只新增。
+
+### 9.5 有效权限只来自权限组（枚举默认值不生效）
+
+- `Permission` 的 `adminDefault` 仅用于旧库 `base_role` 物化；新权限点若不写迁移，**组里没有这个 code，谁都拿不到**（含超管）。
+- 一个权限点要落到五处：枚举、`permissionCatalog.js`、`bbs_permission_group_item` 迁移、接口 `@PreAuthorize`、前端 `meta.permission` + 侧边栏 `permission` 字段。
+
+### 9.6 隔离库实测流程（不碰 `bbs_db`）
+
+1. `mysqldump bbs_db` → 导入 `bbs_e2e_test`；
+2. 往副本库插测试数据（如把某用户标成 `is_test_account=1`、造待审举报）；
+3. `SPRING_PROFILES_ACTIVE=e2e BBS_SERVER_PORT=9084` 起后端（本机内存紧张时加 `MAVEN_OPTS=-Xmx512m`）；
+4. 管理端可直接静态托管 `bbs-admin-ui/dist`（约 30 行的 node 静态服务器 + `/admin-api` 反代到 9084），**别在内存紧张时再起一个 webpack dev server**；
+5. 验完停掉临时服务，副本库与测试数据保留便于复看。
+
+### 9.7 Vue dev server 的三个验收假象
+
+- 只改 hash 的 `navigate` 不会重载文档，旧 bundle 还在跑 → 页面“看起来没变化”。改完路由/页面后必须整页重载。
+- 用 `/bbs-admin/index.html#/...` 打开会破坏 router 的 `base`，深链会落到默认页。
+- 自定义下拉的 `onBlur` 延时关闭会在“失焦后又立刻聚焦”时把刚打开的面板关掉；延时回调里要二次确认 `document.activeElement`。
+
+### 9.8 打包与开发栈
+
+- 构建只在 Windows、打包只在 WSL；构建前必须停开发栈（`mvn clean` 与 devtools 抢 `target/`）。
+- **`scripts/dev/package.ps1`** 已用 `try/finally` 包住：无论构建/打包成败，结束都执行 `up.ps1`；判据是打包后 9081/9082/9083 仍 listening。
+- 打包判据另见 `verify-build.sh`：`FAIL=0`、瘦 jar <5MB、包内 jar 的 schema 与源码一致。
+
+### 9.9 PostgreSQL 备份的两层，别混为一谈
+
+- 迁移前自动备份 = 同库新 schema `bbs_backup_yyyyMMdd_HHmmss`，**只保留最近 3 份**，更早的在下次备份前被 `DROP SCHEMA ... CASCADE`；与业务库同生共死，容器重建一起没。
+- 灾备导出 = `scripts/prod/ops/pg-backup.sh`（`podman exec <pg> pg_dump | gzip`），**目前未接入部署**；宿主机没有 `pg_dump`，必须 exec 进容器。
+- 页面只读展示、不提供删除/恢复；部署时自动备份的方案见 `docs/系统维护-运维能力规划-2026-11-23.md`（待实现）。
+

@@ -89,6 +89,7 @@ CREATE TABLE bbs_schema_version (
 - 权限组是唯一权限来源：`bbs_permission_group` + `bbs_permission_group_item` 直接保存权限点；不再使用固定角色基线或 `base_role`。
 - 每个用户有一个主权限组 `bbs_user.primary_group_id`：决定账号身份与数据范围；额外组 `bbs_user_permission_group` 只叠加权限，不改变身份和数据范围。
 - 有效权限 = 所有启用组的 `grant` 并集 - `revoke`；不叠加任何角色默认权限。
+- 新增权限点必须落到五处：`Permission` 枚举（只是登记，`adminDefault` 不对已存在的组生效）、`permissionCatalog.js`、迁移给内置组插 `bbs_permission_group_item`、接口 `@PreAuthorize`、前端 `meta.permission` + 侧边栏 `permission`。漏迁移等于超管也没有。
 - `bbs_user.user_type` 仅作为历史兼容/展示字段，**不参与鉴权**。
 - 四个内置组 `role_super` / `role_admin` / `role_moderator` / `role_user` 是普通权限组，可编辑、停用、删除；编码只用于初始化、默认组回填和版主任命兜底，不是授权捷径。
 - 数据范围只有主组生效：`GLOBAL`（全部板块）/ `BOARD_MODERATOR`（按 `bbs_board_moderator.status=1` 过滤）。版主任职是数据范围，不是账号角色。
