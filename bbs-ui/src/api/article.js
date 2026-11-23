@@ -1,5 +1,5 @@
 // 引入共享的请求方法（自带拦截器：自动附加 token、统一错误处理）
-import { postRequest } from '@/api/api'
+import { postRequest, getRequest } from '@/api/api'
 
 export const getArticleById =(articleId)=>{
     return postRequest(`/common/article/getArticleById/articleId/${articleId}`)
@@ -7,7 +7,7 @@ export const getArticleById =(articleId)=>{
 
 // 编辑页读取原文（仅作者本人）：公开接口返回的是脱敏后的 ***，保存会把 *** 写回库
 export const getArticleForEdit = (articleId) => {
-    return postRequest(`/article/getForEdit/${articleId}`)
+    return getRequest(`/article/getForEdit/${articleId}`)
 }
 
 // 获取文章对外展示状态（NORMAL/DELETED/NOT_EXIST），用于详情页区分"已删除"与"不存在"

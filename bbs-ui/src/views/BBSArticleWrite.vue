@@ -244,7 +244,7 @@
     <!-- Bottom Action Bar -->
     <div class="bottom-bar fixed bottom-0 left-0 right-0 bg-container border-t border-border py-3 px-4 sm:px-8 flex justify-center gap-2.5 z-40">
       <button class="ui-btn ui-btn-sm ui-btn-primary px-5" @click="handlePublish" :disabled="publishing || !canPublish">
-        {{ publishing ? '发布中...' : (canPublish ? '发布' : '无发帖权限') }}
+        {{ publishing ? (isEditing ? '保存中...' : '发布中...') : (canPublish ? (isEditing ? '保存修改' : '发布') : (isEditing ? '无编辑权限' : '无发帖权限')) }}
       </button>
       <button class="ui-btn ui-btn-sm ui-btn-secondary px-5" @click="$router.back()">
         取消
@@ -295,8 +295,12 @@ export default {
     }
   },
   computed: {
+    isEditing() {
+      return !!this.articleId
+    },
     canPublish() {
-      return userStore.hasPermission('post:create')
+      // 编辑已有帖子走 post:update:own，新发帖走 post:create
+      return userStore.hasPermission(this.isEditing ? 'post:update:own' : 'post:create')
     },
     selectedLabelName() {
       const found = this.labelList.find(l => String(l.labelId) === String(this.selectedLabelId))
@@ -481,14 +485,17 @@ export default {
     },
     loadArticleForEdit(id) {
       getArticleForEdit(id).then(resp => {
-        if (resp) {
-          this.articleTitle = resp.articleTitle || ''
-          this.markdownContent = resp.articleContent || ''
-          this.articleSummary = resp.articleSummary || ''
-          this.selectedLabelId = resp.articleLabelId
-          this.isAnonymous = resp.isAnonymous === 1 || resp.isAnonymous === '1'
+        // 接口返回 ResultBean，文章在 obj 里；兼容直接返回实体的老形态
+        const data = resp && resp.obj ? resp.obj : resp
+        if (data) {
+          this.articleTitle = data.articleTitle || ''
+          this.markdownContent = data.articleContent || ''
+          this.articleSummary = data.articleSummary || ''
+          this.selectedLabelId = data.articleLabelId
+          this.isAnonymous = data.isAnonymous === 1 || data.isAnonymous === '1'
           // Load attachment files
           this.loadArticleFiles(id)
+          this.$nextTick(() => this.autoResizeTitle())
         }
       }).catch(err => {
         console.warn('[BBSArticleWrite] loadArticleForEdit', err)

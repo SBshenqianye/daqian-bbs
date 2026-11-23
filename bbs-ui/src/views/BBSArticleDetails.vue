@@ -55,6 +55,14 @@
               </el-tooltip>
               <span v-if="article.isAnonymous" class="ui-chip ui-chip-muted">匿名</span>
               <button
+                v-if="canEditArticle"
+                class="ui-icon-btn"
+                title="编辑帖子"
+                @click="goEditArticle"
+              >
+                <span class="material-symbols-outlined">edit</span>
+              </button>
+              <button
                 v-if="canReportArticle"
                 class="ui-icon-btn is-danger"
                 title="举报该帖"
@@ -378,6 +386,14 @@ export default {
       return this.article.userId != null
         && String(this.currentUserId) !== String(this.article.userId)
     },
+    /** 是否可编辑：作者本人（匿名帖 userId 不可用，靠后端算好的 selfAuthored） */
+    canEditArticle() {
+      if (this.currentUserId == null) return false
+      if (this.article.selfAuthored === true) return true
+      if (this.article.selfAuthored === false) return false
+      return this.article.userId != null
+        && String(this.currentUserId) === String(this.article.userId)
+    },
     allowAnonymousComment() {
       return this.article.labelAllowAnonymous === 1
     },
@@ -525,6 +541,10 @@ export default {
         if (resp && resp.obj) this.interaction = resp.obj
         if (resp && resp.message) this.$message.success(resp.message)
       }).catch(() => {})
+    },
+    /** 作者在详情页直接进编辑（复用发帖页，articleId 走 query） */
+    goEditArticle() {
+      this.$router.push({ name: 'BBSArticleWrite', query: { articleId: this.articleId } })
     },
     async shareArticle() {
       const url = window.location.href
