@@ -9778,3 +9778,12 @@ PREPARE s97 FROM @sql_col_comm; EXECUTE s97; DEALLOCATE PREPARE s97;
 INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
 SELECT 'editor_preview_default', '1', '发帖页默认打开预览', 'editor', 'switch', 10, '1=默认打开 Markdown 预览，0=默认关闭；用户重新进入发帖页生效', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
 WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'editor_preview_default');
+
+-- @migration: v077-test-account-purge-permission 清理测试账号帖子权限
+-- 背景：一键清理测试账号帖子从「帖子管理」迁到「系统维护」，改为独立权限点 article:purge:test-account，
+--       默认授予管理员与超级管理员（版主不授予）；后台权限组页可单独调整。
+-- 幂等：INSERT IGNORE + 唯一键 (group_id, permission_code)。
+INSERT IGNORE INTO `bbs_permission_group_item` (`group_id`, `permission_code`, `effect`, `create_time`)
+SELECT `id`, 'article:purge:test-account', 'grant', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+FROM `bbs_permission_group`
+WHERE `group_code` IN ('role_super', 'role_admin');

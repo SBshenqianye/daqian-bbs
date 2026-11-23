@@ -439,15 +439,11 @@ public class ArticleController {
 
 
     @ApiOperation(value = "一键删除测试账号发布的所有帖子")
-    @PreAuthorize("@authz.isSuperAdmin(principal)")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_PURGE_TEST_ACCOUNT)")
     @AuditLog(module = "ARTICLE", action = "ARTICLE_PURGE_TEST_ACCOUNT",
             targetType = "ARTICLE", targetId = "'TEST_ACCOUNT'", snapshot = false)
     @PostMapping("/admin/article/purgeTestAccountArticles")
     public ResultBean purgeTestAccountArticles(){
-        ResultBean superError = requireSuperAdmin("仅超级管理员可清理测试账号帖子");
-        if (superError != null) {
-            return superError;
-        }
         return articleService.purgeTestAccountArticles();
     }
 

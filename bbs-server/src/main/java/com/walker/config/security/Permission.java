@@ -29,6 +29,8 @@ public enum Permission {
     ARTICLE_DELETE("article:delete", true, true),
     ARTICLE_FEATURE("article:feature", true, true),
     ARTICLE_SUGGESTION_ADOPT("article:suggestion:adopt", true, true),
+    /** 一键清理测试账号（is_test_account=1）发布的帖子：数据维护动作，管理员及以上 */
+    ARTICLE_PURGE_TEST_ACCOUNT("article:purge:test-account", true, false),
 
     /** 敏感词命中详情与风险画像：版主、管理员、超管均可授予（数据范围仍按板块校验） */
     SENSITIVE_READ("sensitive:read", true, true),
