@@ -215,6 +215,11 @@ public interface ArticleService extends IService<Article> {
     ResultBean purgeTestAccountArticles();
 
     /**
+     * 清理前预览：返回将被清理的测试账号及各自帖子数、合计
+     */
+    ResultBean testAccountPurgePreview();
+
+    /**
      * 方法描述 按单位统计文章数
      * @author chengQing
      * @date 2026/3/6 10:37

@@ -438,6 +438,13 @@ public class ArticleController {
     }
 
 
+    @ApiOperation(value = "清理测试账号帖子前的预览：涉及哪些账号、各多少篇")
+    @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_PURGE_TEST_ACCOUNT)")
+    @PostMapping("/admin/article/purgeTestAccountArticles/preview")
+    public ResultBean previewPurgeTestAccountArticles(){
+        return articleService.testAccountPurgePreview();
+    }
+
     @ApiOperation(value = "一键删除测试账号发布的所有帖子")
     @PreAuthorize("@authz.hasPermission(principal, T(com.walker.config.security.Permission).ARTICLE_PURGE_TEST_ACCOUNT)")
     @AuditLog(module = "ARTICLE", action = "ARTICLE_PURGE_TEST_ACCOUNT",

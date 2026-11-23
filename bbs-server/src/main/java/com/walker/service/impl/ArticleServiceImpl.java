@@ -887,6 +887,24 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
+    public ResultBean testAccountPurgePreview() {
+        List<Map<String, Object>> rows = articleMapper.selectTestAccountArticleSummary();
+        List<Map<String, Object>> users = rows == null ? new ArrayList<>() : rows;
+        long articleCount = 0;
+        for (Map<String, Object> row : users) {
+            Object count = row.get("articleCount");
+            if (count instanceof Number) {
+                articleCount += ((Number) count).longValue();
+            }
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("userCount", users.size());
+        data.put("articleCount", articleCount);
+        data.put("users", users);
+        return ResultBean.success("查询成功", data);
+    }
+
+    @Override
     public void handleBatchDeleteArticlesByAlive() {
         long affected = articleMapper.selectCount(
                 new LambdaQueryWrapper<Article>().eq(Article::getEnable, 1));

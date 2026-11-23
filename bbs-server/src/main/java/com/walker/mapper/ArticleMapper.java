@@ -123,4 +123,15 @@ public interface ArticleMapper extends BaseMapper<Article> {
             "JOIN bbs_user u ON u.id = a.user_id " +
             "WHERE a.is_delete = 0 AND u.is_test_account = 1")
     List<Integer> selectTestAccountArticleIds();
+
+    /**
+     * 清理前预览：按用户汇总测试账号的未删除帖子数
+     */
+    @Select("SELECT a.user_id AS userId, u.username AS username, u.nickname AS nickname, " +
+            "COUNT(1) AS articleCount " +
+            "FROM bbs_article a JOIN bbs_user u ON u.id = a.user_id " +
+            "WHERE a.is_delete = 0 AND u.is_test_account = 1 " +
+            "GROUP BY a.user_id, u.username, u.nickname " +
+            "ORDER BY articleCount DESC, a.user_id ASC")
+    List<Map<String, Object>> selectTestAccountArticleSummary();
 }

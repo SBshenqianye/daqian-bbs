@@ -905,4 +905,43 @@ class ArticleServiceTest {
         assertEquals(Integer.valueOf(0), result.getObj());
         verify(articleMapper, never()).deleteBatchIds(any());
     }
+
+    @Test
+    @DisplayName("清理前预览 → 返回账号明细、账号数与帖子合计")
+    void testAccountPurgePreview_returnsSummary() {
+        Map<String, Object> u1 = new HashMap<>();
+        u1.put("userId", 2);
+        u1.put("nickname", "袁志");
+        u1.put("username", "YuanZ0711");
+        u1.put("articleCount", 3L);
+        Map<String, Object> u2 = new HashMap<>();
+        u2.put("userId", 5);
+        u2.put("nickname", "余洋");
+        u2.put("username", "YuY7171");
+        u2.put("articleCount", 2L);
+        when(articleMapper.selectTestAccountArticleSummary()).thenReturn(Arrays.asList(u1, u2));
+
+        ResultBean result = articleService.testAccountPurgePreview();
+
+        assertEquals(200, result.getCode());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) result.getObj();
+        assertEquals(2, data.get("userCount"));
+        assertEquals(5L, data.get("articleCount"));
+        assertEquals(2, ((List<?>) data.get("users")).size());
+    }
+
+    @Test
+    @DisplayName("清理前预览 → 没有测试账号帖子时返回 0")
+    void testAccountPurgePreview_empty() {
+        when(articleMapper.selectTestAccountArticleSummary()).thenReturn(java.util.Collections.emptyList());
+
+        ResultBean result = articleService.testAccountPurgePreview();
+
+        assertEquals(200, result.getCode());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) result.getObj();
+        assertEquals(0, data.get("userCount"));
+        assertEquals(0L, data.get("articleCount"));
+    }
 }

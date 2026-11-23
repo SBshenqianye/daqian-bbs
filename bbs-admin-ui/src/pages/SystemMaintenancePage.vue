@@ -34,16 +34,70 @@
           <button
             class="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg font-label-md text-label-md transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             :class="canPurge ? 'bg-error text-on-primary hover:opacity-90' : 'bg-surface-variant text-on-surface'"
-            :disabled="!canPurge || purging"
-            :title="canPurge ? '删除所有测试账号发布的帖子' : '无清理权限'"
-            @click="handlePurge"
+            :disabled="!canPurge || previewLoading || purging"
+            :title="canPurge ? '先预览将被清理的账号，再确认删除' : '无清理权限'"
+            @click="openPurgePreview"
           >
             <span class="material-symbols-outlined text-[18px]">delete_sweep</span>
-            {{ purging ? '清理中...' : '立即清理测试账号帖子' }}
+            {{ previewLoading ? '统计中...' : '清理测试账号帖子' }}
           </button>
         </div>
       </div>
     </div>
+
+    <!-- 清理前预览：先看账号，再确认 -->
+    <el-dialog
+      title="确认清理测试账号帖子"
+      :visible.sync="previewVisible"
+      width="640px"
+      :close-on-click-modal="false"
+    >
+      <div class="space-y-3">
+        <div class="px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-[13px] leading-relaxed">
+          将删除 <span class="font-semibold">{{ previewUserCount }}</span> 个测试账号发布的
+          <span class="font-semibold">{{ previewArticleCount }}</span> 篇帖子。
+          执行逻辑删除（可在「帖子管理 → 已删除」复核），正常用户的帖子不受影响。
+        </div>
+
+        <div class="border border-outline-variant rounded-lg overflow-hidden">
+          <div class="max-h-64 overflow-y-auto">
+            <table class="w-full text-left">
+              <thead class="bg-surface-container-low sticky top-0">
+                <tr>
+                  <th class="px-3 py-2 text-[12px] font-medium text-on-surface-variant">用户</th>
+                  <th class="px-3 py-2 text-[12px] font-medium text-on-surface-variant">账号</th>
+                  <th class="px-3 py-2 text-[12px] font-medium text-on-surface-variant text-right">帖子数</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-outline-variant/50">
+                <tr v-for="u in previewUsers" :key="u.userId">
+                  <td class="px-3 py-2 text-body-sm">
+                    {{ u.nickname || ('用户' + u.userId) }}
+                    <span class="text-[11px] text-on-surface-variant">#{{ u.userId }}</span>
+                  </td>
+                  <td class="px-3 py-2 text-body-sm text-on-surface-variant">{{ u.username || '-' }}</td>
+                  <td class="px-3 py-2 text-body-sm text-right tabnum">{{ u.articleCount }}</td>
+                </tr>
+                <tr v-if="previewUsers.length === 0">
+                  <td colspan="3" class="px-3 py-6 text-center text-body-sm text-on-surface-variant">没有测试账号发布的帖子</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div slot="footer" class="flex justify-end gap-2">
+        <button class="px-4 py-2 text-body-sm border border-outline-variant rounded-lg hover:bg-surface-container-low" @click="previewVisible = false">取消</button>
+        <button
+          class="px-5 py-2 text-body-sm bg-error text-on-primary rounded-lg hover:opacity-90 disabled:opacity-60"
+          :disabled="purging"
+          @click="confirmPurge"
+        >
+          {{ purging ? '清理中...' : '确认清理 ' + previewArticleCount + ' 篇' }}
+        </button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -54,7 +108,14 @@ import adminStore from '@/utils/adminStore'
 export default {
   name: 'SystemMaintenancePage',
   data() {
-    return { purging: false }
+    return {
+      previewLoading: false,
+      previewVisible: false,
+      previewUsers: [],
+      previewUserCount: 0,
+      previewArticleCount: 0,
+      purging: false
+    }
   },
   computed: {
     canPurge() {
@@ -62,22 +123,35 @@ export default {
     }
   },
   methods: {
-    handlePurge() {
+    /** 先拉预览：把将被清理的账号列出来，管理员确认后才真正删除 */
+    openPurgePreview() {
       if (!this.canPurge) return
-      this.$confirm(
-        '将删除所有标记为「测试账号」的用户发布的帖子（逻辑删除，可在「帖子管理 → 已删除」查看）。此操作只影响测试账号，正常用户的帖子不受影响。确定继续？',
-        '清理测试账号帖子',
-        { type: 'warning', confirmButtonText: '确定清理', cancelButtonText: '取消' }
-      ).then(() => {
-        this.purging = true
-        this.postRequest('/admin/article/purgeTestAccountArticles', {}).then(resp => {
-          this.purging = false
-          handleResponse(resp, {
-            // 用后端返回的条数文案，例如「已删除 12 篇测试账号发布的帖子」
-            successMsg: resp && resp.code == 200 ? resp.message : undefined
-          })
-        }).catch(() => { this.purging = false })
-      }).catch(() => {})
+      this.previewLoading = true
+      this.postRequest('/admin/article/purgeTestAccountArticles/preview', {}).then(resp => {
+        this.previewLoading = false
+        if (!resp || resp.code != 200 || !resp.obj) return
+        const users = resp.obj.users || []
+        const articleCount = Number(resp.obj.articleCount || 0)
+        if (articleCount === 0) {
+          this.$message.info('当前没有测试账号发布的帖子')
+          return
+        }
+        this.previewUsers = users
+        this.previewUserCount = Number(resp.obj.userCount || users.length)
+        this.previewArticleCount = articleCount
+        this.previewVisible = true
+      }).catch(() => { this.previewLoading = false })
+    },
+    confirmPurge() {
+      this.purging = true
+      this.postRequest('/admin/article/purgeTestAccountArticles', {}).then(resp => {
+        this.purging = false
+        handleResponse(resp, {
+          // 用后端返回的条数文案，例如「已删除 12 篇测试账号发布的帖子」
+          successMsg: resp && resp.code == 200 ? resp.message : undefined,
+          onSuccess: () => { this.previewVisible = false }
+        })
+      }).catch(() => { this.purging = false })
     }
   }
 }
