@@ -873,6 +873,20 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
+    public ResultBean purgeTestAccountArticles() {
+        List<Integer> articleIds = articleMapper.selectTestAccountArticleIds();
+        int affected = 0;
+        if (articleIds != null && !articleIds.isEmpty()) {
+            affected = articleMapper.deleteBatchIds(articleIds);
+        }
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("scope", "test_account");
+        after.put("affected", affected);
+        AuditContext.setAfter(after);
+        return ResultBean.success("已删除 " + affected + " 篇测试账号发布的帖子", affected);
+    }
+
+    @Override
     public void handleBatchDeleteArticlesByAlive() {
         long affected = articleMapper.selectCount(
                 new LambdaQueryWrapper<Article>().eq(Article::getEnable, 1));
@@ -1013,6 +1027,23 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (Integer.valueOf(1).equals(articleParam.getIsAnonymous())
                 && !labelPointsPolicyService.allowsAnonymous(articleParam.getArticleLabelId())) {
             return ResultBean.error("该标签不支持匿名发帖");
+        }
+
+        // 归属校验：POST_UPDATE_OWN 只说明"能改自己的帖子"，不说明"能改任意 ID"。
+        // 缺这一步时任何登录用户都能凭 articleId 改别人的帖子（2026-11-23 修复）。
+        if (articleParam.getArticleId() == null) {
+            return ResultBean.error("文章id不能为空");
+        }
+        User editUser = currentUserService.getCurrentUser();
+        if (editUser == null) {
+            return ResultBean.error("未获取到登录用户信息，请重新登录");
+        }
+        Article existing = articleMapper.selectById(articleParam.getArticleId());
+        if (existing == null) {
+            return ResultBean.error("文章不存在或已删除");
+        }
+        if (existing.getUserId() == null || !existing.getUserId().equals(editUser.getId())) {
+            return ResultBean.forbidden("只能编辑自己发布的帖子");
         }
 
         Article article = new Article();

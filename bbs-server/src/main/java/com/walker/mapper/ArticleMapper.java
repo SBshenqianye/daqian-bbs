@@ -115,4 +115,12 @@ public interface ArticleMapper extends BaseMapper<Article> {
      */
     @Select("SELECT * FROM bbs_article WHERE article_id = #{articleId}")
     Article selectByIdRaw(@Param("articleId") Integer articleId);
+
+    /**
+     * 测试账号（bbs_user.is_test_account=1）发布且未删除的帖子 ID
+     */
+    @Select("SELECT a.article_id FROM bbs_article a " +
+            "JOIN bbs_user u ON u.id = a.user_id " +
+            "WHERE a.is_delete = 0 AND u.is_test_account = 1")
+    List<Integer> selectTestAccountArticleIds();
 }

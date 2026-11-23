@@ -829,8 +829,7 @@ class ArticleServiceTest {
 
     @Test
     @DisplayName("帖子管理 tab 计数 → 额外返回已删除帖子数")
-    void getArticleTabCounts_includesDeletedCount() {
-        when(articleMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(10L);
+    void getArticleTabCounts_includesDeletedCount() {        when(articleMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(10L);
         when(articleMapper.countDeletedArticles()).thenReturn(7L);
 
         ResultBean result = articleService.getArticleTabCounts();
@@ -840,5 +839,70 @@ class ArticleServiceTest {
         Map<String, Object> counts = (Map<String, Object>) result.getObj();
         assertEquals(10L, counts.get("done"));
         assertEquals(7L, counts.get("deleted"));
+    }
+
+    @Test
+    @DisplayName("编辑文章 → 不是作者本人 → 403 且不落库")
+    void editArticle_notOwner_forbidden() {
+        ArticleParam param = new ArticleParam();
+        param.setArticleId(6);
+        param.setArticleTitle("新标题");
+        param.setArticleContent("新正文");
+        param.setArticleLabelId(1);
+        param.setIsAnonymous(0);
+        Article other = new Article();
+        other.setArticleId(6);
+        other.setUserId(2); // 当前登录用户 id=1
+        when(articleMapper.selectById(6)).thenReturn(other);
+
+        ResultBean result = articleService.editArticle(param);
+
+        assertEquals(403, result.getCode());
+        verify(articleMapper, never()).updateById(any(Article.class));
+    }
+
+    @Test
+    @DisplayName("编辑文章 → 作者本人 → 正常更新")
+    void editArticle_owner_updates() {
+        ArticleParam param = new ArticleParam();
+        param.setArticleId(7);
+        param.setArticleTitle("新标题");
+        param.setArticleContent("新正文");
+        param.setArticleLabelId(1);
+        param.setIsAnonymous(0);
+        Article own = new Article();
+        own.setArticleId(7);
+        own.setUserId(1); // 当前登录用户 id=1
+        when(articleMapper.selectById(7)).thenReturn(own);
+        when(articleMapper.updateById(any(Article.class))).thenReturn(1);
+
+        ResultBean result = articleService.editArticle(param);
+
+        assertEquals(200, result.getCode());
+        verify(articleMapper).updateById(any(Article.class));
+    }
+
+    @Test
+    @DisplayName("一键清理测试账号帖子 → 按查出的 ID 批量逻辑删除并返回条数")
+    void purgeTestAccountArticles_deletesMatchedArticles() {        when(articleMapper.selectTestAccountArticleIds()).thenReturn(Arrays.asList(11, 12, 13));
+        when(articleMapper.deleteBatchIds(any())).thenReturn(3);
+
+        ResultBean result = articleService.purgeTestAccountArticles();
+
+        assertEquals(200, result.getCode());
+        assertEquals(Integer.valueOf(3), result.getObj());
+        verify(articleMapper).deleteBatchIds(Arrays.asList(11, 12, 13));
+    }
+
+    @Test
+    @DisplayName("一键清理测试账号帖子 → 没有命中数据时不执行删除")
+    void purgeTestAccountArticles_noMatches() {
+        when(articleMapper.selectTestAccountArticleIds()).thenReturn(java.util.Collections.emptyList());
+
+        ResultBean result = articleService.purgeTestAccountArticles();
+
+        assertEquals(200, result.getCode());
+        assertEquals(Integer.valueOf(0), result.getObj());
+        verify(articleMapper, never()).deleteBatchIds(any());
     }
 }

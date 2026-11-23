@@ -209,6 +209,12 @@ public interface ArticleService extends IService<Article> {
     ResultBean editArticle(ArticleParam articleParam);
 
     /**
+     * 一键删除测试账号（bbs_user.is_test_account=1）发布的全部帖子（逻辑删除）
+     * @return ResultBean，obj 为实际删除条数
+     */
+    ResultBean purgeTestAccountArticles();
+
+    /**
      * 方法描述 按单位统计文章数
      * @author chengQing
      * @date 2026/3/6 10:37
