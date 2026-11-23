@@ -12,6 +12,9 @@
 - **编辑接口补归属校验**：`post:update:own` 只说明"能改自己的帖子"，`editArticle` 此前没校验 `articleId` 归属，任何登录用户都能凭 ID 改别人的帖子；现比对当前登录用户与文章 `user_id`，不匹配返回 403
 
 ### 系统维护
+- **修复清理预览在 PostgreSQL 下误报「没有测试账号发布的帖子」**：预览改用 VO（`TestAccountPurgeUserVO`）接收结果。PostgreSQL 会把未加引号的列别名折叠成小写（`AS articleCount` 返回 `articlecount`），此前用 `List<Map>` 接收，`row.get("articleCount")` 在生产 PG 上恒为 null、合计恒为 0，于是明明有测试账号帖子也提示没有；MySQL 开发库因保留大小写一直正常，问题只在生产暴露
+- **同批次修掉三处同类隐患**：`LevelService` 批量算等级、`MonthlyDeductionAlertService` 月度扣分提醒、违规弹窗「被举报内容定位」都从 `List<Map>` 里读驼峰键（`userId` / `points` / `commentId`），在 PG 上同样取不到；新增 `MapRowUtil`（忽略大小写与下划线取值）统一收口，避免这三个功能在生产 PG 静默失效
+- **超级管理员账号可维护「无伤大雅」字段**：此前超管账号在用户管理里连编辑入口都打不开。现在超管本人可编辑超管账号的姓名、手机号、所属单位与「测试账号」标记；主权限组、登录名、密码/重置密码、启用状态、人员编号/身份证号仍锁定并在后端拦截（`checkSuperAdminHarmlessEdit`），删除入口一并隐藏
 - **测试账号帖子清理独立成权限与页面**：入口从「帖子管理」迁到「系统维护」，并改为权限点 `article:purge:test-account`（不再写死超管）——`v077` 迁移默认授予 `role_admin` / `role_super`，版主不授予，权限组页可单独调整；执行口径不变：按 `bbs_user.is_test_account=1` 逻辑删除帖子、返回条数、审计 `ARTICLE_PURGE_TEST_ACCOUNT`
 - **清理前先看账号再确认**：点击「清理测试账号帖子」先调 `POST /admin/article/purgeTestAccountArticles/preview`，弹窗列出将被清理的账号（昵称/账号/帖子数）与合计篇数，确认后才执行；没有可清理内容时直接提示，不弹确认框
 - **运维能力只出方案**：备份清单、立即备份受影响的表、全量导出/恢复/版本回滚的取舍与权限设计写入 `docs/系统维护-运维能力规划-2026-11-23.md`。重点记录 PostgreSQL 库内备份的两个风险：备份 schema 与业务库同生共死、自动 retention 只保留最近 3 份（更早的会被 `DROP SCHEMA ... CASCADE`），因此页面上不提供删除/恢复，长期留存必须导出到宿主机或异地

@@ -101,6 +101,7 @@ CREATE TABLE bbs_schema_version (
 - 管理端接口统一要求已认证 + `admin:access`（`AdminAccessFilter`）+ 方法级 `@PreAuthorize` 权限点；**禁止**再使用 `hasRole` / `hasAnyRole`。
 - 权限不足统一返回既有 403 结构；`AdminAccessFilter` 拒绝时前端立即退出登录，方法级拒绝只弹一次提示并记录审计。
 - 登录渠道 `02` 密码正确但缺少 `admin:access` 时，明确提示“该账号没有管理端访问权限”，不要误报密码错误。
+- 超级管理员账号（主组含 `user:grant:admin`）在用户管理里只开放“无伤大雅”字段：姓名、手机号、所属单位、测试账号标记；主权限组、登录名、密码、启用状态、人员编号/身份证号由 `UserServiceImpl#checkSuperAdminHarmlessEdit` 在后端拦截（前端仅做禁用展示），删除入口不开放。
 
 ### 前端权限
 

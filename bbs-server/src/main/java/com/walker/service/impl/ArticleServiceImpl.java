@@ -27,6 +27,7 @@ import com.walker.vo.ArticleStatisticVO;
 import com.walker.vo.param.PointsRankParam;
 import com.walker.vo.param.PersonalPointsRankParam;
 import com.walker.vo.PersonalPointsRankVO;
+import com.walker.vo.TestAccountPurgeUserVO;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -888,13 +889,12 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public ResultBean testAccountPurgePreview() {
-        List<Map<String, Object>> rows = articleMapper.selectTestAccountArticleSummary();
-        List<Map<String, Object>> users = rows == null ? new ArrayList<>() : rows;
+        List<TestAccountPurgeUserVO> rows = articleMapper.selectTestAccountArticleSummary();
+        List<TestAccountPurgeUserVO> users = rows == null ? new ArrayList<>() : rows;
         long articleCount = 0;
-        for (Map<String, Object> row : users) {
-            Object count = row.get("articleCount");
-            if (count instanceof Number) {
-                articleCount += ((Number) count).longValue();
+        for (TestAccountPurgeUserVO row : users) {
+            if (row != null && row.getArticleCount() != null) {
+                articleCount += row.getArticleCount();
             }
         }
         Map<String, Object> data = new LinkedHashMap<>();

@@ -168,14 +168,18 @@
             </button>
           </div>
           <div class="p-5 space-y-4 overflow-y-auto flex-1">
+            <div v-if="isSuperAccountTarget" class="px-3 py-2.5 bg-surface-container-low border border-outline-variant rounded-lg text-[13px] leading-relaxed text-on-surface-variant">
+              这是<span class="font-semibold text-on-surface">超级管理员账号</span>：仅可修改姓名、手机号、所属单位和测试账号标记；
+              权限组、登录名、密码、启用状态与身份信息需在专门入口操作。
+            </div>
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">人员编号</label>
-                <input v-model="editForm.personnelId" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="人员编号（与身份证号至少填一个）">
+                <input v-model="editForm.personnelId" :disabled="isSuperAccountTarget" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none disabled:bg-surface-container-low disabled:text-on-surface-variant" placeholder="人员编号（与身份证号至少填一个）">
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">用户名</label>
-                <input v-model="editForm.username" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入用户名（更改需谨慎）">
+                <input v-model="editForm.username" :disabled="isSuperAccountTarget" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none disabled:bg-surface-container-low disabled:text-on-surface-variant" placeholder="输入用户名（更改需谨慎）">
               </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
@@ -191,7 +195,7 @@
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">身份证号</label>
-                <input v-model="editForm.idCard" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="身份证号（与人员编号至少填一个）">
+                <input v-model="editForm.idCard" :disabled="isSuperAccountTarget" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none disabled:bg-surface-container-low disabled:text-on-surface-variant" placeholder="身份证号（与人员编号至少填一个）">
               </div>
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">所属单位</label>
@@ -205,7 +209,7 @@
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">主权限组</label>
                 <div class="grid grid-cols-1 grid-rows-1">
-                  <select v-model="editForm.primaryGroupId" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
+                  <select v-model="editForm.primaryGroupId" :disabled="isSuperAccountTarget" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer disabled:bg-surface-container-low disabled:text-on-surface-variant disabled:cursor-not-allowed">
                     <option :value="null">未分配</option>
                     <option v-for="group in primaryGroupOptions" :key="group.id" :value="group.id">{{ group.groupName }}</option>
                   </select>
@@ -217,7 +221,7 @@
               <div class="space-y-1">
                 <label class="text-label-md text-secondary">状态</label>
                 <div class="grid grid-cols-1 grid-rows-1">
-                  <select v-model="editForm.isAlive" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer">
+                  <select v-model="editForm.isAlive" :disabled="isSuperAccountTarget" class="w-full col-start-1 row-start-1 px-3 py-2 pr-8 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer disabled:bg-surface-container-low disabled:text-on-surface-variant disabled:cursor-not-allowed">
                     <option :value="0">活跃</option>
                     <option :value="1">禁用</option>
                   </select>
@@ -235,13 +239,13 @@
             <div class="space-y-1">
               <label class="text-label-md text-secondary">密码（留空不修改）</label>
               <div class="grid grid-cols-1 grid-rows-1 max-w-xs">
-                <input v-model="editForm.password" class="w-full col-start-1 row-start-1 pl-3 pr-10 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="输入新密码" :type="editShowPassword ? 'text' : 'password'">
+                <input v-model="editForm.password" :disabled="isSuperAccountTarget" class="w-full col-start-1 row-start-1 pl-3 pr-10 py-2 bg-surface border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none disabled:bg-surface-container-low disabled:text-on-surface-variant" placeholder="输入新密码" :type="editShowPassword ? 'text' : 'password'">
                 <button class="col-start-1 row-start-1 self-center justify-self-end mr-2 text-outline hover:text-primary transition-colors" type="button" @click="editShowPassword = !editShowPassword">
                   <span class="material-symbols-outlined text-[18px]">{{ editShowPassword ? 'visibility_off' : 'visibility' }}</span>
                 </button>
               </div>
             </div>
-            <div class="flex flex-col items-start gap-1.5">
+            <div v-if="!isSuperAccountTarget" class="flex flex-col items-start gap-1.5">
               <button class="inline-flex items-center gap-1 px-4 py-2 border border-warning text-warning rounded hover:bg-warning/5 transition-all text-label-md" @click="handleResetPassword">
                 <span class="material-symbols-outlined text-[16px]">lock_reset</span>
                 重置密码
@@ -250,10 +254,11 @@
             </div>
           </div>
           <div class="flex justify-between gap-3 p-5 border-t border-outline-variant bg-surface-container-lowest">
-            <button class="inline-flex items-center gap-1 px-4 py-2 border border-error text-error rounded hover:bg-error/5 transition-all font-label-md text-label-md" @click="handleDeleteFromEdit">
+            <button v-if="!isSuperAccountTarget" class="inline-flex items-center gap-1 px-4 py-2 border border-error text-error rounded hover:bg-error/5 transition-all font-label-md text-label-md" @click="handleDeleteFromEdit">
               <span class="material-symbols-outlined text-[16px]">delete</span>
               删除用户
             </button>
+            <span v-else class="text-body-sm text-on-surface-variant self-center">超管账号不可通过本入口删除或重置密码</span>
             <div class="flex gap-3">
               <button class="px-5 py-2 border border-outline rounded text-on-surface hover:bg-surface-variant transition-all font-label-md text-label-md" @click="editDialogVisible = false">取消</button>
               <button class="px-7 py-2 bg-primary text-on-primary rounded hover:opacity-90 transition-all font-label-md text-label-md shadow-sm" :disabled="editSaving" @click="handleSaveEdit">
@@ -647,6 +652,18 @@ export default {
     isSuperAdmin() {
       return adminStore.isSuperAdmin()
     },
+    /**
+     * 正在编辑的账号是否是超级管理员账号。
+     * 这类账号只开放“无伤大雅”的字段（姓名/手机号/单位/测试账号标记），
+     * 其余输入在后端也会被拒绝，见 UserServiceImpl#checkSuperAdminHarmlessEdit。
+     */
+    isSuperAccountTarget() {
+      if (!this.editUser) return false
+      const gid = this.editUser.primaryGroupId
+      const option = this.primaryGroupOptions.find(g => String(g.id) === String(gid))
+      if (option) return !!option.superGroup
+      return this.editUser.primaryGroupCode === 'role_super'
+    },
     totalPages() {
       return Math.max(1, Math.ceil(this.total / this.pageParams.pageSize))
     },
@@ -709,10 +726,11 @@ export default {
     canCheck(row) {
       // 后端按权限点标记：superGroup=授予管理员，privileged=用户/权限/审计/配置写
       const option = this.primaryGroupOptions.find(g => String(g.id) === String(row.primaryGroupId))
-      if (option && option.superGroup) return false
+      // 超管账号只允许超管本人打开（且编辑弹窗里只开放无伤大雅的字段）
+      if (option && option.superGroup) return this.isSuperAdmin
       if (option && option.privileged) return this.isSuperAdmin
       // 兼容组已停用/已删除、选项列表里查不到的历史数据
-      if (row.primaryGroupCode === 'role_super') return false
+      if (row.primaryGroupCode === 'role_super') return this.isSuperAdmin
       if (row.primaryGroupCode === 'role_admin') return this.isSuperAdmin
       return true
     },
@@ -925,16 +943,20 @@ export default {
     },
     handleSaveEdit() {
       const params = { id: this.editUser.id }
+      // 超管账号只提交“无伤大雅”的字段（与后端 checkSuperAdminHarmlessEdit 对齐）
+      const superTarget = this.isSuperAccountTarget
       if (this.editForm.nickname !== this.editUser.nickname) params.nickname = this.editForm.nickname
       if (this.editForm.phone !== this.editUser.phone) params.phone = this.editForm.phone
       if (this.editForm.orgNo !== this.editUser.orgNo) params.orgNo = this.editForm.orgNo
-      if (this.editForm.primaryGroupId !== (this.editUser.primaryGroupId || null)) params.primaryGroupId = this.editForm.primaryGroupId
-      if (this.editForm.isAlive !== this.editUser.isAlive) params.isAlive = this.editForm.isAlive
       if (this.editForm.isTestAccount !== (this.editUser.isTestAccount === 1)) params.isTestAccount = this.editForm.isTestAccount ? 1 : 0
-      if (this.editForm.personnelId !== (this.editUser.personnelId || '')) params.personnelId = this.editForm.personnelId
-      if (this.editForm.idCard !== (this.editUser.idCard || '')) params.idCard = this.editForm.idCard
-      if (this.editForm.username !== this.editUser.username) params.username = this.editForm.username
-      if (this.editForm.password) params.password = this.editForm.password
+      if (!superTarget) {
+        if (this.editForm.primaryGroupId !== (this.editUser.primaryGroupId || null)) params.primaryGroupId = this.editForm.primaryGroupId
+        if (this.editForm.isAlive !== this.editUser.isAlive) params.isAlive = this.editForm.isAlive
+        if (this.editForm.personnelId !== (this.editUser.personnelId || '')) params.personnelId = this.editForm.personnelId
+        if (this.editForm.idCard !== (this.editUser.idCard || '')) params.idCard = this.editForm.idCard
+        if (this.editForm.username !== this.editUser.username) params.username = this.editForm.username
+        if (this.editForm.password) params.password = this.editForm.password
+      }
 
       if (Object.keys(params).length <= 1) {
         this.$message.info('没有需要保存的变更')

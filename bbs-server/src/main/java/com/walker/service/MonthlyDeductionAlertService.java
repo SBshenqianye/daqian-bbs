@@ -5,6 +5,7 @@ import com.walker.mapper.PointsAlertMapper;
 import com.walker.mapper.ViolationMapper;
 import com.walker.pojo.PointsAlert;
 import com.walker.utils.ConstantUtil;
+import com.walker.utils.MapRowUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -102,8 +103,9 @@ public class MonthlyDeductionAlertService {
             return;
         }
         for (Map<String, Object> row : rows) {
-            Integer userId = toInt(row.get("userId"));
-            Integer points = toInt(row.get("points"));
+            // PG 会把别名 userId/points 折叠成小写，用不敏感取值
+            Integer userId = toInt(MapRowUtil.get(row, "userId"));
+            Integer points = toInt(MapRowUtil.get(row, "points"));
             if (userId != null && points != null) {
                 checkAndNotify(userId, points, month);
             }

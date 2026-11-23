@@ -205,3 +205,12 @@ bash scripts/dev/wsl.sh --restart-only
 - 灾备导出 = `scripts/prod/ops/pg-backup.sh`（`podman exec <pg> pg_dump | gzip`），**目前未接入部署**；宿主机没有 `pg_dump`，必须 exec 进容器。
 - 页面只读展示、不提供删除/恢复；部署时自动备份的方案见 `docs/系统维护-运维能力规划-2026-11-23.md`（待实现）。
 
+### 9.10 原生 SQL 返回 Map 时，PG 会把别名折叠成小写（2026-11-23 生产问题）
+
+- 现象：生产（PostgreSQL）点「清理测试账号帖子」提示“当前没有测试账号发布的帖子”，MySQL 开发库正常。
+- 根因：`SELECT a.user_id AS userId ... COUNT(1) AS articleCount` 在 PG 里返回的列名是 `userid` / `articlecount`（未加引号的标识符一律折叠小写），用 `List<Map<String,Object>>` 接收时 `row.get("articleCount")` 恒为 null，合计恒 0。
+- 判据：**聚合/联表查询一律用 VO 接收**（属性匹配大小写不敏感），不要用 Map；历史 Map 结果用 `MapRowUtil.get(row, "userId")`（忽略大小写与下划线）。
+- 同类隐患已一起修：`LevelService` 批量等级、`MonthlyDeductionAlertService` 月度扣分提醒、违规弹窗内容定位（`commentId` / `articleId` / `replyId`）——这些在 PG 上原本都静默失效。
+- 复验命令（WSL，只读）：`podman exec -i bbs-postgres psql -U work_flow -d bbs < 查询.sql`，看表头是不是 `userid / articlecount`；表头小写即证明 Map 方式取不到。
+
+

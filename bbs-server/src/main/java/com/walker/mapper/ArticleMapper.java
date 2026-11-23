@@ -7,6 +7,7 @@ import com.walker.vo.PersonalPointsRankVO;
 import com.walker.vo.param.ArticleParam;
 import com.walker.vo.param.ArticleStatisticParam;
 import com.walker.vo.ArticleStatisticVO;
+import com.walker.vo.TestAccountPurgeUserVO;
 import com.walker.vo.param.PointsRankParam;
 import com.walker.vo.param.PersonalPointsRankParam;
 import org.apache.ibatis.annotations.Mapper;
@@ -126,6 +127,9 @@ public interface ArticleMapper extends BaseMapper<Article> {
 
     /**
      * 清理前预览：按用户汇总测试账号的未删除帖子数
+     * <p>
+     * 必须用 VO 接收：PostgreSQL 把未加引号的别名折叠成小写（articleCount → articlecount），
+     * 用 Map 接收时 row.get("articleCount") 恒为 null，预览会误报“没有测试账号发布的帖子”。
      */
     @Select("SELECT a.user_id AS userId, u.username AS username, u.nickname AS nickname, " +
             "COUNT(1) AS articleCount " +
@@ -133,5 +137,5 @@ public interface ArticleMapper extends BaseMapper<Article> {
             "WHERE a.is_delete = 0 AND u.is_test_account = 1 " +
             "GROUP BY a.user_id, u.username, u.nickname " +
             "ORDER BY articleCount DESC, a.user_id ASC")
-    List<Map<String, Object>> selectTestAccountArticleSummary();
+    List<TestAccountPurgeUserVO> selectTestAccountArticleSummary();
 }

@@ -1052,6 +1052,98 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("超管编辑超管账号 → 仅改名/手机号/单位/测试账号标记 → 允许")
+    void adminUpdateUserDetail_superTarget_harmlessFields_allowed() {
+        AdminUserUpdateParam param = new AdminUserUpdateParam();
+        param.setId(1);
+        param.setNickname("超管改名");
+        param.setPhone("13800000001");
+        param.setIsTestAccount(1);
+
+        User existing = new User();
+        existing.setId(1);
+        existing.setPrimaryGroupId(10);
+        when(userMapper.selectById(1)).thenReturn(existing);
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                permissionItem(Permission.USER_GRANT_ADMIN)));
+        when(currentUserService.isSuperAdmin()).thenReturn(true);
+        when(userMapper.updateById(any(User.class))).thenReturn(1);
+
+        ResultBean result = userService.adminUpdateUserDetail(param);
+
+        assertEquals(200, result.getCode());
+        verify(userMapper).updateById(argThat(u ->
+                "超管改名".equals(((User) u).getNickname())
+                        && Integer.valueOf(1).equals(((User) u).getIsTestAccount())
+                        && ((User) u).getUsername() == null
+                        && ((User) u).getPassword() == null
+                        && ((User) u).getPrimaryGroupId() == null));
+    }
+
+    @Test
+    @DisplayName("超管编辑超管账号 → 改登录名 → 403 拒绝")
+    void adminUpdateUserDetail_superTarget_usernameRejected() {
+        AdminUserUpdateParam param = new AdminUserUpdateParam();
+        param.setId(1);
+        param.setUsername("new-root");
+
+        User existing = new User();
+        existing.setId(1);
+        existing.setPrimaryGroupId(10);
+        when(userMapper.selectById(1)).thenReturn(existing);
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                permissionItem(Permission.USER_GRANT_ADMIN)));
+        when(currentUserService.isSuperAdmin()).thenReturn(true);
+
+        ResultBean result = userService.adminUpdateUserDetail(param);
+
+        assertEquals(403, result.getCode());
+        verify(userMapper, never()).updateById(any(User.class));
+    }
+
+    @Test
+    @DisplayName("超管编辑超管账号 → 重置密码 → 403 拒绝")
+    void adminUpdateUserDetail_superTarget_resetPasswordRejected() {
+        AdminUserUpdateParam param = new AdminUserUpdateParam();
+        param.setId(1);
+        param.setResetPassword(true);
+
+        User existing = new User();
+        existing.setId(1);
+        existing.setPrimaryGroupId(10);
+        when(userMapper.selectById(1)).thenReturn(existing);
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                permissionItem(Permission.USER_GRANT_ADMIN)));
+        when(currentUserService.isSuperAdmin()).thenReturn(true);
+
+        ResultBean result = userService.adminUpdateUserDetail(param);
+
+        assertEquals(403, result.getCode());
+        verify(userMapper, never()).updateById(any(User.class));
+    }
+
+    @Test
+    @DisplayName("非超管编辑超管账号 → 即便只改昵称也 403 拒绝")
+    void adminUpdateUserDetail_superTargetByNonSuper_forbidden() {
+        AdminUserUpdateParam param = new AdminUserUpdateParam();
+        param.setId(1);
+        param.setNickname("改名");
+
+        User existing = new User();
+        existing.setId(1);
+        existing.setPrimaryGroupId(10);
+        when(userMapper.selectById(1)).thenReturn(existing);
+        when(permissionGroupItemMapper.selectList(any())).thenReturn(Collections.singletonList(
+                permissionItem(Permission.USER_GRANT_ADMIN)));
+        when(currentUserService.isSuperAdmin()).thenReturn(false);
+
+        ResultBean result = userService.adminUpdateUserDetail(param);
+
+        assertEquals(403, result.getCode());
+        verify(userMapper, never()).updateById(any(User.class));
+    }
+
+    @Test
     @DisplayName("修改用户主组 → 非超管授予管理员组 → 403 拒绝")
     void updateUserRole_grantAdminByNonSuper_forbidden() {
         User target = new User();

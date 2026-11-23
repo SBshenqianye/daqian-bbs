@@ -12,6 +12,7 @@ import com.walker.pojo.ArticleLabel;
 import com.walker.pojo.User;
 import com.walker.service.impl.ArticleServiceImpl;
 import com.walker.vo.ResultBean;
+import com.walker.vo.TestAccountPurgeUserVO;
 import com.walker.vo.param.ArticleParam;
 import com.walker.service.NotificationService;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
@@ -909,16 +910,16 @@ class ArticleServiceTest {
     @Test
     @DisplayName("清理前预览 → 返回账号明细、账号数与帖子合计")
     void testAccountPurgePreview_returnsSummary() {
-        Map<String, Object> u1 = new HashMap<>();
-        u1.put("userId", 2);
-        u1.put("nickname", "袁志");
-        u1.put("username", "YuanZ0711");
-        u1.put("articleCount", 3L);
-        Map<String, Object> u2 = new HashMap<>();
-        u2.put("userId", 5);
-        u2.put("nickname", "余洋");
-        u2.put("username", "YuY7171");
-        u2.put("articleCount", 2L);
+        TestAccountPurgeUserVO u1 = new TestAccountPurgeUserVO();
+        u1.setUserId(2);
+        u1.setNickname("袁志");
+        u1.setUsername("YuanZ0711");
+        u1.setArticleCount(3L);
+        TestAccountPurgeUserVO u2 = new TestAccountPurgeUserVO();
+        u2.setUserId(5);
+        u2.setNickname("余洋");
+        u2.setUsername("YuY7171");
+        u2.setArticleCount(2L);
         when(articleMapper.selectTestAccountArticleSummary()).thenReturn(Arrays.asList(u1, u2));
 
         ResultBean result = articleService.testAccountPurgePreview();
@@ -929,6 +930,23 @@ class ArticleServiceTest {
         assertEquals(2, data.get("userCount"));
         assertEquals(5L, data.get("articleCount"));
         assertEquals(2, ((List<?>) data.get("users")).size());
+    }
+
+    @Test
+    @DisplayName("清理前预览 → 帖子数为空时按 0 累加，不抛 NPE")
+    void testAccountPurgePreview_nullCountTreatedAsZero() {
+        TestAccountPurgeUserVO u1 = new TestAccountPurgeUserVO();
+        u1.setUserId(2);
+        u1.setArticleCount(null);
+        when(articleMapper.selectTestAccountArticleSummary()).thenReturn(java.util.Collections.singletonList(u1));
+
+        ResultBean result = articleService.testAccountPurgePreview();
+
+        assertEquals(200, result.getCode());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) result.getObj();
+        assertEquals(1, data.get("userCount"));
+        assertEquals(0L, data.get("articleCount"));
     }
 
     @Test

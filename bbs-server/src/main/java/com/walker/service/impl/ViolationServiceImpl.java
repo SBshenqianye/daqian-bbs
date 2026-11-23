@@ -24,6 +24,7 @@ import com.walker.service.UserService;
 import com.walker.service.ViolationService;
 import com.walker.service.AppealService;
 import com.walker.utils.ConstantUtil;
+import com.walker.utils.MapRowUtil;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -405,17 +406,18 @@ public class ViolationServiceImpl extends ServiceImpl<ViolationMapper, Violation
         }
         Map<Integer, Integer> commentArticleMap = new HashMap<>(); // commentId -> articleId
         for (Map<String, Object> row : queryCommentArticleIds(commentIds)) {
-            commentArticleMap.put(toInt(row.get("commentId")), toInt(row.get("articleId")));
+            // PG 把别名 commentId/articleId 折叠成小写，用不敏感取值
+            commentArticleMap.put(toInt(MapRowUtil.get(row, "commentId")), toInt(MapRowUtil.get(row, "articleId")));
         }
         Map<Integer, Integer> replyCommentMap = new HashMap<>(); // replyId -> commentId
         for (Map<String, Object> row : queryReplyCommentIds(replyIds)) {
-            replyCommentMap.put(toInt(row.get("replyId")), toInt(row.get("commentId")));
+            replyCommentMap.put(toInt(MapRowUtil.get(row, "replyId")), toInt(MapRowUtil.get(row, "commentId")));
         }
         // 回复 -> 评论 -> 文章：二次补查评论所属文章
         Set<Integer> replyCommentIds = new HashSet<>(replyCommentMap.values());
         replyCommentIds.removeAll(commentArticleMap.keySet());
         for (Map<String, Object> row : queryCommentArticleIds(replyCommentIds)) {
-            commentArticleMap.put(toInt(row.get("commentId")), toInt(row.get("articleId")));
+            commentArticleMap.put(toInt(MapRowUtil.get(row, "commentId")), toInt(MapRowUtil.get(row, "articleId")));
         }
 
         // 组装结果

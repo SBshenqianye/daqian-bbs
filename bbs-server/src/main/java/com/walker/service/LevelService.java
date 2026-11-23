@@ -5,6 +5,7 @@ import com.walker.mapper.LevelItemMapper;
 import com.walker.mapper.LevelProfileMapper;
 import com.walker.pojo.LevelItem;
 import com.walker.pojo.LevelProfile;
+import com.walker.utils.MapRowUtil;
 import com.walker.vo.ResultBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -170,8 +171,9 @@ public class LevelService {
             if (rows != null) {
                 for (Map<String, Object> row : rows) {
                     if (row == null) continue;
-                    Object uid = row.get("userId") != null ? row.get("userId") : row.get("user_id");
-                    Object total = row.get("total") != null ? row.get("total") : row.get("TOTAL");
+                    // PG 会把别名 userId 折叠成 userid，统一用不敏感取值
+                    Object uid = MapRowUtil.get(row, "userId");
+                    Object total = MapRowUtil.get(row, "total");
                     if (uid instanceof Number) {
                         pointsMap.put(((Number) uid).intValue(),
                                 total instanceof Number ? ((Number) total).intValue() : 0);

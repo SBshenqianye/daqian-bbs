@@ -1039,6 +1039,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             if ((targetPrivileged || grantingPrivileged) && !isCurrentUserSuperAdmin()) {
                 return ResultBean.forbidden("仅超级管理员可修改管理类权限组账号");
             }
+        } else if (isSuperGroup(user.getPrimaryGroupId())) {
+            // 超级管理员账号：仅超管可改，且只允许改“无伤大雅”的字段
+            // （姓名 / 手机号 / 所属单位 / 测试账号标记）；组、登录名、密码、状态、身份信息走专门入口。
+            if (!isCurrentUserSuperAdmin()) {
+                return ResultBean.forbidden("超级管理员账号不可通过此接口变更");
+            }
+            ResultBean denied = checkSuperAdminHarmlessEdit(param);
+            if (denied != null) {
+                return denied;
+            }
         } else if (isPrivilegedGroupId(user.getPrimaryGroupId()) && !isCurrentUserSuperAdmin()) {
             // 与前端“管理类账号仅超管可编辑”保持一致，防止直接调接口绕过
             return ResultBean.forbidden("仅超级管理员可修改管理类权限组账号");
@@ -1415,6 +1425,32 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             scopes.add(scope);
         }
         return scopes;
+    }
+
+    /**
+     * 超级管理员账号的可改字段白名单：姓名 / 手机号 / 所属单位 / 测试账号标记。
+     * 其余字段（权限组、登录名、密码、启用状态、身份信息）必须在专门入口操作，
+     * 前端会禁用输入，这里兜底防止直接调接口绕过。
+     */
+    private ResultBean checkSuperAdminHarmlessEdit(AdminUserUpdateParam param) {
+        if (param.getPrimaryGroupId() != null || StringUtils.isNoneBlank(param.getUserType())) {
+            return ResultBean.forbidden("超级管理员账号的主权限组不可在此修改");
+        }
+        if (StringUtils.isNoneBlank(param.getUsername())) {
+            return ResultBean.forbidden("超级管理员账号的登录名不可在此修改");
+        }
+        if (StringUtils.isNoneBlank(param.getPassword())
+                || Boolean.TRUE.equals(param.getResetPassword())) {
+            return ResultBean.forbidden("超级管理员账号的密码不可在此修改，请使用专门的重置入口");
+        }
+        if (param.getIsAlive() != null) {
+            return ResultBean.forbidden("超级管理员账号的启用状态不可在此修改");
+        }
+        if (StringUtils.isNoneBlank(param.getPersonnelId())
+                || StringUtils.isNoneBlank(param.getIdCard())) {
+            return ResultBean.forbidden("超级管理员账号的人员编号/身份证号不可在此修改");
+        }
+        return null;
     }
 
     /**
