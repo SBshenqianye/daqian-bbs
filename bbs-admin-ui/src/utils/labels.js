@@ -109,6 +109,7 @@ export const AUDIT_ACTION_GROUPS = [
     { value: 'ARTICLE_BATCH_AUDIT', label: '批量审核文章' },
     { value: 'ARTICLE_DELETE', label: '删除文章' },
     { value: 'ARTICLE_BATCH_DELETE', label: '批量删除文章' },
+    { value: 'ARTICLE_PURGE_TEST_ACCOUNT', label: '清理测试账号帖子' },
     { value: 'ARTICLE_FEATURE_CHANGE', label: '设置/取消精华' },
     { value: 'ARTICLE_SENSITIVE_VIEW', label: '查看命中详情' }
   ] },

@@ -10,6 +10,16 @@
           </h1>
           <p class="text-body-md text-secondary mt-1">审核和管理所有用户发布的帖子</p>
         </div>
+        <button
+          v-if="isSuperAdmin"
+          class="inline-flex items-center gap-1.5 px-4 py-2 bg-surface-variant text-on-surface rounded-lg hover:bg-outline-variant transition-all font-label-md text-label-md disabled:opacity-40"
+          :disabled="purging"
+          title="删除所有标记为测试账号的用户发布的帖子"
+          @click="handlePurgeTestAccountArticles"
+        >
+          <span class="material-symbols-outlined text-[18px]">cleaning_services</span>
+          {{ purging ? '清理中...' : '清理测试账号帖子' }}
+        </button>
       </div>
 
       <!-- Search & Filter Bar -->
@@ -554,6 +564,7 @@ export default {
       pointsLogLoading: false,
       pointsLogDialogUser: { id: null, nickname: '' },
       pointsLogList: [],
+      purging: false,
     }
   },
   computed: {
@@ -830,6 +841,27 @@ export default {
         this.postRequest('/admin/batchAudit/', {}).then(resp => {
           handleResponse(resp, { onSuccess: () => this.fetchList() })
         })
+      }).catch(() => {})
+    },
+    /** 一键清理测试账号（bbs_user.is_test_account=1）发布的帖子：逻辑删除，可在「已删除」Tab 复核 */
+    handlePurgeTestAccountArticles() {
+      this.$confirm(
+        '将删除所有标记为「测试账号」的用户发布的帖子（逻辑删除，可在「已删除」中查看）。此操作只影响测试账号，正常用户的帖子不受影响。确定继续？',
+        '清理测试账号帖子',
+        { type: 'warning', confirmButtonText: '确定清理', cancelButtonText: '取消' }
+      ).then(() => {
+        this.purging = true
+        this.postRequest('/admin/article/purgeTestAccountArticles', {}).then(resp => {
+          this.purging = false
+          handleResponse(resp, {
+            // 用后端返回的条数文案，例如「已删除 12 篇测试账号发布的帖子」
+            successMsg: resp && resp.code == 200 ? resp.message : undefined,
+            onSuccess: () => {
+              this.fetchList()
+              this.loadTabCounts()
+            }
+          })
+        }).catch(() => { this.purging = false })
       }).catch(() => {})
     },
     handleDeleteComment(commentId) {
