@@ -17,8 +17,8 @@
 
       <div class="hero-photo__content relative z-10 max-w-7xl mx-auto px-page-margin-desktop py-10 md:py-14">
         <div class="max-w-3xl mx-auto text-center">
-          <h1 class="text-[27px] md:text-[34px] font-semibold leading-tight mb-3 tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">欢迎来到大千智荟创新创意交流论坛</h1>
-          <p class="text-[14px] md:text-[15px] text-white/85 max-w-2xl mx-auto drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]">汇聚国网智慧，激发创新灵感，共同打造卓越的企业级知识共享平台。</p>
+          <h1 class="hero-title text-[27px] md:text-[34px] font-semibold leading-tight mb-3">欢迎来到大千智荟创新创意交流论坛</h1>
+          <p class="hero-subtitle text-[14px] md:text-[15px] max-w-2xl mx-auto">汇聚国网智慧，激发创新灵感，共同打造卓越的企业级知识共享平台。</p>
           <div class="mt-5 flex items-center justify-center gap-2 flex-wrap">
             <span class="hero-pill"><span class="material-symbols-outlined text-[15px]">forum</span>{{ articleTotal }} 篇讨论</span>
             <span class="hero-pill"><span class="material-symbols-outlined text-[15px]">category</span>{{ Math.max(0, categories.length - 1) }} 个板块</span>
@@ -745,12 +745,23 @@ export default {
 .hero-photo {
   background-color: #0a1830;
   min-height: 260px;
+  /* 文字后方暗晕的横向半径：桌面端只覆盖标题所在的中段，左右两侧保持明亮 */
+  --hero-scrim-w: 35%;
+}
+
+/* 窄屏标题几乎占满宽度，暗晕随之加宽，否则字尾落在亮底上 */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .hero-photo {
+    --hero-scrim-w: 46%;
+  }
 }
 
 .hero-photo__media {
   position: absolute;
   inset: 0;
   display: flex;
+  /* 原片偏灰（阴天/逆光），整体提亮并补一点饱和度，让左右两侧的场景看得清 */
+  filter: brightness(1.16) saturate(1.1) contrast(1.03);
 }
 
 .hero-photo__shot {
@@ -788,29 +799,53 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* 竖构图按 35% 纵向取景，保留楼顶与"人民电业为人民"标语 */
-  object-position: center 35%;
-  /* 轻度压亮，与其余照片观感一致，避免最右侧过亮抢标题 */
-  filter: brightness(0.9) saturate(0.95);
+  /* 竖构图按 38% 纵向取景，保住楼体与"人民电业为人民"标语 */
+  object-position: center 38%;
+  /* 轻微推近：右侧供图是竖幅，放大后左缘的大片白色天空被挤出画面，
+     与石牌坊的叠接处不再出现一条"发白的空带" */
+  transform: scale(1.18);
+  /* 与其余照片同亮度，不再单独压暗（领导反馈右侧整体偏暗） */
+  filter: brightness(1.02) saturate(0.98);
 }
 
-/* 压暗层：中间略深保证标题对比度，左右两侧更亮（领导反馈两侧看不清），过渡平滑 */
+/* 压暗层：只在标题/正文后方做柔和暗晕（保证字形对比度），左右两侧不做整体压暗，保持明亮 */
 .hero-photo__scrim {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg,
-      rgba(7, 18, 36, 0.10) 0%,
-      rgba(7, 18, 36, 0.20) 16%,
-      rgba(7, 18, 36, 0.48) 38%,
-      rgba(7, 18, 36, 0.58) 50%,
-      rgba(7, 18, 36, 0.48) 62%,
-      rgba(7, 18, 36, 0.20) 84%,
-      rgba(7, 18, 36, 0.10) 100%),
-    linear-gradient(180deg, rgba(7, 18, 36, 0.16) 0%, rgba(7, 18, 36, 0.28) 100%);
+    radial-gradient(ellipse var(--hero-scrim-w) 126% at 50% 50%,
+      rgba(6, 16, 33, 0.60) 0%,
+      rgba(6, 16, 33, 0.40) 38%,
+      rgba(6, 16, 33, 0.14) 66%,
+      rgba(6, 16, 33, 0) 84%),
+    /* 极轻的上下过渡：只服务版权行与边缘收口，不削弱主体亮度 */
+    linear-gradient(180deg,
+      rgba(6, 16, 33, 0.08) 0%,
+      rgba(6, 16, 33, 0) 34%,
+      rgba(6, 16, 33, 0) 62%,
+      rgba(6, 16, 33, 0.18) 100%);
 }
 
-/* Hero 数据胶囊：轻量白描边，增加论坛氛围但不抢标题 */
+/* Hero 文案：背景整体提亮后靠字体自身撑对比度——
+   近黑描边阴影（贴合笔画）+ 大范围柔光暗影（压住周围杂色），比单层 drop-shadow 更耐亮底 */
+.hero-title {
+  color: #fff;
+  letter-spacing: 0.01em;
+  text-shadow:
+    0 1px 3px rgba(3, 10, 22, 0.92),
+    0 4px 18px rgba(3, 10, 22, 0.75),
+    0 12px 42px rgba(3, 10, 22, 0.5);
+}
+
+.hero-subtitle {
+  color: #fff;
+  font-weight: 500;
+  text-shadow:
+    0 1px 4px rgba(3, 10, 22, 0.95),
+    0 3px 16px rgba(3, 10, 22, 0.8);
+}
+
+/* Hero 数据胶囊：轻量暗玻璃底，亮画面上也能看清，但不抢标题 */
 .hero-pill {
   display: inline-flex;
   align-items: center;
@@ -819,9 +854,9 @@ export default {
   border-radius: 9999px;
   font-size: 11.5px;
   line-height: 1;
-  color: rgba(255, 255, 255, 0.86);
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(8, 20, 38, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   backdrop-filter: blur(4px);
 }
 
@@ -832,7 +867,8 @@ export default {
   z-index: 10;
   font-size: 10px;
   line-height: 1.2;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.62);
+  text-shadow: 0 1px 3px rgba(3, 10, 22, 0.7);
   pointer-events: none;
 }
 
@@ -853,7 +889,12 @@ export default {
     margin-left: -6%;
   }
   .hero-photo__scrim {
-    background: linear-gradient(180deg, rgba(7, 18, 36, 0.5) 0%, rgba(7, 18, 36, 0.58) 128px, #0a1830 128px);
+    /* 移动端文字已在纯色底上，影像条只需轻微压边收口，保持明亮 */
+    background: linear-gradient(180deg,
+      rgba(6, 16, 33, 0.16) 0%,
+      rgba(6, 16, 33, 0.30) 70px,
+      rgba(6, 16, 33, 0.48) 128px,
+      #0a1830 128px);
   }
   .hero-photo__content {
     padding-top: 160px;
