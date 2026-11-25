@@ -4,7 +4,7 @@
     <section class="hero-photo relative overflow-hidden text-white">
       <!-- 图片带：多张地标图以左缘渐变叠接，末张为供图的电力大楼 -->
       <div class="hero-photo__media" aria-hidden="true">
-        <div class="hero-photo__shot" :style="{ backgroundImage: 'url(' + heroImages.tuojiang + ')' }"></div>
+        <div class="hero-photo__shot" :style="{ backgroundImage: 'url(' + heroImages.taibai + ')' }"></div>
         <div class="hero-photo__shot hero-photo__shot--fade" :style="{ backgroundImage: 'url(' + heroImages.shengshui + ')' }"></div>
         <div class="hero-photo__shot hero-photo__shot--fade hero-photo__shot--optional" :style="{ backgroundImage: 'url(' + heroImages.paifang + ')' }"></div>
         <div class="hero-photo__slot">
@@ -27,7 +27,7 @@
         </div>
       </div>
 
-      <p class="hero-photo__credits">沱江风光·圣水寺·隆昌石牌坊·国网大楼</p>
+      <p class="hero-photo__credits">太白楼·圣水寺·隆昌石牌坊·国网大楼</p>
     </section>
 
     <!-- Main Layout Container -->
@@ -343,7 +343,7 @@ import { dateStr } from '@/utils/time'
 import BBSSelect from '@/components/BBSSelect.vue'
 import PostListItem from '@/components/PostListItem.vue'
 import { generateFeaturedCover } from '@/utils/featured-cover'
-import heroTuojiang from '@/assets/hero/neijiang-tuojiang.jpg'
+import heroTaibai from '@/assets/hero/neijiang-taibai.jpg'
 import heroShengshui from '@/assets/hero/neijiang-shengshui.jpg'
 import heroPaifang from '@/assets/hero/neijiang-paifang.jpg'
 import heroBuilding from '@/assets/hero/neijiang-power-building.jpg'
@@ -355,7 +355,7 @@ export default {
     return {
       // 首页 Hero 地标图（顺序：左 → 右）
       heroImages: {
-        tuojiang: heroTuojiang,
+        taibai: heroTaibai,
         shengshui: heroShengshui,
         paifang: heroPaifang,
         building: heroBuilding,
