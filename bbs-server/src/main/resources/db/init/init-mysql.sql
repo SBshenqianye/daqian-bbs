@@ -1302,3 +1302,25 @@ WHERE NOT EXISTS (SELECT 1 FROM `bbs_svg_asset` WHERE `asset_name`='等级图标
 INSERT INTO `bbs_svg_asset` (`asset_name`, `category`, `svg`, `created_by`, `create_time`, `update_time`)
 SELECT '等级图标 · 万伏执炬人', 'level', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="24" height="24" aria-hidden="true"><path d="M32 2C37 7 37 12 34 15 33 11 31 10 30 9 30 12 29 13 28 14 25 10 27 5 32 2Z" fill="#fbbf24"/> <path d="M32 7C34 10 34 12 32.5 14 32 12 31 11.5 30.5 11 30.5 13 30 13.5 29.5 14 28 12 29 9 32 7Z" fill="#fde68a"/> <path d="M32 15 22 59H42Z" fill="none" stroke="#dc2626" stroke-width="4.4" stroke-linejoin="round"/> <path d="M21 25H43" stroke="#dc2626" stroke-width="4.4" stroke-linecap="round"/> <path d="M24 38H40" stroke="#dc2626" stroke-width="4.4" stroke-linecap="round"/> <path d="M25 52 32 44 39 52" fill="none" stroke="#dc2626" stroke-width="3.2" stroke-linejoin="round"/> <g stroke="#ff3b3b" stroke-width="2.4" stroke-linecap="round"> <path d="M9 8 15 12"/><path d="M55 8 49 12"/><path d="M5 24H11"/><path d="M59 24H53"/> </g></svg>', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
 WHERE NOT EXISTS (SELECT 1 FROM `bbs_svg_asset` WHERE `asset_name`='等级图标 · 万伏执炬人' COLLATE utf8mb4_general_ci);
+
+-- @migration: v078-home-hero-images 首页 Hero 影像带可配置
+-- 背景：影像带 4 张图此前写死在 bbs-ui 打包资源里，换一张图要改代码重新发版（2026-11-25 领导要求后台可配）。
+-- 处理：新增 config_group=home 的 5 个配置：
+--       hero_image_1..4 = 各格图片地址（后台「系统配置」上传后自动写入；留空则该格使用内置默认图）；
+--       hero_caption    = 右下角来源标注（留空用默认文案）。
+-- 幂等：WHERE NOT EXISTS 按 config_key 判断。图片地址建议用 /bbs-server/files/common/upload/... 相对路径。
+INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
+SELECT 'hero_image_1', '', 'Hero 第1格（左一）', 'home', 'image', 10, '留空=内置默认图；建议横图 ≥1600×900', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'hero_image_1');
+INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
+SELECT 'hero_image_2', '', 'Hero 第2格', 'home', 'image', 20, '留空=内置默认图；建议横图 ≥1600×900', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'hero_image_2');
+INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
+SELECT 'hero_image_3', '', 'Hero 第3格（移动端隐藏）', 'home', 'image', 30, '留空=内置默认图；建议横图 ≥1600×900', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'hero_image_3');
+INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
+SELECT 'hero_image_4', '', 'Hero 第4格（最右）', 'home', 'image', 40, '留空=内置默认图；当前默认图是竖幅大楼，换成横幅也不会变形（自动 cover 裁切）', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'hero_image_4');
+INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
+SELECT 'hero_caption', '俯瞰内江·圣水寺·隆昌石牌坊·国网大楼', 'Hero 右下角来源标注', 'home', 'text', 50, '留空则隐藏该行；各图用“·”分隔', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'hero_caption');

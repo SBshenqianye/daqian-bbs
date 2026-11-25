@@ -9454,3 +9454,24 @@ SELECT id, 'article:purge:test-account', 'grant', TO_CHAR(NOW(), 'YYYY-MM-DD HH2
 FROM bbs_permission_group
 WHERE group_code IN ('role_super', 'role_admin')
 ON CONFLICT (group_id, permission_code) DO NOTHING;
+-- @migration: v078-home-hero-images 首页 Hero 影像带可配置
+-- 背景：影像带 4 张图此前写死在 bbs-ui 打包资源里，换一张图要改代码重新发版（2026-11-25 领导要求后台可配）。
+-- 处理：新增 config_group=home 的 5 个配置：
+--       hero_image_1..4 = 各格图片地址（后台「系统配置」上传后自动写入；留空则该格使用内置默认图）；
+--       hero_caption    = 右下角来源标注（留空用默认文案）。
+-- 幂等：WHERE NOT EXISTS 按 config_key 判断。图片地址建议用 /bbs-server/files/common/upload/... 相对路径。
+INSERT INTO bbs_system_config (config_key, config_value, config_label, config_group, config_type, sort_order, remark, create_by, create_time)
+SELECT 'hero_image_1', '', 'Hero 第1格（左一）', 'home', 'image', 10, '留空=内置默认图；建议横图 ≥1600×900', '系统', to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+WHERE NOT EXISTS (SELECT 1 FROM bbs_system_config WHERE config_key = 'hero_image_1');
+INSERT INTO bbs_system_config (config_key, config_value, config_label, config_group, config_type, sort_order, remark, create_by, create_time)
+SELECT 'hero_image_2', '', 'Hero 第2格', 'home', 'image', 20, '留空=内置默认图；建议横图 ≥1600×900', '系统', to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+WHERE NOT EXISTS (SELECT 1 FROM bbs_system_config WHERE config_key = 'hero_image_2');
+INSERT INTO bbs_system_config (config_key, config_value, config_label, config_group, config_type, sort_order, remark, create_by, create_time)
+SELECT 'hero_image_3', '', 'Hero 第3格（移动端隐藏）', 'home', 'image', 30, '留空=内置默认图；建议横图 ≥1600×900', '系统', to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+WHERE NOT EXISTS (SELECT 1 FROM bbs_system_config WHERE config_key = 'hero_image_3');
+INSERT INTO bbs_system_config (config_key, config_value, config_label, config_group, config_type, sort_order, remark, create_by, create_time)
+SELECT 'hero_image_4', '', 'Hero 第4格（最右）', 'home', 'image', 40, '留空=内置默认图；当前默认图是竖幅大楼，换成横幅也不会变形（自动 cover 裁切）', '系统', to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+WHERE NOT EXISTS (SELECT 1 FROM bbs_system_config WHERE config_key = 'hero_image_4');
+INSERT INTO bbs_system_config (config_key, config_value, config_label, config_group, config_type, sort_order, remark, create_by, create_time)
+SELECT 'hero_caption', '俯瞰内江·圣水寺·隆昌石牌坊·国网大楼', 'Hero 右下角来源标注', 'home', 'text', 50, '留空则隐藏该行；各图用“·”分隔', '系统', to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+WHERE NOT EXISTS (SELECT 1 FROM bbs_system_config WHERE config_key = 'hero_caption');

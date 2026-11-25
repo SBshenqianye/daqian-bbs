@@ -12,6 +12,69 @@
         </div>
       </div>
 
+      <!-- Home Hero Settings Card -->
+      <div class="bg-container border border-border rounded-xl p-card-padding mb-6">
+        <div class="flex items-center gap-2 mb-4 pb-3 border-b border-outline-variant">
+          <span class="material-symbols-outlined text-primary">photo_library</span>
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">首页 Hero 影像带</h2>
+          <span class="text-[11px] text-on-surface-variant ml-auto">用户端首页顶部 4 格地标图，留空即用内置默认图</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div v-for="slot in heroSlots" :key="slot.no">
+            <div class="flex items-baseline justify-between mb-1.5">
+              <label class="font-label-md text-label-md text-secondary ml-0.5">{{ slot.label }}</label>
+              <span class="text-[11px] text-on-surface-variant">{{ slot.hint }}</span>
+            </div>
+            <div class="relative rounded-lg overflow-hidden border border-outline-variant bg-surface" style="height: 110px">
+              <div
+                v-if="heroForm[slot.no]"
+                class="w-full h-full bg-cover bg-center"
+                :style="{ backgroundImage: 'url(' + heroForm[slot.no] + ')' }"
+              ></div>
+              <div v-else class="w-full h-full flex items-center justify-center text-[12px] text-outline">使用内置默认图</div>
+            </div>
+            <div class="flex items-center gap-2 mt-2">
+              <input :id="'hero-file-' + slot.no" type="file" accept="image/*" class="hidden" @change="onHeroPick(slot.no, $event)">
+              <label
+                :for="'hero-file-' + slot.no"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-primary bg-primary/5 rounded hover:bg-primary/10 transition-colors"
+                :class="{ 'opacity-40 pointer-events-none': !canWriteConfig }"
+                :title="canWriteConfig ? '上传并替换该格图片' : '无配置修改权限'"
+              >
+                <span class="material-symbols-outlined text-[14px]">upload</span>上传图片
+              </label>
+              <button
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-error bg-error/5 rounded hover:bg-error/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="!heroForm[slot.no] || !canWriteConfig"
+                @click="clearHeroSlot(slot.no)"
+              >
+                <span class="material-symbols-outlined text-[14px]">undo</span>恢复默认
+              </button>
+              <span class="text-[11px] text-on-surface-variant truncate flex-1" :title="heroForm[slot.no]">{{ heroForm[slot.no] || '—' }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="mt-4">
+          <label class="font-label-md text-label-md text-secondary ml-0.5 mb-1.5 block">右下角来源标注</label>
+          <input
+            v-model="heroForm.caption"
+            class="w-full px-4 py-2 bg-surface border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-body-md"
+            placeholder="如 俯瞰内江·圣水寺·隆昌石牌坊·国网大楼（留空则隐藏该行）"
+            maxlength="120"
+          >
+        </div>
+        <div class="flex justify-end mt-4">
+          <button
+            class="inline-flex items-center gap-1.5 px-5 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-all font-label-md text-label-md shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            @click="saveHeroConfig"
+            :disabled="heroSaving || !canWriteConfig"
+            :title="canWriteConfig ? '保存 Hero 设置' : '无配置修改权限'"
+          >
+            {{ heroSaving ? '保存中...' : '保存 Hero 设置' }}
+          </button>
+        </div>
+      </div>
+
       <!-- Contact Settings Card -->
       <div class="bg-container border border-border rounded-xl p-card-padding mb-6">
         <div class="flex items-center gap-2 mb-4 pb-3 border-b border-outline-variant">
@@ -261,9 +324,18 @@ export default {
       contactSaving: false,
       editorForm: { previewDefault: true },
       editorSaving: false,
+      // 首页 Hero 影像带：4 格图片 + 右下角来源标注
+      heroSlots: [
+        { no: 1, label: '第 1 格（左一）', hint: '建议横图 ≥1600×900' },
+        { no: 2, label: '第 2 格', hint: '建议横图 ≥1600×900' },
+        { no: 3, label: '第 3 格', hint: '移动端隐藏' },
+        { no: 4, label: '第 4 格（最右）', hint: '竖/横图按 cover 裁切' },
+      ],
+      heroForm: { 1: '', 2: '', 3: '', 4: '', caption: '' },
+      heroSaving: false,
     }
   },
-  mounted() { this.loadList(); this.loadContactInfo(); this.loadEditorConfig() },
+  mounted() { this.loadList(); this.loadContactInfo(); this.loadEditorConfig(); this.loadHeroConfig() },
   methods: {
     loadList() {
       this.postRequest('/admin/systemConfig/list', {}).then(resp => {
@@ -323,6 +395,85 @@ export default {
           handleResponse(resp, { onSuccess: () => { this.loadList() } })
         })
       }).catch(() => {})
+    },
+    // ===== 首页 Hero 影像带 =====
+    loadHeroConfig() {
+      this.postRequest('/common/systemConfig/listByGroup', { configGroup: 'home' }).then(resp => {
+        const list = resp && resp.obj && Array.isArray(resp.obj) ? resp.obj : []
+        const pick = key => {
+          const item = list.find(c => c.configKey === key)
+          return item && item.configValue != null ? String(item.configValue).trim() : ''
+        }
+        this.heroForm = {
+          1: pick('hero_image_1'),
+          2: pick('hero_image_2'),
+          3: pick('hero_image_3'),
+          4: pick('hero_image_4'),
+          caption: pick('hero_caption'),
+        }
+      })
+    },
+    onHeroPick(no, ev) {
+      const input = ev && ev.target
+      const file = input && input.files && input.files[0]
+      if (input) input.value = ''
+      if (!file) return
+      const formData = new FormData()
+      formData.append('file', file)
+      this.uploadFile('/common/upload', formData).then(res => {
+        const url = typeof res === 'string' ? res.trim() : ''
+        // 后端上传失败也返回 200 + 字符串（如"请先登录"/校验提示），用路径特征区分
+        if (!url || url.indexOf('/files/') === -1) {
+          this.$message.error(url || '图片上传失败')
+          return
+        }
+        this.heroForm = { ...this.heroForm, [no]: url }
+        this.$message.success('图片已上传，点「保存 Hero 设置」后生效')
+      }).catch(() => { this.$message.error('图片上传失败') })
+    },
+    clearHeroSlot(no) {
+      this.heroForm = { ...this.heroForm, [no]: '' }
+    },
+    saveHeroConfig() {
+      if (!this.canWriteConfig) return
+      const fields = [
+        { key: 'hero_image_1', value: this.heroForm[1], label: 'Hero 第1格（左一）', type: 'image', order: 10, remark: '留空=内置默认图；建议横图 ≥1600×900' },
+        { key: 'hero_image_2', value: this.heroForm[2], label: 'Hero 第2格', type: 'image', order: 20, remark: '留空=内置默认图；建议横图 ≥1600×900' },
+        { key: 'hero_image_3', value: this.heroForm[3], label: 'Hero 第3格（移动端隐藏）', type: 'image', order: 30, remark: '留空=内置默认图；建议横图 ≥1600×900' },
+        { key: 'hero_image_4', value: this.heroForm[4], label: 'Hero 第4格（最右）', type: 'image', order: 40, remark: '留空=内置默认图；竖/横图均按 cover 裁切' },
+        { key: 'hero_caption', value: this.heroForm.caption, label: 'Hero 右下角来源标注', type: 'text', order: 50, remark: '留空则隐藏该行；各图用“·”分隔' },
+      ]
+      this.heroSaving = true
+      this.postRequest('/common/systemConfig/listByGroup', { configGroup: 'home' }).then(resp => {
+        const list = resp && resp.obj && Array.isArray(resp.obj) ? resp.obj : []
+        const tasks = fields.map(f => {
+          const value = String(f.value == null ? '' : f.value).trim()
+          const exist = list.find(c => c.configKey === f.key)
+          if (exist && exist.id) {
+            return this.postRequest('/admin/systemConfig/update', { id: exist.id, configValue: value })
+          }
+          // 没有配置行且值为空 → 无需新增（留空即默认）
+          if (!value) return Promise.resolve(null)
+          return this.postRequest('/admin/systemConfig/add', {
+            configKey: f.key,
+            configValue: value,
+            configLabel: f.label,
+            configGroup: 'home',
+            configType: f.type,
+            sortOrder: f.order,
+            remark: f.remark,
+          })
+        })
+        return Promise.all(tasks)
+      }).then(() => {
+        this.$message.success('Hero 设置已保存')
+        this.loadHeroConfig()
+        this.loadList()
+      }).catch(() => {
+        this.$message.error('保存失败，请重试')
+      }).finally(() => {
+        this.heroSaving = false
+      })
     },
     loadContactInfo() {
       this.postRequest('/common/systemConfig/listByGroup', { configGroup: 'contact' }).then(resp => {

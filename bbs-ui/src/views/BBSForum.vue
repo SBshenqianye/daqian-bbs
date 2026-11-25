@@ -2,13 +2,14 @@
   <main class="min-h-screen bg-surface">
     <!-- Hero Section：内江地标影像带 -->
     <section class="hero-photo relative overflow-hidden text-white">
-      <!-- 图片带：多张地标图以左缘渐变叠接，末张为供图的电力大楼 -->
+      <!-- 图片带：多张地标图以左缘渐变叠接，末张为供图的电力大楼；
+           四格图片均可在后台「系统配置 → 首页 Hero」替换，未配置时用打包内置图 -->
       <div class="hero-photo__media" aria-hidden="true">
-        <div class="hero-photo__shot" :style="{ backgroundImage: 'url(' + heroImages.taibai + ')' }"></div>
-        <div class="hero-photo__shot hero-photo__shot--fade" :style="{ backgroundImage: 'url(' + heroImages.shengshui + ')' }"></div>
-        <div class="hero-photo__shot hero-photo__shot--fade hero-photo__shot--optional" :style="{ backgroundImage: 'url(' + heroImages.paifang + ')' }"></div>
-        <div class="hero-photo__slot">
-          <img class="hero-photo__slot-img" :src="heroImages.building" alt="国网大楼">
+        <div class="hero-photo__shot" :style="heroShotStyle(1, heroImages.overlook)"></div>
+        <div class="hero-photo__shot hero-photo__shot--fade" :style="heroShotStyle(2, heroImages.shengshui)"></div>
+        <div class="hero-photo__shot hero-photo__shot--fade hero-photo__shot--optional" :style="heroShotStyle(3, heroImages.paifang)"></div>
+        <div class="hero-photo__slot" :class="{ 'hero-photo__slot--custom': !!heroConfig[4] }">
+          <img class="hero-photo__slot-img" :src="heroConfig[4] || heroImages.building" alt="内江地标">
         </div>
       </div>
 
@@ -27,7 +28,7 @@
         </div>
       </div>
 
-      <p class="hero-photo__credits">太白楼·圣水寺·隆昌石牌坊·国网大楼</p>
+      <p v-if="heroCaptionText" class="hero-photo__credits">{{ heroCaptionText }}</p>
     </section>
 
     <!-- Main Layout Container -->
@@ -343,7 +344,7 @@ import { dateStr } from '@/utils/time'
 import BBSSelect from '@/components/BBSSelect.vue'
 import PostListItem from '@/components/PostListItem.vue'
 import { generateFeaturedCover } from '@/utils/featured-cover'
-import heroTaibai from '@/assets/hero/neijiang-taibai.jpg'
+import heroOverlook from '@/assets/hero/neijiang-overlook.jpg'
 import heroShengshui from '@/assets/hero/neijiang-shengshui.jpg'
 import heroPaifang from '@/assets/hero/neijiang-paifang.jpg'
 import heroBuilding from '@/assets/hero/neijiang-power-building.jpg'
@@ -353,13 +354,17 @@ export default {
   components: { BBSSelect, PostListItem },
   data() {
     return {
-      // 首页 Hero 地标图（顺序：左 → 右）
+      // 首页 Hero 地标图（顺序：左 → 右）：打包内置默认图
       heroImages: {
-        taibai: heroTaibai,
+        overlook: heroOverlook,
         shengshui: heroShengshui,
         paifang: heroPaifang,
         building: heroBuilding,
       },
+      // 后台「系统配置 → 首页 Hero」配置的图片地址（1..4），为空则该格用上面的内置图
+      heroConfig: { 1: '', 2: '', 3: '', 4: '' },
+      // null = 尚未读取配置（用默认文案）；'' = 后台主动清空（隐藏该行）
+      heroCaptionRaw: null,
       loading: false,
       categories: [],
       articles: [],
@@ -405,6 +410,7 @@ export default {
     }
   },
   mounted() {
+    this.loadHeroConfig()
     const kw = this.$route.query.keywords
     this.keywords = kw || ''
     this.fetchArticles(kw || '')
@@ -450,10 +456,38 @@ export default {
     visibleFeaturedSidebar() {
       return this.featuredSidebarExpand ? this.featuredSidebar : this.featuredSidebar.slice(0, 3)
     },
+    // 右下角来源标注：未读到配置时用内置文案，读到空串时隐藏（后台主动清空）
+    heroCaptionText() {
+      if (this.heroCaptionRaw === null) return '俯瞰内江·圣水寺·隆昌石牌坊·国网大楼'
+      return this.heroCaptionRaw
+    },
   },
   methods: {
     formatTime(val) {
       return dateStr(val)
+    },
+    // 单格背景：后台配了图就用配置，否则用打包内置图
+    heroShotStyle(no, fallback) {
+      return { backgroundImage: `url(${this.heroConfig[no] || fallback})` }
+    },
+    // 读取后台「系统配置 → 首页 Hero」（分组 home）；任何异常都回落到内置图
+    loadHeroConfig() {
+      this.postRequest('/common/systemConfig/listByGroup', { configGroup: 'home' }).then(resp => {
+        const list = resp && resp.obj && Array.isArray(resp.obj) ? resp.obj : []
+        const pick = key => {
+          const item = list.find(c => c.configKey === key)
+          const raw = item && item.configValue != null ? String(item.configValue).trim() : ''
+          return raw ? normalizeFileUrl(raw) : ''
+        }
+        this.heroConfig = {
+          1: pick('hero_image_1'),
+          2: pick('hero_image_2'),
+          3: pick('hero_image_3'),
+          4: pick('hero_image_4'),
+        }
+        const caption = list.find(c => c.configKey === 'hero_caption')
+        this.heroCaptionRaw = caption && caption.configValue != null ? String(caption.configValue).trim() : null
+      }).catch(() => {})
     },
     fetchArticles(keywords = this.keywords) {
       this.loading = true
@@ -806,6 +840,13 @@ export default {
   transform: scale(1.18);
   /* 与其余照片同亮度，不再单独压暗（领导反馈右侧整体偏暗） */
   filter: brightness(1.02) saturate(0.98);
+}
+
+/* 后台换成自定义图时不再做竖幅推近/取景，直接 cover 居中，避免任意图被裁得看不出内容 */
+.hero-photo__slot--custom .hero-photo__slot-img {
+  object-position: center;
+  transform: none;
+  filter: none;
 }
 
 /* 压暗层：只在标题/正文后方做柔和暗晕（保证字形对比度），左右两侧不做整体压暗，保持明亮 */
