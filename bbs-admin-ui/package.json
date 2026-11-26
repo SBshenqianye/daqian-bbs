@@ -11,6 +11,7 @@
   "dependencies": {
     "axios": "^0.18.0",
     "babel-polyfill": "^6.26.0",
+    "cropperjs": "^1.5.13",
     "echarts": "^5.4.1",
     "element-ui": "^2.11.0",
     "markdown-it": "^13.0.2",
