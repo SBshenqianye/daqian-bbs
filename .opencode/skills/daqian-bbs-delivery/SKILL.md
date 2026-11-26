@@ -219,4 +219,14 @@ bash scripts/dev/wsl.sh --restart-only
 - **追加迁移块时别让两份 SQL 串味**：用 PowerShell `Add-Content` 往 `upgrade-pg.sql` 追加时，若把 MySQL 的反引号（`` `column` ``）一起带过去，PG 会直接语法错。**两份 upgrade/init SQL 必须分别写、分别核对**；本地只跑 PG 时，MySQL 那份只能人工 review，发版后要到生产日志确认 `Migration applied: vNNN-xxx` 才算过。
 - **`home` 配置组驱动首页影像带**（`v078-home-hero-images` 起）：`bbs_system_config` 里 `config_group='home'` 的 `hero_image_1..4`（每格图片地址，留空=用打包内置图）+ `hero_caption`（右下角来源标注，留空=隐藏）。后台「配置管理 → 系统配置 → 首页 Hero 影像带」逐格上传走 `/common/upload`、写入走 `config:write`；`/common/systemConfig/listByGroup` 是 permitAll，用户端 `mounted` 读一次即可。**换图不需要重新打包**，但自定义图不套第 4 格的“竖幅推近”裁切（`.hero-photo__slot--custom` 走 cover 居中）。
 
+### 9.12 图片裁剪上传的坑（Hero 裁剪，2026-11-26）
+
+- **`getCroppedCanvas({maxWidth, maxHeight})` 会二次缩放**：cropperjs 先按上限缩源图（`source.width`），再把裁剪框坐标乘以 `source.width / naturalWidth`，所以 3840×2160 的源图选 3:2 也裁，结果只有 1350×900，而不是预期的 1600×1067。正确做法：先 `getCroppedCanvas()` 取原分辨率，再自己建 canvas 等比缩到目标最长边（本次 1600）。
+- **重新裁剪只能基于已上传的图**：反复裁会一层层掉清晰度。必须给“恢复默认 → 重新传原图”的逃生口，并在弹窗里写明，否则用户裁两次就以为功能坏。想彻底避免要额外保存原图 URL（当前未做）。
+- **跨域图必须先进 blob**：把已上传 URL 直接塞给 cropper，`canvas.toBlob()` 会抛 `SecurityError`（画布被污染）。先 `fetch(url, {credentials:'same-origin'}) → blob → URL.createObjectURL`，用完 `revokeObjectURL`。
+- **上传前裁剪顺带解决“原图太大”**：4K 原图裁成 1600×1067、q0.9 后约 400KB（实测 391KB），比原图上传快且不占磁盘；大小上限（`spring.servlet.multipart.max-file-size=100MB`）反而不是瓶颈，慢在传输。
+- **Hero 每格的显示比随视口变，单一裁剪比例不可能精确**：260px 定高 + 四等分列，实测 1920≈2.07、1440≈1.55、1280≈1.38、1100≈1.19、768≈0.83（390 宽时条高 360、第 3 格隐藏）。所以默认给「3:2」折中，另配 16:9 / 4:3 / 1:1 / 自由比例，由使用者按主要观看宽度选。
+- **依赖与 lock**：`vue-cropperjs` / `cropperjs` 原本就在 `bbs-admin-ui` 依赖里但没用过，可直接复用；一旦 `import cropperjs` 就要把它提为直接依赖，`npm install --package-lock-only --offline` 在 lockfileVersion 3 下只增一行，不会重写整份。
+- **这类弹窗的验收姿势**：Playwright `setInputFiles()` 对隐藏 `<input type=file>` 同样有效；以 `.cropper-container` 可见判弹窗就绪；上传后从预览的 `background-image` 里取 URL，再用页面内 `new Image()` 读 `naturalWidth/naturalHeight` 断言比例（4K 源必须得到 1600×1067），比肉眼看截图可靠。
+
 
