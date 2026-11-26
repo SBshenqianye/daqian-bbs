@@ -213,4 +213,10 @@ bash scripts/dev/wsl.sh --restart-only
 - 同类隐患已一起修：`LevelService` 批量等级、`MonthlyDeductionAlertService` 月度扣分提醒、违规弹窗内容定位（`commentId` / `articleId` / `replyId`）——这些在 PG 上原本都静默失效。
 - 复验命令（WSL，只读）：`podman exec -i bbs-postgres psql -U work_flow -d bbs < 查询.sql`，看表头是不是 `userid / articlecount`；表头小写即证明 Map 方式取不到。
 
+### 9.11 首页 Hero 影像带与打包的环境坑（2026-11-26）
+
+- **WSL 冷启动会让 `package.ps1` 假失败**：机器刚重启时首跑抛 `Starting the CLR failed with HRESULT 80004005`，此时**没有产出任何产物**（`dist/` 不会多包）。先 `wsl -e bash -lc "echo ok"` 确认 WSL 可用再重跑，通常一次就通；不要为此改脚本或换方案。
+- **追加迁移块时别让两份 SQL 串味**：用 PowerShell `Add-Content` 往 `upgrade-pg.sql` 追加时，若把 MySQL 的反引号（`` `column` ``）一起带过去，PG 会直接语法错。**两份 upgrade/init SQL 必须分别写、分别核对**；本地只跑 PG 时，MySQL 那份只能人工 review，发版后要到生产日志确认 `Migration applied: vNNN-xxx` 才算过。
+- **`home` 配置组驱动首页影像带**（`v078-home-hero-images` 起）：`bbs_system_config` 里 `config_group='home'` 的 `hero_image_1..4`（每格图片地址，留空=用打包内置图）+ `hero_caption`（右下角来源标注，留空=隐藏）。后台「配置管理 → 系统配置 → 首页 Hero 影像带」逐格上传走 `/common/upload`、写入走 `config:write`；`/common/systemConfig/listByGroup` 是 permitAll，用户端 `mounted` 读一次即可。**换图不需要重新打包**，但自定义图不套第 4 格的“竖幅推近”裁切（`.hero-photo__slot--custom` 走 cover 居中）。
+
 
