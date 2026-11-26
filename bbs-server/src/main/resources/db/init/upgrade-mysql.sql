@@ -9809,3 +9809,25 @@ WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'hero_i
 INSERT INTO `bbs_system_config` (`config_key`, `config_value`, `config_label`, `config_group`, `config_type`, `sort_order`, `remark`, `create_by`, `create_time`)
 SELECT 'hero_caption', '俯瞰内江·圣水寺·隆昌石牌坊·国网大楼', 'Hero 右下角来源标注', 'home', 'text', 50, '留空则隐藏该行；各图用“·”分隔', '系统', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
 WHERE NOT EXISTS (SELECT 1 FROM `bbs_system_config` WHERE `config_key` = 'hero_caption');
+
+-- @migration: v079-violation-dict-dedupe 清理违规字典旧格式残留与重复键行
+-- 背景：v012-ops-v2 以 dict_value='illegal' 判断是否已存在并插入旧格式行（无 dict_key）。
+--       在 init 已写入 dict_key='illegal', dict_value='15' 的库上重放时，该判断仍成立 → 插入无键行；
+--       若 v020 随后执行，无键行被原地改成带键行，形成同 dict_key 双行。
+--       v036 只删 dict_key 为空的行，覆盖不到「已被 v020 转成带键」的情况。
+-- 处理：前端/后端只按 dict_key 读取，无键行与同键重复行都是死数据：
+--       1) 删除 violation 下无 dict_key 的旧格式行；
+--       2) 同一 dict_key 只保留 id 最小的一行（即最早写入的原始配置）。
+-- 幂等：重复执行匹配 0 行，结果一致；干净库不受影响。
+DELETE FROM `bbs_dict`
+WHERE `dict_type` = 'violation'
+  AND (`dict_key` IS NULL OR `dict_key` = '');
+
+DELETE d FROM `bbs_dict` d
+JOIN `bbs_dict` k
+  ON k.`dict_type` = d.`dict_type`
+ AND k.`dict_key` = d.`dict_key`
+ AND k.`id` < d.`id`
+WHERE d.`dict_type` = 'violation'
+  AND d.`dict_key` IS NOT NULL
+  AND d.`dict_key` <> '';
