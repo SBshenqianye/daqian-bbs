@@ -4,7 +4,8 @@
     "test:e2e:headed": "npx playwright test --headed",
     "test:e2e:report": "npx playwright show-report",
     "doc:check": "node scripts/dev/doc-check.mjs",
-    "doc:write": "node scripts/dev/doc-check.mjs --write"
+    "doc:write": "node scripts/dev/doc-check.mjs --write",
+    "doc:delta": "node scripts/dev/doc-check.mjs --delta"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1"

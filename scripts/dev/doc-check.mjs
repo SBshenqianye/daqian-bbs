@@ -111,6 +111,38 @@ const commit = git('git rev-parse --short HEAD');
 const branch = git('git rev-parse --abbrev-ref HEAD');
 const dirty = git('git status --porcelain').split(/\r?\n/).filter(Boolean).length;
 
+/* ---------------- 8. 设计承诺（--delta） ---------------- */
+const DESIGN_DIR = 'docs/human/设计';
+function commitments() {
+  const out = [];
+  if (!fs.existsSync(path.join(ROOT, DESIGN_DIR))) return out;
+  for (const f of fs.readdirSync(path.join(ROOT, DESIGN_DIR)).filter((n) => n.endsWith('.md'))) {
+    const t = read(path.join(DESIGN_DIR, f));
+    t.split(/\r?\n/).forEach((line, i) => {
+      const m = line.match(/^\s*-\s*\[([ xX])\]\s+(.*)$/);
+      if (m) out.push({ file: f, line: i + 1, done: m[1].toLowerCase() === 'x', text: m[2].trim() });
+    });
+  }
+  return out;
+}
+function printDelta(detail) {
+  const all = commitments();
+  if (!all.length) {
+    console.log('[DELTA] 设计文档里没有 `- [ ]` 承诺清单（约定见 docs/README.md）');
+    return;
+  }
+  const done = all.filter((x) => x.done).length;
+  const pct = Math.round((done / all.length) * 100);
+  console.log(`[DELTA] 设计承诺 ${all.length} / 已实现 ${done} / 完成度 ${pct}%（间距 = 未实现 ${all.length - done} 项）`);
+  if (detail) {
+    for (const x of all.filter((v) => !v.done)) {
+      console.log(`  [ ] ${x.file}:${x.line}  ${x.text}`);
+    }
+  } else if (all.length - done > 0) {
+    console.log('  （加 --delta 查看未实现清单）');
+  }
+}
+
 /* ---------------- 输出 ---------------- */
 const lines = [];
 const P = (s = '') => lines.push(s);
@@ -198,6 +230,7 @@ if (WRITE) {
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   fs.writeFileSync(OUT, content);
   console.log(`[OK] 已生成 ${path.relative(ROOT, OUT)}（${content.split('\n').length} 行）`);
+  printDelta(process.argv.includes('--delta'));
   process.exit(0);
 }
 
@@ -215,6 +248,7 @@ if (!old) {
 
 if (body(old) === body(content)) {
   console.log('[OK] 实现事实与代码一致');
+  printDelta(process.argv.includes('--delta'));
   process.exit(0);
 }
 
@@ -233,4 +267,5 @@ for (let i = 0; i < max && shown < 40; i++) {
 }
 if (shown === 0) console.error('  （仅空白差异）');
 console.error('\n修复：node scripts/dev/doc-check.mjs --write');
+printDelta(false);
 process.exit(1);
