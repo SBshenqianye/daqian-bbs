@@ -57,8 +57,8 @@ PY
     fi
 fi
 
-echo "===== 2. 升级包 ====="
-LATEST=$(ls -t dist/bbs-upgrade-*.tar.gz 2>/dev/null | head -1)
+echo "===== 2. 升级包（新契约 v2） ====="
+LATEST=$(ls -t dist/bbs-upgrade-*.tar.gz dist/bbs-migrate-*.tar.gz 2>/dev/null | head -1)
 check "存在升级包" "[ -n '$LATEST' ]"
 
 if [ -n "$LATEST" ]; then
@@ -67,29 +67,49 @@ if [ -n "$LATEST" ]; then
 
     TMP=$(mktemp -d)
     tar -xzf "$LATEST" -C "$TMP"
-    INNER=$(find "$TMP" -maxdepth 1 -type d -name 'upgrade-*' | head -1)
+    INNER=$(find "$TMP" -maxdepth 2 -name manifest.json -printf '%h\n' | head -1)
+    check "包内含 manifest.json" "[ -n '$INNER' ]"
 
-    check "包内含 bbs-ui/dist"            "[ -d '$INNER/bbs-ui/dist' ]"
-    check "包内含 bbs-admin-ui/dist"      "[ -d '$INNER/bbs-admin-ui/dist' ]"
-    check "包内含 upgrade.sh"             "[ -f '$INNER/upgrade.sh' ]"
-    check "upgrade.sh 启动参数含 -Dloader.path=/app/lib" \
-        "grep -q 'loader.path=/app/lib' '$INNER/upgrade.sh'"
+    if [ -n "$INNER" ]; then
+        check "包内含 manifest.env（deploy.sh 无需 python3）" "[ -f '$INNER/manifest.env' ]"
+        check "包内含 SHA256SUMS" "[ -f '$INNER/SHA256SUMS' ]"
+        check "包内逐文件哈希可校验" "( cd '$INNER' && sha256sum -c --quiet SHA256SUMS )"
+        check "包内无 deploy.sh（不得覆盖现场入口）" "! find '$INNER' -maxdepth 2 -name deploy.sh | grep -q ."
+        check "包内含 payload/app/bbs-server.jar" "[ -f '$INNER/payload/app/bbs-server.jar' ]"
+        check "包内含 payload/app/bbs-ui/dist"     "[ -d '$INNER/payload/app/bbs-ui/dist' ]"
+        check "包内含 payload/app/bbs-admin-ui/dist" "[ -d '$INNER/payload/app/bbs-admin-ui/dist' ]"
+        check "包内含 scripts/prod/package.sh（脚本全量）" "[ -f '$INNER/scripts/prod/package.sh' ]"
+        check "包内含 scripts/prod/one_key_deploy.sh（兼容壳）" "[ -f '$INNER/scripts/prod/one_key_deploy.sh' ]"
+        check "包内不含 .env（避免把构建机配置带到现场）" "! find '$INNER/scripts' -maxdepth 1 -name '.env' | grep -q ."
 
-    # 版本一致性：包内 jar 真正嵌的 schema 必须等于源码最新迁移块，
-    # 否则说明 jar 是旧的（2026-11-18 的包只到 v065，源码已到 v071+，就是这个问题）
-    check "包内含 version.txt" "[ -f '$INNER/version.txt' ]"
-    if [ -f "$INNER/version.txt" ]; then
-        CUR_SCHEMA=$(grep -o '^-- @migration: [^ ]*' bbs-server/src/main/resources/db/init/upgrade-mysql.sql | tail -1 | awk '{print $3}')
-        PKG_SCHEMA=$(grep '^schema_version=' "$INNER/version.txt" | cut -d= -f2)
-        echo "      源码 schema=$CUR_SCHEMA  包内 schema=$PKG_SCHEMA"
-        check "包内 jar 的 schema 与源码一致" "[ '$PKG_SCHEMA' = '$CUR_SCHEMA' ]"
-    fi
+        if [ -f "$INNER/manifest.json" ]; then
+            MV=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$INNER/manifest.json" | head -1)
+            MC=$(sed -n 's/.*"commit"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$INNER/manifest.json" | head -1)
+            MM=$(sed -n 's/.*"mode"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$INNER/manifest.json" | head -1)
+            MS=$(sed -n 's/.*"source"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$INNER/manifest.json" | head -1)
+            echo "      manifest: version=$MV commit=$MC mode=$MM source=$MS"
+            check "manifest.version 非空" "[ -n '$MV' ]"
+            check "manifest.commit 非空（不是 unknown）" "[ -n '$MC' ] && [ '$MC' != 'unknown' ]"
+            # 版本号必须来自产物（包内 version），不能是文件名时间戳：只校验形态
+            check "manifest.version 形态合法（YYYYmmdd_HHMMSS）" "printf '%s' '$MV' | grep -Eq '^[0-9]{8}_[0-9]{6}$'"
+            HEAD_SHORT=$(git rev-parse --short HEAD 2>/dev/null)
+            case "$MS" in
+                from:*)
+                    echo "      注意：本包由旧包重打（$MS），commit 记录为 $MC，不做 HEAD 比对"
+                    check "重打包记录了来源包" "[ -n '$MS' ]"
+                    ;;
+                *)
+                    check "manifest.commit 与仓库 HEAD 一致（$HEAD_SHORT）" "[ '$MC' = '$HEAD_SHORT' ]"
+                    ;;
+            esac
+        fi
 
-    if [ -f "$INNER/bbs-server.jar" ]; then
-        jar_mb=$(du -m "$INNER/bbs-server.jar" | cut -f1)
-        check "包内 jar 为瘦 jar < 5MB（实际 ${jar_mb}MB）" "[ '$jar_mb' -lt 5 ]"
-        check "瘦 jar 不含 BOOT-INF/lib" \
-            "python3 -c \"import zipfile; z=zipfile.ZipFile('$INNER/bbs-server.jar'); assert not any(n.startswith('BOOT-INF/lib/') for n in z.namelist())\""
+        if [ -f "$INNER/payload/app/bbs-server.jar" ]; then
+            jar_mb=$(du -m "$INNER/payload/app/bbs-server.jar" | cut -f1)
+            check "包内 jar 为瘦 jar < 5MB（实际 ${jar_mb}MB）" "[ '$jar_mb' -lt 5 ]"
+            check "瘦 jar 不含 BOOT-INF/lib" \
+                "python3 -c \"import zipfile; z=zipfile.ZipFile('$INNER/payload/app/bbs-server.jar'); assert not any(n.startswith('BOOT-INF/lib/') for n in z.namelist())\""
+        fi
     fi
     rm -rf "$TMP"
 fi

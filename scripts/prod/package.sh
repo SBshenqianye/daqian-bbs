@@ -1,419 +1,317 @@
 #!/bin/bash
-# ============================================
-# BBS 离线打包脚本
-# 将构建产物打包为可分发的 tar.gz 文件
+# ============================================================================
+# BBS 离线打包（新契约 v2，2026-11-27）
+#
+#   payload/app/{bbs-server.jar,bbs-ui/dist/,bbs-admin-ui/dist/}
+#   scripts/                     全量运维脚本（含 lib/prod/dev/test）
+#   manifest.json / manifest.env / SHA256SUMS
+#
 # 用法:
-#   bash scripts/prod/package.sh                      # 轻量升级包（默认，输出到 dist/）
-#   bash scripts/prod/package.sh --upgrade            # 轻量升级包
-#   bash scripts/prod/package.sh --full              # 完整环境包（含基础镜像）
-# ============================================
-set -e
+#   bash scripts/prod/package.sh                      # 轻量升级包（mode=update）
+#   bash scripts/prod/package.sh --full               # 完整环境包（含基础镜像）
+#   bash scripts/prod/package.sh --from <旧包.tar.gz>  # 用旧包内产物重打（不改代码）
+#   bash scripts/prod/package.sh --mode migrate       # 结构迁移包（payload=现网同版本）
+#   bash scripts/prod/package.sh --stage candidate    # 候选包（手测用）
+#   bash scripts/prod/package.sh --commit 291ae68     # 指定 commit（默认取 git HEAD）
+#   bash scripts/prod/package.sh --db-compat forward-only
+#
+# 产物:
+#   dist/bbs-<mode>-<YYYYMMDD-HHMMSS>.tar.gz
+#   dist/bbs-<mode>-<YYYYMMDD-HHMMSS>.tar.gz.sha256   （大写哈希）
+#
+# 说明:
+#   - 不再生成 upgrade.sh（已废弃）；升级由 deploy.sh 负责，先验证后切换、失败自动回滚。
+#   - 包内**不得**包含 deploy.sh（避免覆盖现场入口脚本）。
+#   - mode=migrate 用于"只改结构不改代码"：payload 与现网同版本，deploy.sh 会校验 jar 哈希一致。
+# ============================================================================
+set -u
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-cd "$ROOT_DIR"
+cd "$ROOT_DIR" || exit 1
 
-MODE="${1:-upgrade}"  # upgrade(默认) | full
+MODE="update"          # update | full | migrate
+STAGE="release"        # candidate | release
+COMMIT=""
+VERSION_OVERRIDE=""
+DB_COMPAT="backward-compatible"
+FROM_PKG=""
+TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 
-# --------------- 颜色 ---------------
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; RED='\033[0;31m'; NC='\033[0m'
-info()  { echo -e "${CYAN}[INFO]${NC} $1" >&2; }
-ok()    { echo -e "${GREEN}[OK]${NC} $1" >&2; }
-warn()  { echo -e "${YELLOW}[WARN]${NC} $1" >&2; }
-err()   { echo -e "${RED}[ERR]${NC} $1" >&2; }
+info() { printf '%s[INFO]%s %s\n' "$CYAN" "$NC" "$*" >&2; }
+ok()   { printf '%s[ OK ]%s %s\n' "$GREEN" "$NC" "$*" >&2; }
+warn() { printf '%s[WARN]%s %s\n' "$YELLOW" "$NC" "$*" >&2; }
+err()  { printf '%s[FAIL]%s %s\n' "$RED" "$NC" "$*" >&2; exit 1; }
 
-# --------------- 进度指示库 ---------------
-source "$ROOT_DIR/scripts/lib/progress.sh"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --full|full) MODE="full"; shift ;;
+        --upgrade|upgrade|update|--update) MODE="update"; shift ;;
+        --migrate|migrate) MODE="migrate"; shift ;;
+        --mode) MODE="${2:-}"; shift 2 ;;
+        --mode=*) MODE="${1#*=}"; shift ;;
+        --stage) STAGE="${2:-release}"; shift 2 ;;
+        --stage=*) STAGE="${1#*=}"; shift ;;
+        --commit) COMMIT="${2:-}"; shift 2 ;;
+        --commit=*) COMMIT="${1#*=}"; shift ;;
+        --db-compat) DB_COMPAT="${2:-}"; shift 2 ;;
+        --db-compat=*) DB_COMPAT="${1#*=}"; shift ;;
+        --version) VERSION_OVERRIDE="${2:-}"; shift 2 ;;
+        --version=*) VERSION_OVERRIDE="${1#*=}"; shift ;;
+        --from) FROM_PKG="${2:-}"; shift 2 ;;
+        --from=*) FROM_PKG="${1#*=}"; shift ;;
+        -h|--help) sed -n '2,/^set -u/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) err "未知参数: $1" ;;
+    esac
+done
 
-# --------------- 检查构建产物 ---------------
+case "$MODE" in update|full|migrate) ;; *) err "--mode 只能是 update|full|migrate" ;; esac
+case "$STAGE" in candidate|release) ;; *) err "--stage 只能是 candidate|release" ;; esac
+
+command -v python3 >/dev/null 2>&1 || err "需要 python3（manifest 生成与瘦 jar）"
+command -v sha256sum >/dev/null 2>&1 || err "需要 sha256sum"
+
+# ---------------------------------------------------------------- 产物 ------
+JAR_FAT="bbs-server/target/bbs-server.jar"
+UI_DIST="bbs-ui/dist"
+ADMIN_DIST="bbs-admin-ui/dist"
+
 check_artifacts() {
     local missing=0
-    if [ ! -d "bbs-ui/dist" ];           then warn "bbs-ui/dist 不存在";         missing=1; fi
-    if [ ! -d "bbs-admin-ui/dist" ];     then warn "bbs-admin-ui/dist 不存在";   missing=1; fi
-    if [ ! -f "bbs-server/target/bbs-server.jar" ]; then warn "bbs-server.jar 不存在"; missing=1; fi
-
-    if [ "$missing" -ne 0 ]; then
-        echo ""; warn "部分构建产物缺失，请先在 Windows 完成构建（bbs-ui / bbs-admin-ui 的 npm run build + bbs-server 的 mvn clean package -DskipTests）；WSL 下可执行 bash scripts/dev/wsl.sh --build"; echo ""
-        read -p "是否继续打包？(y/N) " -n 1 -r; echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then exit 1; fi
+    [ -f "$JAR_FAT" ]  || { warn "缺少 $JAR_FAT"; missing=1; }
+    [ -d "$UI_DIST" ]  || { warn "缺少 $UI_DIST"; missing=1; }
+    [ -d "$ADMIN_DIST" ] || { warn "缺少 $ADMIN_DIST"; missing=1; }
+    if [ "$missing" = "1" ]; then
+        err "构建产物缺失：Windows 侧先跑两个 npm run build + mvn clean package -DskipTests（或用 --from 复用旧包产物）"
     fi
 }
 
-
-# --------------- 生成瘦 jar（依赖下沉版） ---------------
-# fat jar（ZIP 布局）→ 去掉 BOOT-INF/lib → 瘦 jar。
-# 依赖由基础镜像内 /app/lib 提供（启动参数 -Dloader.path=/app/lib），
-# 升级包因此只携带业务代码 + 前端，体积从 ~67MB 降到 ~5MB。
-# 旧 fat jar 升级包仍兼容：自包含，在任何镜像上都能跑（见兼容矩阵）。
+# 瘦 jar：剔除 BOOT-INF/lib（依赖由基础镜像 /app/lib 提供）
 make_thin_jar() {
     local fat="$1" thin="$2"
-    info "生成瘦 jar（剔除 BOOT-INF/lib）: $(basename "$thin")"
-
-    if command -v python3 >/dev/null 2>&1; then
-        python3 - "$fat" "$thin" <<'PYEOF'
+    info "生成瘦 jar: $(basename "$thin")"
+    python3 - "$fat" "$thin" <<'PY'
 import zipfile, sys
 src, dst = sys.argv[1], sys.argv[2]
-with zipfile.ZipFile(src, 'r') as zin, zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zout:
+with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zout:
     for item in zin.infolist():
         if item.filename.startswith('BOOT-INF/lib/'):
             continue
         zout.writestr(item, zin.read(item.filename))
-PYEOF
-    elif command -v python >/dev/null 2>&1; then
-        python - "$fat" "$thin" <<'PYEOF'
-import zipfile, sys
-src, dst = sys.argv[1], sys.argv[2]
-with zipfile.ZipFile(src, 'r') as zin, zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zout:
-    for item in zin.infolist():
-        if item.filename.startswith('BOOT-INF/lib/'):
-            continue
-        zout.writestr(item, zin.read(item.filename))
-PYEOF
-    else
-        err "生成瘦 jar 需要 python3 或 python（用于 zip 重写），请先安装"
-        exit 1
-    fi
-
-    # 校验：瘦 jar 不应再包含 BOOT-INF/lib
-    local has_lib
-    if command -v python3 >/dev/null 2>&1; then
-        has_lib=$(python3 -c "import zipfile; z=zipfile.ZipFile('$thin'); print(1 if any(n.startswith('BOOT-INF/lib/') for n in z.namelist()) else 0)")
-    else
-        has_lib=$(python -c "import zipfile; z=zipfile.ZipFile('$thin'); print(1 if any(n.startswith('BOOT-INF/lib/') for n in z.namelist()) else 0)")
-    fi
-    if [ "$has_lib" = "0" ]; then
-        ok "瘦 jar 校验通过（不含 BOOT-INF/lib）"
-    else
-        err "瘦 jar 生成异常：仍包含 BOOT-INF/lib，已中止"
-        exit 1
-    fi
+PY
+    python3 - "$thin" <<'PY'
+import sys, zipfile
+z = zipfile.ZipFile(sys.argv[1])
+bad = [n for n in z.namelist() if n.startswith('BOOT-INF/lib/')]
+sys.exit(1 if bad else 0)
+PY
+    [ $? -eq 0 ] || err "瘦 jar 仍包含 BOOT-INF/lib"
+    ok "瘦 jar 校验通过（不含 BOOT-INF/lib）"
 }
 
+# ---------------------------------------------------------------- 组装 ------
+WORK="$ROOT_DIR/tmp/pkg-$TIMESTAMP"
+PKG_BASENAME=""
+VERSION=""
+COMMIT_FINAL=""
+SOURCE_NOTE="build"
 
-# --------------- 创建压缩包（输出到 dist/） ---------------
-create_tarball() {
-    local dir_name="$1"        # 压缩包内目录名
-    local file_prefix="$2"     # 文件名前缀
-    local OUTPUT_DIR="$ROOT_DIR/tmp/$dir_name"
-    local VERSION; VERSION=$(date +%Y%m%d-%H%M%S)
-    local PACKAGE_NAME="${file_prefix}-${VERSION}.tar.gz"
-
-    info "===== 创建压缩包 ====="
-
-    # 输出到 dist/ 目录
-    mkdir -p "$ROOT_DIR/dist"
-    run_with_spinner "正在压缩 $(basename "$OUTPUT_DIR")" \
-        tar -czf "$ROOT_DIR/dist/$PACKAGE_NAME" -C "$ROOT_DIR/tmp" "$dir_name"
-
-    local size
-    size=$(du -h "$ROOT_DIR/dist/$PACKAGE_NAME" | cut -f1)
-    ok "打包完成: $ROOT_DIR/dist/$PACKAGE_NAME (${size})"
-
-    # 生成 SHA256（与既有 .sha256 文件同格式：纯大写哈希），便于离线传输校验
-    if command -v sha256sum >/dev/null 2>&1; then
-        ( cd "$ROOT_DIR/dist" && sha256sum "$PACKAGE_NAME" | awk '{print toupper($1)}' > "$PACKAGE_NAME.sha256" )
-        ok "SHA256: $(cat "$ROOT_DIR/dist/$PACKAGE_NAME.sha256")"
+prepare_from_pkg() {
+    local pkg="$1"
+    [ -f "$pkg" ] || err "旧包不存在: $pkg"
+    local x="$WORK/_from"
+    mkdir -p "$x"
+    tar -xzf "$pkg" -C "$x" || err "旧包解压失败"
+    local inner
+    inner=$(find "$x" -maxdepth 1 -mindepth 1 -type d | head -1)
+    [ -n "$inner" ] || err "旧包内无目录"
+    FROM_DIR=""
+    # 旧契约：upgrade-*/bbs-server.jar；新契约：payload/app/
+    if [ -f "$inner/payload/app/bbs-server.jar" ]; then FROM_DIR="$inner/payload/app"
+    elif [ -f "$inner/bbs-server.jar" ]; then FROM_DIR="$inner"
     else
-        warn "未找到 sha256sum，跳过校验文件生成"
+        FROM_DIR=$(find "$x" -maxdepth 3 -name bbs-server.jar -printf '%h\n' | head -1)
     fi
-
-    echo ""
-    info "分发文件:"
-    echo "  $ROOT_DIR/dist/$PACKAGE_NAME"
-    echo "  $ROOT_DIR/dist/$PACKAGE_NAME.sha256"
-    echo ""
-
-    # 清理临时目录
-    info "清理临时目录..."
-    rm -rf "$OUTPUT_DIR"
+    [ -n "$FROM_DIR" ] || err "旧包里找不到 bbs-server.jar"
+    VERSION="$(date -r "$inner" +%Y%m%d_%H%M%S 2>/dev/null || echo "$TIMESTAMP")"
+    if [ -f "$inner/version.txt" ]; then
+        local v c
+        v=$(sed -n 's/^build_time=//p' "$inner/version.txt" | head -1)
+        c=$(sed -n 's/^git_commit=//p' "$inner/version.txt" | head -1)
+        [ -n "$v" ] && VERSION="$v"
+        [ -n "$c" ] && COMMIT="$c"
+    fi
+    SOURCE_NOTE="from:$(basename "$pkg")"
+    [ -n "$VERSION_OVERRIDE" ] && { VERSION="$VERSION_OVERRIDE"; SOURCE_NOTE="$SOURCE_NOTE+version:$VERSION_OVERRIDE"; }
+    info "复用旧包产物：version=$VERSION commit=${COMMIT:-unknown} dir=$FROM_DIR"
 }
 
-# --------------- 轻量升级包（不含基础镜像） ---------------
-package_upgrade() {
-    local TIMESTAMP; TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    local DIR_NAME="upgrade-${TIMESTAMP}"
-    local OUTPUT_DIR="$ROOT_DIR/tmp/$DIR_NAME"
+assemble() {
+    local out="$1"
+    mkdir -p "$out/payload/app" "$out/scripts" "$out/docs"
 
-    rm -rf "$OUTPUT_DIR"
-    mkdir -p "$OUTPUT_DIR"
-
-    info "===== 轻量升级包（时间戳: $TIMESTAMP） ====="
-
-    # 1. 复制构建产物（fat jar → 瘦 jar，依赖由镜像内 /app/lib 提供）
-    if [ -f "bbs-server/target/bbs-server.jar" ]; then
-        make_thin_jar "bbs-server/target/bbs-server.jar" "$OUTPUT_DIR/bbs-server.jar"
+    if [ -n "$FROM_PKG" ]; then
+        cp -a "$FROM_DIR/bbs-server.jar" "$out/payload/app/" || err "复制 jar 失败"
+        [ -d "$FROM_DIR/bbs-ui/dist" ] && mkdir -p "$out/payload/app/bbs-ui" && cp -a "$FROM_DIR/bbs-ui/dist" "$out/payload/app/bbs-ui/"
+        [ -d "$FROM_DIR/bbs-admin-ui/dist" ] && mkdir -p "$out/payload/app/bbs-admin-ui" && cp -a "$FROM_DIR/bbs-admin-ui/dist" "$out/payload/app/bbs-admin-ui/"
+        # 旧包内是瘦 jar，直接复用，不再二次剔除
+        ok "payload 来自旧包（未改代码）"
     else
-        warn "bbs-server.jar 不存在，跳过"
+        make_thin_jar "$JAR_FAT" "$out/payload/app/bbs-server.jar"
+        mkdir -p "$out/payload/app/bbs-ui" "$out/payload/app/bbs-admin-ui"
+        cp -a "$UI_DIST" "$out/payload/app/bbs-ui/"
+        cp -a "$ADMIN_DIST" "$out/payload/app/bbs-admin-ui/"
     fi
 
-    if [ -d "bbs-ui/dist" ]; then
-        mkdir -p "$OUTPUT_DIR/bbs-ui"
-        cp -r bbs-ui/dist "$OUTPUT_DIR/bbs-ui/"
+    # scripts 全量（排除 .env / 构建产物，避免把开发环境变量和 40MB 测试 jar 带进现场）
+    ( cd "$ROOT_DIR/scripts" && tar -cf - \
+        --exclude='.env' \
+        --exclude='./test/e2e-selenium/target' \
+        --exclude='*/node_modules' \
+        --exclude='*.log' \
+        --exclude='.cache_checksum' . ) | ( cd "$out/scripts" && tar -xf - ) \
+        || err "复制 scripts 失败"
+    chmod +x "$out"/scripts/prod/*.sh "$out"/scripts/dev/*.sh 2>/dev/null || true
+
+    # 文档（可选，便于现场离线查阅）
+    [ -f "$ROOT_DIR/DEPLOY.md" ] && cp -a "$ROOT_DIR/DEPLOY.md" "$out/docs/" 2>/dev/null
+    [ -f "$ROOT_DIR/scripts/SCRIPT.md" ] && cp -a "$ROOT_DIR/scripts/SCRIPT.md" "$out/docs/" 2>/dev/null
+}
+
+write_manifest() {
+    local out="$1"
+    [ -n "$VERSION" ] || VERSION="$TIMESTAMP"
+    if [ -n "$COMMIT" ] && [ "$COMMIT" != "unknown" ]; then COMMIT_FINAL="$COMMIT"
+    else COMMIT_FINAL=$(git rev-parse --short HEAD 2>/dev/null || echo unknown); fi
+
+    python3 - "$out" "$VERSION" "$COMMIT_FINAL" "$MODE" "$STAGE" "$DB_COMPAT" "$SOURCE_NOTE" <<'PY'
+import hashlib, json, os, sys
+out, version, commit, mode, stage, db_compat, note = sys.argv[1:8]
+files = []
+for base in ("payload", "scripts"):
+    root = os.path.join(out, base)
+    if not os.path.isdir(root):
+        continue
+    for dirpath, _, names in os.walk(root):
+        for n in sorted(names):
+            p = os.path.join(dirpath, n)
+            rel = os.path.relpath(p, out)
+            h = hashlib.sha256(open(p, "rb").read()).hexdigest()
+            files.append({"path": rel, "sha256": h, "size": os.path.getsize(p)})
+m = {
+    "product": "daqian-bbs",
+    "version": version,
+    "commit": commit,
+    "mode": mode,
+    "stage": stage,
+    "built_at": os.environ.get("PKG_BUILT_AT", ""),
+    "min_deploy_version": "1.0.0",
+    "db_compat": db_compat,
+    "source": note,
+    "entrypoints": {"deploy": "deploy.sh", "verify": "deploy.sh verify", "diag": "deploy.sh diag"},
+    "files": files,
+    "deleted": [],
+}
+open(os.path.join(out, "manifest.json"), "w").write(json.dumps(m, ensure_ascii=False, indent=2) + "\n")
+with open(os.path.join(out, "manifest.env"), "w") as f:
+    f.write("M_PRODUCT=%s\nM_VERSION=%s\nM_COMMIT=%s\nM_MODE=%s\nM_STAGE=%s\nM_DB_COMPAT=%s\n"
+            % ("daqian-bbs", version, commit, mode, stage, db_compat))
+with open(os.path.join(out, "SHA256SUMS"), "w") as f:
+    for it in files:
+        f.write("%s  %s\n" % (it["sha256"], it["path"]))
+print("files=%d" % len(files))
+PY
+    [ $? -eq 0 ] || err "manifest 生成失败"
+    ok "manifest.json / manifest.env / SHA256SUMS 已生成"
+}
+
+# ---------------------------------------------------------------- 打包 ------
+PKG_BUILT_AT="$TIMESTAMP" ; export PKG_BUILT_AT
+
+rm -rf "$WORK"
+mkdir -p "$WORK"
+cleanup() { [ -n "${WORK:-}" ] && [ -d "$WORK" ] && rm -rf "$WORK"; }
+trap cleanup EXIT INT TERM
+
+if [ -n "$FROM_PKG" ]; then
+    prepare_from_pkg "$FROM_PKG"
+else
+    check_artifacts
+    VERSION="$TIMESTAMP"
+fi
+[ -n "$VERSION_OVERRIDE" ] && VERSION="$VERSION_OVERRIDE"
+
+PKG_BASENAME="bbs-$( [ "$MODE" = "update" ] && echo upgrade || echo "$MODE")-$(echo "$TIMESTAMP" | tr '_' '-')"
+PKG_DIR="$WORK/$PKG_BASENAME"
+mkdir -p "$PKG_DIR"
+
+info "===== 组装 $PKG_BASENAME（version=$VERSION commit=${COMMIT:-auto} mode=$MODE stage=$STAGE） ====="
+assemble "$PKG_DIR"
+
+if [ "$MODE" = "full" ]; then
+    if [ -d "dist/base-images" ] && ls dist/base-images/*.tar >/dev/null 2>&1; then
+        mkdir -p "$PKG_DIR/base"
+        cp dist/base-images/*.tar "$PKG_DIR/base/"
+        ok "基础镜像已包含（$(du -sh "$PKG_DIR/base" | cut -f1)）"
     else
-        warn "bbs-ui/dist 不存在，跳过"
-    fi
-
-    if [ -d "bbs-admin-ui/dist" ]; then
-        mkdir -p "$OUTPUT_DIR/bbs-admin-ui"
-        cp -r bbs-admin-ui/dist "$OUTPUT_DIR/bbs-admin-ui/"
-    else
-        warn "bbs-admin-ui/dist 不存在，跳过"
-    fi
-
-    # 2. .env.example
-    cp scripts/.env.example "$OUTPUT_DIR/" 2>/dev/null || true
-
-    # 2.5 版本清单：schema 版本取自"包内 jar 里真正嵌的 SQL"，而不是源码，
-    #     这样构建产物陈旧（jar 没重新打）会在 verify-build.sh 里暴露出来。
-    local SCHEMA_VER GIT_COMMIT
-    SCHEMA_VER=$(python3 - "$OUTPUT_DIR/bbs-server.jar" <<'PYEOF'
-import sys, zipfile, re
-try:
-    with zipfile.ZipFile(sys.argv[1]) as z:
-        data = z.read('BOOT-INF/classes/db/init/upgrade-mysql.sql').decode('utf-8', 'ignore')
-    ids = re.findall(r'^-- @migration:\s+(\S+)', data, re.M)
-    print(ids[-1] if ids else 'unknown')
-except Exception:
-    print('unknown')
-PYEOF
-)
-    GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
-    cat > "$OUTPUT_DIR/version.txt" << VERSIONEOF
-build_time=${TIMESTAMP}
-schema_version=${SCHEMA_VER}
-git_commit=${GIT_COMMIT}
-VERSIONEOF
-    ok "版本清单: schema=${SCHEMA_VER} commit=${GIT_COMMIT}"
-
-    # 3. 生成 upgrade.sh（时间戳已硬编码）
-    cat > "$OUTPUT_DIR/upgrade.sh" << UPGRADEEOF
-#!/bin/bash
-# ============================================
-# BBS 升级脚本 — 由 package.sh 在 ${TIMESTAMP} 生成
-# 创建版本快照 + 切换软链 + 重启容器
-# 用法:
-#   bash upgrade.sh [/data/bbs]
-# ============================================
-set -e
-TIMESTAMP="${TIMESTAMP}"
-BBS_HOME="\${1:-/data/bbs}"
-SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
-
-RUNNER="podman"; command -v podman >/dev/null 2>&1 || RUNNER="docker"
-
-info()  { echo -e "\033[0;36m[INFO]\033[0m \$*"; }
-ok()    { echo -e "\033[0;32m[OK]\033[0m \$*"; }
-warn()  { echo -e "\033[1;33m[WARN]\033[0m \$*"; }
-
-# 1. 创建版本目录
-mkdir -p "\$BBS_HOME/versions/\$TIMESTAMP/bbs-ui" "\$BBS_HOME/versions/\$TIMESTAMP/bbs-admin-ui"
-
-# 2. 复制新产物
-info "复制构建产物..."
-[ -f "\$SCRIPT_DIR/bbs-server.jar" ] && cp "\$SCRIPT_DIR/bbs-server.jar" "\$BBS_HOME/versions/\$TIMESTAMP/"
-[ -d "\$SCRIPT_DIR/bbs-ui/dist" ] && cp -r "\$SCRIPT_DIR/bbs-ui/dist" "\$BBS_HOME/versions/\$TIMESTAMP/bbs-ui/"
-[ -d "\$SCRIPT_DIR/bbs-admin-ui/dist" ] && cp -r "\$SCRIPT_DIR/bbs-admin-ui/dist" "\$BBS_HOME/versions/\$TIMESTAMP/bbs-admin-ui/"
-
-# 3. 更新软链
-ln -snf "\$TIMESTAMP" "\$BBS_HOME/versions/latest"
-ok "已切换版本: \$TIMESTAMP"
-
-# 4. 重启容器
-info "重启容器..."
-for container in bbs-server bbs-nginx; do
-    if \$RUNNER container exists "\$container" 2>/dev/null; then
-        \$RUNNER restart "\$container"
-        ok "\$container 已重启"
-    else
-        warn "\$container 容器不存在，跳过"
-    fi
-done
-
-# 5. 上传目录挂载验证（2026-08 生产故障：老 podman bind mount 静默失效 → 图片 404）
-#    重启后必须确认容器仍能读到宿主上传目录，读不到立即退出，避免带病运行
-set -a; [ -f "\$BBS_HOME/.env" ] && source "\$BBS_HOME/.env"; set +a
-UPLOAD_DIR="\${BBS_UPLOAD_DIR:-/data/bbs/bbsUpload}"
-# 必须补尾斜杠：否则容器内 storage.path 无斜杠，basePath+"common/..." 拼出
-# bbsUploadcommon 这类错误目录 → 上传 404（2026-08 生产故障；wsl.sh 同款处理）
-UPLOAD_DIR="\${UPLOAD_DIR%/}/"
-STORAGE_PROBE=".deploy-mount-probe"
-mkdir -p "\$UPLOAD_DIR"
-echo ok > "\$UPLOAD_DIR/\$STORAGE_PROBE"
-tries=0
-while [ "\$tries" -lt 30 ]; do
-    if \$RUNNER exec bbs-server cat "\$UPLOAD_DIR/\$STORAGE_PROBE" 2>/dev/null | grep -q '^ok\$'; then
-        ok "上传目录挂载验证通过: \$UPLOAD_DIR（容器与宿主共享同一目录）"
-        break
-    fi
-    tries=\$((tries + 1))
-    sleep 2
-done
-if [ "\$tries" -ge 30 ]; then
-    warn "上传目录挂载验证失败：容器内读不到 \$UPLOAD_DIR/\$STORAGE_PROBE"
-    warn "原因：老 podman bind mount 静默失效（2026-08 生产故障）。正在重建 bbs-server 自动修复..."
-    \$RUNNER rm -f bbs-server 2>/dev/null || true
-    \$RUNNER run -d \
-        --name bbs-server \
-        --network host \
-        --restart=always \
-        --entrypoint java \
-        -e BBS_DB_HOST="\${BBS_DB_HOST:-127.0.0.1}" \
-        -e BBS_DB_PORT="\${BBS_DB_PORT:-15432}" \
-        -e BBS_DB_NAME="\${BBS_DB_NAME:-bbs}" \
-        -e BBS_DB_USER="\${BBS_DB_USER:-work_flow}" \
-        -e BBS_DB_PASSWORD="\${BBS_DB_PASSWORD:-work_flow123}" \
-        -e BBS_SUPER_ADMIN_PASSWORD="\${BBS_SUPER_ADMIN_PASSWORD:-1234@abcD}" \
-        -e BBS_UPLOAD_DIR="\$UPLOAD_DIR" \
-        -e BBS_SERVER_PORT="\${BBS_SERVER_PORT:-60000}" \
-        -v "\$BBS_HOME/current/bbs-server.jar:/app/app.jar:Z" \
-        -v "\$UPLOAD_DIR:\$UPLOAD_DIR:Z" \
-        bbs-server-base -Xmx2g -Dloader.path=/app/lib -jar /app/app.jar --spring.profiles.active=podman
-    info "等待后端启动，再次验证挂载..."
-    sleep 10
-    tries=0
-    while [ "\$tries" -lt 30 ]; do
-        if \$RUNNER exec bbs-server cat "\$UPLOAD_DIR/\$STORAGE_PROBE" 2>/dev/null | grep -q '^ok\$'; then
-            ok "重建后挂载验证通过: \$UPLOAD_DIR（容器与宿主共享同一目录）"
-            break
-        fi
-        tries=\$((tries + 1))
-        sleep 2
-    done
-    if [ "\$tries" -ge 30 ]; then
-        warn "重建后仍无法读到上传目录，请检查："
-        warn "  1) 宿主机 SELinux: chcon -Rt container_file_t \$UPLOAD_DIR"
-        warn "  2) 容器日志: \$RUNNER logs bbs-server"
-        warn "  3) 验证: \$RUNNER exec bbs-server ls -la \$UPLOAD_DIR"
-        exit 1
+        warn "dist/base-images/ 为空，完整包将不含基础镜像（仅适用于已加载镜像的机器）"
     fi
 fi
 
+write_manifest "$PKG_DIR"
+
+# 包内不得含 deploy.sh
+if find "$PKG_DIR" -maxdepth 2 -name 'deploy.sh' | grep -q .; then
+    err "包内出现 deploy.sh，违反契约"
+fi
+
+mkdir -p "$ROOT_DIR/dist"
+OUT="$ROOT_DIR/dist/$PKG_BASENAME.tar.gz"
+info "压缩中..."
+tar -czf "$OUT" -C "$WORK" "$PKG_BASENAME" || err "压缩失败"
+
+SIZE_MB=$(du -m "$OUT" | cut -f1)
+if [ "$MODE" != "full" ] && [ "$SIZE_MB" -gt 15 ]; then
+    warn "包体积 ${SIZE_MB}MB > 15MB（预期瘦包 <10MB）"
+fi
+SHA=$(sha256sum "$OUT" | awk '{print toupper($1)}')
+echo "$SHA" > "$OUT.sha256"
+
+# ---------- 交付卡：本次需要上传几个文件 ----------
+DEPLOY_SHA=$(sha256sum "$ROOT_DIR/deploy.sh" 2>/dev/null | awk '{print toupper($1)}')
+TRACK="$ROOT_DIR/dist/.deploy.sh.sha256"
+NEED_DEPLOY=0
+if [ -n "$DEPLOY_SHA" ]; then
+    if [ ! -f "$TRACK" ] || [ "$(cat "$TRACK" 2>/dev/null)" != "$DEPLOY_SHA" ]; then
+        NEED_DEPLOY=1
+    fi
+    echo "$DEPLOY_SHA" > "$TRACK"
+fi
+UPLOAD_COUNT=1
+[ "$NEED_DEPLOY" = "1" ] && UPLOAD_COUNT=$((UPLOAD_COUNT + 1))
+
 echo ""
-echo -e "\033[0;32m╔══════════════════════════════════════════════╗\033[0m"
-echo -e "\033[0;32m║\033[0m  升级完成！版本: \$TIMESTAMP"
-echo -e "\033[0;32m║\033[0m  回滚: cd \$BBS_HOME && ls versions/ && ln -snf versions/<旧版本> versions/latest && \$RUNNER restart bbs-server bbs-nginx"
-echo -e "\033[0;32m╚══════════════════════════════════════════════╝\033[0m"
-UPGRADEEOF
-    chmod +x "$OUTPUT_DIR/upgrade.sh"
-    ok "upgrade.sh 已生成"
-
-    echo "$OUTPUT_DIR"
-}
-
-# --------------- 完整环境包（含基础镜像） ---------------
-package_full() {
-    local TIMESTAMP; TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    local DIR_NAME="bbs-full-${TIMESTAMP}"
-    local OUTPUT_DIR="$ROOT_DIR/tmp/$DIR_NAME"
-
-    rm -rf "$OUTPUT_DIR"
-    mkdir -p "$OUTPUT_DIR"
-
-    info "===== 完整环境包（时间戳: $TIMESTAMP） ====="
-
-    # 1. 基础镜像
-    if [ -d "dist/base-images" ] && ls dist/base-images/*.tar 2>/dev/null | grep -q .; then
-        mkdir -p "$OUTPUT_DIR/base"
-        cp dist/base-images/*.tar "$OUTPUT_DIR/base/"
-        ok "基础镜像已复制"
-    else
-        warn "dist/base-images/ 目录为空，请先运行 build/base.sh --save"
-    fi
-
-    # 2. 构建产物（复用 package_upgrade 的逻辑）
-    local upgrade_dir
-    upgrade_dir=$(package_upgrade)
-    if [ -n "$upgrade_dir" ] && [ -d "$upgrade_dir" ]; then
-        local ts_name; ts_name=$(basename "$upgrade_dir")
-        # 用 cp 而非 mv：Windows/git-bash 下跨目录 rename 会 Permission denied，导致产物漏进包
-        cp -r "$upgrade_dir" "$OUTPUT_DIR/$ts_name"
-        rm -rf "$upgrade_dir"
-        ok "构建产物已复制"
-    fi
-
-    # 3. deploy-offline.sh
-    if [ -f "scripts/prod/offline.sh" ]; then
-        cp scripts/prod/offline.sh "$OUTPUT_DIR/deploy-offline.sh"
-        chmod +x "$OUTPUT_DIR/deploy-offline.sh"
-        ok "deploy-offline.sh 已复制"
-    else
-        warn "scripts/prod/offline.sh 不存在，跳过"
-    fi
-
-    # 4. .env.example
-    cp scripts/.env.example "$OUTPUT_DIR/" 2>/dev/null || true
-
-    # 5. README
-    cat > "$OUTPUT_DIR/README.md" << READMEEOF
-# BBS 完整环境包（bind-mount 模式）
-
-## 目录结构
-
-\`\`\`
-.
-├── deploy-offline.sh              # 安装/升级入口
-├── base/                          # 基础镜像（首次部署用）
-│   ├── bbs-server-base.tar
-│   └── bbs-nginx-base.tar
-├── upgrade-${TIMESTAMP}/     # 初始构建产物 + upgrade 脚本
-│   ├── upgrade.sh
-│   ├── bbs-server.jar
-│   ├── bbs-ui/dist/
-│   └── bbs-admin-ui/dist/
-├── .env.example
-└── README.md
-\`\`\`
-
-## 首次安装
-
-\`\`\`bash
-sudo mkdir -p /data
-sudo tar -xzf bbs-full-*.tar.gz -C /data
-cd /data/bbs-full-*
-sudo bash deploy-offline.sh --install
-\`\`\`
-
-## 升级
-
-将 upgrade tar 包传到服务器后：
-
-\`\`\`bash
-sudo bash /data/bbs/deploy-offline.sh --upgrade bbs-upgrade-*.tar.gz
-\`\`\`
-
-## 回滚
-
-\`\`\`bash
-cd /data/bbs && ls versions/
-ln -snf versions/<旧版本> versions/latest
-podman restart bbs-server bbs-nginx
-\`\`\`
-READMEEOF
-    ok "README.md 已生成"
-
-    echo "$OUTPUT_DIR"
-}
-
-# --------------- 主流程 ---------------
-show_header "BBS 打包分发"
-
+ok "打包完成: $OUT（${SIZE_MB}MB）"
+echo "  SHA256 : $SHA"
+echo "  版本   : $VERSION（commit ${COMMIT:-auto}）"
+echo "  内容   : $(tar -tzf "$OUT" | grep -c .) 个条目"
+echo ""
+echo "================ 交付卡 ================"
+echo "需要上传到内网的文件（共 ${UPLOAD_COUNT} 项）："
+echo "  1) $(basename "$OUT")  ${SIZE_MB}MB  SHA256=${SHA}"
+if [ "$NEED_DEPLOY" = "1" ]; then
+    echo "  2) deploy.sh  入口脚本有更新，必须与包一起上传  SHA256=${DEPLOY_SHA}"
+    echo "     原因：本包依赖新版 deploy.sh（旧入口不认识 manifest / 不会自动回滚）"
+else
+    echo "  （deploy.sh 与上次交付相同，不需要重复上传）"
+fi
+echo ""
+echo "现场执行（一条命令，包放当前目录或 U 盘即可）："
 case "$MODE" in
-    --upgrade|upgrade)
-        show_step 1 2 "准备构建产物"
-        check_artifacts
-        show_step 2 2 "打包轻量升级包"
-        up_dir=$(package_upgrade)
-        create_tarball "$(basename "$up_dir")" "bbs-upgrade"
-        ;;
-    --full|full)
-        show_step 1 2 "打包完整环境"
-        sp_dir=$(package_full)
-        show_step 2 2 "创建压缩包"
-        create_tarball "$(basename "$sp_dir")" "bbs-full"
-        ;;
+    migrate) echo "  sudo bash deploy.sh once migrate" ;;
+    full)    echo "  sudo bash deploy.sh once install" ;;
+    *)       echo "  sudo bash deploy.sh" ;;
 esac
-
-echo ""
-echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║${NC}  打包成功！"
-echo -e "${GREEN}║${NC}  输出文件: $(ls -t dist/bbs-*.tar.gz 2>/dev/null | head -1)"
-echo -e "${GREEN}║${NC}  （输出目录: dist/）"
+echo "  说明：脚本自动找包 → 校验 SHA → 备份 → 切换 → 验证；失败自动回滚，不用第二条命令"
+echo "  回滚（万一）：sudo bash deploy.sh once rollback"
+echo "========================================"
