@@ -1187,6 +1187,7 @@ cmd_repair() {
     recreate_containers "$BBS_HOME/releases/$cur" || die "重建失败"
     wait_health || true
     verify_all || die "修复后验证仍失败"
+    cleanup_root_scripts
     ok "修复完成"
 }
 
@@ -1212,9 +1213,15 @@ cmd_sync_scripts() {
     if [ -n "$PKG_PATH" ]; then
         unpack_package "$PKG_PATH"
         sync_scripts "$PKG_ROOT/scripts"
-    else
-        sync_scripts "$SELF_DIR/scripts"
+        return $?
     fi
+    # 部署根里执行时，源和目标是同一个目录：只做根目录归位，不做 rsync 自拷
+    if [ -d "$SELF_DIR/scripts" ] && [ "$(cd "$SELF_DIR/scripts" 2>/dev/null && pwd)" = "$(cd "$BBS_HOME/scripts" 2>/dev/null && pwd)" ]; then
+        cleanup_root_scripts
+        ok "已执行根目录脚本归位（未改动 scripts/）"
+        return 0
+    fi
+    sync_scripts "$SELF_DIR/scripts"
 }
 
 cmd_logs() {
