@@ -18,8 +18,8 @@
 | `scripts/prod/one-key-deploy.sh` | 兼容壳：转新入口（旧实现归档 `legacy/`） |
 | `legacy/deploy.sh.2026-11-27`、`legacy/one-key-deploy.sh.2026-11-27` | 旧入口原样归档，仅供追溯 |
 | `delivery/collect/` | 现场只读采集包（`collect.sh` + `使用说明.txt` + `回传/`） |
-| `delivery/tools/pgfix.sh` | 现场一条命令修 `pg_dump`（找本机客户端 → 容器客户端兜底 → 写 `BBS_PG_BIN`） |
-| `delivery/tools/tidy.sh` | 部署根盘点（新旧目录对照）+ 可选清理（保留最新 N 个版本/归档，需输 `yes`） |
+| `scripts/prod/ops/pgfix.sh`（dist/ 有同名副本便于直接上传） | 现场一条命令修 `pg_dump`（找本机客户端 → 容器客户端兜底 → 写 `BBS_PG_BIN`） |
+| `scripts/prod/ops/tidy.sh`（同上） | 部署根盘点（新旧目录对照）+ 可选清理（保留最新 N 个版本/归档，需输 `yes`） |
 | `delivery/rehearsal/` | 演练脚本（可重跑）：`setup-legacy.sh`、`run-scenarios.sh`、`s10-auto-rollback.sh` |
 | `delivery/manifest-20261126_102549-291ae68/` | 迁移包的 `manifest.json` / `manifest.env` / `SHA256SUMS`（文本，便于评审） |
 | `delivery/回滚命令.md` | 三档回滚命令（指针 / 容器 / 数据库） |

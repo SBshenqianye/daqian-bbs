@@ -36,6 +36,8 @@ scripts/
 │   ├── verify-server.sh   ← 服务器部署结果验证
 │   └── ops/
 │       ├── pg-backup.sh          ← 数据库备份/恢复（pg_dump + gzip）
+│       ├── pgfix.sh              ← 现场修 pg_dump（找本机客户端 / 容器兜底 → 写 BBS_PG_BIN）
+│       ├── tidy.sh               ← 部署根盘点 + 保留数清理（默认只读）
 │       ├── diagnose-upload.sh    ← 上传目录挂载诊断
 │       ├── fix-upload-path.sh    ← 上传目录修复（生产机）
 │       ├── fix-dict-cleanup.sql
@@ -52,6 +54,25 @@ scripts/
 
 
 ---
+
+## 脚本分层：部署 vs 运维（2026-11-27 定）
+
+| 类别 | 判据 | 例子 | 变更频率 | 落点 |
+| --- | --- | --- | --- | --- |
+| **部署脚本** | 出现在"发版/迁移/回滚"主链路上；改它要全量回归 | 根目录 `deploy.sh`、`deploy-offline.sh`（兼容壳） | 极低，但要最谨慎 | 部署根根目录（**只允许这一个/一类**） |
+| **运维脚本** | 部署之后或排障时才跑；不改也不影响发版 | `ops/tidy.sh`、`ops/pgfix.sh`、`ops/pg-backup.sh`、`ops/diagnose-upload.sh` | 低；与"环境事实/目录契约"耦合 | `scripts/prod/ops/`（随包下发） |
+| **开发脚本** | 只在本机用 | `scripts/dev/*.ps1`、`wsl.sh` | 中 | `scripts/dev/` |
+| **验收工具** | 不参与发布物 | `scripts/test/**` | 中 | `scripts/test/` |
+
+规则：
+
+1. **一个脚本只有一个家**：先在仓库 `scripts/<归类>/` 落地，再随包下发；`dist/` 里的同名副本只用于"没改代码、想直接上传"的热修场景。
+2. **根目录只放部署入口**：`deploy.sh` + `deploy-offline.sh`。其它 `.sh` 每次部署后由
+   `deploy.sh` 自动归位——与 `scripts/` 同名同内容 → 删根目录副本；来历不明 → 移入
+   `legacy/root-scripts/`（不静默删）。
+3. **运维脚本要"不常改"**：如果一个运维脚本每次发版都得跟着改，说明它承担了部署职责，应该拆开。
+   唯一例外是 `tidy.sh` 这类"目录契约的镜子"——契约变它必须变，所以它要与契约文档同处维护。
+4. **工具产物不落部署根**：采集/诊断/导出产物写 `tmp/` 或 `/root/`，否则会被盘点工具认成"契约外目录"。
 
 ## 依赖下沉（thin jar）说明
 

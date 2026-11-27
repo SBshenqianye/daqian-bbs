@@ -275,6 +275,15 @@ prev_release_from_state() {
     sed -n 's/.*"previous"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$BBS_HOME/current.json" | head -1
 }
 
+# previous 不允许指向"曾经验证失败"的版本，否则 rollback 会把人带到坑里
+sanitize_prev() {
+    local p="${1:-}" failed="${2:-}"
+    [ -z "$p" ] && { echo ""; return; }
+    [ "$p" = "$failed" ] && { echo ""; return; }
+    [ -f "$BBS_HOME/releases/$p/.failed" ] && { echo ""; return; }
+    echo "$p"
+}
+
 list_releases() {
     [ -d "$BBS_HOME/releases" ] || return 0
     find "$BBS_HOME/releases" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' 2>/dev/null | grep -v '^current$' | sort
@@ -297,12 +306,13 @@ switch_pointers() {
 }
 
 write_current_json() {
-    local cur="$1" prev="$2"
+    local cur="$1" prev="$2" failed="${3:-}"
     cat > "$BBS_HOME/current.json" <<EOF
 {
   "product": "daqian-bbs",
   "current": "$cur",
   "previous": "$prev",
+  "failed": "$failed",
   "current_path": "$BBS_HOME/releases/$cur",
   "updated_at": "$(date -Is)",
   "deploy_version": "$DEPLOY_VERSION",
@@ -631,6 +641,30 @@ sync_scripts() {
         rm -f /tmp/.keep.$$
     fi
     ok "scripts 已全量同步: $BBS_HOME/scripts"
+    cleanup_root_scripts
+}
+
+# 根目录只留部署入口：其它 .sh 要么已归位到 scripts/（同名同内容→删副本），
+# 要么来历不明（→移入 legacy/root-scripts/ 保留，不静默删）
+cleanup_root_scripts() {
+    local f base dst
+    for f in "$BBS_HOME"/*.sh; do
+        [ -f "$f" ] || continue
+        base=$(basename "$f")
+        case "$base" in
+            deploy.sh|deploy-offline.sh) continue ;;   # 部署入口 + 兼容入口
+        esac
+        dst=$(find "$BBS_HOME/scripts" -type f -name "$base" 2>/dev/null | head -1)
+        if [ -n "$dst" ] && cmp -s "$f" "$dst"; then
+            rm -f "$f" && info "根目录脚本已归位（删副本）: $base → $dst"
+        elif [ -n "$dst" ]; then
+            warn "根目录 $base 与 $dst 同名但内容不同，未删除（请人工确认哪份是新的）"
+        else
+            mkdir -p "$BBS_HOME/legacy/root-scripts"
+            mv -f "$f" "$BBS_HOME/legacy/root-scripts/$base" \
+                && warn "根目录脚本不在 scripts/ 里，已移入 legacy/root-scripts/: $base"
+        fi
+    done
 }
 
 # ---------- 验证 ----------
@@ -886,22 +920,21 @@ cmd_migrate() {
     step "备份（DB + 配置 + inspect）"
     PREV_RELEASE=""
     backup_before_switch ""
-    step "切换指针（容器仍挂旧路径，此刻不影响业务）"
-    [ -d "$BBS_HOME/releases/current" ] && [ ! -L "$BBS_HOME/releases/current" ] && die "releases/current 是真实目录，请先人工确认"
-    switch_pointers "$import_id"
-    write_current_json "$import_id" ""
-    step "重建容器并验证（真实路径生效）"
+    step "重建容器（先起新容器，指针还没切；失败可原地退回）"
     ROLLBACK_ARMED=0
+    [ -d "$BBS_HOME/releases/current" ] && [ ! -L "$BBS_HOME/releases/current" ] && die "releases/current 是真实目录，请先人工确认"
     if ! recreate_containers "$BBS_HOME/releases/$import_id"; then
-        err "新容器启动失败 → 回退旧布局（不切换指针）"
+        err "新容器启动失败 → 回退旧布局（指针未切换）"
         fallback_to_legacy "$legacy"
         return 1
     fi
+    step "切换指针（原子）"
     switch_pointers "$import_id"
     write_current_json "$import_id" ""
     wait_health || true
     if verify_all; then
         archive_package
+        cleanup_root_scripts
         ok "迁移完成：$import_id（旧 versions/ 原样保留）"
         echo "  日常升级：bash $SELF_DIR/deploy.sh        # 放好包，一条命令"
         return 0
@@ -911,7 +944,23 @@ cmd_migrate() {
     return 1
 }
 
-# 迁移失败时把机器恢复成"没有迁移过"的样子（旧目录本来就没动）
+# 旧布局（versions/<ts>/，容器挂 current/...）的健康检查：不套用 releases 那套指针断言
+verify_legacy_stack() {
+    local p code bad=0
+    for p in "/bbs-server/" "/bbs-user/" "/bbs-admin/"; do
+        code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "http://127.0.0.1:${NGINX_PORT}${p}" 2>/dev/null) || code=000
+        [ "$code" = "200" ] || { bad=1; warn "旧布局 GET $p → $code"; }
+    done
+    prepare_upload_dir >/dev/null 2>&1
+    if $RUNNER exec "$BBS_SERVER_CONTAINER" cat "$BBS_UPLOAD_DIR.deploy-mount-probe" 2>/dev/null | grep -q '^ok$'; then
+        ok "旧布局：挂载探针通过"
+    else
+        bad=1; warn "旧布局：挂载探针失败"
+    fi
+    [ "$bad" = "0" ] && ok "旧布局：三端点 200"
+}
+
+# 迁移失败/主动撤销时把机器恢复成"没有迁移过"的样子（旧目录本来就没动）
 fallback_to_legacy() {
     local legacy="$1"
     warn "恢复 versions/latest → $(basename "$legacy")，并用旧布局重建容器"
@@ -919,8 +968,8 @@ fallback_to_legacy() {
     rm -f "$BBS_HOME/releases/current" "$BBS_HOME/src"
     recreate_legacy_stack "$legacy" || { err "旧布局容器也起不来，请按 backups/<ts>/inspect.json 手工恢复"; return 1; }
     wait_health || true
-    verify_all || warn "旧布局验证仍有失败项（可能本来就有问题）"
-    err "已回退到迁移前状态；失败版本保留在 releases/ 便于取证"
+    verify_legacy_stack || warn "旧布局仍有失败项（可能本来就有问题，请看上面 WARN）"
+    ok "已回退到迁移前状态；releases/ 里的失败版本保留供取证"
 }
 
 preflight() {
@@ -995,6 +1044,7 @@ cmd_deploy() {
     fi
 
     local cur; cur=$(current_release)
+    local prev_before; prev_before=$(sanitize_prev "$(prev_release_from_state)" "$M_ID")
     PREV_RELEASE="$cur"
     if [ -n "$cur" ] && [ "$cur" != "$M_ID" ] && [ "$ALLOW_DOWNGRADE" != "1" ]; then
         # 版本号前缀为时间戳，可直接按字典序比较
@@ -1022,22 +1072,28 @@ cmd_deploy() {
     step "重建容器（真实路径）"
     if ! recreate_containers "$BBS_HOME/releases/$M_ID"; then
         err "容器启动失败 → 自动回滚"
-        auto_rollback "$cur" "$M_ID" || err "自动回滚也失败，请按 交付现状.md §5.5 手工处理"
+        auto_rollback "$cur" "$M_ID" "$prev_before" || err "自动回滚也失败，请按 交付现状.md §5.5 手工处理"
         return 1
     fi
     wait_health || true
 
     step "部署后验证"
     if verify_all; then
-        write_current_json "$M_ID" "$cur"
+        rm -f "$BBS_HOME/releases/$M_ID/.failed"
+        if [ -n "$cur" ] && [ "$cur" = "$M_ID" ]; then
+            write_current_json "$M_ID" "$prev_before"
+        else
+            write_current_json "$M_ID" "$cur"
+        fi
         archive_package
+        cleanup_root_scripts
         ok "部署成功：$M_ID（耗时 $(( $(date +%s) - START_TS ))s）"
-        echo "  回滚: bash $SELF_DIR/deploy.sh rollback"
+        echo "  回滚: bash $SELF_DIR/deploy.sh once rollback"
         return 0
     fi
 
     err "验证失败 → 自动回滚"
-    auto_rollback "$cur" "$M_ID" || err "自动回滚也失败，请按 交付现状.md §5.5 手工处理"
+    auto_rollback "$cur" "$M_ID" "$prev_before" || err "自动回滚也失败，请按 交付现状.md §5.5 手工处理"
     return 1
 }
 
@@ -1057,19 +1113,23 @@ archive_package() {
 }
 
 auto_rollback() {
-    local cur="$1" failed="${2:-}"
+    local cur="$1" failed="${2:-}" prev_before="${3:-}"
     ROLLBACK_ARMED=0
     if [ -z "$cur" ] || [ ! -d "$BBS_HOME/releases/$cur" ]; then
         err "没有可回滚的上一版（首次安装失败，未归档包，便于重试）"
         return 1
     fi
+    # 坏版本打标记：以后 `once rollback --to` 不会误把它当目标
+    [ -n "$failed" ] && [ -d "$BBS_HOME/releases/$failed" ] && : > "$BBS_HOME/releases/$failed/.failed"
+    prev_before=$(sanitize_prev "$prev_before" "$failed")
     warn "切回 $cur 并重建容器"
     switch_pointers "$cur" || return 1
     recreate_containers "$BBS_HOME/releases/$cur" || return 1
     wait_health || true
     if verify_all; then
-        write_current_json "$cur" "$failed"
-        ok "已回滚到 $cur（失败版本 ${failed:-?} 保留在 releases/ 便于取证；包未归档）"
+        # previous 保持"上一版好版本"，绝不写成刚失败的那个
+        write_current_json "$cur" "$prev_before" "$failed"
+        ok "已回滚到 $cur（失败版本 ${failed:-?} 标记 .failed 并保留在 releases/；包未归档）"
         return 0
     fi
     err "回滚后验证仍失败，保留现场：$BBS_HOME/log"
@@ -1082,8 +1142,24 @@ cmd_rollback() {
     local cur prev
     cur=$(current_release)
     prev="${ROLLBACK_TO:-$(prev_release_from_state)}"
-    [ -n "$prev" ] || die "current.json 里没有上一版；用 --to <release-id> 指定"
+    if [ -z "$prev" ]; then
+        # 迁移后的第一次回滚：没有"上一版 release"，但机器上还有旧 versions/<ts>
+        local legacy
+        legacy=$(find "$BBS_HOME/versions" -maxdepth 1 -mindepth 1 -type d ! -name latest -printf '%p\n' 2>/dev/null | sort | tail -1)
+        if [ -n "$legacy" ] && [ -d "$legacy" ] && [ -n "$cur" ]; then
+            warn "没有上一版 release；检测到迁移前的旧布局，执行「撤销迁移」→ $(basename "$legacy")"
+            if [ "$DRY_RUN" = "1" ]; then ok "dry-run：未执行"; return 0; fi
+            fallback_to_legacy "$legacy" || die "撤销迁移失败，请按 backups/<ts>/inspect.json 手工恢复"
+            rm -f "$BBS_HOME/current.json"
+            ok "已撤销迁移（容器回到 current/... 旧挂载，releases/ 保留）"
+            return 0
+        fi
+        die "current.json 里没有上一版；用 --to <release-id> 指定"
+    fi
     [ -d "$BBS_HOME/releases/$prev" ] || die "上一版目录不存在: releases/$prev"
+    if [ -f "$BBS_HOME/releases/$prev/.failed" ] && [ "$ALLOW_DOWNGRADE" != "1" ]; then
+        die "目标版本 $prev 上次验证失败（有 .failed 标记）；确认要回滚到它请加 --force"
+    fi
     if [ -f "$BBS_HOME/releases/$cur/manifest.json" ]; then
         local compat; compat=$(sed -n 's/.*"db_compat"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$BBS_HOME/releases/$cur/manifest.json" | head -1)
         if [ "$compat" = "forward-only" ] && [ "$ALLOW_DOWNGRADE" != "1" ]; then
@@ -1096,7 +1172,8 @@ cmd_rollback() {
     recreate_containers "$BBS_HOME/releases/$prev" || die "重建容器失败"
     wait_health || true
     verify_all || die "回滚后验证失败，请检查 $BBS_HOME/log"
-    write_current_json "$prev" "$cur"
+    rm -f "$BBS_HOME/releases/$prev/.failed"
+    write_current_json "$prev" "$(sanitize_prev "$cur" "$prev")" ""
     ok "已回滚到 $prev"
 }
 
