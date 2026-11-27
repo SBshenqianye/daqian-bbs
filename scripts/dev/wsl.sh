@@ -349,10 +349,11 @@ case "$MODE" in
         # 修复模式：先无破坏验证当前容器（探针 + HTTP 回读），异常才重建
         info "修复模式：验证当前容器，必要时重建..."
         ensure_upload_dir "$BBS_UPLOAD_DIR"
-        local need_rebuild=0
+        # shellcheck disable=SC2034
+        need_rebuild=0
         if $RUNNER container exists "$BBS_SERVER_CONTAINER" 2>/dev/null; then
             if verify_upload_mount "$BBS_SERVER_CONTAINER" "$BBS_UPLOAD_DIR" soft; then
-                local pre_url; pre_url=$(write_serve_probe "$BBS_UPLOAD_DIR")
+                pre_url=$(write_serve_probe "$BBS_UPLOAD_DIR")
                 if verify_http_serve "$NGINX_PORT" "$pre_url"; then
                     rm -f "${BBS_UPLOAD_DIR%/}/common/upload/$(date +%Y-%m-%d)/$(basename "$pre_url")"
                     ok "当前容器健康：挂载正常 + HTTP 文件服务正常，无需重建"
@@ -369,7 +370,7 @@ case "$MODE" in
         if [ "$need_rebuild" = "1" ]; then
             warn "当前容器异常，重建后端容器..."
             start_backend 1 1
-            local url; url=$(write_serve_probe "$BBS_UPLOAD_DIR")
+            url=$(write_serve_probe "$BBS_UPLOAD_DIR")
             if verify_http_serve "$NGINX_PORT" "$url"; then
                 rm -f "${BBS_UPLOAD_DIR%/}/common/upload/$(date +%Y-%m-%d)/$(basename "$url")"
                 ok "修复完成：容器已重建，挂载验证与 HTTP 文件服务验证全部通过"
