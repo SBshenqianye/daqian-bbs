@@ -2,7 +2,9 @@
   "scripts": {
     "test:e2e": "npx playwright test",
     "test:e2e:headed": "npx playwright test --headed",
-    "test:e2e:report": "npx playwright show-report"
+    "test:e2e:report": "npx playwright show-report",
+    "doc:check": "node scripts/dev/doc-check.mjs",
+    "doc:write": "node scripts/dev/doc-check.mjs --write"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1"
