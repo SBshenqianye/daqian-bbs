@@ -224,6 +224,18 @@
                     <cleanupDaemonThreads>false</cleanupDaemonThreads>
                 </configuration>
             </plugin>
+            <!-- 测试 JVM 堆上限：不显式设置时 JDK8 按物理内存 1/4 申请（16G 机器≈4G），
+                 与本机 WSL/前端/浏览器同时跑时会在 fork 启动阶段直接 OOM，
+                 surefire 只报 "forked VM terminated without properly saying goodbye"。
+                 @{argLine} 保留 jacoco 的 agent 参数。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.2</version>
+                <configuration>
+                    <argLine>@{argLine} -Xmx640m -XX:MaxMetaspaceSize=256m -XX:ReservedCodeCacheSize=128m -XX:+UseSerialGC</argLine>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>

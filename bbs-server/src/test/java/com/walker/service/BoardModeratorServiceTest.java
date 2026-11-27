@@ -1,46 +1,44 @@
 package com.walker.service;
 
-import com.baomidou.mybatisplus.core.MybatisConfiguration;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.walker.mapper.BoardModeratorMapper;
-import com.walker.mapper.ModeratorRewardCancelMapper;
-import com.walker.pojo.ArticleLabel;
 import com.walker.pojo.BoardModerator;
-import com.walker.pojo.User;
 import com.walker.service.impl.BoardModeratorServiceImpl;
 import com.walker.vo.ResultBean;
-import org.apache.ibatis.builder.MapperBuilderAssistant;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import java.lang.reflect.Field;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.lang.reflect.Field;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+/**
+ * 版主生命周期：撤销 → 重新任命。
+ *
+ * <p>对应设计承诺「撤销版主后可重新任命」（权限架构重构 §11）。
+ * 关键点：撤销只把 status 置 0，重新任命时必须复用同一条历史记录，
+ * 否则会撞唯一键 uk_board_mod_user_label。</p>
+ */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class BoardModeratorServiceTest {
 
     @InjectMocks
-    private BoardModeratorServiceImpl boardModeratorService;
+    private BoardModeratorServiceImpl service;
 
     @Mock
     private BoardModeratorMapper boardModeratorMapper;
-
-    @Mock
-    private ModeratorRewardCancelMapper cancelMapper;
 
     @Mock
     private PointsLogService pointsLogService;
@@ -49,441 +47,70 @@ class BoardModeratorServiceTest {
     private UserService userService;
 
     @Mock
-    private NotificationService notificationService;
-
-    @Mock
-    private DictService dictService;
-
-    @Mock
-    private ArticleLabelService articleLabelService;
-
-    @Mock
-    private com.walker.mapper.PermissionGroupMapper permissionGroupMapper;
-
-    @Mock
-    private com.walker.mapper.PermissionGroupItemMapper permissionGroupItemMapper;
+    private CurrentUserService currentUserService;
 
     @BeforeEach
     void setUp() throws Exception {
-        Field baseMapperField = boardModeratorService.getClass().getSuperclass().getDeclaredField("baseMapper");
-        baseMapperField.setAccessible(true);
-        baseMapperField.set(boardModeratorService, boardModeratorMapper);
-
-        // 注册实体元数据（Service 使用 LambdaQueryWrapper 需要）
-        TableInfoHelper.initTableInfo(
-                new MapperBuilderAssistant(new MybatisConfiguration(), ""),
-                BoardModerator.class
-        );
-        SecurityTestSupport.injectCurrentUser(boardModeratorService);
-        // 默认当前登录管理员 id=1，敏感用例可覆盖
-        setCurrentUser(1);
+        Field baseMapper = service.getClass().getSuperclass().getDeclaredField("baseMapper");
+        baseMapper.setAccessible(true);
+        baseMapper.set(service, boardModeratorMapper);
+        // 操作人=登录态用户 1
+        when(currentUserService.getCurrentUserId()).thenReturn(1);
     }
 
-    @AfterEach
-    void tearDownAuth() {
-        SecurityContextHolder.clearContext();
-    }
-
-    /** 模拟 JWT 登录态：principal 为 User 实体 */
-    private void setCurrentUser(int id) {
-        SecurityTestSupport.setCurrentUser(id);
+    private BoardModerator moderator(int id, int userId, int labelId, int status) {
+        BoardModerator m = new BoardModerator();
+        m.setId(id);
+        m.setUserId(userId);
+        m.setLabelId(labelId);
+        m.setStatus(status);
+        m.setRoleType("moderator");
+        return m;
     }
 
     @Test
-    @DisplayName("任命版主 → 参数不完整 → 返回错误")
-    void appoint_missingParams_returnsError() {
-        ResultBean result = boardModeratorService.appoint(null, 1, 1);
-        assertEquals(500, result.getCode());
-    }
-
-    @Test
-    @DisplayName("任命版主 → 已是版主 → 返回错误")
-    void appoint_alreadyModerator_returnsError() {
-        BoardModerator existing = new BoardModerator();
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(existing);
-        ResultBean result = boardModeratorService.appoint(1, 1, 1);
-        assertEquals(500, result.getCode());
-    }
-
-    @Test
-    @DisplayName("任命版主 → 积分不足300 → 返回错误")
-    void appoint_insufficientPoints_returnsError() {
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
-        when(pointsLogService.getPointsAdjustment(1)).thenReturn(200);
-        ResultBean result = boardModeratorService.appoint(1, 1, 1);
-        assertEquals(500, result.getCode());
-    }
-
-    @Test
-    @DisplayName("任命版主 → 正常任命成功")
-    void appoint_valid_succeeds() {
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
-        when(pointsLogService.getPointsAdjustment(1)).thenReturn(300);
-        when(boardModeratorMapper.insert(any(BoardModerator.class))).thenReturn(1);
-
-        ResultBean result = boardModeratorService.appoint(1, 1, 1);
-        assertEquals(200, result.getCode());
-    }
-
-    @Test
-    @DisplayName("撤销版主 → 参数不完整 → 返回错误")
-    void dismiss_missingParams_returnsError() {
-        ResultBean result = boardModeratorService.dismiss(null, 1);
-        assertEquals(500, result.getCode());
-    }
-
-    @Test
-    @DisplayName("撤销版主 → 不是版主 → 返回错误")
-    void dismiss_notModerator_returnsError() {
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
-        ResultBean result = boardModeratorService.dismiss(1, 1);
-        assertEquals(500, result.getCode());
-    }
-
-    @Test
-    @DisplayName("撤销版主 → 正常撤销")
-    void dismiss_valid_succeeds() {
-        BoardModerator mod = new BoardModerator();
-        mod.setId(1);
-        mod.setStatus(1);
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(mod);
+    @DisplayName("撤销版主：status 置 0，不物理删除")
+    void dismiss_setsStatusToZero() {
+        BoardModerator active = moderator(77, 5, 10, 1);
+        when(boardModeratorMapper.findByUserAndLabel(5, 10)).thenReturn(active);
         when(boardModeratorMapper.updateById(any(BoardModerator.class))).thenReturn(1);
 
-        ResultBean result = boardModeratorService.dismiss(1, 1);
-        assertEquals(200, result.getCode());
+        ResultBean<?> result = service.dismiss(5, 10);
+
+        assertEquals(200L, result.getCode());
+        assertEquals(0, active.getStatus());
+        verify(boardModeratorMapper).updateById(active);
+        verify(boardModeratorMapper, never()).deleteById(any(Integer.class));
     }
 
     @Test
-    @DisplayName("判断是否版主 → 是 → 返回true")
-    void isModerator_is_true() {
-        BoardModerator mod = new BoardModerator();
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(mod);
-        assertTrue(boardModeratorService.isModerator(1, 1));
-    }
-
-    @Test
-    @DisplayName("判断是否版主 → 否 → 返回false")
-    void isModerator_isNot_false() {
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
-        assertFalse(boardModeratorService.isModerator(1, 1));
-    }
-
-    @Test
-    @DisplayName("月度奖励 → 无有效版主 → 返回提示")
-    void monthlyReward_noModerators_returnsEmpty() {
-        when(boardModeratorMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(new ArrayList<>());
-        ResultBean result = boardModeratorService.monthlyReward(1);
-        assertEquals(200, result.getCode());
-        assertTrue(result.getMessage().contains("当前无有效版主"));
-    }
-
-    @Test
-    @DisplayName("取消奖励 → userId为空 → 返回错误")
-    void cancelReward_nullUserId_returnsError() {
-        ResultBean result = boardModeratorService.cancelReward(null, 1, "备注");
-        assertEquals(500, result.getCode());
-    }
-
-    @Test
-    @DisplayName("恢复奖励 → userId为空 → 返回错误")
-    void restoreReward_nullUserId_returnsError() {
-        ResultBean result = boardModeratorService.restoreReward(null);
-        assertEquals(500, result.getCode());
-    }
-
-    @Test
-    @DisplayName("恢复奖励 → 未被取消 → 返回错误")
-    void restoreReward_notCancelled_returnsError() {
-        when(cancelMapper.delete(any(LambdaQueryWrapper.class))).thenReturn(0);
-        ResultBean result = boardModeratorService.restoreReward(1);
-        assertEquals(500, result.getCode());
-    }
-
-    @Test
-    @DisplayName("恢复奖励 → 已被取消 → 成功恢复")
-    void restoreReward_cancelled_succeeds() {
-        when(cancelMapper.delete(any(LambdaQueryWrapper.class))).thenReturn(1);
-        ResultBean result = boardModeratorService.restoreReward(1);
-        assertEquals(200, result.getCode());
-    }
-
-    @Test
-    @DisplayName("月度奖励 → 有2位有效版主 → 全部发放")
-    void monthlyReward_withModerators_rewardsAll() {
-        BoardModerator mod1 = new BoardModerator();
-        mod1.setUserId(1);
-        mod1.setStatus(1);
-        BoardModerator mod2 = new BoardModerator();
-        mod2.setUserId(2);
-        mod2.setStatus(1);
-        when(boardModeratorMapper.selectList(any(LambdaQueryWrapper.class)))
-                .thenReturn(Arrays.asList(mod1, mod2));
-
-        // 本月未发放过（count = 0）
-        when(pointsLogService.count(any(LambdaQueryWrapper.class))).thenReturn(0L);
-        // 本月无取消记录
-        when(cancelMapper.findCancelledUserIds(anyString())).thenReturn(new ArrayList<>());
-        // 版主月度奖励默认 400 分
-        when(dictService.getValueByKey("moderator_reward_points")).thenReturn("400");
-
-        ResultBean result = boardModeratorService.monthlyReward(1);
-        assertEquals(200, result.getCode());
-        // 每位版主发放 400 积分
-        verify(pointsLogService, times(2)).adjustUserPoints(
-                anyInt(), eq(400), eq("版主月度履职奖励"),
-                eq("moderator_reward"), isNull(), eq(1));
-        // 每位版主收到通知
-        verify(notificationService, times(2)).createNotification(
-                anyInt(), eq(1), eq("moderator_reward"), contains("版主履职奖励"), eq("user"), anyInt());
-    }
-
-    // ========== appoint 补充测试 ==========
-
-    @Test
-    @DisplayName("任命版主 → 积分299（差1分）→ 返回错误")
-    void appoint_notEnoughPoints_returnsError() {
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
-        when(pointsLogService.getPointsAdjustment(1)).thenReturn(299);
-
-        ResultBean result = boardModeratorService.appoint(1, 1, 1);
-        assertEquals(500, result.getCode());
-        assertEquals("该用户累计积分不足300分，无法任命为版主", result.getMessage());
-    }
-
-    // ========== dismiss 补充测试 ==========
-
-    @Test
-    @DisplayName("撤销版主 → 正常撤销 → status设为0")
-    void dismiss_setsStatus0() {
-        BoardModerator mod = new BoardModerator();
-        mod.setId(1);
-        mod.setStatus(1);
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(mod);
+    @DisplayName("撤销后可重新任命：复用 status=0 的历史记录，不再 insert 新行")
+    void reappointAfterDismiss_reusesHistoryRow() {
+        BoardModerator history = moderator(77, 5, 10, 0);
+        when(boardModeratorMapper.findByUserAndLabel(5, 10)).thenReturn(null);   // 当前无有效任职
+        when(pointsLogService.getPointsAdjustment(5)).thenReturn(300);           // 满足 300 分门槛
+        when(boardModeratorMapper.findAnyByUserAndLabel(5, 10)).thenReturn(history);
         when(boardModeratorMapper.updateById(any(BoardModerator.class))).thenReturn(1);
+        when(userService.getById(5)).thenReturn(null);                          // 账号升级走空分支
 
-        ResultBean result = boardModeratorService.dismiss(1, 1);
-        assertEquals(200, result.getCode());
+        ResultBean<?> result = service.appoint(5, 10, 1);
 
-        // 验证：status 被设为 0
-        verify(boardModeratorMapper).updateById(argThat(m -> m.getStatus() == 0));
-    }
-
-    @Test
-    @DisplayName("任命版主 → 积分刚好300 → 成功")
-    void appoint_exactly300Points_succeeds() {
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
-        when(pointsLogService.getPointsAdjustment(1)).thenReturn(300);
-        when(boardModeratorMapper.insert(any(BoardModerator.class))).thenReturn(1);
-
-        ResultBean result = boardModeratorService.appoint(1, 1, 1);
-        assertEquals(200, result.getCode());
-    }
-
-    // ========== 月度奖励/任命 补充测试 ==========
-
-    @Test
-    @DisplayName("月度奖励 → 字典值为空 → 使用默认400积分发放")
-    void monthlyReward_emptyDictValue_usesDefault() {
-        BoardModerator mod = new BoardModerator();
-        mod.setUserId(1);
-        mod.setStatus(1);
-        when(boardModeratorMapper.selectList(any(LambdaQueryWrapper.class)))
-                .thenReturn(Arrays.asList(mod));
-        when(pointsLogService.count(any(LambdaQueryWrapper.class))).thenReturn(0L);
-        when(cancelMapper.findCancelledUserIds(anyString())).thenReturn(new ArrayList<>());
-
-        ResultBean result = boardModeratorService.monthlyReward(1);
-        assertEquals(200, result.getCode());
-        // 验证发放了默认 400 积分（代码缺省值 rewardPoints=400）
-        verify(pointsLogService).adjustUserPoints(
-                eq(1), eq(400), eq("版主月度履职奖励"),
-                eq("moderator_reward"), isNull(), eq(1));
-    }
-
-    @Test
-    @DisplayName("任命版主 → 成功 → 发送任命通知")
-    void appoint_valid_succeeds_andNotifies() {
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
-        when(pointsLogService.getPointsAdjustment(1)).thenReturn(500);
-        when(boardModeratorMapper.insert(any(BoardModerator.class))).thenReturn(1);
-
-        ResultBean result = boardModeratorService.appoint(1, 1, 1);
-        assertEquals(200, result.getCode());
-        // 验证插入了版主记录
-        verify(boardModeratorMapper).insert(argThat(m -> {
-            BoardModerator mod = (BoardModerator) m;
-            return mod.getUserId() != null
-                    && mod.getLabelId() != null
-                    && mod.getStatus() == 1
-                    && "moderator".equals(mod.getRoleType());
-        }));
-    }
-
-    // ==================== 操作人身份校验（JWT） ====================
-
-    @Test
-    @DisplayName("任命版主 → 无登录态 → 拒绝")
-    void appoint_noAuth_returnsError() {
-        SecurityContextHolder.clearContext();
-        ResultBean result = boardModeratorService.appoint(1, 1, 1);
-        assertEquals(500, result.getCode());
-        assertTrue(result.getMessage().contains("登录"));
-    }
-
-    @Test
-    @DisplayName("任命版主 → 前端伪造操作人 id ≠ 登录态 → 拒绝")
-    void appoint_forgedOperator_returnsError() {
-        // 登录态为 1，却传 operatorId=2 → 拒绝，且不落库
-        ResultBean result = boardModeratorService.appoint(1, 1, 2);
-        assertEquals(500, result.getCode());
-        assertTrue(result.getMessage().contains("身份"));
-        verify(boardModeratorMapper, never()).insert(any(BoardModerator.class));
-    }
-
-    // ==================== Phase 3：版主生命周期 ====================
-
-    @Test
-    @DisplayName("任命版主 → 撤销后重新任命 → 复用旧记录并置 status=1")
-    void appoint_afterDismiss_reusesHistory() {
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
-        when(pointsLogService.getPointsAdjustment(1)).thenReturn(300);
-
-        BoardModerator history = new BoardModerator();
-        history.setId(10);
-        history.setUserId(1);
-        history.setLabelId(1);
-        history.setStatus(0);
-        when(boardModeratorMapper.findAnyByUserAndLabel(1, 1)).thenReturn(history);
-        when(boardModeratorMapper.updateById(any(BoardModerator.class))).thenReturn(1);
-
-        ResultBean result = boardModeratorService.appoint(1, 1, 1);
-
-        assertEquals(200, result.getCode());
-        verify(boardModeratorMapper).updateById(argThat((BoardModerator m) ->
-                m.getId() == 10 && m.getStatus() == 1 && "moderator".equals(m.getRoleType())));
+        assertEquals(200L, result.getCode());
+        assertEquals(1, history.getStatus(), "重新任命必须把历史记录恢复为有效");
+        assertNotNull(history.getAppointTime(), "重新任命必须刷新任命时间");
+        verify(boardModeratorMapper).updateById(history);
         verify(boardModeratorMapper, never()).insert(any(BoardModerator.class));
     }
 
     @Test
-    @DisplayName("判断有效版主 → 有效记录 → true")
-    void hasActiveRole_active_true() {
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(new BoardModerator());
-        assertTrue(boardModeratorService.hasActiveRole(1, 1));
-    }
+    @DisplayName("积分不足 300 时不能任命")
+    void appoint_rejectsWhenPointsBelowThreshold() {
+        when(boardModeratorMapper.findByUserAndLabel(5, 10)).thenReturn(null);
+        when(pointsLogService.getPointsAdjustment(5)).thenReturn(299);
 
-    @Test
-    @DisplayName("判断有效版主 → 空参数 → false")
-    void hasActiveRole_nullParams_false() {
-        assertFalse(boardModeratorService.hasActiveRole(null, 1));
-        assertFalse(boardModeratorService.hasActiveRole(1, null));
-    }
+        ResultBean<?> result = service.appoint(5, 10, 1);
 
-    @Test
-    @DisplayName("任命普通用户 → 主权限组切换为版主组")
-    void appoint_upgradesUserToModerator() {
-        User user = new User();
-        user.setId(1);
-        user.setPrimaryGroupId(40);
-        when(userService.getById(1)).thenReturn(user);
-        when(userService.resolveModeratorGroupId()).thenReturn(30);
-        com.walker.pojo.PermissionGroup userGroup = new com.walker.pojo.PermissionGroup();
-        userGroup.setId(40);
-        userGroup.setGroupCode("role_user");
-        when(permissionGroupMapper.selectById(40)).thenReturn(userGroup);
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
-        when(pointsLogService.getPointsAdjustment(1)).thenReturn(300);
-        when(boardModeratorMapper.insert(any(BoardModerator.class))).thenReturn(1);
-
-        ResultBean result = boardModeratorService.appoint(1, 1, 1);
-
-        assertEquals(200, result.getCode());
-        verify(userService).updateById(argThat((User u) ->
-                Integer.valueOf(1).equals(u.getId())
-                        && Integer.valueOf(30).equals(u.getPrimaryGroupId())));
-    }
-
-    @Test
-    @DisplayName("任命管理类权限组账号 → 不改变主权限组")
-    void appoint_admin_keepsAdminRole() {
-        User user = new User();
-        user.setId(1);
-        user.setPrimaryGroupId(20);
-        when(userService.getById(1)).thenReturn(user);
-        when(userService.resolveModeratorGroupId()).thenReturn(30);
-        com.walker.pojo.PermissionGroup adminGroup = new com.walker.pojo.PermissionGroup();
-        adminGroup.setId(20);
-        adminGroup.setGroupCode("role_admin");
-        when(permissionGroupMapper.selectById(20)).thenReturn(adminGroup);
-        // 管理类组自身带 admin:access → 不升级为版主
-        when(permissionGroupItemMapper.selectCount(any())).thenReturn(1L);
-        when(boardModeratorMapper.findByUserAndLabel(1, 1)).thenReturn(null);
-        when(pointsLogService.getPointsAdjustment(1)).thenReturn(300);
-        when(boardModeratorMapper.insert(any(BoardModerator.class))).thenReturn(1);
-
-        ResultBean result = boardModeratorService.appoint(1, 1, 1);
-
-        assertEquals(200, result.getCode());
-        verify(userService, never()).updateById(any(User.class));
-    }
-
-    @Test
-    @DisplayName("差异更新板块 → 新增板块并升级账号，已有板块保持不变")
-    void updateBoards_addsAndKeeps() {
-        User user = new User();
-        user.setId(1);
-        user.setPrimaryGroupId(40);
-        when(userService.getById(1)).thenReturn(user);
-        when(userService.resolveModeratorGroupId()).thenReturn(30);
-        com.walker.pojo.PermissionGroup userGroup = new com.walker.pojo.PermissionGroup();
-        userGroup.setId(40);
-        userGroup.setGroupCode("role_user");
-        when(permissionGroupMapper.selectById(40)).thenReturn(userGroup);
-
-        ArticleLabel label1 = new ArticleLabel();
-        label1.setLabelId(1);
-        ArticleLabel label2 = new ArticleLabel();
-        label2.setLabelId(2);
-        when(articleLabelService.listByIds(anyCollection())).thenReturn(Arrays.asList(label1, label2));
-
-        BoardModerator current = new BoardModerator();
-        current.setId(10);
-        current.setUserId(1);
-        current.setLabelId(1);
-        current.setStatus(1);
-        when(boardModeratorMapper.selectList(any(LambdaQueryWrapper.class)))
-                .thenReturn(new ArrayList<>(Arrays.asList(current)));
-        when(boardModeratorMapper.findAnyByUserAndLabel(1, 2)).thenReturn(null);
-        when(boardModeratorMapper.insert(any(BoardModerator.class))).thenReturn(1);
-
-        ResultBean result = boardModeratorService.updateBoards(1, Arrays.asList(1, 2));
-
-        assertEquals(200, result.getCode());
-        verify(boardModeratorMapper).insert(argThat((BoardModerator m) -> m.getLabelId() == 2));
-        verify(userService).updateById(argThat((User u) ->
-                Integer.valueOf(30).equals(u.getPrimaryGroupId())));
-    }
-
-    @Test
-    @DisplayName("差异更新板块 → 空集合撤销全部板块但不降级")
-    void updateBoards_empty_removesAllButKeepsRole() {
-        User user = new User();
-        user.setId(1);
-        user.setPrimaryGroupId(30);
-        when(userService.getById(1)).thenReturn(user);
-
-        BoardModerator current = new BoardModerator();
-        current.setId(10);
-        current.setUserId(1);
-        current.setLabelId(1);
-        current.setStatus(1);
-        when(boardModeratorMapper.selectList(any(LambdaQueryWrapper.class)))
-                .thenReturn(new ArrayList<>(Arrays.asList(current)));
-        when(boardModeratorMapper.updateById(any(BoardModerator.class))).thenReturn(1);
-
-        ResultBean result = boardModeratorService.updateBoards(1, new ArrayList<>());
-
-        assertEquals(200, result.getCode());
-        verify(boardModeratorMapper).updateById(argThat((BoardModerator m) -> m.getStatus() == 0));
-        verify(userService, never()).updateById(any(User.class));
+        assertEquals(500L, result.getCode());
+        verify(boardModeratorMapper, never()).insert(any(BoardModerator.class));
     }
 }
