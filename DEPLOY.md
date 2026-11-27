@@ -160,18 +160,24 @@ bash scripts/prod/base.sh --save
 
 ### 4.2 部署
 
-构建完成后按环境部署：
+构建完成后按环境部署。**生产入口统一是部署根目录的 `deploy.sh`**（v1.0.0 起）：
 
 ```bash
-bash scripts/dev/wsl.sh                       # WSL 联调（60001）
-podman stop bbs-server bbs-nginx              # 停止容器
-podman start bbs-server bbs-nginx             # 启动容器
+# 测试机：演练脚本（独立根/独立库，不碰现有栈）
+bash delivery/rehearsal/setup-legacy.sh
+bash delivery/rehearsal/run-scenarios.sh
 
-# 一键：打包 → 产物验证 → 部署 → 部署后验证
-./deploy.sh                                  # 开发机 / WSL
+# 生产：包与 deploy.sh 放同目录
+cd /data/bbs
+bash deploy.sh --dry-run                        # 只预检（0 停机）
+bash deploy.sh migrate --package <迁移包>        # 首次结构迁移（旧 versions/ → releases/）
+bash deploy.sh --package <升级包>                # 日常升级
+bash deploy.sh verify | status | diag           # 验证 / 现状 / 诊断包
+bash deploy.sh rollback                         # 回滚（含容器重建）
 
-# 生产服务器（零参数；自动取根目录最新包，验证通过后归档到 archive/）
-cd /data/bbs/scripts/prod && bash one_key_deploy.sh
+# 旧入口仍可用（兼容壳，一律转发 deploy.sh）
+bash /data/bbs/scripts/prod/one_key_deploy.sh
+bash /data/bbs/deploy-offline.sh --upgrade <包>
 ```
 
 容器使用 **host 网络**模式：
@@ -493,12 +499,14 @@ sudo bash deploy-offline.sh --install
 ### 10.4 日常升级
 
 ```bash
-# 将轻量升级包传到目标服务器
-scp dist/bbs-upgrade-20260715_143025.tar.gz user@server:/tmp/
+# 将轻量升级包传到目标服务器（新契约包，内含 manifest.json）
+scp dist/bbs-upgrade-*.tar.gz user@server:/data/bbs/
 
-# 在服务器上执行升级
-sudo bash /data/bbs/deploy-offline.sh --upgrade /tmp/bbs-upgrade-20260715_143025.tar.gz
+# 在服务器上执行（deploy.sh 与包同目录）
+cd /data/bbs && bash deploy.sh --package bbs-upgrade-*.tar.gz
 ```
+
+> 旧格式包（`upgrade-*/upgrade.sh`、无 `manifest.json`）请继续用 `scripts/prod/offline.sh`。
 
 ### 10.5 回滚
 

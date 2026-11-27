@@ -1,0 +1,106 @@
+大千智荟论坛 · 现场只读采集包 · 使用说明
+==========================================
+
+用途
+----
+在【生产服务器】上采集当前部署现状，把结果带回构建机，用于定稿迁移方案。
+全程只读：不停容器、不改配置、不改数据库、不写部署目录。
+
+包里有什么
+----------
+collect.sh      采集脚本（只读）
+使用说明.txt    本文件
+回传/           采集结果放这里（默认空）
+
+
+一、把包拷到服务器
+------------------
+1. 将整个 collect 目录拷到 U 盘根目录，例如 U 盘里是：
+     E:\collect\collect.sh
+     E:\collect\使用说明.txt
+2. U 盘插到生产服务器，挂载后把目录拷到 /root：
+     cp -r /media/usb/collect /root/collect
+   （不同系统 U 盘挂载点不同，用 df -h 看；也可以直接用 root 家目录下的临时目录）
+
+
+二、执行（约 10–30 秒）
+-----------------------
+   cd /root/collect
+   sudo bash collect.sh
+
+如果部署根不是 /data/bbs：
+   sudo bash collect.sh --home /你的/部署根
+
+如果提示"看起来不是 BBS 部署根"，先确认路径，不要强行运行。
+
+
+三、结果在哪
+------------
+默认输出到：
+   /root/collect/回传/<主机名>-<时间戳>/
+   /root/collect/回传/<主机名>-<时间戳>.tar.gz
+   /root/collect/回传/<主机名>-<时间戳>.tar.gz.sha256
+
+把【整个 回传 目录】拷回 U 盘（不要只挑一两个文件）。
+
+
+四、采集了什么（18 个文本证据 + 3 个容器 inspect JSON）
+--------------------------------------------------------
+00-system.txt        系统/内核/发行版/时区
+01-selinux.txt       SELinux 状态、上传目录安全上下文
+02-disk.txt          磁盘/内存/各目录占用
+03-home.txt          部署根结构、versions/current 指针、archive/backups/log
+04-entrypoints.txt   现有入口脚本（deploy.sh / deploy-offline.sh / scripts/prod）与哈希
+05-containers.txt    容器清单
+06-images.txt        镜像与 digest
+07-runtime.txt       podman 版本/rootless/存储位置/重启策略
+inspect-*.json       三个容器的完整 inspect（回滚时重建容器的唯一依据）
+08-mounts-env.txt    每个容器的挂载源→目标、环境变量（密码已打码）
+09-ports.txt         60000/60001/15432 监听、防火墙
+10-env-masked.txt    .env / deploy.env（密码已打码，含权限与 CRLF 检查）
+11-current-artifact.txt  当前 jar 的 SHA256、大小、ZIP magic、version.txt（自动识别新旧两种布局）
+12-http.txt          后端/用户端/管理端 HTTP 码、文件服务码
+13-mount-probe.txt   挂载探针（默认未启用，见下）
+14-db.txt            PG 版本、库大小、bbs_schema_version 最近 10 条、备份 schema
+15-logs.txt          最近 200 行日志里的 ERROR/Exception、重启计数
+16-backups.txt       备份目录现状（没有 backups 说明从未做过宿主机备份）
+19-summary.txt       一页结论 + MISSING 清单
+
+
+五、可选的挂载探针（默认关闭）
+------------------------------
+需要确认"容器是否真能读到宿主上传目录"时：
+   sudo bash collect.sh --with-probe
+会在上传目录写 1 个临时文件、容器内读回、然后立即删除。
+不放心的现场可以不做，默认只读足够定方案。
+
+
+六、不要做的事
+--------------
+× 不要 podman stop / rm / restart 任何容器
+× 不要修改 .env / deploy.env
+× 不要执行任何 .sql
+× 不要为了"采干净"去删日志或备份
+本脚本自身不会做以上任何一件事；采集失败只会记 MISSING，不会中断业务。
+
+
+七、常见问题
+------------
+Q: 提示 "未找到 podman/docker"
+A: 用 root 执行（sudo），或确认容器运行时命令在 PATH 里：
+   command -v podman || command -v docker
+
+Q: 提示 "看起来不是 BBS 部署根"
+A: 用 --home 指定真实部署根（里面有 versions/ 或 .env 的那个目录）。
+
+Q: 14-db.txt 只有一行"未找到 PG 容器"
+A: 数据库容器名可能不是 bbs-postgres。先看 10-env-masked.txt 里的
+   BBS_PG_CONTAINER，再手工补：podman ps -a | grep -i postgres
+   把容器名告诉构建机即可，不用改脚本。
+
+Q: 结果能直接发微信/邮件吗
+A: 密码已打码，但仍建议按内网规定走 U 盘/内网传输；包里含内部 IP、路径与表结构信息。
+
+Q: 采集脚本会写哪里
+A: 只写 回传/ 下的两个东西（结果目录 + tar.gz）。加了 --with-probe 才多写 1 个
+   临时探针文件，并在同一秒内删除。

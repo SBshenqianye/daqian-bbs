@@ -56,6 +56,13 @@ bbs-offline-latest.tar.gz
 # Environment configuration (contains secrets)
 .env
 
+# 现场采集回传数据（禁止入库，只保留说明文件）
+delivery/collect/回传/*
+!delivery/collect/回传/README.txt
+
+# 现场采集回传（生产数据：IP/路径/表结构/脱敏后的配置）
+feedback/
+
 # Build cache
 .cache_checksum
 

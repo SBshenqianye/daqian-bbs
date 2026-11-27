@@ -15,6 +15,7 @@
 | 数据库脚本 | 四份 SQL 同步 + 重启后端 | 启动日志出现 `Migration applied: vNNN` |
 | 权限 / 端到端 | `tests/` 下的 API 冒烟或 Playwright | 见 `tests/TEST-MATRIX.md` |
 | 部署产物 | `bash scripts/prod/verify-build.sh` | `FAIL=0` |
+| 部署入口 / 结构迁移 | `bash deploy.sh verify`（测试机或生产只读） | `FAIL=0`：三条指针一致、容器挂 `releases/<id>/app/...` 真实路径、文件回读 200 |
 
 - 两个前端**串行**构建；构建前先结束 node 进程，再单独发起构建。
 - API / E2E 只能跑在副本库 `bbs_e2e_test`，禁止对 `bbs_db` 写入。
@@ -33,7 +34,9 @@
 | 部署（WSL 测试） | `bash scripts/dev/wsl.sh` | `60001` 可访问，`verify-server.sh` 通过 |
 | 部署（生产离线） | `bash scripts/prod/offline.sh dist/bbs-upgrade-*.tar.gz` | 容器重建 + 挂载探针通过，`verify-server.sh` `FAIL=0` |
 | 一键（生产，零参数） | `cd /data/bbs/scripts/prod && bash one_key_deploy.sh` | 部署根目录最新 `bbs-upgrade-*.tar.gz`，验证通过后归档到 `archive/` |
-| 一键（开发机 WSL） | `./deploy.sh` | 打包→产物验证→部署 WSL→探活；`-n` 只预检 |
+| 一键（生产，新入口） | 日常 `bash deploy.sh`；一次性 `bash deploy.sh once migrate`（`tmp` 亦可） | 自动找包/校验/备份/切换/验证；失败自动回滚并 exit 1；成功后 `bash deploy.sh verify` 为 `FAIL=0` |
+| 现场取数（U 盘） | `cd /root/collect && sudo bash collect.sh` | `回传/<主机>-<时间戳>/19-summary.txt` 生成；MISSING 项人工核对（只读，不停容器） |
+| 一键（开发机 WSL） | `bash scripts/dev/wsl.sh` + `bash scripts/prod/package.sh` | 60001 可访问；`dist/bbs-*.tar.gz` 生成且 `verify-build.sh` 通过；根 `deploy.sh` 只用于部署根（在源码仓库里会提示正确入口） |
 
 - 前端普通 `.vue/.js` 源码改动走 HMR，不用重启；`vue.config.js`、`.env*`、`package.json`、`tailwind/postcss/babel` 配置改动必须重启。
 - 重启一律按端口杀进程树（日志在 `tmp/run/`），不杀全部 node。
@@ -58,6 +61,17 @@
 - 基线不通过时先修环境，不做注入；
 - 自检本身必须能变红：`-ApiBase http://127.0.0.1:1/bbs-server` 必须 exit 1。
 - **随包自检**：生产包内置负向检查，运行即执行——HTA 的 `[负向]` 组（3 项）、Selenium 每次运行自动跑 4 项（`selfcheck.enabled=false` 可关）；两者失败都单独统计，不并入业务失败，但都会导致整体退出码为 1。
+
+### 1.3 交付话术（对人，2026-11-27 起）
+
+每次交付给用户，必须一次说清三件事，缺一算没交付：
+
+1. **要上传几个文件**：默认 1 个升级包；`deploy.sh` 或基础镜像有变化时点名第 2 项并说原因。
+2. **一条命令**：日常 `bash deploy.sh`；复杂/一次性 `bash deploy.sh once <动作>`
+   （`once` 也可写 `tmp`）。不许要求现场连敲 `cd` / `cp` / `sha256sum` / `verify` / `diag`。
+3. **为什么 + 失败怎么办**：每步一句人话；失败给一条 `bash deploy.sh once rollback`。
+
+`package.sh` 打包结束会打印「交付卡」（上传项数 + 一条命令），交付时照它念，不要自己重编。
 
 ## 2. 停止规则（命中即停，不要自己决定）
 

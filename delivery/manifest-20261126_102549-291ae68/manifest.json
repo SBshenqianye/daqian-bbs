@@ -1,0 +1,1209 @@
+{
+  "product": "daqian-bbs",
+  "version": "20261126_102549",
+  "commit": "291ae68",
+  "mode": "migrate",
+  "stage": "release",
+  "built_at": "20261127_112521",
+  "min_deploy_version": "1.0.0",
+  "db_compat": "backward-compatible",
+  "source": "from:bbs-upgrade-20261126-102606.tar.gz",
+  "entrypoints": {
+    "deploy": "deploy.sh",
+    "verify": "deploy.sh verify",
+    "diag": "deploy.sh diag"
+  },
+  "files": [
+    {
+      "path": "payload/app/bbs-server.jar",
+      "sha256": "972b28e3b57d479b3adb4d03ccb717787528d8e2e158deb33d8015b31a5eeefe",
+      "size": 1127402
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/favicon.ico",
+      "sha256": "9a36ac1d8b84e890333aae827b6555c4497606f92dfa745c2c799164fd4f5143",
+      "size": 177254
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/index.html",
+      "sha256": "26ab1975bab8a557cceefacfd17f19e39bebe57973882525e9a82d6469acb1e4",
+      "size": 4895
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-0f031731.2cd28490.css",
+      "sha256": "4ead99eef06e2dbd827e43dd8575ef8627d94106fff6089564e60858c43498c4",
+      "size": 233
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-11979f38.4bb7414b.css",
+      "sha256": "9eed6e42c72045be3cb9724d6af9ed60f489ebc4cf630147c3d553c6fcb04356",
+      "size": 5876
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-1926d946.f7a725db.css",
+      "sha256": "74ac7a39e1a2ed1e751a29e4a01e693400e955d6f70e101f77cde81365b64b2d",
+      "size": 112
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-194927b6.0815ff41.css",
+      "sha256": "87765ca7cc7f5535f7e8cd5176d34df3dc5334353fd7aff9d4ad7a082e3ccfb3",
+      "size": 1681
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-20625e04.b853a65e.css",
+      "sha256": "1ce86a163d33db662e01981bc125c8e913db587644aaaa0078d7d4629c79f27c",
+      "size": 401
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-2ff3e503.eb352aa3.css",
+      "sha256": "ddc98527d94886dce31eab3cf36cc89db12b3aa0edce7a344c07c6f01061d99c",
+      "size": 11652
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-3bfbffa8.14de7cab.css",
+      "sha256": "0ff64da3a61eaa1c7605cb262d09a5eaaa4eac06b3fdf6edf215bcbab1f844eb",
+      "size": 3637
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-4f5e4642.1c8358a0.css",
+      "sha256": "50a68fe827322e5f9a8d0e32db129f08423e26f5b7448d1cc52e32d84aa951ef",
+      "size": 307
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-5be22c90.e5dd24f1.css",
+      "sha256": "7bb4763d394e61264f1181b678e35ec0c99d24e25500276e709feae3ce08c2b3",
+      "size": 2262
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-6dee4a52.99b7ceb4.css",
+      "sha256": "01e8d5c5afe2a95835ab0ff7bf5d6e69629f7c43444258220064b94a3f53ee30",
+      "size": 966
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-6edbc281.444d4f58.css",
+      "sha256": "707c0649f34f47358b993e81947b60912bcfa9fdecc4e57ac415bc0860ad7713",
+      "size": 2221
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-70461978.bfeb948e.css",
+      "sha256": "38b0fa5b0e79f698d93a5e8b8a8bcc2a77c434a5f831f14040a277a7daec3781",
+      "size": 619
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-78078d12.64640893.css",
+      "sha256": "aee0aa25c24a3cbd5468506218184fb0d8ea7cb5893081e2a75e096fd1ec33e3",
+      "size": 370
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-81171d28.ca99a331.css",
+      "sha256": "8bac8a7a86a9170e909aa96a20d317d869dc002f0a8c07528dc4f719aec0178d",
+      "size": 399
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-8285cadc.0da08228.css",
+      "sha256": "413028bc27ae5ee2513aa5be5d2c8e2f6de19ad0a8408a7f3c9f0d74914d6780",
+      "size": 1600
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-a796c5b8.a37afd50.css",
+      "sha256": "c5018391a214d6c01b287cc99de1d88914c75f38994d348fd73217d684a0ff74",
+      "size": 457
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-c9ef51b0.f370e23f.css",
+      "sha256": "de3f3bf13af115154b11d14251426753d257fdc75cdaf22757de1dcf1557b30e",
+      "size": 134
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-d3470bac.0d6f20a5.css",
+      "sha256": "90432baa7d2f680a563229e808a6bad0f2be308dd6981e095312558f121e033e",
+      "size": 159
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-d44cf272.b5b91ff8.css",
+      "sha256": "0a983050e502ecf353a2ca75eafc06a8af82ebb06f3a35f4d2a4b9de62ce741f",
+      "size": 102
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-e49191fe.faf3482b.css",
+      "sha256": "9dcaf5ab46707574606ab2e2841af32ccb1876d12329d1ac360afe0696b9da95",
+      "size": 462
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-e5b8f93e.f132d809.css",
+      "sha256": "2cefa885f888aa812efef6381f4f20e9036f25f56583c4da0e45501bf06346d1",
+      "size": 340
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-fda49764.6a718b79.css",
+      "sha256": "04a3883e188449f16ee2ba3fb0a41897c34a86583d44a4dfb9998238d67cc876",
+      "size": 1024
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/chunk-vendors.fc335862.css",
+      "sha256": "c97c599117a4f1e4a32ec986b51b755d26990230a427854b69fbae2e1ad6caf2",
+      "size": 241100
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/css/index.fb83d8de.css",
+      "sha256": "d2263c67cf5879b383f3fcb32048bbe102b3630f34bd1efd72aa332f3b243f92",
+      "size": 42490
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/fonts/MaterialSymbolsOutlined.5046dcca.woff2",
+      "sha256": "ca8ae3789f66726923baf4efff6170c2f4ae7b3944d2a6d288ab3705f85b2bc3",
+      "size": 1126312
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/fonts/element-icons.535877f5.woff",
+      "sha256": "ab40a58972be2ceab32e7e35dab3131b959aae63835d7bda1a79ae51f9a73c17",
+      "size": 28200
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/fonts/element-icons.732389de.ttf",
+      "sha256": "a30f5b3ba6a48822eae041e0ca5412a289125e4ba661d047dae565ac43b4a6b2",
+      "size": 55956
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/fonts/fontello.068ca2b3.ttf",
+      "sha256": "377117557b291ad6d9e2d7935e247eecb155fe729dd9b0d4d9ed5901102f7919",
+      "size": 15400
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/fonts/fontello.8d4a4e6f.woff2",
+      "sha256": "febc4ea81caae553507f6ad067db79f084d4536471f53dda533e63ae88423353",
+      "size": 7764
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/fonts/fontello.a782baa8.woff",
+      "sha256": "8aa3e26e6fb02506b71747c7692f666cd0d9479daba8d1796a492f75dda704ed",
+      "size": 9068
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/fonts/fontello.e73a0647.eot",
+      "sha256": "0286fb90d0a6bbf59969bb1b983c7975dc7abeb696a7a6a8df84a4abfdde1229",
+      "size": 15568
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/img/fontello.9354499c.svg",
+      "sha256": "82a2c2e3fde288ea95cad2f6d707400d0320c34749809f546358fd39339b2791",
+      "size": 16216
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/img/img.4dee35ee.jpeg",
+      "sha256": "2e1bf937b26c2df80acede8b49b1500357d22cccb09e9c60844915dba6cd308a",
+      "size": 238791
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/img/portrait.4dee35ee.png",
+      "sha256": "2e1bf937b26c2df80acede8b49b1500357d22cccb09e9c60844915dba6cd308a",
+      "size": 238791
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-04484984.e9e13ce4.js",
+      "sha256": "af99dbb72748d2cb4d593dde8dbdb6dbf5a957bf730df7245911fdcf008a4063",
+      "size": 37506
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-04484984.e9e13ce4.js.map",
+      "sha256": "b511824124229baf06ff2a70bf47d26979099cdddbf9ff465fc22e9a7568f2fd",
+      "size": 88922
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-04f456c6.aae1e8a0.js",
+      "sha256": "02f0a903d3beba9f8c1d88d56193570beb955fffdba7ac36230936304bcb9b7d",
+      "size": 15864
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-04f456c6.aae1e8a0.js.map",
+      "sha256": "c0adaa05c9b55799790caf1e0d9df45977d94d0cd366dba80453cf885ead3b05",
+      "size": 45305
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-065dcb28.efe27646.js",
+      "sha256": "3206482592ff7d6b09e2fad2e5000b01dcb0046202a9ec915f865586413ce556",
+      "size": 76631
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-065dcb28.efe27646.js.map",
+      "sha256": "9276cb440d1f5bc5e856ea770f9466c5dd41b75b311a4654b6c6dd82f7d1f498",
+      "size": 193429
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-07bb93fc.ceaf9929.js",
+      "sha256": "ecd0a271c5c35c3d321efc2ceec2db687142e28aa4aabb5adbd3cb526644b938",
+      "size": 19668
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-07bb93fc.ceaf9929.js.map",
+      "sha256": "d149b313c1bfad8a490b00f507b2fbd9e33b6e138759794ff683988b292b959a",
+      "size": 47833
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-0f031731.1d6e3c22.js",
+      "sha256": "70a401abc3e2dfc14c7fcf0ea19ee9e0a6360b49c1b67b3e05b38e2e9346c342",
+      "size": 56365
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-0f031731.1d6e3c22.js.map",
+      "sha256": "1cf0621dc70e804c76f3344dead84457fdedf10e7462555637e971c18ff5a854",
+      "size": 140567
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-11979f38.f8d587c6.js",
+      "sha256": "7bc54629b6038e6d0cda5a37a43c40ed108d6659d31a45b09d1bcf2f9b90ad19",
+      "size": 103177
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-11979f38.f8d587c6.js.map",
+      "sha256": "269129b4a21db61584671c6efd1b49b71a9234dc97722af86547b8c964f51a83",
+      "size": 343429
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-1926d946.46760e70.js",
+      "sha256": "2919e67deb1f6751fbacfce057d6e9a85634416f2fc8e255a3e9e4dba2c2d715",
+      "size": 6802
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-1926d946.46760e70.js.map",
+      "sha256": "d01e1e34772e69eacb8b062a693c109ed4455a0066fc9fc03089d7c32ab4ad9e",
+      "size": 17031
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-194927b6.d2c54953.js",
+      "sha256": "0a7a04c1c10eab8903f771d35df6a3e76de47ddb55488e00e6ad674c14423d8f",
+      "size": 16423
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-194927b6.d2c54953.js.map",
+      "sha256": "9e618635a5cd36cd8d8d629a70935320efa92cde60cafeeae255acf837db4ce5",
+      "size": 43999
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-1f4e9321.a8da73cd.js",
+      "sha256": "9e93da99943f39d3583aec87a710a60bce5ac23474d0134720ed589a76ff2f25",
+      "size": 18889
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-1f4e9321.a8da73cd.js.map",
+      "sha256": "52f7c9590809a2a228397a6202fd4457f0089ca9d7df5b6a1ba18eacef4c614a",
+      "size": 46279
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2050370e.4d0a22ef.js",
+      "sha256": "18991a9d305aa5b5d4a5454c3148013f3449ed010639d912ec433549a7d90d1d",
+      "size": 26432
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2050370e.4d0a22ef.js.map",
+      "sha256": "57c5e925093c17c7247ad48bf9d0dcda53c421f1444222762407df7bab475d78",
+      "size": 66083
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-20625e04.e3a60f54.js",
+      "sha256": "a2963a557ae45cd6ab750827b9c8b9495d0a0372a7d7d36279cca6f2538e3150",
+      "size": 200434
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-20625e04.e3a60f54.js.map",
+      "sha256": "37fd2317dd4da8982e9a4f6a1cff3db7e27f3ac65d7ca7d3e2c82b4f04307f74",
+      "size": 30409
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2d0c09d5.3658629b.js",
+      "sha256": "0ba7cc5991dde8a77f0a9022b3d903d66c4bbea647ca28c371f1b7b355e94c1e",
+      "size": 2244
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2d0c09d5.3658629b.js.map",
+      "sha256": "74e6c60617de7bc4b888ac36d176d88b8fd8b8b50c73ddd7be681cbece25ed1e",
+      "size": 6623
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2d0c82d2.d0bcc19e.js",
+      "sha256": "df5d0591d3d3f19e95817aa3ea874e9bcaf6a54f6f64b57236c3e1a30b55332e",
+      "size": 4839
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2d0c82d2.d0bcc19e.js.map",
+      "sha256": "df486eb4cf5248e873379a5dbede025e4239b4a68617ad0fb977f6150eb3af27",
+      "size": 13900
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2d0cf689.374e9b9d.js",
+      "sha256": "0e112c645211363f1f4af7c27ade6e4f0339f61d41a60b0c4230933feebae3ff",
+      "size": 5158
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2d0cf689.374e9b9d.js.map",
+      "sha256": "5dd504ffc2b4b48cc8310ef80e68ab07ed798eb0ace6abf63b304954992c906d",
+      "size": 12780
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2d21a815.881027fe.js",
+      "sha256": "eb01140d53c57f7e967680d133db11b82ef00216beb994e58e23c16d1d4337ae",
+      "size": 2812
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2d21a815.881027fe.js.map",
+      "sha256": "f3d6d47c2840a56d96c9842f3109afbb4dc38d20bc9a7492657866c0061e32ff",
+      "size": 6645
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2d230c65.5aaa8e33.js",
+      "sha256": "8c761f09272e578d82f623b3169fbd89942b82856fcc1e03f6e5279eda012265",
+      "size": 1971
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2d230c65.5aaa8e33.js.map",
+      "sha256": "574706d2eaf8b05f77e3f18c952464a7961b70976e69f967ee65586ffef08e2d",
+      "size": 5999
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2ff3e503.2adec8bc.js",
+      "sha256": "89326548c14297b80691fa3e3fb630c83e870d0900a7f81fff4c65d3f06f8b3b",
+      "size": 101802
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-2ff3e503.2adec8bc.js.map",
+      "sha256": "aec567b10db5686778215b7309b8566d91f8eea88bbd2554cb5ac6d16b6e6368",
+      "size": 460076
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-3bfbffa8.c32ee3d2.js",
+      "sha256": "42f60f83135bcc3cdb6e98e19e25c44f1b6fdf531f46736176274786bdbeb428",
+      "size": 36520
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-3bfbffa8.c32ee3d2.js.map",
+      "sha256": "0ee42f6c6fcafce6e6ad9fe9792fd6c864e9b406a78c169ae903790345211e39",
+      "size": 99769
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-3c0de242.b3b4b846.js",
+      "sha256": "1426d626290501b8f4345d40f44e40e2e2f303a98f7a6563d02326b257deabae",
+      "size": 9055
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-3c0de242.b3b4b846.js.map",
+      "sha256": "6b120d94ad3dfb89e7bbb03b2851b03ec87f6cef6adf82766fa13c04f3777669",
+      "size": 28794
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-4f5e4642.180ffd62.js",
+      "sha256": "00e86977f43a5adb902eb2397fdacf3b173ada1505d99f6ef2832b77681cb138",
+      "size": 32906
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-4f5e4642.180ffd62.js.map",
+      "sha256": "07bd79aa276bb131224b3d5c03d65fae0c49795f666b258774e4bd35a3c25707",
+      "size": 81407
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-5be22c90.dfe16e97.js",
+      "sha256": "816b4246a3d89e11f475644ff31d2de4d3d5d85f46cb1a0a11587759e6e70230",
+      "size": 318449
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-5be22c90.dfe16e97.js.map",
+      "sha256": "36457286bbfa47a1700365267d307eecf2e14e3d478224d8a241cf8d332bac49",
+      "size": 679214
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-5f04e287.0fcd3584.js",
+      "sha256": "8b98d43bf7289dbe3fec51e857e35c1c1a008a1dd7b99d31b9d9cdcae0d1dcf5",
+      "size": 11764
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-5f04e287.0fcd3584.js.map",
+      "sha256": "f1c48d844a09189ae37be4d41bc186a5b12077cbc0eb853ad9ec23d5a5943644",
+      "size": 35514
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-6dee4a52.89551c4e.js",
+      "sha256": "0f5e41dd7c14b2902a9e22a1b357eb01432f7ad68fa3c62df9ada0d022aacd0f",
+      "size": 18724
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-6dee4a52.89551c4e.js.map",
+      "sha256": "15e4cfb1d5f70de88b8f0f6d50dddc942de71e1aca7d2080f8c4764f63a5c392",
+      "size": 45610
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-6edbc281.54316b86.js",
+      "sha256": "abf292ec4069950deb66d37b4bbcac5dd1cdca6b9e4dd9b230c9fc28668081eb",
+      "size": 57799
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-6edbc281.54316b86.js.map",
+      "sha256": "9b5b238e2d0ca4db8f66257f5a2d04462f6a527964835924b9ea2e0df592d586",
+      "size": 138156
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-70461978.b5501192.js",
+      "sha256": "5949df3534a07c4b566e7943c60438cd36aca0d2d837d384d157b20c1da0cc46",
+      "size": 46777
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-70461978.b5501192.js.map",
+      "sha256": "3a3d8a9c361f0d83a92c617bf4f14fed4cbc1bd226743f0f2e8b72b6c5f65585",
+      "size": 113743
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-71990254.6e906dd7.js",
+      "sha256": "28debc21b315fd580a921508f7fd335a0d16cc613355123e57caffe9023e49e0",
+      "size": 12074
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-71990254.6e906dd7.js.map",
+      "sha256": "668670b7388900aa597889ea198a748130e07d5b39e3ccb317cdec0d000e21c2",
+      "size": 31185
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-78078d12.f5867dcd.js",
+      "sha256": "56aff8df64d05bd4387c6f439ea55cb0a8068da5c6b66508b794a5e8575a6e9c",
+      "size": 18132
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-78078d12.f5867dcd.js.map",
+      "sha256": "5b36502637c5a55bd124d856be2a23bc6d36da54ba930bccb9eb73e1b594e239",
+      "size": 50285
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-7a975b4e.77329651.js",
+      "sha256": "0708cddae10bb8131252d1f1b2842046e09cd1d050432ae643da2a1b2308b0ee",
+      "size": 15218
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-7a975b4e.77329651.js.map",
+      "sha256": "e08c84380611207065c821941cd4eac8f47d9de731a2296ced0c66c890578335",
+      "size": 43087
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-81171d28.80fb8b8f.js",
+      "sha256": "472891ab4390fabcf83851355f9b929785268d4f662589b9c733ef6635877e94",
+      "size": 44166
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-81171d28.80fb8b8f.js.map",
+      "sha256": "2c01822aa6991342eaca5e6ce00e5127904aa432697e8240d507d58df3c48ecc",
+      "size": 117421
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-8285cadc.c9ea7eb9.js",
+      "sha256": "d52d5ac33eb36928a86ee31649aa888115f4a7a4d7a3aae6f7f6e08e8603fb9e",
+      "size": 54555
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-8285cadc.c9ea7eb9.js.map",
+      "sha256": "ffe5c2ecbfd2e630f33c2344a8e16f2cbff59b0c087b0bf9841f13a5e47eea55",
+      "size": 138483
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-a796c5b8.395f1be9.js",
+      "sha256": "c8469991230118bc0a61732b2f19d42558728a597b4ad7cc208ba276f84da0a0",
+      "size": 38392
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-a796c5b8.395f1be9.js.map",
+      "sha256": "4fa20a8d772d455f31deb23f471b1a5fe2e378c707853dc0975cc21017c3adb8",
+      "size": 97705
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-c9ef51b0.2cc03f31.js",
+      "sha256": "3f5a957612a8fadb28721a07a84121f3e919a377cf1eda61a56f2a6590e34b73",
+      "size": 16530
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-c9ef51b0.2cc03f31.js.map",
+      "sha256": "dbe12fdbc4f75763a65777292deeb827a31ce064a54d0823af72b54b395ce9ea",
+      "size": 44693
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-d3470bac.3bac391c.js",
+      "sha256": "cf94454df0a5733e36ef54dd2be7077f12647240bc14e9a3fe3882319d0b5467",
+      "size": 15361
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-d3470bac.3bac391c.js.map",
+      "sha256": "01fb023ba0b0119acdc0f7e9b9490d91cb4ac108ecec0e600597a3907e8e6a15",
+      "size": 45431
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-d44cf272.b5adff12.js",
+      "sha256": "9cda9bb6e6b718a4901fdf7f553475991ae881cb4aab652be2314d6ebcebead3",
+      "size": 97645
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-d44cf272.b5adff12.js.map",
+      "sha256": "547c24214d712c09315106b080f3c0e4dad498313954dbc5a7a89f6bd451eadc",
+      "size": 363021
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-e49191fe.9644cd91.js",
+      "sha256": "b589b938f93d1244a96705daa06c3a970664a8b63d2f4fe56d9c3647d200505f",
+      "size": 13329
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-e49191fe.9644cd91.js.map",
+      "sha256": "38b2d83fc262803b956b495114b5e4926d3d2f29a33d953ff369eda5cf0889a5",
+      "size": 35163
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-e5b8f93e.9b59cdd4.js",
+      "sha256": "a8ce2cc947e902a332347fbae29366b2eba9f1c0a12e0fb992191968fc3182cd",
+      "size": 33404
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-e5b8f93e.9b59cdd4.js.map",
+      "sha256": "ca4f6dedf8f8c44812003f265b609ca007ae3c10eaccf4d45395506afe6647a2",
+      "size": 89835
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-fda49764.8a65fc23.js",
+      "sha256": "24effefa36d8673dcca8218bba7995d71b7c7938ee8462b89ff3dfc33287ca59",
+      "size": 13316
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-fda49764.8a65fc23.js.map",
+      "sha256": "3b24883e4f9b8b3ddc534ca3dc9a669de6ce042b004473e052ca4ec7d2ea9fb1",
+      "size": 37150
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-vendors.88a67d41.js",
+      "sha256": "bbc0077da004e30daefcdb2197c783571300ada3110f1589fc34065b0150030c",
+      "size": 1045787
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/chunk-vendors.88a67d41.js.map",
+      "sha256": "2901f77e49bea9bf44f389ed11c03cae463268d9bec75bdb319f84510279f134",
+      "size": 1461312
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/index.f1df79ee.js",
+      "sha256": "9084943ab5f8ec013141cf86bb4f17caba29919fb6843d32fc520b8af89025fc",
+      "size": 40451
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/js/index.f1df79ee.js.map",
+      "sha256": "35a313f6cacb36beaae14b970258a07add0b3cba6fdcc32f4dca78669bcd6986",
+      "size": 122873
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/highlight.min.js",
+      "sha256": "0028ae9273d2cecde304fb39566c6cf4b39fa897bbe4b7d2ea5ee944d8f0b079",
+      "size": 113831
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/bash.min.js",
+      "sha256": "cd17bec43a053f33dad745d6d1c9440bc8fef39dba56a7e4460049a45445aecc",
+      "size": 3076
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/cpp.min.js",
+      "sha256": "9854bad98d92a0d026501b14683e740c1be2c53f66b46154c21365087b4fe874",
+      "size": 5713
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/csharp.min.js",
+      "sha256": "c73b8a9ba226e8bc381e7dc48704070eaddb95900051c7726e90bbb1c96fadaa",
+      "size": 3997
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/css.min.js",
+      "sha256": "0596ce37c79769d0d671c7598e6dca8cf932f9578e7b61213a1576f584902dc5",
+      "size": 8980
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/go.min.js",
+      "sha256": "efecef72b7254322b4614ca472af727147e65f34bf342e797039edc5dec8e3d1",
+      "size": 1206
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/java.min.js",
+      "sha256": "12e97e7a1c3333e09d5e849ce9ec6f83028f843b959b461ccbb6d724ec6eb769",
+      "size": 2692
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/javascript.min.js",
+      "sha256": "6c4523858c3c83e1b5d8a357e1d1f8782a54ac455267cbc157d41c6494cb3fb4",
+      "size": 6237
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/json.min.js",
+      "sha256": "ac10ac90d534a18274bfb5761ebcd793156b06c3308c6a1334c01ee720a87b54",
+      "size": 423
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/kotlin.min.js",
+      "sha256": "ceddfe5d5ca2634eda98ec7547c1eafa170e840a584b564ab77c38091e5eb65a",
+      "size": 3430
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/markdown.min.js",
+      "sha256": "b4b88d50b251fc8835809bd2d678edb4385646c33b911e51facd0a195480971d",
+      "size": 2049
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/php.min.js",
+      "sha256": "ce66e6fc94903dd797dd117cc668749ad659e7ab015e4c8691d5b5d16b191a02",
+      "size": 4205
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/python.min.js",
+      "sha256": "d49f163ac19612494596e46fe76fb3ffe56100bf757240dfd78cfe934892e5c3",
+      "size": 3457
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/ruby.min.js",
+      "sha256": "8961a14a902ffc2cf5effc03eb8f3d20aaf1957ed6363ba0b9cae31c3451614a",
+      "size": 3501
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/rust.min.js",
+      "sha256": "7c0db5c6914d48b709c3936fe9d87a39428cca611b3a9028415450ea8c5b562e",
+      "size": 2898
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/sql.min.js",
+      "sha256": "26ecdef4f5515da386b3f264c200d8a55d06e58b96b1c12d9a7db0c21ccfb9f4",
+      "size": 6535
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/swift.min.js",
+      "sha256": "ea2331fa036a18d1010b4fd838abef36bc14333ca595fd35c9de540f944be226",
+      "size": 7479
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/typescript.min.js",
+      "sha256": "778d2aaff3bfbab03695c4b7761fd7e2284ee9f5c388f68a6d80ff09f3da337f",
+      "size": 7308
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/xml.min.js",
+      "sha256": "42d62c348da6a43c5720b62650d4d88cef80d82df37ea4040aa7fb18b2a8d8a1",
+      "size": 1944
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/languages/yaml.min.js",
+      "sha256": "78963882ba9cb4cc3bf5b77b29debaa8285d3518d1fcaafb7a7e222c9b4050ac",
+      "size": 1810
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/highlight/styles/github.min.css",
+      "sha256": "3a9a5def8b9c311e5ae43abde85c63133185eed4f0d9f67fea4b00a8308cf066",
+      "size": 1309
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/katex/katex.min.css",
+      "sha256": "9006d7f59e593218e8df83d118431ced18ae79ebe56e60e296f52dd4db191802",
+      "size": 23126
+    },
+    {
+      "path": "payload/app/bbs-admin-ui/dist/lib/katex/katex.min.js",
+      "sha256": "26fe55ad21d8c71066875f21414be20783a25733a40c774ed2e6381adac23034",
+      "size": 179685
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/favicon.ico",
+      "sha256": "9a36ac1d8b84e890333aae827b6555c4497606f92dfa745c2c799164fd4f5143",
+      "size": 177254
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/index.html",
+      "sha256": "71a1410c69298c3cacd725579babc040bff2e198b94e0c495b12b0cb088f59f7",
+      "size": 926
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/css/149.354bc3e6.css",
+      "sha256": "7bfccbb4a489b4a5918e443cf21070a0945f2d1c7bf6464269ed56778575631f",
+      "size": 13620
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/css/272.60f96c1c.css",
+      "sha256": "7d2408b594a30e7953798a66f62b3f1e3fc5d3232e67d11656627d05e2c9b8b4",
+      "size": 15898
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/css/463.8de2d711.css",
+      "sha256": "ab5b912f5902e27984c5af5ee979de042c4ae911deabcfbb5b21e73436fb4e3a",
+      "size": 199
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/css/594.ae1db265.css",
+      "sha256": "1c3f1a971ff2bbd6179254b6a8b74fb5bedfe7d3016865cd957bafbeb6818734",
+      "size": 199
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/css/674.0ef9987b.css",
+      "sha256": "7c2ff0da4c07ada5e7c2292eae925d5fdbad7c32eef8010645a8c8d8d06600c8",
+      "size": 2111
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/css/782.c4a9af33.css",
+      "sha256": "8c6547dcb1dc98e4bbdb8c98b3262ca66d062faadaccb1845e8facc7c8d83bf2",
+      "size": 2805
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/css/906.e3049dad.css",
+      "sha256": "0f8a1bd638cd0fc95d903ef1d83d165c2960b3d450b0c7250dc10aa1170d7e79",
+      "size": 3138
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/css/chunk-vendors.966b3ca0.css",
+      "sha256": "362ca282523700bad825a98657f6c7967f311753106a4e1577d4424f7a0bc9be",
+      "size": 39282
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/css/index.938ea5c8.css",
+      "sha256": "ab61d890d695350259842272947f96bbfec62dccf8cb0f90af1f6208f6e24c5f",
+      "size": 59771
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/fonts/Manrope.fedf4c92.woff2",
+      "sha256": "a30ddcd349703aff7464c34bef3fffdff405ee50c113440d7c8693c02d210972",
+      "size": 24836
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/fonts/MaterialSymbolsOutlined.71bd46e5.woff2",
+      "sha256": "ca8ae3789f66726923baf4efff6170c2f4ae7b3944d2a6d288ab3705f85b2bc3",
+      "size": 1126312
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/fonts/element-icons.f1a45d74.ttf",
+      "sha256": "a30f5b3ba6a48822eae041e0ca5412a289125e4ba661d047dae565ac43b4a6b2",
+      "size": 55956
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/fonts/element-icons.ff18efd1.woff",
+      "sha256": "ab40a58972be2ceab32e7e35dab3131b959aae63835d7bda1a79ae51f9a73c17",
+      "size": 28200
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/img/neijiang-overlook.a2d4fb3a.jpg",
+      "sha256": "65c2becf0cac7d291427c7a3b509c840cea435039d4052d9138c6183117c544f",
+      "size": 296520
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/img/neijiang-paifang.b7d7df02.jpg",
+      "sha256": "8cc781f353692bfd515c26dd6acb0e52626b43d3a9baa4bf6e3e248c201f7571",
+      "size": 198981
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/img/neijiang-power-building.c25222c1.jpg",
+      "sha256": "8beb631575ba1a67fd59d2a6c2864a5f2d61b8a8b55df6dcca4bf3c5d36c883f",
+      "size": 121372
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/img/neijiang-shengshui.313aac2e.jpg",
+      "sha256": "45be2db57a8541aae5115301ef54dc2306317a7c1e4538a78c8fa216d2da44cf",
+      "size": 181962
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/img/portrait.4fa8e178.png",
+      "sha256": "2e1bf937b26c2df80acede8b49b1500357d22cccb09e9c60844915dba6cd308a",
+      "size": 238791
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/149.ed1d028a.js",
+      "sha256": "598328e7c9f099cff26a61b1ef98b23ebbb89ad7355b3faa0b9f38b75c49fd4b",
+      "size": 40727
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/149.ed1d028a.js.map",
+      "sha256": "31707b9ebfb59c171c7fc55cfe20d26ce3a4fc5b24f5041fc7baa15706256845",
+      "size": 140798
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/272.dec61a35.js",
+      "sha256": "1cabbaf0b9fc2aa2615da9e31e3c023aa0f6c99b169890770c689bb1d50ed6f1",
+      "size": 64478
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/272.dec61a35.js.map",
+      "sha256": "6a0085855507da5a2008622eafbf179ba0a33e0199d2c758320ff23bf48d8be2",
+      "size": 238687
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/287.7c65d0c1.js",
+      "sha256": "7e1ba7277de249606068ebbad6b7d15a72853438daf4a66c7f6029608804586e",
+      "size": 7117
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/287.7c65d0c1.js.map",
+      "sha256": "39cff99a5d2db6a2d6e10e59f65a81322c0eaa10307e3e9c2a8096e426031e11",
+      "size": 21573
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/463.47e0cc67.js",
+      "sha256": "6dff1657dcd2f738d6e60699665f567884584002bedcb263e64604518197f698",
+      "size": 11618
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/463.47e0cc67.js.map",
+      "sha256": "06b60e3277687d2f6000d4db84df0883589b396ff4c087258c732e8b4027eb35",
+      "size": 32441
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/594.0f4b3d99.js",
+      "sha256": "b9e50cece520050a1185ef2996dcb3108b5a99626c3d935a6536d3262df3c274",
+      "size": 6079
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/594.0f4b3d99.js.map",
+      "sha256": "a07589385a43babb2e5666196e7743d1249e08d6754499f66b99fc16420c39c2",
+      "size": 18242
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/674.6b46e484.js",
+      "sha256": "f8b68d1da5eb2036ed2379ea89095a0053a54dca7884bc2b169d5873ae5beca5",
+      "size": 23759
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/674.6b46e484.js.map",
+      "sha256": "42a03c3d746e07a5c5bcf58611a5eba9414b0251f829f632ac24c90c02928bd2",
+      "size": 86814
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/757.51d741c7.js",
+      "sha256": "fc2c65bc8dad4b07a5893c8bbe8feb6c1cbf0ba854738abc5260ad9276344c2f",
+      "size": 92821
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/757.51d741c7.js.map",
+      "sha256": "26ed7a4c91390cf7286603451198e032e49f3556cb034059ac541ac6b1caddc9",
+      "size": 295955
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/782.1f176d42.js",
+      "sha256": "e1be43b9ec9ca0e5d45d216996db51c830de712514e4ddcd801894c6b2e5e073",
+      "size": 11459
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/782.1f176d42.js.map",
+      "sha256": "ef63873ac15f0fbb814a0c1475ddb33b237c1edc4d47de545e21b07712a7c0b6",
+      "size": 44259
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/906.fc1bb74b.js",
+      "sha256": "8d399bc440f04b982e3dc5d669cebd24a1c09a1945f0078a7be4efa5c832065e",
+      "size": 37738
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/906.fc1bb74b.js.map",
+      "sha256": "ffe1007398bbbac17148d6446327181be00d32d9b4513370bab995fcf4994ac7",
+      "size": 126738
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/chunk-vendors.f468b89b.js",
+      "sha256": "85b63e7e76ca750b4fe72254598edf5e44eb9aaccefa7e2c0fa3d7ab5f1f4a3c",
+      "size": 197524
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/chunk-vendors.f468b89b.js.map",
+      "sha256": "91491fcfdada3b9a15aea9f87651701ab2b4c8b1a8f7ff855a64cece64ed2899",
+      "size": 910986
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/index.e102fc57.js",
+      "sha256": "d383c9e95de42bc4900d2676bdd5a5431438478bc79a743932faf8f6bae8c038",
+      "size": 52053
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/js/index.e102fc57.js.map",
+      "sha256": "9906c3abcfd4e8802761113e16ef9916dd2a7f6ecb0862bdcd7b0a192c3eb971",
+      "size": 178011
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/highlight.min.js",
+      "sha256": "0028ae9273d2cecde304fb39566c6cf4b39fa897bbe4b7d2ea5ee944d8f0b079",
+      "size": 113831
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/bash.min.js",
+      "sha256": "cd17bec43a053f33dad745d6d1c9440bc8fef39dba56a7e4460049a45445aecc",
+      "size": 3076
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/cpp.min.js",
+      "sha256": "9854bad98d92a0d026501b14683e740c1be2c53f66b46154c21365087b4fe874",
+      "size": 5713
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/csharp.min.js",
+      "sha256": "c73b8a9ba226e8bc381e7dc48704070eaddb95900051c7726e90bbb1c96fadaa",
+      "size": 3997
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/css.min.js",
+      "sha256": "0596ce37c79769d0d671c7598e6dca8cf932f9578e7b61213a1576f584902dc5",
+      "size": 8980
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/go.min.js",
+      "sha256": "efecef72b7254322b4614ca472af727147e65f34bf342e797039edc5dec8e3d1",
+      "size": 1206
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/java.min.js",
+      "sha256": "12e97e7a1c3333e09d5e849ce9ec6f83028f843b959b461ccbb6d724ec6eb769",
+      "size": 2692
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/javascript.min.js",
+      "sha256": "6c4523858c3c83e1b5d8a357e1d1f8782a54ac455267cbc157d41c6494cb3fb4",
+      "size": 6237
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/json.min.js",
+      "sha256": "ac10ac90d534a18274bfb5761ebcd793156b06c3308c6a1334c01ee720a87b54",
+      "size": 423
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/kotlin.min.js",
+      "sha256": "ceddfe5d5ca2634eda98ec7547c1eafa170e840a584b564ab77c38091e5eb65a",
+      "size": 3430
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/markdown.min.js",
+      "sha256": "b4b88d50b251fc8835809bd2d678edb4385646c33b911e51facd0a195480971d",
+      "size": 2049
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/php.min.js",
+      "sha256": "ce66e6fc94903dd797dd117cc668749ad659e7ab015e4c8691d5b5d16b191a02",
+      "size": 4205
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/python.min.js",
+      "sha256": "d49f163ac19612494596e46fe76fb3ffe56100bf757240dfd78cfe934892e5c3",
+      "size": 3457
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/ruby.min.js",
+      "sha256": "8961a14a902ffc2cf5effc03eb8f3d20aaf1957ed6363ba0b9cae31c3451614a",
+      "size": 3501
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/rust.min.js",
+      "sha256": "7c0db5c6914d48b709c3936fe9d87a39428cca611b3a9028415450ea8c5b562e",
+      "size": 2898
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/sql.min.js",
+      "sha256": "26ecdef4f5515da386b3f264c200d8a55d06e58b96b1c12d9a7db0c21ccfb9f4",
+      "size": 6535
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/swift.min.js",
+      "sha256": "ea2331fa036a18d1010b4fd838abef36bc14333ca595fd35c9de540f944be226",
+      "size": 7479
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/typescript.min.js",
+      "sha256": "778d2aaff3bfbab03695c4b7761fd7e2284ee9f5c388f68a6d80ff09f3da337f",
+      "size": 7308
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/xml.min.js",
+      "sha256": "42d62c348da6a43c5720b62650d4d88cef80d82df37ea4040aa7fb18b2a8d8a1",
+      "size": 1944
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/languages/yaml.min.js",
+      "sha256": "78963882ba9cb4cc3bf5b77b29debaa8285d3518d1fcaafb7a7e222c9b4050ac",
+      "size": 1810
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/highlight/styles/github.min.css",
+      "sha256": "3a9a5def8b9c311e5ae43abde85c63133185eed4f0d9f67fea4b00a8308cf066",
+      "size": 1309
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/katex/katex.min.css",
+      "sha256": "9006d7f59e593218e8df83d118431ced18ae79ebe56e60e296f52dd4db191802",
+      "size": 23126
+    },
+    {
+      "path": "payload/app/bbs-ui/dist/lib/katex/katex.min.js",
+      "sha256": "26fe55ad21d8c71066875f21414be20783a25733a40c774ed2e6381adac23034",
+      "size": 179685
+    },
+    {
+      "path": "scripts/.env.example",
+      "sha256": "4d6419c18e8ed085ea5009f672b9e20715aab33f093251edd328c0f25d2b4ddc",
+      "size": 1775
+    },
+    {
+      "path": "scripts/SCRIPT.md",
+      "sha256": "122fd4a96f1a3e82ac89f4e0e1a82760f55097450c1927602bab8796b0d927cf",
+      "size": 16935
+    },
+    {
+      "path": "scripts/dev/_common.ps1",
+      "sha256": "c47aeed999d47047b8e29f1e29bab50e151d1ccf10e35f0f0b01bddc95cfecb7",
+      "size": 2302
+    },
+    {
+      "path": "scripts/dev/check-dev-port.js",
+      "sha256": "be92b6e277d3523663c969c143f3e2e50a6c7dcf253c72757ebba63850b80189",
+      "size": 1147
+    },
+    {
+      "path": "scripts/dev/down.ps1",
+      "sha256": "cb173297cd6adcc929b1c9741bf0549943c31b02baec371d847b1ae47d2821e5",
+      "size": 926
+    },
+    {
+      "path": "scripts/dev/negative-smoke.ps1",
+      "sha256": "8ef67239aac65cb0cbb9489dfe29bca8249abc832af3cc4e661564b87439117c",
+      "size": 3044
+    },
+    {
+      "path": "scripts/dev/package.ps1",
+      "sha256": "8fbcd14df6b9506b025780fd1249e11609721ca2fc6fa794003dac1eefbae0d6",
+      "size": 4197
+    },
+    {
+      "path": "scripts/dev/pg-start.sh",
+      "sha256": "698e84377ea85f65b85860cf50fef0b46436349e490ce2aadceec27016fc27cc",
+      "size": 4020
+    },
+    {
+      "path": "scripts/dev/restart.ps1",
+      "sha256": "cc70a7e3d0435c14d8b0b9b9d40246ada1beea84b45bdbae1e52900e2726fd4e",
+      "size": 648
+    },
+    {
+      "path": "scripts/dev/up.ps1",
+      "sha256": "470632a42acdb098e91c8a57beeee0acca2b76d0bae1295ef69083ae3cac299e",
+      "size": 2858
+    },
+    {
+      "path": "scripts/dev/verify.ps1",
+      "sha256": "da2517b8b869fb0a9dca6f55ee6be2700e2a034893aa23626b5b77b074df25e9",
+      "size": 1994
+    },
+    {
+      "path": "scripts/dev/wsl.sh",
+      "sha256": "9cfbfeeedcbf5edb8e48e2dedbe6716d8862b3dab8656517701d6afcf51c1221",
+      "size": 16979
+    },
+    {
+      "path": "scripts/lib/progress.sh",
+      "sha256": "22cc6786f89b60e31b626c81fcbaedd3b214def7d123fd06f81112c64fb70aaa",
+      "size": 7679
+    },
+    {
+      "path": "scripts/prod/base.sh",
+      "sha256": "37f0f4e2add750ecf9423c7a294fce366bba3d3cee3ff6ab76c1f5bf9dbf9b64",
+      "size": 10166
+    },
+    {
+      "path": "scripts/prod/deploy-offline.sh",
+      "sha256": "887a94807dc53701b5f126b306246e174666b7ee5df6e8f965d73d45ec5f947b",
+      "size": 1732
+    },
+    {
+      "path": "scripts/prod/offline.sh",
+      "sha256": "deed527f2ecfc4721686a8ad91337c9261e773d6085c8e5dd7a5ef6f03a2b6cb",
+      "size": 24689
+    },
+    {
+      "path": "scripts/prod/one-key-deploy.sh",
+      "sha256": "9927a884c84cc2de0604964905be8d8472e086752cd00b885720956b83ebd0ef",
+      "size": 621
+    },
+    {
+      "path": "scripts/prod/one_key_deploy.sh",
+      "sha256": "160e343e65d2099d122963636a452b930e35b1c9f78ca68520fe3ba12cba9f09",
+      "size": 873
+    },
+    {
+      "path": "scripts/prod/package.sh",
+      "sha256": "3b5cd0c90a6d6c9d953adb6f129f72e9768dee529fcc32f891084dde0140ae79",
+      "size": 13252
+    },
+    {
+      "path": "scripts/prod/verify-build.sh",
+      "sha256": "4025d129cc556f39263a57665acf02801839011996ad3534042fc3b06a2ad4ab",
+      "size": 5896
+    },
+    {
+      "path": "scripts/prod/verify-server.sh",
+      "sha256": "cbebd6622aee6dbe4808d4bfc20c17c1687ea180bea6c6cc0671940deb044247",
+      "size": 2686
+    },
+    {
+      "path": "scripts/prod/ops/diagnose-upload.sh",
+      "sha256": "9698380ff2bab9ce1acb5c65bb5b966db8501f3297c82edb387c64b6cd34ac56",
+      "size": 4530
+    },
+    {
+      "path": "scripts/prod/ops/fix-dict-cleanup.sql",
+      "sha256": "ae3e69892e1ac807ee2796c26b7efbbf3bbc069f9e6f56b0279ae3b4500b2c56",
+      "size": 297
+    },
+    {
+      "path": "scripts/prod/ops/fix-dict-key-column.sql",
+      "sha256": "8224c00b32bf862b298f3d97a0a5d0bf4b33cbc8e0ca76dcf178e4917d98e66c",
+      "size": 1860
+    },
+    {
+      "path": "scripts/prod/ops/fix-upload-path.sh",
+      "sha256": "520f00eabbe9d8d99aaff4d5d74e327f45ef7881bfa74bb45e413b595f30b24e",
+      "size": 10222
+    },
+    {
+      "path": "scripts/prod/ops/pg-backup.sh",
+      "sha256": "37f53f3284ad9e204146bc813d109f83dc585c0d6a1ea1b28003174e2f284098",
+      "size": 17752
+    },
+    {
+      "path": "scripts/test/e2e/daqian-bbs-e2e.hta",
+      "sha256": "81e9675d8935c4b8e4aee6449051708de2e454228500586dfd65b916dedd58b9",
+      "size": 59169
+    },
+    {
+      "path": "scripts/test/e2e-selenium/.gitignore",
+      "sha256": "821c888c2fd551581764ee7629a16e7e7f87020f6445b4aa96cd77675f7e45e1",
+      "size": 36
+    },
+    {
+      "path": "scripts/test/e2e-selenium/README.txt",
+      "sha256": "0a6aed53758a961bcc6035533ddee2d3236e426b7578d3c89d58c45831286c93",
+      "size": 4191
+    },
+    {
+      "path": "scripts/test/e2e-selenium/build-exe.ps1",
+      "sha256": "0e55b89883bacacaf7728b601eb42e299de3f1b6ee2f06a9f4a2626026866a03",
+      "size": 904
+    },
+    {
+      "path": "scripts/test/e2e-selenium/config.properties",
+      "sha256": "f061b227cb8d10d003829f725e16eb8ff62eef68b6f0d506d710e0d6703bf5aa",
+      "size": 1380
+    },
+    {
+      "path": "scripts/test/e2e-selenium/pom.xml",
+      "sha256": "4bea0faa877d7cfc289b0bbb4e6d5bbe5cd1fd00360aa455498df8864cf3d3aa",
+      "size": 2647
+    },
+    {
+      "path": "scripts/test/e2e-selenium/run.bat",
+      "sha256": "885464320488f043c329be94811b4af72848d708bb313d7e084693dff937c5ca",
+      "size": 682
+    },
+    {
+      "path": "scripts/test/e2e-selenium/launcher/Launcher.cs",
+      "sha256": "d86c998e394827b7fa780be9a644945d41d4295987a5ef40787135b1fa03018f",
+      "size": 14846
+    },
+    {
+      "path": "scripts/test/e2e-selenium/src/main/java/com/daqian/e2e/Main.java",
+      "sha256": "8d13480fb410c05c73f1f1ca361a05dea131466cb00bb495a8fe357c0835deec",
+      "size": 24275
+    }
+  ],
+  "deleted": []
+}

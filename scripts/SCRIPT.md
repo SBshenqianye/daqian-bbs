@@ -27,10 +27,12 @@ scripts/
 │
 ├── prod/                  ← 构建验证、打包、离线部署、生产运维
 │   ├── base.sh            ← 基础镜像构建/导出/加载
-│   ├── package.sh         ← 离线升级包打包（瘦 jar）
-│   ├── offline.sh         ← 内网离线部署（首次安装 + 版本化升级 + 修复）
-│   ├── one-key-deploy.sh  ← 一键：打包 → 产物验证 → 部署 → 部署后验证
-│   ├── verify-build.sh    ← 构建机自检（产物/包/版本一致性）
+│   ├── package.sh         ← 离线包打包（新契约 v2：payload/app + scripts + manifest/SHA256SUMS）
+│   ├── offline.sh         ← **仅旧包**（无 manifest.json，含 upgrade-*/upgrade.sh）使用
+│   ├── deploy-offline.sh  ← 兼容壳 → 部署根 deploy.sh
+│   ├── one-key-deploy.sh  ← 兼容壳 → 部署根 deploy.sh
+│   ├── one_key_deploy.sh  ← 兼容壳 → 部署根 deploy.sh（历史文档写的下划线名）
+│   ├── verify-build.sh    ← 构建机自检（产物/包契约/版本一致性）
 │   ├── verify-server.sh   ← 服务器部署结果验证
 │   └── ops/
 │       ├── pg-backup.sh          ← 数据库备份/恢复（pg_dump + gzip）
@@ -160,53 +162,46 @@ bash deploy-offline.sh --repair                        # 验证/修复（挂载�
 
 > ⚠ 依赖下沉后覆盖基础镜像不能用 `--install`（镜像已存在会跳过加载），需手动 `podman load`。
 
-### prod/package.sh — 离线打包
+### prod/package.sh — 离线打包（新契约 v2）
 
-将已有构建产物打包为 tarball，内嵌 `upgrade.sh`（服务器端自动创建版本目录 + 更新软链 + 重启/重建容器）。
-升级包内 jar 为**瘦 jar**（用 python3/python 剔除 `BOOT-INF/lib`，依赖走镜像 `/app/lib`）。
-
-```bash
-bash scripts/prod/package.sh                  # 轻量升级包（默认，~5MB）
-bash scripts/prod/package.sh --full           # 完整环境包（含基础镜像 tar + 首次部署脚本）
-```
-
-打包完成后自动输出同名 `.sha256`（大写哈希），离线传输时可直接 `sha256sum -c` 校验。
-
-### prod/one-key-deploy.sh — 一键部署
-
-自动识别两种环境，通常**不用填任何参数**。
-
-**生产服务器**（`/data/bbs` 即项目根，脚本在 `scripts/prod/`）：
+包结构固定为 `payload/app/...` + `scripts/...` + `manifest.json` + `manifest.env` + `SHA256SUMS`，
+**不再生成 `upgrade.sh`**（升级由 `deploy.sh` 负责，先验证后切换、失败自动回滚）。
+升级包内 jar 为**瘦 jar**（python3 剔除 `BOOT-INF/lib`，依赖走镜像 `/app/lib`）。
 
 ```bash
-cd /data/bbs/scripts/prod && bash one_key_deploy.sh
+bash scripts/prod/package.sh                       # 轻量升级包（update，~9MB）
+bash scripts/prod/package.sh --full                # 完整环境包（含基础镜像 tar）
+bash scripts/prod/package.sh --mode migrate        # 结构迁移包（payload=现网同版本）
+bash scripts/prod/package.sh --from <旧包.tar.gz>   # 复用旧包产物重打成新契约（不改代码）
+bash scripts/prod/package.sh --commit 291ae68      # 指定 commit（默认 git HEAD）
+bash scripts/prod/package.sh --version 20261127_093500  # 重打包时覆盖版本号
+bash scripts/prod/package.sh --stage candidate     # 候选包（手测）
 ```
 
-- 自动取 `/data/bbs/bbs-upgrade-*.tar.gz` 里最新的一个
-- 有同名 `.sha256` 就自动校验，不匹配立即中止
-- 部署前 3 秒倒计时（TTY 下可 Ctrl+C）
-- 验证：API / 用户端 / 管理端三个 200 + `verify-server.sh`
-- **验证全部通过后**才把 tar（和 .sha256）移入 `/data/bbs/archive/`；失败则留在根目录便于重试，并打印回滚命令
+- `manifest.version` 取**产物里的版本**（`--from` 时取旧包 `version.txt`），不是文件名时间戳；
+- 包内**不得**含 `deploy.sh`；`scripts/` 全量（排除 `.env`、`*/node_modules`、测试 `target/`）；
+- 完成后输出同名 `.sha256`（大写哈希），现场 `sha256sum -c` 可校验。
 
-**开发机 / WSL**（`<repo>/` 即项目根）：
+### 部署根 deploy.sh — 统一入口（v1.0.0）
 
 ```bash
-./deploy.sh          # 打包 → 产物验证 → 部署 WSL → 探活
-./deploy.sh -n       # 只预检
+sudo bash deploy.sh                 # 自动：无 releases → 迁移/安装；有 → 升级或校验
+sudo bash deploy.sh --package <包>  # 指定包
+sudo bash deploy.sh verify          # 只读验证（指针/哈希/真实路径挂载/探针/文件回读/三端点/DB）
+sudo bash deploy.sh status          # 当前/上一版/指针/端口/磁盘/容器
+sudo bash deploy.sh diag            # 诊断包（脱敏，<20MB）
+sudo bash deploy.sh rollback [--to <id>]
+sudo bash deploy.sh repair | restart [--soft] | migrate | sync-scripts | logs
+bash deploy.sh help [cmd]           # 不需要 root、不读 env、不加锁
 ```
 
-| 选项 | 作用 |
-| --- | --- |
-| 位置参数 `wsl\|w` / `prod\|p` 或 `-t/--target` | 强制目标（默认按目录特征自动识别） |
-| `--tar <path>` | 指定升级包，默认自动查找 |
-| `-y`, `--yes` | 跳过生产部署前的 3 秒倒计时 |
-| `--skip-package` | 复用已有升级包（开发机） |
-| `--skip-verify` | 跳过部署后验证（不推荐） |
-| `-n`, `--dry-run` | 只预检并打印计划 |
+关键行为：容器挂 `releases/<id>/app/...` **真实路径**；`releases/current` 原子替换；
+`versions/latest -> ../releases/current`、`current -> versions/latest`（旧回滚命令仍有效）；
+`.deploy.lock` 防并发；部署前 `pg_dump` 到 `backups/<ts>/` 并 `gunzip -t` 校验；
+切换后验证失败 → **自动回滚并 exit 1**，失败版本与包都保留。
 
-识别规则：仓库根有 `bbs-server/pom.xml` → 开发机（wsl）；否则有 `versions/`、`archive/` 或 `.env` → 生产。可用 `BBS_TARGET` 覆盖。
-
-预检内容：必需命令、三项构建产物是否存在、**产物是否早于源码**（防"忘了重新打包"）、git 提交与未提交改动数；生产目标额外记录 `versions/latest` 当前指向，失败时打印回滚命令。
+> 旧入口 `deploy-offline.sh` / `one-key-deploy.sh` / `one_key_deploy.sh` 均保留为兼容壳，
+> 一律转发 `deploy.sh`；旧实现归档在仓库 `legacy/`。
 
 ### prod/verify-build.sh — 构建产物验证（构建机跑）
 
@@ -216,9 +211,12 @@ cd /data/bbs/scripts/prod && bash one_key_deploy.sh
 bash scripts/prod/verify-build.sh
 ```
 
-验证项：fat jar 为 PropertiesLauncher 布局、`target/lib` 包含 fat jar 的全部内置依赖（允许多出空壳 starter，无类无害）、升级包 <15MB、包内为瘦 jar（不含 BOOT-INF/lib）、upgrade.sh 含 `-Dloader.path=/app/lib`。
+验证项（23 项）：fat jar 为 PropertiesLauncher 布局、`target/lib` 覆盖全部内置依赖、
+升级包 <15MB、包内有 `manifest.json/manifest.env/SHA256SUMS` 且逐文件哈希可校验、
+包内**无** `deploy.sh`、`payload/app` 三件套齐全、`scripts/` 全量（含兼容壳）、不含 `.env`、
+`manifest.version` 形态合法、来源包/HEAD commit 一致性、瘦 jar <5MB 且不含 `BOOT-INF/lib`。
 
-### prod/verify-server.sh — 服务器部署验证（生产机跑）
+### prod/verify-server.sh — 服务器部署验证（生产机跑，旧流程保留）
 
 瘦升级包部署完成后，在服务器上检查部署结果：
 
@@ -227,6 +225,30 @@ bash /tmp/verify-server.sh    # 支持 BBS_HOME / BBS_SERVER_PORT 环境变量�
 ```
 
 验证项：镜像含 `/app/lib`、容器启动参数含 `-Dloader.path=/app/lib`、当前 jar 为瘦 jar、后端健康 200、上传目录挂载探针。全部通过不代表业务功能正常，仍需浏览器回归（发帖/上传）。
+
+### delivery/collect — 现场只读采集（U 盘往返）
+
+生产离线、无法远程时的取数入口。只写自己的输出目录，不停容器、不改配置、不写库。
+
+```bash
+cd /root/collect
+sudo bash collect.sh                  # 输出 ./回传/<主机>-<时间戳>/
+sudo bash collect.sh --with-probe     # 额外做一次挂载探针（写 1 个临时文件并删除）
+```
+
+产出 18 个证据文件（系统/SELinux/磁盘/目录/入口脚本/容器/镜像/挂载/env 打码/端口/
+当前产物哈希/HTTP/DB 只读查询/日志/备份）+ `19-summary.txt` 结论页，打 tar.gz 并给 SHA256。
+详见 `delivery/collect/使用说明.txt`。
+
+### delivery/rehearsal — 迁移演练（测试机专用）
+
+```bash
+bash delivery/rehearsal/setup-legacy.sh        # 搭"生产形态"旧布局（独立根/独立库/独立容器）
+bash delivery/rehearsal/run-scenarios.sh       # S3–S9：升级/坏包/端口/PG恢复/A-B软链/restart/回滚
+bash delivery/rehearsal/s10-auto-rollback.sh   # S10：起不来的坏包 → 自动回滚
+```
+
+判据与证据见 `delivery/演练记录-2026-11-27.md`。**只在测试机执行**（会 `podman rm -f` 演练容器）。
 
 ### prod/ops/pg-backup.sh — 数据库备份/恢复
 
@@ -258,21 +280,21 @@ bash scripts/prod/base.sh --force-rebuild  # 强制重建
 
 ## 完整生命周期
 
-```
-开发机 Windows                  WSL (测试)                  内网服务器 (生产)
-──────────────                 ──────────                  ──────────────
-npm run build     ──同步──▶    deploy/wsl.sh
-mvn package（拷出                ───测试通过──▶
-  target/lib）                                     ┌─ 首次切换（依赖下沉）：
+\开发机 Windows                  WSL (测试)                     内网服务器 (生产)
+──────────────                 ──────────                     ──────────────
+npm run build     ──同步──▶    delivery/rehearsal/*.sh
+mvn package（拷出                ───演练全 PASS──▶
+  target/lib）                                     ┌─ 依赖变更时（顺序不能反）：
                                 base.sh --save     │  1) podman load 新 bbs-server-base.tar
-                                package.sh         │  2) podman rm -f bbs-server（重启不换镜像）
-                                   │               │  3) 再发瘦升级包
+                                package.sh         │  2) 删旧容器（restart 不换镜像）
+                                   │               │  3) 再发新包
                                    │               └──────────────▶
-                           dist/bbs-upgrade-*.tar.gz（瘦包 ~5MB）
-                                   │
-                                scp ───────────────▶ offline.sh --upgrade
-                                                                  │
-                                                            versions/<ts>/
-                                                            latest -> <ts>
-                                                            重建容器 + 挂载验证
-```
+                           dist/bbs-{upgrade,migrate}-*.tar.gz（~9MB）
+                                   │                                  │
+                                scp ───────────────▶  deploy.sh（单独交付，与包同目录）
+                                                                      │
+                                                    预检 → 备份(pg_dump) → releases/<id>/
+                                                    → 校验 → 切指针 → 重建容器 → verify
+                                                                      │
+                                                    失败 → 自动回滚 + exit 1（包不归档）
+\
