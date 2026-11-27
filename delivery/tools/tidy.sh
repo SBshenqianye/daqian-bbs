@@ -67,27 +67,63 @@ fi
 [ -f current.json ] && sed -n 's/^ *"\(current\|previous\|failed\)": *"\([^"]*\)".*/  \1 = \2/p' current.json
 hr
 
-echo "【2】目录速查（★=当前在用，○=历史/可回收，？=不认识，不动）"
-for d in releases versions archive packages backups scripts base-images legacy sql_backups collect bbsUpload bbs-new-env scripts-bak; do
-    [ -e "$d" ] || continue
-    case "$d" in
-        archive|packages) n=$(ls -1 "$d"/*.tar.gz 2>/dev/null | wc -l); n=$((n + 0)) ;;
-        *) n=$(find "$d" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l) ;;
+echo "【2】根目录全量速查（★=在用，○=历史，？=契约外/未识别）"
+role() {
+    case "$1" in
+        releases)          echo "★|新布局版本（运行中）" ;;
+        versions)          echo "○|旧布局版本（迁移后仅历史/取证）" ;;
+        packages)          echo "★|新归档包（deploy.sh 写）" ;;
+        archive)           echo "○|旧归档包（迁移前脚本写）" ;;
+        backups)           echo "★|DB/配置备份（别删）" ;;
+        log|logs)          echo "★|日志/诊断包目录" ;;
+        data)              echo "★|预留数据目录" ;;
+        upload)            echo "★|上传目录（通常软链到 bbsUpload）" ;;
+        bbsUpload)         echo "★|上传文件（业务数据，别删）" ;;
+        src)               echo "★|便捷软链 → current/app" ;;
+        pgbin)             echo "★|pgfix 生成的 pg_dump/psql 包装" ;;
+        scripts)           echo "★|运维脚本（新版）" ;;
+        base-images)       echo "★|基础镜像缓存" ;;
+        legacy)            echo "○|旧入口脚本副本（可留可删）" ;;
+        tmp)               echo "★|临时目录（可清）" ;;
+        deploy.env)        echo "★|主配置（存在则优先于 .env）" ;;
+        .env)              echo "★|兼容配置（容器/旧脚本读它）" ;;
+        current)           echo "★|兼容软链 → versions/latest" ;;
+        current.json)      echo "★|当前/上一版状态" ;;
+        deploy.sh)         echo "★|唯一入口" ;;
+        deploy-offline.sh) echo "○|兼容壳（转 deploy.sh）" ;;
+        pgfix.sh)          echo "★|现场工具（一次性，可删）" ;;
+        tidy.sh)           echo "★|现场工具（一次性，可删）" ;;
+        .deploy.lock)      echo "？|锁残留（确认无部署在跑后可删）" ;;
+        .env.bak-*)        echo "○|历史配置备份（可删）" ;;
+        *.tar.gz.sha256)   echo "★|包校验文件（跟着包一起归档）" ;;
+        bbs-*.tar.gz)      echo "？|根目录待发包（应进 packages/）" ;;
+        *.tar.gz)          echo "？|非部署包（测试/临时，确认后可删）" ;;
+        *.log)             echo "？|日志文件（可删）" ;;
+        sql_backups)       echo "？|契约外：历史 DB 备份（建议并入 backups/db）" ;;
+        collect)           echo "？|契约外：采集产物（建议移出部署根）" ;;
+        bbs-new-env)       echo "？|契约外：就地解压的全量包（确认后可删）" ;;
+        scripts-bak)       echo "？|契约外：手工脚本备份（可删）" ;;
+        *.tar.gz)          echo "？|根目录待发包（应进 packages/）" ;;
+        *)                 echo "？|契约外/未识别（不动）" ;;
     esac
-    case "$d" in
-        releases) mark="★"; note="新布局版本（运行中）" ;;
-        versions) mark="○"; note="旧布局版本（迁移后仅历史/取证）" ;;
-        archive)  mark="○"; note="旧归档包（迁移前脚本用的，个）" ;;
-        packages) mark="★"; note="新归档包（deploy.sh 用，个）" ;;
-        backups)  mark="★"; note="DB/配置备份（别删，份）" ;;
-        scripts)  mark="★"; note="运维脚本（新版，个子目录）" ;;
-        base-images) mark="★"; note="基础镜像缓存" ;;
-        legacy)   mark="○"; note="旧入口脚本副本（可留可删）" ;;
-        bbsUpload) mark="★"; note="上传文件（业务数据，别删）" ;;
-        *)        mark="？"; note="不是部署脚本产生的，未识别" ;;
-    esac
-    printf '  %s %-14s %-8s %-6s %s\n' "$mark" "$d" "$(sz "$d")" "($n)" "$note"
+}
+ls -A1 "$H" 2>/dev/null | sort | while IFS= read -r e; do
+    [ -e "$e" ] || [ -L "$e" ] || continue
+    info=$(role "$e")
+    mark=${info%%|*}
+    note=${info#*|}
+    if [ -L "$e" ]; then
+        target=$(readlink "$e" 2>/dev/null)
+        printf '  %s %-20s %-8s %s  -> %s\n' "$mark" "$e" "-" "$note" "$target"
+    elif [ -d "$e" ]; then
+        n=$(find "$e" -maxdepth 1 -mindepth 1 2>/dev/null | wc -l)
+        printf '  %s %-20s %-8s %s  [%s 项]\n' "$mark" "$e" "$(sz "$e")" "$note" "$n"
+    else
+        printf '  %s %-20s %-8s %s\n' "$mark" "$e" "$(sz "$e")" "$note"
+    fi
 done
+UNK=$(ls -A1 "$H" 2>/dev/null | while IFS= read -r e; do role "$e"; done | grep -c '^？')
+echo "  契约外/未识别: $UNK 项（上面标 ？ 的；脚本不会动它们）"
 hr
 
 echo "【3】旧版本目录 versions/（保留最新 $KEEP_V 个）"
