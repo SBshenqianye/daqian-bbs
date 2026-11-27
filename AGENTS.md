@@ -16,7 +16,7 @@
 | 权限 / 端到端 | `tests/` 下的 API 冒烟或 Playwright | 见 `tests/TEST-MATRIX.md` |
 | 部署产物 | `bash scripts/prod/verify-build.sh` | `FAIL=0` |
 | 部署入口 / 结构迁移 | `bash deploy.sh verify`（测试机或生产只读） | `FAIL=0`：三条指针一致、容器挂 `releases/<id>/app/...` 真实路径、文件回读 200 |
-| 实现事实文档 | `npm run doc:check`（= `node scripts/dev/doc-check.mjs`） | `[OK] 实现事实与代码一致`；不一致打印差异并 exit 1 |
+| 实现事实文档 | `npm run doc:check`（= `node scripts/dev/doc-check.mjs`） | `[OK] 实现事实与代码一致` + `[EVIDENCE] …证据标识全部能在代码中找到`；任一不一致 exit 1 |
 | 设计完成度 | `npm run doc:delta` | 输出「承诺 N / 已实现 M / 完成度 X%」并列出未实现项（不改变退出码） |
 
 - 两个前端**串行**构建；构建前先结束 node 进程，再单独发起构建。

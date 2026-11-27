@@ -19,7 +19,7 @@
 | `legacy/deploy.sh.2026-11-27`、`legacy/one-key-deploy.sh.2026-11-27` | 旧入口原样归档，仅供追溯 |
 | `delivery/collect/` | 现场只读采集包（`collect.sh` + `使用说明.txt` + `回传/`） |
 | `scripts/prod/ops/pgfix.sh`（dist/ 有同名副本便于直接上传） | 现场一条命令修 `pg_dump`（找本机客户端 → 容器客户端兜底 → 写 `BBS_PG_BIN`） |
-| `scripts/prod/ops/tidy.sh`（同上） | 部署根盘点（新旧目录对照）+ 可选清理（保留最新 N 个版本/归档，需输 `yes`） |
+| `scripts/prod/ops/tidy.sh`（同上） | 部署根盘点（新旧目录对照）+ 可选清理（versions/archive/releases 保留最新 N 个，需输 `yes`；`.failed` 取证默认保护） |
 | `delivery/rehearsal/` | 演练脚本（可重跑）：`setup-legacy.sh`、`run-scenarios.sh`、`s10-auto-rollback.sh` |
 | `delivery/manifest-20261126_102549-291ae68/` | 迁移包的 `manifest.json` / `manifest.env` / `SHA256SUMS`（文本，便于评审） |
 | `delivery/回滚命令.md` | 三档回滚命令（指针 / 容器 / 数据库） |
@@ -30,9 +30,9 @@
 
 | 项 | 值 |
 | --- | --- |
-| `deploy.sh`（单独交付） | SHA256 `BBCE5503197A8D0120C5EBD8A71CB2EEA68D881F66C9C28EFA8B9B4C18E809E1` |
-| 迁移包 | `dist/bbs-migrate-20261127-112521.tar.gz`（8.1 MB） |
-| 迁移包 SHA256 | `C317ACB9386C1F233B7F8E2ABCE8DD530053E7BAD749DF03CFA3A8325A3EC9EC` |
+| `deploy.sh`（单独交付） | SHA256 `8D9371FA97E4C6FF62C8DE2D37DF1D85508E7DE1999E8FE853EC29001E5195AE` |
+| 迁移包 | `dist/bbs-migrate-20261127-171411.tar.gz`（8.1 MB） |
+| 迁移包 SHA256 | `A4DF809ED6658042376FCA42F13F0C2CE8AF85BBA32A9F9276491DB2223D122A` |
 | **本次上传项数** | **2 项**（迁移包 + `deploy.sh`；旧入口不认识 manifest、不会自动回滚） |
 | 生产采集核对 | `delivery/生产核对-2026-11-27.md`（现网 jar 哈希与包内一致） |
 | 升级演练包 | `dist/bbs-upgrade-20261127-093351.tar.gz`（8.1 MB，SHA256 `92B2BAA6…3A7A`，仅用于演练） |
@@ -41,7 +41,7 @@
 | `mode` / `stage` | `migrate` / `release` |
 | `db_compat` | `backward-compatible`（本次不改 schema） |
 | `payload/app/bbs-server.jar` | `972b28e3b57d479b3adb4d03ccb717787528d8e2e158deb33d8015b31a5eeefe`（与生产当前 jar 必须一致，迁移时逐字节校验） |
-| 包内条目 | 284 个（238 个纳入 `SHA256SUMS`） |
+| 包内条目 | 287 个（241 个纳入 `SHA256SUMS`） |
 
 **为什么用 `--from` 重打**：生产基线是 `291ae68`，仓库 HEAD 是 `5bb38ca`（只多了文档提交）。
 迁移包必须"只改结构、不改代码"，因此直接复用 `dist/bbs-upgrade-20261126-102606.tar.gz`

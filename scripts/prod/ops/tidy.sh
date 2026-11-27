@@ -4,14 +4,17 @@
 #
 #   bash tidy.sh                          # 只读盘点：哪些是新的、哪些是旧的、能回收多少
 #   bash tidy.sh --clean                  # 按保留数清理（会先列清单，输入 yes 才执行）
-#   bash tidy.sh --clean --keep-versions 3 --keep-archive 3
+#   bash tidy.sh --clean --keep-versions 3 --keep-archive 3 --keep-releases 3
 #
-# 默认保留：versions 旧版本目录 5 个、archive 旧升级包 5 个（最新的留下）
+# 默认保留：versions 旧版本目录 5 个、archive 旧升级包 5 个、releases 5 个
+#          （releases 永远保护 current / previous；带 .failed 的取证版本默认也保护，
+#            确认不要了加 --drop-failed）
 #
 # 只做这些写操作（且必须 --clean + 输入 yes）：
 #   - 根目录的 bbs-*.tar.gz 移进 packages/
 #   - archive/ 里超期（不是最新 N 个）的 bbs-*.tar.gz 删除
 #   - versions/ 里超期（不是最新 M 个）的旧版本目录删除
+#   - releases/ 里超期（不在 current/previous/.failed，也不是最新 R 个）的版本目录删除
 # 永不触碰：releases/ current versions/latest scripts/ bbsUpload/ .env backups/
 #           base-images/ legacy/ sql_backups/ collect/ 以及所有不认识的目录
 # ============================================================================
@@ -20,8 +23,10 @@ set -u
 H="${BBS_HOME:-/data/bbs}"
 KEEP_V=5
 KEEP_A=5
+KEEP_R=5
 CLEAN=0
 MOVE=1
+DROP_FAILED=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -30,6 +35,9 @@ while [ $# -gt 0 ]; do
         --keep-versions=*) KEEP_V="${1#*=}"; shift ;;
         --keep-archive) KEEP_A="${2:-5}"; shift 2 ;;
         --keep-archive=*) KEEP_A="${1#*=}"; shift ;;
+        --keep-releases) KEEP_R="${2:-5}"; shift 2 ;;
+        --keep-releases=*) KEEP_R="${1#*=}"; shift ;;
+        --drop-failed) DROP_FAILED=1; shift ;;
         --no-move) MOVE=0; shift ;;
         -h|--help) sed -n '2,/^set -u/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "未知参数: $1"; exit 2 ;;
@@ -44,12 +52,42 @@ sz() { du -sh "$1" 2>/dev/null | awk '{print $1}'; }
 
 CUR_REL=""
 [ -L releases/current ] && CUR_REL=$(basename "$(readlink -f releases/current 2>/dev/null)")
+PREV_REL=""
+[ -f current.json ] && PREV_REL=$(sed -n 's/.*"previous"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' current.json | head -1)
 CUR_LEGACY=""
 if [ -L versions/latest ]; then
     CUR_LEGACY=$(basename "$(readlink -f versions/latest 2>/dev/null)")
     case "$(readlink versions/latest 2>/dev/null)" in
         ../releases/current*) CUR_LEGACY="" ;;
     esac
+fi
+
+# releases/ 的可回收项：current、previous 永远保护；.failed 取证默认也保护（--drop-failed 才可删）；
+# 「最新 KEEP_R 个」只在"非 failed"的版本里数，避免坏版本占掉保留名额。
+REL_TOTAL=0
+REL_CAND=0
+if [ -d releases ]; then
+    ls -1 releases 2>/dev/null | grep -v '^current$' | sort -r > /tmp/.tidy_r.$$
+    REL_TOTAL=$(wc -l < /tmp/.tidy_r.$$)
+    : > /tmp/.tidy_rnormal.$$
+    : > /tmp/.tidy_rfailed.$$
+    while read -r v; do
+        if [ -f "releases/$v/.failed" ]; then echo "$v" >> /tmp/.tidy_rfailed.$$; else echo "$v" >> /tmp/.tidy_rnormal.$$; fi
+    done < /tmp/.tidy_r.$$
+    head -n "$KEEP_R" /tmp/.tidy_rnormal.$$ > /tmp/.tidy_rkeep.$$
+    : > /tmp/.tidy_rcand.$$
+    while read -r v; do
+        case " $CUR_REL $PREV_REL " in *" $v "*) continue ;; esac
+        grep -qxF "$v" /tmp/.tidy_rkeep.$$ && continue
+        echo "$v" >> /tmp/.tidy_rcand.$$
+    done < /tmp/.tidy_rnormal.$$
+    if [ "$DROP_FAILED" = "1" ]; then
+        while read -r v; do
+            case " $CUR_REL $PREV_REL " in *" $v "*) continue ;; esac
+            echo "$v" >> /tmp/.tidy_rcand.$$
+        done < /tmp/.tidy_rfailed.$$
+    fi
+    REL_CAND=$(wc -l < /tmp/.tidy_rcand.$$)
 fi
 
 echo "部署根: $H"
@@ -141,7 +179,20 @@ if [ -d versions ]; then
 fi
 hr
 
-echo "【4】归档包（保留最新 $KEEP_A 个/每处）"
+echo "【4】releases/（保留 current + previous + 最新 $KEEP_R 个）"
+if [ -d releases ]; then
+    echo "  共 $REL_TOTAL 个，合计 $(sz releases)"
+    echo "  当前: ${CUR_REL:-（无）}   上一版: ${PREV_REL:-（无）}"
+    if [ "$REL_CAND" -gt 0 ]; then
+        echo "  可回收: $REL_CAND 个"
+        sed 's#^#    候选: #' /tmp/.tidy_rcand.$$
+    else
+        echo "  没有可回收的（都在保留范围）"
+    fi
+fi
+hr
+
+echo "【5】归档包（保留最新 $KEEP_A 个/每处）"
 for d in archive packages; do
     [ -d "$d" ] || continue
     ls -1 "$d"/*.tar.gz 2>/dev/null | sort -r > /tmp/.tidy_a.$$
@@ -156,7 +207,7 @@ ls -1 bbs-*.tar.gz 2>/dev/null | sed 's/^/    /' || true
 [ -z "$(ls -1 bbs-*.tar.gz 2>/dev/null)" ] && echo "    （无）"
 hr
 
-echo "【5】备份 backups/"
+echo "【6】备份 backups/"
 if [ -d backups ]; then
     n=$(find backups -maxdepth 1 -mindepth 1 -type d | wc -l)
     echo "  $n 份，合计 $(sz backups)；最近一次: $(ls -1t backups 2>/dev/null | head -1)"
@@ -205,9 +256,13 @@ if [ -d versions ]; then
         ACTIONS=$((ACTIONS + n - KEEP_V))
     fi
 fi
+if [ "$REL_CAND" -gt 0 ]; then
+    sed 's#^#  del   releases/#' /tmp/.tidy_rcand.$$
+    ACTIONS=$((ACTIONS + REL_CAND))
+fi
 
 if [ "$ACTIONS" -eq 0 ]; then
-    echo "  没有可清理的（已经是最新 $KEEP_V/$KEEP_A 之内）"
+    echo "  没有可清理的（versions/archive/releases 都在保留范围内）"
     exit 0
 fi
 echo ""
@@ -244,6 +299,12 @@ if [ -d versions ]; then
             rm -rf "versions/$v" && echo "  deleted versions/$v"
         done
     fi
+fi
+if [ "$REL_CAND" -gt 0 ]; then
+    while read -r v; do
+        [ -n "$v" ] || continue
+        rm -rf "releases/$v" && echo "  deleted releases/$v"
+    done < /tmp/.tidy_rcand.$$
 fi
 echo ""
 echo "清理完成。当前磁盘: $(df -hP . | awk 'NR==2{print $4" 可用（"$5" 已用）"}')"

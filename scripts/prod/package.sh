@@ -140,6 +140,13 @@ prepare_from_pkg() {
         c=$(sed -n 's/^git_commit=//p' "$inner/version.txt" | head -1)
         [ -n "$v" ] && VERSION="$v"
         [ -n "$c" ] && COMMIT="$c"
+    elif [ -f "$inner/manifest.env" ]; then
+        # 新契约包没有 version.txt，版本/commit 在 manifest.env
+        local v c
+        v=$(sed -n 's/^M_VERSION=//p' "$inner/manifest.env" | head -1)
+        c=$(sed -n 's/^M_COMMIT=//p' "$inner/manifest.env" | head -1)
+        [ -n "$v" ] && VERSION="$v"
+        [ -n "$c" ] && COMMIT="$c"
     fi
     SOURCE_NOTE="from:$(basename "$pkg")"
     [ -n "$VERSION_OVERRIDE" ] && { VERSION="$VERSION_OVERRIDE"; SOURCE_NOTE="$SOURCE_NOTE+version:$VERSION_OVERRIDE"; }

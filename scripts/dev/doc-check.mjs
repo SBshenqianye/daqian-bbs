@@ -143,6 +143,106 @@ function printDelta(detail) {
   }
 }
 
+/* ---------------- 9. 证据核验（[x] 里反引号指向的代码必须存在） ---------------- */
+const NAME_EXT = /\.(md|sql|js|mjs|ts|java|yml|yaml|template|json)$/i;
+let fileIndexCache = null;
+function fileIndex() {
+  if (fileIndexCache) return fileIndexCache;
+  const idx = new Map();
+  for (const p of git('git ls-files').split(/\r?\n/).filter(Boolean)) {
+    const base = p.split('/').pop();
+    if (!idx.has(base)) idx.set(base, []);
+    idx.get(base).push(p);
+  }
+  fileIndexCache = idx;
+  return idx;
+}
+const contentCache = new Map();
+function fileHas(file, needle) {
+  if (!contentCache.has(file)) {
+    contentCache.set(file, read(file));
+  }
+  return contentCache.get(file).includes(needle);
+}
+function hasBasename(base) {
+  return fileIndex().has(base);
+}
+function hasPermissionLiteral(tok) {
+  try {
+    execSync(`git grep -q -F -- "${tok}" -- bbs-server/src bbs-admin-ui/src`, { cwd: ROOT, stdio: 'ignore' });
+    return true;
+  } catch { return false; }
+}
+
+/** 判断一个证据 token 是否能在代码里找到；返回 null 表示"描述性，不做校验" */
+function checkToken(tok) {
+  const t = tok.trim();
+  if (!t || /\s/.test(t)) return null;                       // 命令/短语
+  if (t.startsWith('/')) return null;                        // URL / 路由模式
+  if (/^\d/.test(t)) return null;
+  if (t.includes('{') && t.includes('}')) {                  // a-{x,y}.sql
+    const names = [];
+    t.replace(/\{([^}]+)\}/g, (_, list) => { names.push(...list.split(',')); return ''; });
+    const head = t.slice(0, t.indexOf('{'));
+    const tail = t.slice(t.indexOf('}') + 1);
+    const missing = names.map((n) => `${head}${n}${tail}`).filter((n) => !hasBasename(n.split('/').pop()));
+    return { kind: 'brace', ok: missing.length === 0, detail: missing.join(', ') };
+  }
+  if (t.includes('/') || NAME_EXT.test(t)) {                 // 路径
+    if (fs.existsSync(path.join(ROOT, t))) return { kind: 'path', ok: true, detail: t };
+    const base = t.split('/').pop();
+    return { kind: 'path', ok: hasBasename(base), detail: t };
+  }
+  let m = t.match(/^([A-Z][A-Za-z0-9_]*)\.([a-zA-Z_]\w*)$/);  // Class.member
+  if (m) {
+    const [, cls, member] = m;
+    const idx = fileIndex();
+    const files = idx.get(`${cls}.java`) || [];
+    if (!files.length) return { kind: 'class.member', ok: false, detail: `${cls}.java 不存在` };
+    const ok = files.some((f) => fileHas(f, member));
+    return { kind: 'class.member', ok, detail: ok ? '' : `${cls} 中没有 ${member}` };
+  }
+  if (/^[A-Z][A-Za-z0-9_]*$/.test(t)) {                       // ClassName
+    return { kind: 'class', ok: hasBasename(`${t}.java`), detail: `${t}.java` };
+  }
+  m = t.match(/^([a-z][A-Za-z0-9_]*)\.([a-zA-Z_]\w*)$/);      // module.member（前端）
+  if (m) {
+    const [, mod, member] = m;
+    const idx = fileIndex();
+    const files = ['js', 'mjs', 'ts'].flatMap((ext) => idx.get(`${mod}.${ext}`) || []);
+    if (!files.length) return { kind: 'module.member', ok: false, detail: `${mod}.js|mjs|ts 不存在` };
+    const ok = files.some((f) => fileHas(f, member));
+    return { kind: 'module.member', ok, detail: ok ? '' : `${mod} 中没有 ${member}` };
+  }
+  if (/^[a-z][\w-]*(:[a-zA-Z][\w-]*)+$/.test(t)) {            // 权限码 user:grant:admin
+    return { kind: 'literal', ok: hasPermissionLiteral(t), detail: t };
+  }
+  return null;                                                // 其余视为描述，跳过
+}
+
+function verifyEvidence() {
+  const all = commitments().filter((x) => x.done);
+  const failures = [];
+  let checked = 0;
+  for (const item of all) {
+    for (const m of item.text.matchAll(/`([^`]+)`/g)) {
+      const r = checkToken(m[1]);
+      if (!r) continue;
+      checked++;
+      if (!r.ok) failures.push({ file: item.file, line: item.line, token: m[1], detail: r.detail });
+    }
+  }
+  if (!failures.length) {
+    console.log(`[EVIDENCE] ${all.length} 条 [x] 的证据标识 ${checked} 个，全部能在代码中找到`);
+    return true;
+  }
+  console.error(`[FAIL] 有 ${failures.length} 个证据标识在代码里找不到（虚勾/改名/路径过期）：`);
+  for (const f of failures) {
+    console.error(`  - \`${f.token}\`  ${f.file}:${f.line}  ${f.detail ? `（${f.detail}）` : ''}`);
+  }
+  return false;
+}
+
 /* ---------------- 输出 ---------------- */
 const lines = [];
 const P = (s = '') => lines.push(s);
@@ -230,8 +330,9 @@ if (WRITE) {
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   fs.writeFileSync(OUT, content);
   console.log(`[OK] 已生成 ${path.relative(ROOT, OUT)}（${content.split('\n').length} 行）`);
+  const evOk = verifyEvidence();
   printDelta(process.argv.includes('--delta'));
-  process.exit(0);
+  process.exit(evOk ? 0 : 1);
 }
 
 // 只比对正文（从 "## 1." 起）：文件头的生成时间/commit/未提交数天然会变，不参与判定
@@ -248,8 +349,9 @@ if (!old) {
 
 if (body(old) === body(content)) {
   console.log('[OK] 实现事实与代码一致');
+  const evOk = verifyEvidence();
   printDelta(process.argv.includes('--delta'));
-  process.exit(0);
+  process.exit(evOk ? 0 : 1);
 }
 
 const a = body(old).split('\n');

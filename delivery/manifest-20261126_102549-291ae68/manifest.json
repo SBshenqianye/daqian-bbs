@@ -4,10 +4,10 @@
   "commit": "291ae68",
   "mode": "migrate",
   "stage": "release",
-  "built_at": "20261127_112521",
+  "built_at": "20261127_171411",
   "min_deploy_version": "1.0.0",
   "db_compat": "backward-compatible",
-  "source": "from:bbs-upgrade-20261126-102606.tar.gz",
+  "source": "from:bbs-migrate-20261127-112521.tar.gz",
   "entrypoints": {
     "deploy": "deploy.sh",
     "verify": "deploy.sh verify",
@@ -1036,8 +1036,8 @@
     },
     {
       "path": "scripts/SCRIPT.md",
-      "sha256": "122fd4a96f1a3e82ac89f4e0e1a82760f55097450c1927602bab8796b0d927cf",
-      "size": 16935
+      "sha256": "d344758af51f4532484fa2f846ae5870f1856a10c5cbe8f5ab223702373930aa",
+      "size": 18830
     },
     {
       "path": "scripts/dev/_common.ps1",
@@ -1048,6 +1048,11 @@
       "path": "scripts/dev/check-dev-port.js",
       "sha256": "be92b6e277d3523663c969c143f3e2e50a6c7dcf253c72757ebba63850b80189",
       "size": 1147
+    },
+    {
+      "path": "scripts/dev/doc-check.mjs",
+      "sha256": "57aae610a2d7d70b0cfe149dbc16ff95ff3c1392735bc9f1e7c7e778b2d0a960",
+      "size": 16093
     },
     {
       "path": "scripts/dev/down.ps1",
@@ -1121,8 +1126,8 @@
     },
     {
       "path": "scripts/prod/package.sh",
-      "sha256": "3b5cd0c90a6d6c9d953adb6f129f72e9768dee529fcc32f891084dde0140ae79",
-      "size": 13252
+      "sha256": "7525e3185358a0275c609e0b188097b7a8f39abfc4f0fb85e199e02dea92e429",
+      "size": 13600
     },
     {
       "path": "scripts/prod/verify-build.sh",
@@ -1158,6 +1163,16 @@
       "path": "scripts/prod/ops/pg-backup.sh",
       "sha256": "37f53f3284ad9e204146bc813d109f83dc585c0d6a1ea1b28003174e2f284098",
       "size": 17752
+    },
+    {
+      "path": "scripts/prod/ops/pgfix.sh",
+      "sha256": "3503cef48d0a8502b334445377f22dd60a225e295e956066f228c58c7a3829dd",
+      "size": 5103
+    },
+    {
+      "path": "scripts/prod/ops/tidy.sh",
+      "sha256": "158baceafa7913f8ca7d268167b88749ea73c3a4ae6bbf450ed29048878b39cc",
+      "size": 13474
     },
     {
       "path": "scripts/test/e2e/daqian-bbs-e2e.hta",

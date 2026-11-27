@@ -37,7 +37,7 @@ scripts/
 │   └── ops/
 │       ├── pg-backup.sh          ← 数据库备份/恢复（pg_dump + gzip）
 │       ├── pgfix.sh              ← 现场修 pg_dump（找本机客户端 / 容器兜底 → 写 BBS_PG_BIN）
-│       ├── tidy.sh               ← 部署根盘点 + 保留数清理（默认只读）
+│       ├── tidy.sh               ← 部署根盘点 + 保留数清理（versions/archive/releases，默认只读）
 │       ├── diagnose-upload.sh    ← 上传目录挂载诊断
 │       ├── fix-upload-path.sh    ← 上传目录修复（生产机）
 │       ├── fix-dict-cleanup.sql
