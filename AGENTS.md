@@ -1,7 +1,7 @@
 # 大千智荟 BBS · 工作契约
 
 > 本文件只放**每次会话都必须遵守**的判据与边界。
-> 项目知识（结构、端口、迁移规范、坑位）在 `.opencode/skills/daqian-bbs-delivery/SKILL.md` 与 `CLAUDE.md`，此处不重复。
+> 项目知识（结构、端口、迁移规范、坑位）在 `.opencode/skills/daqian-bbs-delivery/SKILL.md` 与 `docs/agent/编码约定.md`，此处不重复。
 > 新增于 2026-11-17；不需要时直接删除本文件即可完全恢复原状。
 
 ## 1. 验收命令（改完必须跑，禁止用"看起来没问题"代替）
@@ -95,7 +95,7 @@
 | --- | --- |
 | 每次都要遵守的硬判据 | 本文件 |
 | 仓库结构、端口、迁移规范、常见坑 | `.opencode/skills/daqian-bbs-delivery/SKILL.md` |
-| 数据库 / 权限 / 前端长期约定 | `CLAUDE.md` |
+| 数据库 / 权限 / 前端长期约定 | `docs/agent/编码约定.md` |
 | 历史决策与事实记忆 | Life-Recordings 私有库 `skill-inbox/daqian-bbs/MEMORIES.md` |
 | 一次性、以后不会再遇到 | 不沉淀，直接删 |
 

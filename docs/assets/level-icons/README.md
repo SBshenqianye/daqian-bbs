@@ -6,7 +6,7 @@
 | --- | --- |
 | `preview.html` | 预览页：7 大阶段 × 3 小档、参考 24 级对照条、16/20/24/32px 小尺寸验证 |
 | `glyphs.mjs` | 14 枚图标的绘制函数（64×64），签名与 `shared/level-icons.js` 的 `GLYPHS_64` 一致 |
-| `build-preview.mjs` | 生成单枚 SVG 与预览页：`node docs/level-icons/build-preview.mjs` |
+| `build-preview.mjs` | 生成单枚 SVG 与预览页：`node docs/assets/level-icons/build-preview.mjs` |
 | `scheme-a/*.svg` | 方案一 7 枚（智荟新芽 → 大千执炬者） |
 | `scheme-b/*.svg` | 方案二 7 枚（银线学徒 → 万伏执炬人） |
 

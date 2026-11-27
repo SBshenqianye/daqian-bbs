@@ -110,7 +110,7 @@ bash scripts/dev/wsl.sh --restart-only
 
 ## 6. 验收与提交
 
-- 验收清单：`docs/验收清单-*.md`，已在 `.gitignore` 中排除，保持**一页**、可逐条打勾。
+- 验收清单：`docs/human/验收/验收清单-2026-11-13.md`（已入库），保持**一页**、可逐条打勾。
 - 提交按模块分组：`feat(server)` / `feat(admin)` / `feat(ui)` / `chore`；提交前 `git status` 必须干净。
 - 推送默认只走 `github`（`SBshenqianye/daqian-bbs`）；`upstream`（`kimljx/daqian-bbs`）是他人仓库，**未明确要求时不推**（2026-11-20 用户裁决）。
 - 涉及数据库的变更，验收时必须先备份，并在启动日志确认 `Migration applied: vNNN`。
@@ -203,7 +203,7 @@ bash scripts/dev/wsl.sh --restart-only
 
 - 迁移前自动备份 = 同库新 schema `bbs_backup_yyyyMMdd_HHmmss`，**只保留最近 3 份**，更早的在下次备份前被 `DROP SCHEMA ... CASCADE`；与业务库同生共死，容器重建一起没。
 - 灾备导出 = `scripts/prod/ops/pg-backup.sh`（`podman exec <pg> pg_dump | gzip`），**目前未接入部署**；宿主机没有 `pg_dump`，必须 exec 进容器。
-- 页面只读展示、不提供删除/恢复；部署时自动备份的方案见 `docs/系统维护-运维能力规划-2026-11-23.md`（待实现）。
+- 页面只读展示、不提供删除/恢复；部署时自动备份的方案见 `docs/human/运维/系统维护-运维能力规划-2026-11-23.md`（待实现）。
 
 ### 9.10 原生 SQL 返回 Map 时，PG 会把别名折叠成小写（2026-11-23 生产问题）
 

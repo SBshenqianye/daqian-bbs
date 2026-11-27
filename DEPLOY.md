@@ -203,37 +203,43 @@ bash scripts/prod/verify-build.sh
 
 ### 5.2 输出文件
 
-打包完成后，在项目根目录生成：
+打包完成后，产物在 `dist/`：
 
 ```
-bbs-deploy-YYYYMMDD-HHMMSS.tar.gz   # 具体版本包
-bbs-deploy-latest.tar.gz            # 最新版软链接
+bbs-upgrade-YYYYMMDD-HHMMSS.tar.gz        # 日常升级包（mode=update）
+bbs-migrate-YYYYMMDD-HHMMSS.tar.gz        # 结构迁移包（mode=migrate，payload=现网同版本）
+bbs-full-YYYYMMDD-HHMMSS.tar.gz           # 完整环境包（含基础镜像，首次安装用）
+同名 .sha256                               # 大写哈希，便于 U 盘校验
 ```
 
-### 5.3 解压后结构（容器离线包）
+> 包内结构：`payload/app/`（jar + 两个 dist）+ `scripts/`（全量运维脚本）+ `manifest.json`
+> + `manifest.env` + `SHA256SUMS`。包内**不含** `deploy.sh`（现场单独交付）。
+> `package.sh` 打完会打印「交付卡」：**本次要上传几个文件**（默认 1 个；`deploy.sh` 变过则 2 个）。
+
+### 5.3 解压后结构（包内）
 
 ```
-bbs-offline-YYYYMMDD-HHMMSS/
-├── deploy.sh                # 一键部署入口
-├── bbs-server.tar           # 后端镜像
-├── bbs-nginx.tar            # Nginx 镜像（含前端静态文件）
-├── .env.example             # 配置模板
-├── docker/
-│   ├── Dockerfile.nginx
-│   └── Dockerfile.server
-└── README.md
+bbs-upgrade-YYYYMMDD-HHMMSS/
+├── manifest.json            # 版本/commit/mode/db_compat + 逐文件哈希
+├── manifest.env             # 同上，给无 python3 的机器用
+├── SHA256SUMS               # 逐文件哈希（sha256sum -c 可校验）
+├── payload/app/
+│   ├── bbs-server.jar       # 瘦 jar（依赖在镜像 /app/lib）
+│   ├── bbs-ui/dist/
+│   └── bbs-admin-ui/dist/
+├── scripts/                 # 全量脚本（prod/ops、dev、test）
+└── docs/                    # 可选：DEPLOY.md、SCRIPT.md
 ```
 
 ### 5.4 传输到目标服务器
 
 ```bash
-# SCP 传输
-scp bbs-deploy-20260701-120000.tar.gz user@target-server:/opt/
-
-# 或在目标服务器上直接下载
-# (如果自建了文件服务器)
-wget http://build-server/bbs-deploy-latest.tar.gz
+# 包 + deploy.sh 一起放部署根（U 盘直接拷，不用改结构）
+cp /media/usb/bbs-upgrade-*.tar.gz* /data/bbs/
+cp /media/usb/deploy.sh /data/bbs/
 ```
+
+> `deploy.sh` 也会在 `/media/*`、`/run/media/*/*` 里自动找包，插着 U 盘即可直接执行。
 
 ---
 
@@ -512,24 +518,31 @@ cd /data/bbs && bash deploy.sh --package bbs-upgrade-*.tar.gz
 
 ```bash
 cd /data/bbs
-ls versions/                        # 查看所有版本
-sudo ln -snf versions/<旧版本> versions/latest
-sudo podman restart bbs-server bbs-nginx
+sudo bash deploy.sh once rollback          # 回上一版（改指针 + 重建容器 + 验证）
+sudo bash deploy.sh once rollback --to <release-id>   # 指定版本
 ```
+
+> ⚠ 迁移之后**不要**再用旧的 `ln -snf <旧ts> versions/latest && podman restart`：
+> 容器挂的是 `releases/<id>/app/...` 真实路径，改软链不会换运行代码（验证会因此变红）。
+> 那条命令只在迁移前、或"撤销迁移"之后有效。详见 `delivery/回滚命令.md`。
 
 ### 10.6 服务器目录结构
 
 ```
 /data/bbs/
-├── versions/
-│   ├── 20260715_142530/            # 每个版本一个目录
-│   │   ├── bbs-server.jar
-│   │   ├── bbs-ui/dist/
-│   │   └── bbs-admin-ui/dist/
-│   ├── 20260715_143025/
-│   └── latest -> 20260715_143025/  # 软链：当前运行版本
-├── current -> versions/latest      # 容器 bind-mount 目标
-├── base-images/                    # 基础镜像 tar 缓存
-├── .env
-└── logs/
+├── deploy.sh                       # 唯一入口（根目录只放它 + deploy-offline.sh 兼容壳）
+├── deploy.env / .env               # 配置（deploy.env 优先）
+├── current.json                    # 当前/上一版/失败版本
+├── releases/<版本>-<commit>/       # app/ + scripts/ + manifest.json + SHA256SUMS
+├── releases/current -> <版本>      # 当前版本（原子替换）
+├── versions/<ts>/                  # 旧布局历史（迁移后仅取证/撤销用）
+├── versions/latest -> ../releases/current
+├── current -> versions/latest      # 旧路径兼容（历史容器曾挂这里）
+├── src -> current/app              # 便捷软链
+├── packages/                       # 用完的包（新归档位；archive/ 是旧脚本的）
+├── backups/<时间>/                 # DB dump + inspect.json + .env 副本
+├── bbsUpload/                      # 上传文件（业务数据）
+├── scripts/                        # 运维脚本（与包内 scripts/ 一致）
+├── base-images/  legacy/  log/
+└── .env
 ```

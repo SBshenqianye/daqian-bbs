@@ -84,19 +84,16 @@ postman/
 .dsh/
 .dsh-trash/
 .dsh-vision-router/
-docs/需求更新-计划-*.md
+
+# docs：只忽略「本地产物 / 过程稿」，决策与验收文档必须入库
+docs/.obsidian/
+docs/_runtime/
 docs/manual-images/
-# 权限设计/重构过程文档（本地查看，不提交）
-docs/权限架构重构-*.md
-docs/权限管理-*.md
-docs/版主角色化-*.md
-docs/prompt-history.md
-
-# 过程性验收清单 / 返工记录（本地查看，不提交）
-docs/*验收清单*.md
-docs/R2-*.md
-
 docs/ui-compare/
-
 docs/operations/
-docs/自动化部署-迁移prompt-2026-11-23.md
+docs/prompt-history.md
+docs/archive/release-check/out/
+
+# 项目垃圾桶：先丢这里，确认无用再删（不入库）
+.trash/
+

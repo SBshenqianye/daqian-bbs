@@ -20,7 +20,7 @@
 ## 二、包里有什么
 
 ```text
-release-check/
+docs/archive/release-check/
 ├─ README.md                       ← 你正在看的文件
 ├─ check.ps1                       ← 唯一入口：Pre / Post / Api
 ├─ sql/

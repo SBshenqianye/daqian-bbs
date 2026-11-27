@@ -16,7 +16,7 @@
 ## 版主角色化测试资产（历史）
 
 本目录同时保留了 `MODERATOR`（`user_type=4`）角色功能的测试资产，配套报告见
-`docs/版主角色化-测试报告-2026-10-30.md`（该文档被 `.gitignore` 忽略，仅本地保留）。
+`docs/human/验收/版主角色化-测试报告-2026-10-30.md`（已入库）。
 
 > ⚠️ 历史资产提示：`fixtures/moderator-seed.sql`、`api/moderator-api-smoke.js` 等仍使用
 > `bbs_permission_group.base_role` 和旧版主组模型；该列在权限组重构后已移除，

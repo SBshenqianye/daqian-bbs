@@ -27,7 +27,7 @@
    - `bbs-server/src/main/resources/db/init/upgrade-pg.sql`
    - `bbs-server/src/main/resources/db/init/upgrade-mysql.sql`
    PG 用 `INSERT ... ON CONFLICT (keyword) DO NOTHING`，MySQL 用 `INSERT IGNORE`，全幂等；服务下次启动 `DatabaseInitializer` 自动执行。
-   - 生成脚本：`docs/敏感词库/generate_migration.py`（可重复运行，先截断旧 v031 块再重新生成）。
+   - 生成脚本：`docs/data/敏感词库/generate_migration.py`（可重复运行，先截断旧 v031 块再重新生成）。
 2. **策略**：按用户已确认的方案，采用「命中替换 / 警告」而非一刀切拦截；后端 `SensitiveWordUtil.desensitize()` 已支持脱敏替换，可先接入该词库验证效果。
 3. **启动后核对**：`SELECT count(*) FROM bbs_sensitive_word;`（应为原种子 + 7,509 − 与既有种子重复的条数）。
 4. **误伤评估**：
