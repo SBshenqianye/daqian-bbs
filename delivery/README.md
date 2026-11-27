@@ -18,6 +18,8 @@
 | `scripts/prod/one-key-deploy.sh` | 兼容壳：转新入口（旧实现归档 `legacy/`） |
 | `legacy/deploy.sh.2026-11-27`、`legacy/one-key-deploy.sh.2026-11-27` | 旧入口原样归档，仅供追溯 |
 | `delivery/collect/` | 现场只读采集包（`collect.sh` + `使用说明.txt` + `回传/`） |
+| `delivery/tools/pgfix.sh` | 现场一条命令修 `pg_dump`（找本机客户端 → 容器客户端兜底 → 写 `BBS_PG_BIN`） |
+| `delivery/tools/tidy.sh` | 部署根盘点（新旧目录对照）+ 可选清理（保留最新 N 个版本/归档，需输 `yes`） |
 | `delivery/rehearsal/` | 演练脚本（可重跑）：`setup-legacy.sh`、`run-scenarios.sh`、`s10-auto-rollback.sh` |
 | `delivery/manifest-20261126_102549-291ae68/` | 迁移包的 `manifest.json` / `manifest.env` / `SHA256SUMS`（文本，便于评审） |
 | `delivery/回滚命令.md` | 三档回滚命令（指针 / 容器 / 数据库） |
@@ -28,7 +30,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| `deploy.sh`（单独交付） | SHA256 `6A83DACBA5D834CF94B754CA3F63D327E87E4CC3EF740FB35158254456BFEDE1` |
+| `deploy.sh`（单独交付） | SHA256 `BBCE5503197A8D0120C5EBD8A71CB2EEA68D881F66C9C28EFA8B9B4C18E809E1` |
 | 迁移包 | `dist/bbs-migrate-20261127-112521.tar.gz`（8.1 MB） |
 | 迁移包 SHA256 | `C317ACB9386C1F233B7F8E2ABCE8DD530053E7BAD749DF03CFA3A8325A3EC9EC` |
 | **本次上传项数** | **2 项**（迁移包 + `deploy.sh`；旧入口不认识 manifest、不会自动回滚） |
@@ -83,7 +85,7 @@ sudo bash deploy.sh once migrate
 | 入口 | `deploy-offline.sh` / `one-key-deploy.sh` / `one_key_deploy.sh` 三个名字三套实现 | 全部转 `deploy.sh`；旧文件归档 `legacy/` |
 | 版本目录 | `versions/<ts>/`，指针两跳 | `releases/<版本>-<commit>/app/`，`releases/current` 原子替换 |
 | 容器挂载 | 挂 `/data/bbs/current/...` 兼容链 | 挂 `releases/<id>/app/...` **真实路径** |
-| 旧回滚命令 | `ln -snf <ts> versions/latest && podman restart` | **仍然有效**（`current → versions/latest → ../releases/current`） |
+| 旧回滚命令 | `ln -snf <ts> versions/latest && podman restart` | **迁移后不再有效**：容器挂真实路径，改指针不影响运行代码 → 用 `once rollback`（迁移前/撤销迁移后仍可用） |
 | 升级脚本 | 包内 `upgrade.sh` | 废弃；由 `deploy.sh` 统一处理 |
 | 切换时机 | 先切指针，再重启，失败不自动回滚 | 先校验/备份/落盘，再切换；**验证失败自动回滚并 exit 1** |
 | 同版本重跑 | 新建一个版本目录 | 按修复处理，不新建目录 |
